@@ -3,8 +3,14 @@
     "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
     "worker_type": "dummy-worker-aki",
+    "worker_id": "my_hostname",
+
+    "work_dir": "/tmp/work",
+    "log_dir": "/tmp/log",
+    "artifact_dir": "/tmp/artifact",
+    "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 2"),
+
     "taskcluster_client_id": "...",
     "taskcluster_access_token": "...",
-    "worker_id": "my_hostname",
     "verbose": true
 }
