@@ -1,26 +1,8 @@
 #!/usr/bin/env python
-# X  queue - poll task urls
-# X   signedPollUrls
-# X  for each url, azure get(SignedPollUrls[i++ % n])
-# X   polling...
-# X   <QueueMessagesList/>
-# X  queue - claimTask
-# X   status
-# X    on 409, try the next one
-# X   azure - delete <PopReceipt/>
-# X  executing task
-# X   - create config files
-# X    - temp creds - in the task json
-# X    - job metadata, payload - in the task json
-# X   - launch script
-# X   during task, queue - reclaimTask periodically
-# _  createArtifact
-# X  queue -> reportCompleted
-# _ worker logfile
-# _ log rotation
+"""Utils for scriptworker
+"""
 import aiohttp
 import asyncio
-import atexit
 import datetime
 import json
 import logging
@@ -37,27 +19,6 @@ import taskcluster
 import taskcluster.exceptions
 from taskcluster.async import Queue
 
-from scriptworker.azure import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.context import Context
-
-
-DEFAULT_CONFIG = {
-    "provisioner_id": "test-dummy-provisioner",
-    "scheduler_id": "test-dummy-scheduler",
-    "worker_group": "test-dummy-workers",
-    "worker_type": "dummy-worker-aki",
-    "taskcluster_client_id": "...",
-    "taskcluster_access_token": "...",
-    "work_dir": "...",
-    "log_dir": "...",
-    "artifact_dir": "...",
-    "worker_id": "dummy-worker-aki1",
-    "max_connections": 30,
-    "reclaim_interval": 5,  # TODO 300
-    "poll_interval": 5,  # TODO 1 ?
-    "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 2"),
-    "verbose": True
-}
 log = logging.getLogger(__name__)
 
 
@@ -257,53 +218,3 @@ def cleanup(context):
             log.debug("rmtree({})".format(path))
             shutil.rmtree(path)
         makedirs(path)
-
-
-async def async_main(context):
-    loop = asyncio.get_event_loop()
-    while True:
-        await update_poll_task_urls(
-            context, context.queue.pollTaskUrls,
-            args=(context.config['provisioner_id'], context.config['worker_type']),
-        )
-        for poll_url, delete_url in get_azure_urls(context):
-            task_defn = await find_task(context, poll_url, delete_url, fetch)
-            if task_defn:
-                log.info("Going to run task!")
-                context.task = task_defn
-                # TODO write this to a known location for the script:
-                # script work_dir ?
-                loop.call_later(context.config['reclaim_interval'],
-                                schedule_reclaim_task, context, context.task)
-                running_task = loop.create_task(run_task(context))
-                await running_task
-                # TODO upload artifacts
-                await complete_task(context, running_task.result())
-                # TODO cleanup(context)
-                break
-        else:
-            await asyncio.sleep(context.config['poll_interval'])
-
-
-def main():
-    context = Context()
-    context.config = create_config()
-    update_logging_config(context, log)
-    cleanup(context)
-    conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
-    loop = asyncio.get_event_loop()
-    atexit.register(close_asyncio_loop)
-    with aiohttp.ClientSession(connector=conn) as session:
-        context.session = session
-        context.queue = Queue({
-            'credentials': {
-                'clientId': context.config['taskcluster_client_id'],
-                'accessToken': context.config['taskcluster_access_token'],
-            }
-        }, session=context.session)
-        loop.create_task(async_main(context))
-        loop.run_forever()
-
-
-if __name__ == '__main__':
-    main()
