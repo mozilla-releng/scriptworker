@@ -26,7 +26,7 @@ DEFAULT_CONFIG = {
     "poll_interval": 5,  # TODO 1 ?
 
     # Worker log settings
-    "log_datefmt": "%H:%M:%S",
+    "log_datefmt": "%Y-%m-%dT%H:%M:%S",
     "log_fmt": "%(asctime)s %(levelname)8s - %(message)s",
     "log_max_bytes": 1024 * 1024 * 512,
     "log_num_backups": 10,

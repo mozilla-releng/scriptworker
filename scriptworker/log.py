@@ -2,6 +2,7 @@
 """scriptworker logging
 """
 import logging
+import logging.handlers
 import os
 
 from contextlib import contextmanager
@@ -43,8 +44,10 @@ def update_logging_config(context, log_name=None):
     path = os.path.join(context.config['log_dir'], 'worker.log')
     handler = logging.handlers.RotatingFileHandler(
         path, maxBytes=context.config['log_max_bytes'],
-        backupCount=context.config['log_max_backups'],
+        backupCount=context.config['log_num_backups'],
     )
+    handler.setFormatter(formatter)
+    top_level_logger.addHandler(handler)
     top_level_logger.addHandler(logging.NullHandler())
 
 
