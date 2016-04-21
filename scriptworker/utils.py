@@ -13,25 +13,12 @@ import time
 
 from asyncio.subprocess import PIPE
 from contextlib import contextmanager
-from frozendict import frozendict
 
 import taskcluster
 import taskcluster.exceptions
 from taskcluster.async import Queue
 
 log = logging.getLogger(__name__)
-
-
-def create_config(filename="secrets.json"):
-    # TODO configurability -- cmdln arguments
-    with open(filename, "r") as fh:
-        secrets = json.load(fh)
-
-    config = dict(DEFAULT_CONFIG).copy()
-    config.update(secrets)
-    # TODO verify / dtd
-    config = frozendict(config)
-    return config
 
 
 async def fetch(context, url, timeout=60, method='get', good=(200, )):

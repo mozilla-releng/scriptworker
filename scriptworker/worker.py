@@ -38,39 +38,11 @@ import taskcluster.exceptions
 from taskcluster.async import Queue
 
 from scriptworker.azure import find_task, get_azure_urls, update_poll_task_urls
+from scriptworker.config import create_config
 from scriptworker.context import Context
+from scriptworker.utils import to_unicode
 
-
-DEFAULT_CONFIG = {
-    "provisioner_id": "test-dummy-provisioner",
-    "scheduler_id": "test-dummy-scheduler",
-    "worker_group": "test-dummy-workers",
-    "worker_type": "dummy-worker-aki",
-    "taskcluster_client_id": "...",
-    "taskcluster_access_token": "...",
-    "work_dir": "...",
-    "log_dir": "...",
-    "artifact_dir": "...",
-    "worker_id": "dummy-worker-aki1",
-    "max_connections": 30,
-    "reclaim_interval": 5,  # TODO 300
-    "poll_interval": 5,  # TODO 1 ?
-    "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 2"),
-    "verbose": True
-}
 log = logging.getLogger(__name__)
-
-
-def create_config(filename="secrets.json"):
-    # TODO configurability -- cmdln arguments
-    with open(filename, "r") as fh:
-        secrets = json.load(fh)
-
-    config = dict(DEFAULT_CONFIG).copy()
-    config.update(secrets)
-    # TODO verify / dtd
-    config = frozendict(config)
-    return config
 
 
 async def fetch(context, url, timeout=60, method='get', good=(200, )):
@@ -81,16 +53,6 @@ async def fetch(context, url, timeout=60, method='get', good=(200, )):
             log.debug("Status {}".format(resp.status))
             assert resp.status in good  # TODO log/retry
             return await resp.text()
-
-
-def datestring_to_timestamp(datestring):
-    """ Create a timetamp from a taskcluster datestring
-    datestring: a string in the form of "2016-04-16T03:46:24.958Z"
-    """
-    datestring = datestring.split('.')[0]
-    return time.mktime(
-        datetime.datetime.strptime(datestring, "%Y-%m-%dT%H:%M:%S").timetuple()
-    )
 
 
 def update_logging_config(context, log):
@@ -105,14 +67,6 @@ def update_logging_config(context, log):
             handler.setFormatter(formatter)
             log.addHandler(handler)
     log.addHandler(logging.NullHandler())
-
-
-def to_unicode(line):
-    try:
-        line = line.decode('utf-8')
-    except UnicodeDecodeError:
-        pass
-    return line
 
 
 async def log_errors(reader, log_fh, error_fh):
