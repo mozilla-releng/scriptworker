@@ -1,0 +1,10 @@
+{
+    "provisioner_id": "test-dummy-provisioner",
+    "scheduler_id": "test-dummy-scheduler",
+    "worker_group": "test-dummy-workers",
+    "worker_type": "dummy-worker-aki",
+    "taskcluster_client_id": "...",
+    "taskcluster_access_token": "...",
+    "worker_id": "my_hostname",
+    "verbose": true
+}

@@ -1,0 +1,9 @@
+recursive-include scriptworker/data *
+recursive-include scriptworker/test *
+
+include LICENSE
+include README.md
+include config_example.json
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
