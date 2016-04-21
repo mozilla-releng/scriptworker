@@ -11,20 +11,40 @@ from scriptworker.utils import makedirs, to_unicode
 log = logging.getLogger(__name__)
 
 
-def update_logging_config(context):
-    top_level_name = __name__.split('.')[0]
-    top_level_logger = logging.getLogger(top_level_name)
-    # TODO put these in config?
-    datefmt = '%H:%M:%S'
-    fmt = '%(asctime)s %(levelname)8s - %(message)s'
+def update_logging_config(context, log_name=None):
+    """Update python logging settings from config.
 
+    By default, this sets the `scriptworker` log settings, but this will
+    change if some other package calls this function or specifies the `log_name`.
+
+    * Use formatting from config settings.
+    * Log to screen if `verbose`
+    * Add a rotating logfile from config settings.
+    """
+    if log_name is None:
+        log_name = __name__.split('.')[0]
+    top_level_logger = logging.getLogger(log_name)
+
+    datefmt = context.config['log_datefmt']
+    fmt = context.config['log_fmt']
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
+
     if context.config.get("verbose"):
         top_level_logger.setLevel(logging.DEBUG)
         if len(top_level_logger.handlers) == 0:
             handler = logging.StreamHandler()
             handler.setFormatter(formatter)
             top_level_logger.addHandler(handler)
+    else:
+        top_level_logger.setLevel(logging.INFO)
+
+    # Rotating log file
+    makedirs(context.config['log_dir'])
+    path = os.path.join(context.config['log_dir'], 'worker.log')
+    handler = logging.handlers.RotatingFileHandler(
+        path, maxBytes=context.config['log_max_bytes'],
+        backupCount=context.config['log_max_backups'],
+    )
     top_level_logger.addHandler(logging.NullHandler())
 
 
