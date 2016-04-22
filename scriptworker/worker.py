@@ -25,7 +25,7 @@ import logging
 
 from taskcluster.async import Queue
 
-from scriptworker.azure import find_task, get_azure_urls, update_poll_task_urls
+from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config

@@ -16,7 +16,7 @@ from scriptworker.utils import datestring_to_timestamp
 log = logging.getLogger(__name__)
 
 
-def parse_message(message):
+def parse_azure_message(message):
     message_info = {}
     interesting_keys = {
         "MessageId": "messageId",
@@ -34,10 +34,10 @@ def parse_message(message):
     return message_info
 
 
-def parse_xml(xml):
+def parse_azure_xml(xml):
     et = defusedxml.ElementTree.fromstring(xml)
     for message in et:
-        yield parse_message(message)
+        yield parse_azure_message(message)
 
 
 async def claim_task(context, taskId, runId):
@@ -65,7 +65,7 @@ async def find_task(context, poll_url, delete_url, fetch_function):
     xml = await fetch_function(context, poll_url)
     log.debug("find_task xml:")
     log.debug(xml)
-    for message_info in parse_xml(xml):
+    for message_info in parse_azure_xml(xml):
         log.debug(message_info['task_info'])
         task = await claim_task(context, **message_info['task_info'])
         delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
