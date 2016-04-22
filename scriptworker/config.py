@@ -3,6 +3,8 @@
 """
 import json
 import logging
+import os
+import sys
 
 from frozendict import frozendict
 
@@ -40,15 +42,43 @@ DEFAULT_CONFIG = {
 }
 
 
-def create_config(filename="secrets.json"):
+def list_to_tuple(dictionary):
+    for key, value in dictionary.items():
+        if isinstance(value, list):
+            dictionary[key] = tuple(value)
+
+def check_config(config, path):
+    messages = []
+    for key, value in config.items():
+        if key not in DEFAULT_CONFIG:
+            messages.append("Unknown key {} in {}!".format(key, path))
+            continue
+        value_type = type(value)
+        default_type = type(DEFAULT_CONFIG[key])
+        if value_type != default_type:
+            messages.append(
+                "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
+            )
+    return messages
+
+
+def create_config(path="secrets.json"):
     """Create a config from DEFAULT_CONFIG, arguments, and config file.
     """
-    # TODO configurability -- cmdln arguments
-    with open(filename, "r") as fh:
+    if not os.path.exists(path):
+        print("{} doesn't exist! Exiting create_config()...".format(path),
+              file=sys.stderr)
+        print("Exiting...", file=sys.stderr)
+        sys.exit(1)
+    with open(path, "r") as fh:
         secrets = json.load(fh)
-
     config = dict(DEFAULT_CONFIG).copy()
+    list_to_tuple(secrets)
     config.update(secrets)
-    # TODO verify / dtd
+    messages = check_config(config, path)
+    if messages:
+        print('\n'.join(messages), file=sys.stderr)
+        print("Exiting...", file=sys.stderr)
+        sys.exit(1)
     config = frozendict(config)
     return config

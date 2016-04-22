@@ -22,6 +22,7 @@ import aiohttp
 import asyncio
 import atexit
 import logging
+import sys
 
 from taskcluster.async import Queue
 
@@ -67,7 +68,13 @@ def main():
     """Scriptworker entry point: get everything set up, then enter the main loop
     """
     context = Context()
-    context.config = create_config()
+    kwargs = {}
+    if len(sys.argv) > 1:
+        if len(sys.argv) > 2:
+            print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
+            sys.exit(1)
+        kwargs['filename'] = sys.argv[1]
+    context.config = create_config(**kwargs)
     update_logging_config(context)
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
