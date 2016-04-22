@@ -52,6 +52,9 @@ def update_logging_config(context, log_name=None):
 
 
 async def log_errors(reader, log_fh, error_fh):
+    """Log STDERR from the task subprocess to both the log and error
+    filehandles.
+    """
     while True:
         line = await reader.readline()
         if not line:
@@ -63,6 +66,8 @@ async def log_errors(reader, log_fh, error_fh):
 
 
 async def read_stdout(stdout, log_fh):
+    """Log STDOUT from the task subprocess to the log filehandle.
+    """
     while True:
         line = await stdout.readline()
         if line:
@@ -73,6 +78,8 @@ async def read_stdout(stdout, log_fh):
 
 
 def get_log_filenames(context):
+    """Helper function to get the task log/error file paths.
+    """
     log_file = os.path.join(context.config['log_dir'], 'task_output.log')
     error_file = os.path.join(context.config['log_dir'], 'task_error.log')
     return log_file, error_file
@@ -80,6 +87,9 @@ def get_log_filenames(context):
 
 @contextmanager
 def get_log_fhs(context):
+    """Helper contextmanager function to open the log and error
+    filehandles.
+    """
     log_file, error_file = get_log_filenames(context)
     makedirs(context.config['log_dir'])
     with open(log_file, "w") as log_fh:
