@@ -12,7 +12,7 @@ import time
 log = logging.getLogger(__name__)
 
 
-async def fetch(context, url, timeout=60, method='get', good=(200, )):
+async def request(context, url, timeout=60, method='get', good=(200, )):
     session = context.session
     with aiohttp.Timeout(timeout):
         log.debug("{} {}".format(method.upper(), url))

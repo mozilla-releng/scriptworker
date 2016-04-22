@@ -61,15 +61,15 @@ def get_azure_urls(context):
         yield queue_defn['signedPollUrl'], queue_defn['signedDeleteUrl']
 
 
-async def find_task(context, poll_url, delete_url, fetch_function):
-    xml = await fetch_function(context, poll_url)
+async def find_task(context, poll_url, delete_url, request_function):
+    xml = await request_function(context, poll_url)
     log.debug("find_task xml:")
     log.debug(xml)
     for message_info in parse_azure_xml(xml):
         log.debug(message_info['task_info'])
         task = await claim_task(context, **message_info['task_info'])
         delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
-        response = await fetch_function(context, delete_url, method='delete', good=[200, 204])
+        response = await request_function(context, delete_url, method='delete', good=[200, 204])
         log.debug(response)
         if task is not None:
             return task

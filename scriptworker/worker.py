@@ -30,7 +30,7 @@ from scriptworker.config import create_config
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config
 from scriptworker.task import complete_task, run_task, schedule_reclaim_task
-from scriptworker.utils import cleanup, close_asyncio_loop, fetch
+from scriptworker.utils import cleanup, close_asyncio_loop, request
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def async_main(context):
             args=(context.config['provisioner_id'], context.config['worker_type']),
         )
         for poll_url, delete_url in get_azure_urls(context):
-            task_defn = await find_task(context, poll_url, delete_url, fetch)
+            task_defn = await find_task(context, poll_url, delete_url, request)
             if task_defn:
                 log.info("Going to run task!")
                 context.task = task_defn
