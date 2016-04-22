@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-"""Deal with the azure queue.  At some point we may be able to just claimTask
-through Taskcluster; until that point we have these functions.
+"""Deal with the multi-step queue polling.  At some point we may be able to
+just claimTask through Taskcluster; until that point we have these functions.
 """
 import base64
 import defusedxml.ElementTree
@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 
 
 def parse_azure_message(message):
+    """The Azure xml may have multiple messages; this deals with one.
+    """
     message_info = {}
     interesting_keys = {
         "MessageId": "messageId",
@@ -35,12 +37,16 @@ def parse_azure_message(message):
 
 
 def parse_azure_xml(xml):
+    """Generator: parse the Azure xml and pass through parse_azure_message()
+    """
     et = defusedxml.ElementTree.fromstring(xml)
     for message in et:
         yield parse_azure_message(message)
 
 
 async def claim_task(context, taskId, runId):
+    """Attempt to claim a task that we found in the Azure queue.
+    """
     payload = {
         'workerGroup': context.config['worker_group'],
         'workerId': context.config['worker_id'],
@@ -57,11 +63,23 @@ async def claim_task(context, taskId, runId):
 
 
 def get_azure_urls(context):
+    """Generator: yield the poll_url and delete_url from the poll_task_urls,
+    in order.
+    """
     for queue_defn in context.poll_task_urls['queues']:
         yield queue_defn['signedPollUrl'], queue_defn['signedDeleteUrl']
 
 
 async def find_task(context, poll_url, delete_url, request_function):
+    """Main polling function.
+
+    For a given poll_url/delete_url pair, get the xml from the poll_url.
+    For each message in the xml, parse and try to claim the task.
+    Delete the message from the Azure queue whether the claim was successful
+    or not (error 409 on claim means the task was cancelled/expired/claimed).
+
+    If the claim was successful, return the task json.
+    """
     xml = await request_function(context, poll_url)
     log.debug("find_task xml:")
     log.debug(xml)

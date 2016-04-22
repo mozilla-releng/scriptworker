@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 class Context(object):
-    """ Basic config object.
+    """ Basic config holding object.
 
     Avoids putting everything in a big object, but allows for passing around
     config and easier overriding in tests.
@@ -29,23 +29,40 @@ class Context(object):
 
     @property
     def task(self):
+        """The current or most recent claimed task definition json from the queue.
+        """
         return self._task
 
     @task.setter
     def task(self, task):
+        """Set the task, then write a task.json to disk and update
+        `self.temp_credentials`.  Zero out `self.reclaim_task` because we
+        haven't reclaimed this task yet.
+        """
         self._task = task
         path = os.path.join(self.config['work_dir'], "task.json")
         self.write_json(path, task, "Writing task file to {path}...")
         self.temp_credentials = task['credentials']
         self.reclaim_task = None
-        # TODO payload.json ?
 
     @property
     def reclaim_task(self):
+        """The most recent reclaimTask definition -- this contains the newest
+        expiration time and the newest temp credentials.
+
+        reclaim_task will be None if there hasn't been a claimed task yet,
+        or if a task has been claimed more recently than the most recent
+        reclaimTask call.
+        """
         return self._reclaim_task
 
     @reclaim_task.setter
     def reclaim_task(self, value):
+        """Set the reclaim_task json (or None if a new task has been claimed)
+
+        If `value` is json, write it to disk with a timestamp so we can try to
+        avoid i/o race conditions.  Then update `self.temp_credentials`
+        """
         self._reclaim_task = value
         if value is not None:
             path = os.path.join(self.config['work_dir'],
@@ -56,16 +73,27 @@ class Context(object):
 
     @property
     def temp_credentials(self):
+        """The latest temp credentials, or None if we haven't claimed a task
+        yet.
+        """
         return self._temp_credentials
 
     @temp_credentials.setter
     def temp_credentials(self, credentials):
+        """Set the temp_credentials from the latest claimTask or reclaimTask
+        call.
+
+        Write these to disk with a timestamp so we can try to avoid i/o race
+        conditions.
+        """
         self._temp_credentials = credentials
         path = os.path.join(self.config['work_dir'],
                             "credentials.{}.json".format(int(time.time())))
         self.write_json(path, credentials, "Writing credentials file to {path}...")
 
     def write_json(self, path, contents, message):
+        """Write json to disk.
+        """
         log.debug(message.format(path=path))
         parent_dir = os.path.dirname(path)
         if parent_dir:

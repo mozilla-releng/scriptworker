@@ -36,6 +36,9 @@ log = logging.getLogger(__name__)
 
 
 async def async_main(context):
+    """Main async loop, following the drawing at
+    http://docs.taskcluster.net/queue/worker-interaction/
+    """
     loop = asyncio.get_event_loop()
     while True:
         await update_poll_task_urls(
@@ -47,8 +50,6 @@ async def async_main(context):
             if task_defn:
                 log.info("Going to run task!")
                 context.task = task_defn
-                # TODO write this to a known location for the script:
-                # script work_dir ?
                 loop.call_later(context.config['reclaim_interval'],
                                 schedule_reclaim_task, context, context.task)
                 running_task = loop.create_task(run_task(context))
@@ -56,12 +57,15 @@ async def async_main(context):
                 # TODO upload artifacts
                 await complete_task(context, running_task.result())
                 # TODO cleanup(context)
+                await asyncio.sleep(1)
                 break
         else:
             await asyncio.sleep(context.config['poll_interval'])
 
 
 def main():
+    """Scriptworker entry point: get everything set up, then enter the main loop
+    """
     context = Context()
     context.config = create_config()
     update_logging_config(context)

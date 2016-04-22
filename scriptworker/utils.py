@@ -13,6 +13,8 @@ log = logging.getLogger(__name__)
 
 
 async def request(context, url, timeout=60, method='get', good=(200, )):
+    """Async aiohttp request wrapper
+    """
     session = context.session
     with aiohttp.Timeout(timeout):
         log.debug("{} {}".format(method.upper(), url))
@@ -33,6 +35,8 @@ def datestring_to_timestamp(datestring):
 
 
 def to_unicode(line):
+    """Avoid |b'line'| type messages in the logs
+    """
     try:
         line = line.decode('utf-8')
     except UnicodeDecodeError:
@@ -41,12 +45,17 @@ def to_unicode(line):
 
 
 def makedirs(path):
+    """mkdir -p
+    """
     if not os.path.exists(path):
+        log.debug("makedirs({})".format(path))
         os.makedirs(path)
 
 
 def close_asyncio_loop():
-    """https://bugs.python.org/msg240248
+    """This runs atexit to avoid asyncio loop error messages.
+
+    https://bugs.python.org/msg240248
     """
     loop = None
     try:
@@ -60,6 +69,8 @@ def close_asyncio_loop():
 
 
 def cleanup(context):
+    """Clean up the work_dir and artifact_dir between task runs.
+    """
     for name in 'work_dir', 'artifact_dir':
         path = context.config[name]
         if os.path.exists(path):

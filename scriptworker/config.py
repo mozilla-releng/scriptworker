@@ -41,6 +41,8 @@ DEFAULT_CONFIG = {
 
 
 def create_config(filename="secrets.json"):
+    """Create a config from DEFAULT_CONFIG, arguments, and config file.
+    """
     # TODO configurability -- cmdln arguments
     with open(filename, "r") as fh:
         secrets = json.load(fh)
