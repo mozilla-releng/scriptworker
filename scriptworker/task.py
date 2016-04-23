@@ -133,7 +133,7 @@ async def upload_artifacts(context):
     Currently we do not support recursing into subdirectories.
     """
     files = glob.glob(os.path.join(context.config['artifact_dir'], '*'))
-    files.extend(get_log_filenames())
+    files.extend(get_log_filenames(context))
     tasks = []
     for path in files:
         tasks.append(create_artifact(context, path))
