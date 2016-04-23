@@ -30,7 +30,7 @@ from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, run_task, schedule_reclaim_task
+from scriptworker.task import complete_task, run_task, schedule_reclaim_task, upload_artifacts
 from scriptworker.utils import cleanup, close_asyncio_loop, request
 
 log = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ async def async_main(context):
                                 schedule_reclaim_task, context, context.task)
                 running_task = loop.create_task(run_task(context))
                 await running_task
-                # TODO upload artifacts
+                await upload_artifacts(context)
                 await complete_task(context, running_task.result())
                 # TODO cleanup(context)
                 await asyncio.sleep(1)

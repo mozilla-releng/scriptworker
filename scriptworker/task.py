@@ -4,6 +4,7 @@
 import aiohttp.hdrs
 import asyncio
 import datetime
+import glob
 import logging
 import mimetypes
 import os
@@ -15,7 +16,7 @@ import taskcluster
 import taskcluster.exceptions
 from taskcluster.async import Queue
 
-from scriptworker.log import get_log_fhs, log_errors, read_stdout
+from scriptworker.log import get_log_fhs, get_log_filenames, log_errors, read_stdout
 
 log = logging.getLogger(__name__)
 
@@ -81,12 +82,16 @@ async def reclaim_task(context, task):
                 raise
 
 
-def get_expiration_datetime(context, now=None):
-    now = now or datetime.datetime.utcnow()
+def get_expiration_datetime(context):
+    """Return a datetime, `artifact_expiration_hours` in the future from now.
+    """
+    now = datetime.datetime.utcnow()
     return now + datetime.timedelta(hours=context.config['artifact_expiration_hours'])
 
 
 def guess_content_type(path):
+    """Guess the content type of a path, using `mimetypes`
+    """
     content_type, _ = mimetypes.guess_type(path)
     return content_type
 
@@ -121,6 +126,18 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
                 log.info(resp.status)
                 response_text = await resp.text()
                 log.info(response_text)
+
+
+async def upload_artifacts(context):
+    """Upload the task logs and any files in `artifact_dir`.
+    Currently we do not support recursing into subdirectories.
+    """
+    files = glob.glob(os.path.join(context.config['artifact_dir'], '*'))
+    files.extend(get_log_filenames())
+    tasks = []
+    for path in files:
+        tasks.append(create_artifact(context, path))
+    await asyncio.wait(tasks)
 
 
 async def complete_task(context, result):
