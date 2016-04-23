@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 """Scriptworker task execution
 """
+import aiohttp.hdrs
 import asyncio
+import datetime
 import logging
+import mimetypes
+import os
 import pprint
 
 from asyncio.subprocess import PIPE
@@ -77,6 +81,48 @@ async def reclaim_task(context, task):
                 raise
 
 
+def get_expiration_datetime(context, now=None):
+    now = now or datetime.datetime.utcnow()
+    return now + datetime.timedelta(hours=context.config['artifact_expiration_hours'])
+
+
+def guess_content_type(path):
+    content_type, _ = mimetypes.guess_type(path)
+    return content_type
+
+
+async def create_artifact(context, path, storage_type='s3', expires=None,
+                          content_type=None):
+    """Create an artifact and upload it.  This should support s3 and azure
+    out of the box; we'll need some tweaking if we want to support
+    redirect/error artifacts.
+    """
+    temp_queue = get_temp_queue(context)
+    filename = os.path.basename(path)
+    payload = {
+        "storageType": storage_type,
+        "expires": expires or get_expiration_datetime(context),
+        "contentType": content_type or guess_content_type(path),
+    }
+    args = [context.task['status']['taskId'], context.task['runId'], filename, payload]
+    tc_response = await temp_queue.createArtifact(*args)
+    headers = {
+        aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
+    }
+    skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
+    log.info("uploading {path} to {url}...".format(path=path, url=tc_response['putUrl']))
+    with open(path, "rb") as fh:
+        with aiohttp.Timeout(context.config['artifact_upload_timeout']):
+            async with context.session.put(
+                tc_response['putUrl'], data=fh, headers=headers,
+                skip_auto_headers=skip_auto_headers, compress=False
+            ) as resp:
+                # TODO retry/error checking
+                log.info(resp.status)
+                response_text = await resp.text()
+                log.info(response_text)
+
+
 async def complete_task(context, result):
     """Mark the task as completed in the queue.
 
@@ -87,7 +133,7 @@ async def complete_task(context, result):
     """
     temp_queue = get_temp_queue(context)
     args = [context.task['status']['taskId'], context.task['runId']]
-    # TODO try/except, retry
+    # TODO retry
     try:
         if result == 0:
             log.debug("Reporting task complete...")
