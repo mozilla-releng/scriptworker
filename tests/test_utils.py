@@ -26,7 +26,7 @@ non_text = {
 }
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='function')
 def datestring():
     """Datestring constant.
     """
