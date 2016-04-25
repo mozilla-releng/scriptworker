@@ -9,9 +9,6 @@ import pytest
 import tempfile
 from scriptworker.context import Context
 import scriptworker.log as swlog
-from . import loop
-
-assert loop
 
 
 @pytest.fixture(scope='function')
@@ -78,8 +75,8 @@ class TestLog(object):
         assert read(log_file) == text
         assert read(error_file) == text + text
 
-    def test_read_stdout(self, context, loop):
-        loop.run_until_complete(test_output(context))
+    def test_read_stdout(self, context, event_loop):
+        event_loop.run_until_complete(test_output(context))
         log_file, error_file = swlog.get_log_filenames(context)
         print("log_file")
         os.system("cat {}".format(log_file))
