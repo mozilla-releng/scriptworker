@@ -66,7 +66,7 @@ class Context(object):
         self._reclaim_task = value
         if value is not None:
             path = os.path.join(self.config['work_dir'],
-                                "reclaim_task.{}.json".format(int(time.time())))
+                                "reclaim_task.{}.json".format(time.time()))
             self.write_json(path, value, "Writing reclaim_task file to {path}...")
             # TODO we may not need the reclaim_task.json or credentials.json...
             self.temp_credentials = value['credentials']
@@ -88,7 +88,7 @@ class Context(object):
         """
         self._temp_credentials = credentials
         path = os.path.join(self.config['work_dir'],
-                            "credentials.{}.json".format(int(time.time())))
+                            "credentials.{}.json".format(time.time()))
         self.write_json(path, credentials, "Writing credentials file to {path}...")
 
     def write_json(self, path, contents, message):
