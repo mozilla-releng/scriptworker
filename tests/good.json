@@ -1,0 +1,7 @@
+{
+    "taskcluster_client_id": "clientId",
+    "taskcluster_access_token": "accessToken",
+    "work_dir": "/tmp/foo_work",
+    "log_dir": "/tmp/foo_log",
+    "artifact_dir": "/tmp/foo_artifact"
+}
