@@ -39,7 +39,7 @@ def to_unicode(line):
     """
     try:
         line = line.decode('utf-8')
-    except UnicodeDecodeError:
+    except (UnicodeDecodeError, AttributeError):
         pass
     return line
 
