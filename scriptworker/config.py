@@ -62,6 +62,8 @@ def check_config(config, path):
             messages.append(
                 "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
             )
+        if value == "...":
+            messages.append("{} {} needs to be defined!".format(path, key))
     return messages
 
 

@@ -34,8 +34,6 @@ def datestring():
 
 
 class TestUtils(object):
-    """
-    """
     @pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
     def test_text_to_unicode(self, text):
         assert text == utils.to_unicode(text)
