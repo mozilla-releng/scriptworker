@@ -31,7 +31,7 @@ async def run_task(context):
         'stderr': PIPE,
         'stdin': None,
     }
-    proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    proc = asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):

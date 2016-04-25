@@ -2,10 +2,16 @@
 # coding=utf-8
 """Test scriptworker.log
 """
+import asyncio
+from asyncio.subprocess import PIPE
 import os
 import pytest
+import tempfile
 from scriptworker.context import Context
 import scriptworker.log as swlog
+from . import loop
+
+assert loop
 
 
 @pytest.fixture(scope='function')
@@ -28,9 +34,33 @@ of text
 """
 
 
+@pytest.fixture(scope='function')
+def temp_textfile(request, text):
+    path = tempfile.TemporaryFile()
+    request.addfinalizer(lambda: path.remove())
+    with open(str(path), "w") as fh:
+        print(text, file=fh, end="")
+    return str(path)
+
+
 def read(path):
     with open(path, "r") as fh:
         return fh.read()
+
+
+@pytest.mark.asyncio
+async def test_output(context):
+    cmd = r""">&2 echo "foo" && echo "bar" && exit 0"""
+    proc = await asyncio.create_subprocess_exec(
+        "bash", "-c", cmd,
+        stdout=PIPE, stderr=PIPE, stdin=None
+    )
+    tasks = []
+    with swlog.get_log_fhs(context) as (log_fh, error_fh):
+        tasks.append(swlog.log_errors(proc.stderr, log_fh, error_fh))
+        tasks.append(swlog.read_stdout(proc.stdout, log_fh))
+        await asyncio.wait(tasks)
+        await proc.wait()
 
 
 class TestLog(object):
@@ -44,5 +74,16 @@ class TestLog(object):
         with swlog.get_log_fhs(context) as (log_fh, error_fh):
             print(text, file=log_fh, end="")
             print(text, file=error_fh, end="")
+            print(text, file=error_fh, end="")
         assert read(log_file) == text
-        assert read(error_file) == text
+        assert read(error_file) == text + text
+
+    def test_read_stdout(self, context, loop):
+        loop.run_until_complete(test_output(context))
+        log_file, error_file = swlog.get_log_filenames(context)
+        print("log_file")
+        os.system("cat {}".format(log_file))
+        print("error_file")
+        os.system("cat {}".format(error_file))
+        assert read(log_file) == "ERROR foo\nbar\n"
+        assert read(error_file) == "foo\n"
