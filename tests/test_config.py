@@ -43,12 +43,12 @@ class TestConfig(object):
             config.create_config("this_file_does_not_exist.json")
 
     def test_create_config_bad_config(self):
-        path = os.path.join(os.path.dirname(__file__), "bad.json")
+        path = os.path.join(os.path.dirname(__file__), "data", "bad.json")
         with pytest.raises(SystemExit):
             config.create_config(path)
 
     def test_create_config_good(self, test_config):
-        path = os.path.join(os.path.dirname(__file__), "good.json")
+        path = os.path.join(os.path.dirname(__file__), "data", "good.json")
         with open(path, "r") as fh:
             contents = json.load(fh)
         test_config.update(contents)
