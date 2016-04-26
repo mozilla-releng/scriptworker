@@ -4,9 +4,9 @@
 """
 import asyncio
 from asyncio.subprocess import PIPE
+import logging
 import os
 import pytest
-import tempfile
 from scriptworker.context import Context
 import scriptworker.log as swlog
 
@@ -17,7 +17,11 @@ def context(tmpdir_factory):
     context = Context()
     context.config = {
         "log_fmt": "%(message)s",
+        "log_datefmt": "%H:%M:%S",
         "log_dir": str(temp_dir),
+        "log_max_bytes": 100,
+        "log_num_backups": 1,
+        "verbose": True,
     }
     return context
 
@@ -29,15 +33,6 @@ is a bunch
 of text
 💩
 """
-
-
-@pytest.fixture(scope='function')
-def temp_textfile(request, text):
-    path = tempfile.TemporaryFile()
-    request.addfinalizer(lambda: path.remove())
-    with open(str(path), "w") as fh:
-        print(text, file=fh, end="")
-    return str(path)
 
 
 def read(path):
@@ -76,3 +71,16 @@ class TestLog(object):
         log_file, error_file = swlog.get_log_filenames(context)
         assert read(log_file) == "ERROR foo\nbar\n"
         assert read(error_file) == "foo\n"
+
+    def test_update_logging_config_verbose(self, context):
+        swlog.update_logging_config(context, context.config['log_dir'])
+        log = logging.getLogger(context.config['log_dir'])
+        assert log.level == logging.DEBUG
+        assert len(log.handlers) == 3
+
+    def test_update_logging_config_not_verbose(self, context):
+        context.config['verbose'] = False
+        swlog.update_logging_config(context, context.config['log_dir'])
+        log = logging.getLogger(context.config['log_dir'])
+        assert log.level == logging.INFO
+        assert len(log.handlers) == 2

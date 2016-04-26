@@ -22,8 +22,7 @@ def update_logging_config(context, log_name=None):
     * Log to screen if `verbose`
     * Add a rotating logfile from config settings.
     """
-    if log_name is None:
-        log_name = __name__.split('.')[0]
+    log_name = log_name or __name__.split('.')[0]
     top_level_logger = logging.getLogger(log_name)
 
     datefmt = context.config['log_datefmt']
