@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><QueueMessagesList>
+    <QueueMessage>
+        <MessageId>fdfc7989-b048-4ea8-bd33-69f63b83ba54</MessageId>
+        <InsertionTime>Sat, 16 Apr 2016 05:01:26 GMT</InsertionTime>
+        <ExpirationTime>Sat, 16 Apr 2016 06:05:10 GMT</ExpirationTime>
+        <DequeueCount>1</DequeueCount>
+        <PopReceipt>AgAAAAMAAAAAAAAAMApAvp2X0QE=</PopReceipt>
+        <TimeNextVisible>Sat, 16 Apr 2016 05:06:32 GMT</TimeNextVisible>
+        <MessageText>eyJ0YXNrSWQiOiJHVmkydlR3OFJZcWRnYTZwRTA4QWl3IiwicnVuSWQiOjB9</MessageText>
+    </QueueMessage>
+    <QueueMessage>
+        <MessageId>two_id</MessageId>
+        <PopReceipt>two_pop=</PopReceipt>
+        <MessageText>eyJmb28iOiAiYmFyIn0K</MessageText>
+    </QueueMessage>
+</QueueMessagesList>
