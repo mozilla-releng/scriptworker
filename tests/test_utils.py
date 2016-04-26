@@ -2,7 +2,9 @@
 # coding=utf-8
 """Test scriptworker.utils
 """
+import os
 import pytest
+from scriptworker.context import Context
 import scriptworker.utils as utils
 
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
@@ -33,6 +35,19 @@ def datestring():
     return "2016-04-16T03:46:24.958Z"
 
 
+@pytest.fixture(scope='function')
+def context(tmpdir_factory):
+    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
+    path = str(temp_dir)
+    context = Context()
+    context.config = {
+        'log_dir': os.path.join(path, 'log'),
+        'artifact_dir': os.path.join(path, 'artifact'),
+        'work_dir': os.path.join(path, 'work'),
+    }
+    return context
+
+
 class TestUtils(object):
     @pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
     def test_text_to_unicode(self, text):
@@ -45,3 +60,15 @@ class TestUtils(object):
 
     def test_datestring_to_timestamp(self, datestring):
         assert utils.datestring_to_timestamp(datestring) == 1460803584.0
+
+    def test_cleanup(self, context):
+        for name in 'work_dir', 'artifact_dir':
+            path = context.config[name]
+            os.makedirs(path)
+            open(os.path.join(path, 'tempfile'), "w").close()
+            assert os.path.exists(os.path.join(path, "tempfile"))
+        utils.cleanup(context)
+        for name in 'work_dir', 'artifact_dir':
+            path = context.config[name]
+            assert os.path.exists(path)
+            assert not os.path.exists(os.path.join(path, "tempfile"))
