@@ -20,7 +20,6 @@
 # _ log rotation
 import aiohttp
 import asyncio
-import atexit
 import logging
 import sys
 
@@ -31,7 +30,7 @@ from scriptworker.config import create_config
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config
 from scriptworker.task import complete_task, run_task, schedule_reclaim_task, upload_artifacts
-from scriptworker.utils import cleanup, close_asyncio_loop, request
+from scriptworker.utils import cleanup, request
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +78,6 @@ def main():
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()
-    atexit.register(close_asyncio_loop)
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.queue = Queue({

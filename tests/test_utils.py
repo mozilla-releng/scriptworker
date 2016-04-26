@@ -114,11 +114,6 @@ class TestUtils(object):
             assert os.path.exists(path)
             assert not os.path.exists(os.path.join(path, "tempfile"))
 
-    def test_close_asyncio_loop(self, event_loop):
-        assert not event_loop.is_closed()
-        utils.close_asyncio_loop()
-        assert event_loop.is_closed()
-
     def test_request(self, context, fake_session, event_loop):
         context.session = fake_session
 

@@ -2,7 +2,6 @@
 """Utils for scriptworker
 """
 import aiohttp
-import asyncio
 import datetime
 import logging
 import os
@@ -50,17 +49,6 @@ def makedirs(path):
     if not os.path.exists(path):
         log.debug("makedirs({})".format(path))
         os.makedirs(path)
-
-
-def close_asyncio_loop():
-    """This runs atexit to avoid asyncio loop error messages.
-
-    https://bugs.python.org/msg240248
-    """
-    loop = asyncio.get_event_loop()
-    log.debug("Closing event loop with the following tasks still scheduled:")
-    log.debug(asyncio.Task.all_tasks(loop=loop))
-    loop.close()
 
 
 def cleanup(context):
