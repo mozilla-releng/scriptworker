@@ -57,15 +57,10 @@ def close_asyncio_loop():
 
     https://bugs.python.org/msg240248
     """
-    loop = None
-    try:
-        loop = asyncio.get_event_loop()
-    except AttributeError:
-        pass
-    if loop is not None:
-        log.debug("Closing event loop with the following tasks still scheduled:")
-        log.debug(asyncio.Task.all_tasks(loop=loop))
-        loop.close()
+    loop = asyncio.get_event_loop()
+    log.debug("Closing event loop with the following tasks still scheduled:")
+    log.debug(asyncio.Task.all_tasks(loop=loop))
+    loop.close()
 
 
 def cleanup(context):
