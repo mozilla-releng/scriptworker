@@ -2,6 +2,8 @@
 # coding=utf-8
 """Test scriptworker.utils
 """
+from copy import deepcopy
+import datetime
 import os
 import pytest
 from scriptworker.context import Context
@@ -98,3 +100,19 @@ class TestPoll(object):
         context.queue = unsuccessful_queue
         result = await poll.claim_task(context, 1, 2)
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_update_expired_poll_task_urls(self, context):
+        context.poll_task_urls['expires'] = "2016-04-16T03:46:24.958Z"
+        await poll.update_poll_task_urls(context, fake_response)
+        assert context.poll_task_urls == ((), {})
+
+    @pytest.mark.asyncio
+    async def test_update_unexpired_poll_task_urls(self, context):
+        context.poll_task_urls['expires'] = datetime.datetime.strftime(
+            datetime.datetime.utcnow() + datetime.timedelta(hours=10),
+            "%Y-%m-%dT%H:%M:%S.123Z"
+        )
+        good = deepcopy(context.poll_task_urls)
+        await poll.update_poll_task_urls(context, fake_response)
+        assert context.poll_task_urls == good
