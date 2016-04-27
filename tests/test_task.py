@@ -26,7 +26,7 @@ def context(tmpdir_factory):
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,
         'reclaim_interval': .1,
-        'task_script': ('bash', '-c', 'echo foo && 2>& echo bar && exit 2'),
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
     }
     return context
 
@@ -69,7 +69,7 @@ class TestTask(object):
     @pytest.mark.asyncio
     async def test_run_task(self, context):
         status = await task.run_task(context)
-        assert status == 2
         log_file, error_file = log.get_log_filenames(context)
-        assert read(log_file) in ("ERROR bar\nfoo\n", "foo\nERROR bar\n")
-        assert read(error_file) == "bar"
+        assert read(log_file) in ("ERROR bar\nfoo\nexit code: 2\n", "foo\nERROR bar\nexit code: 2\n")
+        assert read(error_file) == "bar\n"
+        assert status == 2
