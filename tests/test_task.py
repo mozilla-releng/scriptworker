@@ -27,6 +27,12 @@ def context(tmpdir_factory):
     }
     return context
 
+mimetypes = {
+    "/foo/bar/test.log": "text/plain",
+    "/tmp/blah.tgz": "application/x-tar",
+    "~/Firefox.dmg": "application/x-apple-diskimage",
+}
+
 
 class TestTask(object):
     def test_temp_queue(self, context, mocker):
@@ -51,3 +57,8 @@ class TestTask(object):
             expiration = task.get_expiration_datetime(context)
             diff = expiration.timestamp() - now.timestamp()
             assert diff == 3600
+
+    @pytest.mark.parametrize("mimetypes", [(k, v) for k, v in sorted(mimetypes.items())])
+    def test_guess_content_type(self, mimetypes):
+        path, mimetype = mimetypes
+        assert task.guess_content_type(path) == mimetype
