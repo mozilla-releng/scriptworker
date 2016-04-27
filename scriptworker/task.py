@@ -64,7 +64,6 @@ async def reclaim_task(context, task):
     time we reclaim.
     """
     while True:
-        # TODO stop checking for this once we rely on the 409
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
         taskId = task['status']['taskId']
@@ -158,7 +157,7 @@ async def complete_task(context, result):
         else:
             log.debug("Reporting task failed...")
             await temp_queue.reportFailed(*args)
-        # TODO exception:
+        # TODO reportException:
         #  worker-shutdown malformed-payload resource-unavailable internal-error superseded
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:

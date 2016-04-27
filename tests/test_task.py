@@ -9,6 +9,7 @@ import pytest
 from scriptworker.context import Context
 import scriptworker.task as task
 import scriptworker.log as log
+import taskcluster.exceptions
 import taskcluster.async
 from . import successful_queue, unsuccessful_queue, read
 
@@ -27,6 +28,11 @@ def context(tmpdir_factory):
         'artifact_expiration_hours': 1,
         'reclaim_interval': .1,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
+    }
+    context.task = {
+        'credentials': {'a': 'b'},
+        'status': {'taskId': 'taskId'},
+        'runId': 'runId',
     }
     return context
 
@@ -54,7 +60,6 @@ class TestTask(object):
             return now
 
         # make sure time differences don't screw up the test
-        # for some reason pytest-mock isn't working for me here
         with mock.patch.object(datetime, 'datetime') as p:
             p.utcnow = utcnow
             expiration = task.get_expiration_datetime(context)
@@ -73,3 +78,34 @@ class TestTask(object):
         assert read(log_file) in ("ERROR bar\nfoo\nexit code: 2\n", "foo\nERROR bar\nexit code: 2\n")
         assert read(error_file) == "bar\n"
         assert status == 2
+
+    def test_schedule_reclaim_task(self, event_loop):
+        task.schedule_reclaim_task(None, None)
+
+    @pytest.mark.asyncio
+    async def test_reportCompleted(self, context, successful_queue):
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = successful_queue
+            await task.complete_task(context, 0)
+        assert successful_queue.info == ["reportCompleted", ('taskId', 'runId'), {}]
+
+    @pytest.mark.asyncio
+    async def test_reportFailed(self, context, successful_queue):
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = successful_queue
+            await task.complete_task(context, 1)
+        assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
+
+    @pytest.mark.asyncio
+    async def test_complete_task_409(self, context, unsuccessful_queue):
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = unsuccessful_queue
+            await task.complete_task(context, 0)
+
+    @pytest.mark.asyncio
+    async def test_complete_task_non_409(self, context, unsuccessful_queue):
+        unsuccessful_queue.status = 500
+        with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
+            with mock.patch('scriptworker.task.get_temp_queue') as p:
+                p.return_value = unsuccessful_queue
+                await task.complete_task(context, 0)
