@@ -10,25 +10,27 @@ import taskcluster.exceptions
 
 
 class SuccessfulQueue(object):
-    def __init__(self, result=None):
-        self.result = result
+    result = "yay"
 
+    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         return self.result
 
 
 class UnsuccessfulQueue(object):
+    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterFailure("foo")
 
 
+@pytest.mark.asyncio
 async def fake_response(*args, **kwargs):
     return (args, kwargs)
 
 
 @pytest.fixture(scope='function')
 def successful_queue():
-    return SuccessfulQueue(result=14)
+    return SuccessfulQueue()
 
 
 @pytest.fixture(scope='function')
@@ -37,13 +39,12 @@ def unsuccessful_queue():
 
 
 @pytest.fixture(scope='function')
-def none_queue():
-    return SuccessfulQueue()
-
-
-@pytest.fixture(scope='function')
 def context():
     context = Context()
+    context.config = {
+        'worker_group': 'worker_group',
+        'worker_id': 'worker_id',
+    }
     context.poll_task_urls = {
         'queues': [{
             "signedPollUrl": "poll0",
@@ -85,3 +86,15 @@ class TestPoll(object):
         for message in poll.parse_azure_xml(azure_xml):
             count += 1
             assert message == results[count]
+
+    @pytest.mark.asyncio
+    async def test_successful_claim_task(self, context, successful_queue):
+        context.queue = successful_queue
+        result = await poll.claim_task(context, 1, 2)
+        assert result == successful_queue.result
+
+    @pytest.mark.asyncio
+    async def test_unsuccessful_claim_task(self, context, unsuccessful_queue):
+        context.queue = unsuccessful_queue
+        result = await poll.claim_task(context, 1, 2)
+        assert result is None
