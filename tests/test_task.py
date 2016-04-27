@@ -16,6 +16,11 @@ from . import successful_queue, unsuccessful_queue, read
 assert (successful_queue, unsuccessful_queue)  # silence flake8
 
 
+def touch(path):
+    with open(path, "w") as fh:
+        print(path, file=fh, end="")
+
+
 @pytest.fixture(scope='function')
 def context(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("context", numbered=True)
@@ -123,3 +128,23 @@ class TestTask(object):
             with mock.patch('scriptworker.task.get_temp_queue') as p:
                 p.return_value = successful_queue
                 await task.reclaim_task(context)
+
+    @pytest.mark.asyncio
+    async def test_upload_artifacts(self, context):
+        args = []
+        os.makedirs(context.config['artifact_dir'])
+        os.makedirs(context.config['log_dir'])
+        paths = list(log.get_log_filenames(context)) + [
+            os.path.join(context.config['artifact_dir'], 'one'),
+            os.path.join(context.config['artifact_dir'], 'two'),
+        ]
+        for path in paths:
+            touch(path)
+
+        async def foo(_, path):
+            args.append(path)
+
+        with mock.patch('scriptworker.task.create_artifact', new=foo):
+            await task.upload_artifacts(context)
+
+        assert sorted(args) == sorted(paths)
