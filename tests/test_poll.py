@@ -30,6 +30,12 @@ async def fake_response(*args, **kwargs):
     return (args, kwargs)
 
 
+@pytest.mark.asyncio
+async def fake_request(*args, **kwargs):
+    with open(os.path.join(os.path.dirname(__file__), "data", "azure.xml"), "r") as fh:
+        return fh.read()
+
+
 @pytest.fixture(scope='function')
 def successful_queue():
     return SuccessfulQueue()
@@ -116,3 +122,16 @@ class TestPoll(object):
         good = deepcopy(context.poll_task_urls)
         await poll.update_poll_task_urls(context, fake_response)
         assert context.poll_task_urls == good
+
+    def test_get_azure_urls(self, context):
+        count = 0
+        for poll_url, delete_url in poll.get_azure_urls(context):
+            assert poll_url == "poll{}".format(count)
+            assert delete_url == "delete{}".format(count)
+            count += 1
+
+    @pytest.mark.asyncio
+    async def test_successful_find_task(self, context, successful_queue):
+        context.queue = successful_queue
+        result = await poll.find_task(context, "poll", "delete", fake_request)
+        assert result == "yay"

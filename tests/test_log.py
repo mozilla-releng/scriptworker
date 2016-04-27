@@ -69,7 +69,7 @@ class TestLog(object):
             await asyncio.wait(tasks)
             await proc.wait()
         log_file, error_file = swlog.get_log_filenames(context)
-        assert read(log_file) == "ERROR foo\nbar\n"
+        assert read(log_file) in ("ERROR foo\nbar\n", "bar\nERROR foo\n")
         assert read(error_file) == "foo\n"
 
     def test_update_logging_config_verbose(self, context):
