@@ -56,7 +56,7 @@ def get_temp_queue(context):
     return temp_queue
 
 
-async def reclaim_task(context, task):
+async def reclaim_task(context):
     """Try to reclaim a task from the queue.
     This is a keepalive / heartbeat.  Without it the job will expire and
     potentially be re-queued.  Since this is run async from the task, the
@@ -66,8 +66,8 @@ async def reclaim_task(context, task):
     while True:
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
-        taskId = task['status']['taskId']
-        runId = task['runId']
+        taskId = context.task['status']['taskId']
+        runId = context.task['runId']
         try:
             result = await temp_queue.reclaimTask(taskId, runId)
             log.debug(pprint.pformat(result))
@@ -167,10 +167,10 @@ async def complete_task(context, result):
             raise
 
 
-def schedule_reclaim_task(context, task):
+def schedule_reclaim_task(context):
     """Helper function to start calling reclaim_task() after reclaim_interval
     seconds.  This is a non-async function that can be called with
     loop.call_later()
     """
     loop = asyncio.get_event_loop()
-    loop.create_task(reclaim_task(context, task))
+    loop.create_task(reclaim_task(context))

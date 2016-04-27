@@ -14,10 +14,22 @@ def read(path):
 class SuccessfulQueue(object):
     result = "yay"
     info = None
+    status = 409
+    reclaim_task = {
+        'credentials': {'a': 'b'},
+    }
 
     @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         return self.result
+
+    @pytest.mark.asyncio
+    async def reclaimTask(self, *args, **kwargs):
+        if self.info is None:
+            self.info = ['reclaimTask', args, kwargs]
+            return self.reclaim_task
+        else:
+            raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
     @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):

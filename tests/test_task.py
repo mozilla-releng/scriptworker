@@ -80,7 +80,7 @@ class TestTask(object):
         assert status == 2
 
     def test_schedule_reclaim_task(self, event_loop):
-        task.schedule_reclaim_task(None, None)
+        task.schedule_reclaim_task(None)
 
     @pytest.mark.asyncio
     async def test_reportCompleted(self, context, successful_queue):
@@ -109,3 +109,17 @@ class TestTask(object):
             with mock.patch('scriptworker.task.get_temp_queue') as p:
                 p.return_value = unsuccessful_queue
                 await task.complete_task(context, 0)
+
+    @pytest.mark.asyncio
+    async def test_reclaim_task(self, context, successful_queue):
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = successful_queue
+            await task.reclaim_task(context)
+
+    @pytest.mark.asyncio
+    async def test_reclaim_task_non_409(self, context, successful_queue):
+        successful_queue.status = 500
+        with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
+            with mock.patch('scriptworker.task.get_temp_queue') as p:
+                p.return_value = successful_queue
+                await task.reclaim_task(context)

@@ -51,7 +51,7 @@ async def async_main(context):
                 log.info("Going to run task!")
                 context.task = task_defn
                 loop.call_later(context.config['reclaim_interval'],
-                                schedule_reclaim_task, context, context.task)
+                                schedule_reclaim_task, context)
                 running_task = loop.create_task(run_task(context))
                 await running_task
                 await upload_artifacts(context)
