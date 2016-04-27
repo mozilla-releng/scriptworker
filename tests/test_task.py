@@ -8,8 +8,11 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.task as task
-# from . import successful_queue, unsuccessful_queue
+import scriptworker.log as log
 import taskcluster.async
+from . import successful_queue, unsuccessful_queue, read
+
+assert (successful_queue, unsuccessful_queue)  # silence flake8
 
 
 @pytest.fixture(scope='function')
@@ -62,3 +65,11 @@ class TestTask(object):
     def test_guess_content_type(self, mimetypes):
         path, mimetype = mimetypes
         assert task.guess_content_type(path) == mimetype
+
+    @pytest.mark.asyncio
+    async def test_run_task(self, context):
+        status = await task.run_task(context)
+        assert status == 2
+        log_file, error_file = log.get_log_filenames(context)
+        assert read(log_file) in ("ERROR bar\nfoo\n", "foo\nERROR bar\n")
+        assert read(error_file) == "bar"

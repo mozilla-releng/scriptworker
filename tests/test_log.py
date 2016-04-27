@@ -9,6 +9,7 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.log as swlog
+from . import read
 
 
 @pytest.fixture(scope='function')
@@ -33,11 +34,6 @@ is a bunch
 of text
 💩
 """
-
-
-def read(path):
-    with open(path, "r") as fh:
-        return fh.read()
 
 
 class TestLog(object):
