@@ -32,19 +32,22 @@ async def run_task(context):
         'stdout': PIPE,
         'stderr': PIPE,
         'stdin': None,
+        'close_fds': True,
+        'preexec_fn': lambda: os.setsid(),
     }
-    proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):
-        tasks.append(log_errors(proc.stderr, log_fh, error_fh))
-        tasks.append(read_stdout(proc.stdout, log_fh))
+        tasks.append(log_errors(context.proc.stderr, log_fh, error_fh))
+        tasks.append(read_stdout(context.proc.stdout, log_fh))
         await asyncio.wait(tasks)
-        exitcode = await proc.wait()
+        exitcode = await context.proc.wait()
         status_line = "exit code: {}".format(exitcode)
         log.debug(status_line)
         print(status_line, file=log_fh)
 
+    context.proc = None
     return exitcode
 
 
@@ -66,6 +69,7 @@ async def reclaim_task(context):
     time we reclaim.
     """
     while True:
+        # TODO check for timeout
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
         taskId = context.task['status']['taskId']
@@ -187,3 +191,7 @@ def schedule_reclaim_task(context):
     """
     loop = asyncio.get_event_loop()
     loop.create_task(reclaim_task(context))
+
+
+def max_timeout(context):
+    pass

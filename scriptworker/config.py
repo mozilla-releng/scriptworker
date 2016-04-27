@@ -40,6 +40,7 @@ DEFAULT_CONFIG = {
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 60 * 20,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 2"),
+    "task_max_timeout": 60 * 60 * 20,
     "verbose": True,
 }
 
