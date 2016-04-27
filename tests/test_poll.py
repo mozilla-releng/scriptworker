@@ -8,21 +8,8 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.poll as poll
-import taskcluster.exceptions
-
-
-class SuccessfulQueue(object):
-    result = "yay"
-
-    @pytest.mark.asyncio
-    async def claimTask(self, *args, **kwargs):
-        return self.result
-
-
-class UnsuccessfulQueue(object):
-    @pytest.mark.asyncio
-    async def claimTask(self, *args, **kwargs):
-        raise taskcluster.exceptions.TaskclusterFailure("foo")
+from . import successful_queue, unsuccessful_queue
+assert (successful_queue, unsuccessful_queue)  # silence flake8
 
 
 @pytest.mark.asyncio
@@ -34,16 +21,6 @@ async def fake_response(*args, **kwargs):
 async def fake_request(*args, **kwargs):
     with open(os.path.join(os.path.dirname(__file__), "data", "azure.xml"), "r") as fh:
         return fh.read()
-
-
-@pytest.fixture(scope='function')
-def successful_queue():
-    return SuccessfulQueue()
-
-
-@pytest.fixture(scope='function')
-def unsuccessful_queue():
-    return UnsuccessfulQueue()
 
 
 @pytest.fixture(scope='function')
