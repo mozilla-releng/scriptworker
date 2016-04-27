@@ -2,6 +2,8 @@
 # coding=utf-8
 """Test scriptworker.task
 """
+import datetime
+import mock
 import os
 import pytest
 from scriptworker.context import Context
@@ -35,3 +37,17 @@ class TestTask(object):
         assert taskcluster.async.Queue.called_once_with({
             'credentials': context.temp_credentials,
         }, session=context.session)
+
+    def test_expiration_datetime(self, context):
+        now = datetime.datetime.utcnow()
+
+        def utcnow():
+            return now
+
+        # make sure time differences don't screw up the test
+        # for some reason pytest-mock isn't working for me here
+        with mock.patch.object(datetime, 'datetime') as p:
+            p.utcnow = utcnow
+            expiration = task.get_expiration_datetime(context)
+            diff = expiration.timestamp() - now.timestamp()
+            assert diff == 3600
