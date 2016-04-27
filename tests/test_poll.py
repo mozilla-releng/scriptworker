@@ -6,12 +6,53 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.poll as poll
+import taskcluster.exceptions
+
+
+class SuccessfulQueue(object):
+    def __init__(self, result=None):
+        self.result = result
+
+    async def claimTask(self, *args, **kwargs):
+        return self.result
+
+
+class UnsuccessfulQueue(object):
+    async def claimTask(self, *args, **kwargs):
+        raise taskcluster.exceptions.TaskclusterFailure("foo")
+
+
+async def fake_response(*args, **kwargs):
+    return (args, kwargs)
 
 
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
+def successful_queue():
+    return SuccessfulQueue(result=14)
+
+
+@pytest.fixture(scope='function')
+def unsuccessful_queue():
+    return UnsuccessfulQueue()
+
+
+@pytest.fixture(scope='function')
+def none_queue():
+    return SuccessfulQueue()
+
+
+@pytest.fixture(scope='function')
+def context():
     context = Context()
-    # TODO fake context.queue
+    context.poll_task_urls = {
+        'queues': [{
+            "signedPollUrl": "poll0",
+            "signedDeleteUrl": "delete0",
+        }, {
+            "signedPollUrl": "poll1",
+            "signedDeleteUrl": "delete1",
+        }],
+    }
     return context
 
 
