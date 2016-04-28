@@ -8,7 +8,7 @@ from scriptworker.context import Context
 import scriptworker.utils as utils
 from . import fake_session
 
-assert(fake_session)  # silence flake8
+assert (fake_session, )  # silence flake8
 
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {

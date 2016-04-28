@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.utils
+"""Test scriptworker.poll
 """
 from copy import deepcopy
 import datetime
