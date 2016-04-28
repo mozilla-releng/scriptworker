@@ -53,7 +53,7 @@ def main():
         if len(sys.argv) > 2:
             print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)
-        kwargs['filename'] = sys.argv[1]
+        kwargs['path'] = sys.argv[1]
     context.config = create_config(**kwargs)
     update_logging_config(context)
     cleanup(context)
