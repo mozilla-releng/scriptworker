@@ -32,7 +32,7 @@ def context(tmpdir_factory):
         'work_dir': os.path.join(str(temp_dir), "work"),
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,
-        'reclaim_interval': .1,
+        'reclaim_interval': 0.001,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
     }
     context.task = {
@@ -84,13 +84,6 @@ class TestTask(object):
         assert read(log_file) in ("ERROR bar\nfoo\nexit code: 2\n", "foo\nERROR bar\nexit code: 2\n")
         assert read(error_file) == "bar\n"
         assert status == 2
-
-    def test_schedule_async(self, event_loop):
-
-        async def foo():
-            pass
-
-        task.schedule_async(foo)
 
     @pytest.mark.asyncio
     async def test_reportCompleted(self, context, successful_queue):

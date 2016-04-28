@@ -12,7 +12,7 @@ from scriptworker.config import create_config
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, reclaim_task, run_task, schedule_async, upload_artifacts
+from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts
 from scriptworker.utils import cleanup, retry_request
 
 log = logging.getLogger(__name__)
@@ -38,10 +38,7 @@ async def async_main(context):
             if task_defn:
                 log.info("Going to run task!")
                 context.task = task_defn
-                loop.call_later(
-                    context.config['reclaim_interval'],
-                    functools.partial(schedule_async, reclaim_task, args=(context, ))
-                )
+                loop.create_task(reclaim_task(context))
                 running_task = loop.create_task(run_task(context))
                 await running_task
                 await upload_artifacts(context)

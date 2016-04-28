@@ -70,6 +70,7 @@ async def reclaim_task(context):
     time we reclaim.
     """
     while True:
+        await asyncio.sleep(context.config['reclaim_interval'])
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
         taskId = context.task['status']['taskId']
@@ -78,7 +79,6 @@ async def reclaim_task(context):
             result = await temp_queue.reclaimTask(taskId, runId)
             log.debug(pprint.pformat(result))
             context.reclaim_task = result
-            await asyncio.sleep(context.config['reclaim_interval'])
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
@@ -184,7 +184,8 @@ async def complete_task(context, result):
             raise
 
 
-async def max_timeout(context, proc):
+async def max_timeout(context, proc, sleeptime):
+    await asyncio.sleep(sleeptime)
     if proc != context.proc:
         return
     try:
@@ -202,12 +203,3 @@ async def max_timeout(context, proc):
     except (AttributeError, OSError, ProcessLookupError):
         # content.proc is None, or the pid isn't running
         pass
-
-
-def schedule_async(callback, args=(), kwargs=None):
-    """Helper function to call an async function.
-    This is a non-async function that can be called with loop.call_later()
-    """
-    kwargs = kwargs or {}
-    loop = asyncio.get_event_loop()
-    loop.create_task(callback(*args, **kwargs))
