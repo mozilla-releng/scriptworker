@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.utils
 """
+import mock
 import os
 import pytest
 from scriptworker.context import Context
@@ -53,6 +54,10 @@ async def always_fail(*args, **kwargs):
     global retry_count
     retry_count['always_fail'] += 1
     raise ScriptWorkerException("fail")
+
+
+async def fake_sleep(*args, **kwargs):
+    pass
 
 
 @pytest.fixture(scope='function')
@@ -133,7 +138,8 @@ class TestUtils(object):
     async def test_retry_async_always_fail(self):
         global retry_count
         retry_count['always_fail'] = 0
-        with pytest.raises(ScriptWorkerException):
-            status = await utils.retry_async(always_fail)
-            assert status is None
+        with mock.patch('asyncio.sleep', new=fake_sleep):
+            with pytest.raises(ScriptWorkerException):
+                status = await utils.retry_async(always_fail)
+                assert status is None
         assert retry_count['always_fail'] == 5

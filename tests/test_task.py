@@ -85,8 +85,12 @@ class TestTask(object):
         assert read(error_file) == "bar\n"
         assert status == 2
 
-    def test_schedule_reclaim_task(self, event_loop):
-        task.schedule_reclaim_task(None)
+    def test_schedule_async(self, event_loop):
+
+        async def foo():
+            pass
+
+        task.schedule_async(foo)
 
     @pytest.mark.asyncio
     async def test_reportCompleted(self, context, successful_queue):

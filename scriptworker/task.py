@@ -9,6 +9,7 @@ import logging
 import mimetypes
 import os
 import pprint
+import signal
 
 from asyncio.subprocess import PIPE
 
@@ -69,7 +70,6 @@ async def reclaim_task(context):
     time we reclaim.
     """
     while True:
-        # TODO check for timeout
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
         taskId = context.task['status']['taskId']
@@ -184,14 +184,30 @@ async def complete_task(context, result):
             raise
 
 
-def schedule_reclaim_task(context):
-    """Helper function to start calling reclaim_task() after reclaim_interval
-    seconds.  This is a non-async function that can be called with
-    loop.call_later()
+async def max_timeout(context, proc):
+    if proc != context.proc:
+        return
+    try:
+        pid = context.proc.pid
+        pgrp = os.getpgid(pid)
+        log.debug("Exceeded timeout: {}".format(pid))
+        siglist = [signal.SIGINT, signal.SIGTERM]
+        while True:
+            sig = signal.SIGKILL
+            if siglist:
+                sig = siglist.pop(0)
+            os.killpg(pgrp, sig)
+            await asyncio.sleep(1)
+            os.kill(pid, 0)
+    except (AttributeError, OSError, ProcessLookupError):
+        # content.proc is None, or the pid isn't running
+        pass
+
+
+def schedule_async(callback, args=(), kwargs=None):
+    """Helper function to call an async function.
+    This is a non-async function that can be called with loop.call_later()
     """
+    kwargs = kwargs or {}
     loop = asyncio.get_event_loop()
-    loop.create_task(reclaim_task(context))
-
-
-def max_timeout(context):
-    pass
+    loop.create_task(callback(*args, **kwargs))

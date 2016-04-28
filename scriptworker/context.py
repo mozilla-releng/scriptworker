@@ -23,8 +23,7 @@ class Context(object):
     poll_task_urls = None
     session = None
     queue = None
-    start_time = None
-    _proc = None
+    proc = None
     _task = None  # This assumes a single task per worker.
     _temp_credentials = None  # This assumes a single task per worker.
     _reclaim_task = None
@@ -46,22 +45,6 @@ class Context(object):
         self.write_json(path, task, "Writing task file to {path}...")
         self.temp_credentials = task['credentials']
         self.reclaim_task = None
-
-    @property
-    def proc(self):
-        """The current or most recent subprocess proc
-        """
-        return self._proc
-
-    @proc.setter
-    def proc(self, proc):
-        """Set the proc and start time.
-        """
-        self._proc = proc
-        if proc is None:
-            self.start_time = None
-        else:
-            self.start_time = time.time()
 
     @property
     def reclaim_task(self):
