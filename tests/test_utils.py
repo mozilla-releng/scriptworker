@@ -7,9 +7,9 @@ import pytest
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import fake_session
+from . import fake_session, fake_session_500
 
-assert (fake_session, )  # silence flake8
+assert (fake_session, fake_session_500)  # silence flake8
 
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {
@@ -93,10 +93,31 @@ class TestUtils(object):
             assert os.path.exists(path)
             assert not os.path.exists(os.path.join(path, "tempfile"))
 
-    def test_request(self, context, fake_session, event_loop):
+    @pytest.mark.asyncio
+    async def test_request(self, context, fake_session):
         context.session = fake_session
+        result = await utils.request(context, "url")
+        assert result == '{}'
+        context.session.close()
 
-        result = event_loop.run_until_complete(utils.request(context, "url"))
+    @pytest.mark.asyncio
+    async def test_request_retry(self, context, fake_session_500):
+        context.session = fake_session_500
+        with pytest.raises(ScriptWorkerRetryException):
+            await utils.request(context, "url")
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_request_exception(self, context, fake_session_500):
+        context.session = fake_session_500
+        with pytest.raises(ScriptWorkerException):
+            await utils.request(context, "url", retry=())
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_retry_request(self, context, fake_session):
+        context.session = fake_session
+        result = await utils.retry_request(context, "url")
         assert result == '{}'
         context.session.close()
 
