@@ -90,7 +90,7 @@ async def retry_async(func, attempt=1, attempts=5, sleeptime_callback=None,
             raise
         await asyncio.sleep(sleeptime_callback(attempt))
         attempt += 1
-        return await func(attempt=attempt, attempts=attempts,
-                          sleeptime_callback=sleeptime_callback,
-                          retry_exceptions=retry_exceptions, args=args,
-                          kwargs=kwargs)
+        return await retry_async(func, attempt=attempt, attempts=attempts,
+                                 sleeptime_callback=sleeptime_callback,
+                                 retry_exceptions=retry_exceptions, args=args,
+                                 kwargs=kwargs)
