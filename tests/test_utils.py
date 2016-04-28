@@ -5,6 +5,7 @@
 import os
 import pytest
 from scriptworker.context import Context
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
 from . import fake_session
 
@@ -30,12 +31,28 @@ non_text = {
     'cp865': u'Mit luftpudefartøj er fyldt med ål'.encode('cp865'),
 }
 
+retry_count = {}
+
 
 @pytest.fixture(scope='function')
 def datestring():
     """Datestring constant.
     """
     return "2016-04-16T03:46:24.958Z"
+
+
+async def fail_first(*args, **kwargs):
+    global retry_count
+    retry_count['fail_first'] += 1
+    if retry_count['fail_first'] < 2:
+        raise ScriptWorkerRetryException("first")
+    return "yay"
+
+
+async def always_fail(*args, **kwargs):
+    global retry_count
+    retry_count['always_fail'] += 1
+    raise ScriptWorkerException("fail")
 
 
 @pytest.fixture(scope='function')
@@ -81,3 +98,21 @@ class TestUtils(object):
 
         result = event_loop.run_until_complete(utils.request(context, "url"))
         assert result == '{}'
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_retry_async_fail_first(self):
+        global retry_count
+        retry_count['fail_first'] = 0
+        status = await utils.retry_async(fail_first)
+        assert status == "yay"
+        assert retry_count['fail_first'] == 2
+
+    @pytest.mark.asyncio
+    async def test_retry_async_always_fail(self):
+        global retry_count
+        retry_count['always_fail'] = 0
+        with pytest.raises(ScriptWorkerException):
+            status = await utils.retry_async(always_fail)
+            assert status is None
+        assert retry_count['always_fail'] == 5

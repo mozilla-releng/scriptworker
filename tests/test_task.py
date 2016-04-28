@@ -166,3 +166,4 @@ class TestTask(object):
                 "contentType": "text/plain",
             }), {}
         ]
+        context.session.close()
