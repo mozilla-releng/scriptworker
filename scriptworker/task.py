@@ -184,14 +184,14 @@ async def complete_task(context, result):
             raise
 
 
-async def max_timeout(context, proc, sleeptime):
-    await asyncio.sleep(sleeptime)
+async def max_timeout(context, proc, timeout):
+    await asyncio.sleep(timeout)
     if proc != context.proc:
         return
     try:
         pid = context.proc.pid
         pgrp = os.getpgid(pid)
-        log.debug("Exceeded timeout: {}".format(pid))
+        log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
         siglist = [signal.SIGINT, signal.SIGTERM]
         while True:
             sig = signal.SIGKILL
