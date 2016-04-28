@@ -113,3 +113,14 @@ def fake_session():
     session = aiohttp.ClientSession()
     session._request = _fake_request
     return session
+
+
+@pytest.fixture(scope='function')
+def fake_session_500():
+    @asyncio.coroutine
+    def _fake_request(method, url, *args, **kwargs):
+        return FakeResponse(method, url, status=500)
+
+    session = aiohttp.ClientSession()
+    session._request = _fake_request
+    return session

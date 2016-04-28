@@ -7,13 +7,14 @@ import mock
 import os
 import pytest
 from scriptworker.context import Context
+from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
 import taskcluster.exceptions
 import taskcluster.async
-from . import fake_session, successful_queue, unsuccessful_queue, read
+from . import fake_session, fake_session_500, successful_queue, unsuccessful_queue, read
 
-assert (fake_session, successful_queue, unsuccessful_queue)  # silence flake8
+assert (fake_session, fake_session_500, successful_queue, unsuccessful_queue)  # silence flake8
 
 
 def touch(path):
@@ -166,4 +167,17 @@ class TestTask(object):
                 "contentType": "text/plain",
             }), {}
         ]
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_create_artifact_retry(self, context, fake_session_500, successful_queue):
+        path = os.path.join(context.config['artifact_dir'], "one.log")
+        os.makedirs(context.config['artifact_dir'])
+        touch(path)
+        context.session = fake_session_500
+        expires = datetime.datetime.utcnow()
+        with pytest.raises(ScriptWorkerRetryException):
+            with mock.patch('scriptworker.task.get_temp_queue') as p:
+                p.return_value = successful_queue
+                await task.create_artifact(context, path, expires=expires)
         context.session.close()
