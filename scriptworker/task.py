@@ -16,7 +16,9 @@ import taskcluster
 import taskcluster.exceptions
 from taskcluster.async import Queue
 
+from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, get_log_filenames, log_errors, read_stdout
+from scriptworker.utils import retry_async
 
 log = logging.getLogger(__name__)
 
@@ -121,10 +123,23 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
                 tc_response['putUrl'], data=fh, headers=headers,
                 skip_auto_headers=skip_auto_headers, compress=False
             ) as resp:
-                # TODO retry/error checking
                 log.info(resp.status)
                 response_text = await resp.text()
                 log.info(response_text)
+                if resp.status not in (200, 204):
+                    raise ScriptWorkerRetryException(
+                        "Bad status {}".format(resp.status),
+                        status=resp.status
+                    )
+
+
+async def retry_create_artifact(*args, **kwargs):
+    return await retry_async(
+        create_artifact,
+        retry_exceptions=(ScriptWorkerRetryException, ),
+        args=args,
+        kwargs=kwargs
+    )
 
 
 async def upload_artifacts(context):
@@ -135,7 +150,7 @@ async def upload_artifacts(context):
     files.extend(get_log_filenames(context))
     tasks = []
     for path in files:
-        tasks.append(create_artifact(context, path))
+        tasks.append(retry_create_artifact(context, path))
     await asyncio.wait(tasks)
 
 
@@ -149,7 +164,6 @@ async def complete_task(context, result):
     """
     temp_queue = get_temp_queue(context)
     args = [context.task['status']['taskId'], context.task['runId']]
-    # TODO retry
     try:
         if result == 0:
             log.debug("Reporting task complete...")
@@ -163,7 +177,6 @@ async def complete_task(context, result):
         if exc.status_code == 409:
             log.debug("409: not reporting complete/failed.")
         else:
-            # TODO retry?
             raise
 
 
