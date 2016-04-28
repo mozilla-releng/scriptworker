@@ -86,9 +86,12 @@ async def retry_async(func, attempts=5, sleeptime_callback=None,
     attempt = 1
     while True:
         try:
+            log.debug("retry_async: Calling {}, attempt {}".format(func, attempt))
             return await func(*args, **kwargs)
         except retry_exceptions:
             if attempt > attempts:
+                log.warning("retry_async: {}: too many retries!".format(func))
                 raise
+            log.debug("retry_async: {}: sleeping before retry".format(func))
             await asyncio.sleep(sleeptime_callback(attempt))
             attempt += 1
