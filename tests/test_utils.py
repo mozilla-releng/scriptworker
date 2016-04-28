@@ -2,14 +2,13 @@
 # coding=utf-8
 """Test scriptworker.utils
 """
-import aiohttp
-import asyncio
-import json
-import mock
 import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.utils as utils
+from . import fake_session
+
+assert(fake_session)  # silence flake8
 
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {
@@ -50,43 +49,6 @@ def context(tmpdir_factory):
         'work_dir': os.path.join(path, 'work'),
     }
     return context
-
-
-class FakeResponse(aiohttp.client_reqrep.ClientResponse):
-    """Integration tests allow us to test everything's hooked up to aiohttp
-    correctly.  When we don't want to actually hit an external url, have
-    the aiohttp session's _request method return a FakeResponse.
-    """
-    def __init__(self, *args, status=200, payload=None, **kwargs):
-        super(FakeResponse, self).__init__(*args, **kwargs)
-        self._connection = mock.MagicMock()
-        self._payload = payload or {}
-        self.status = status
-        self.headers = {'content-type': 'application/json'}
-        self._loop = mock.MagicMock()
-
-    @asyncio.coroutine
-    def text(self, *args, **kwargs):
-        return json.dumps(self._payload)
-
-    @asyncio.coroutine
-    def json(self, *args, **kwargs):
-        return self._payload
-
-    @asyncio.coroutine
-    def release(self):
-        return
-
-
-@pytest.fixture(scope='function')
-def fake_session():
-    @asyncio.coroutine
-    def _fake_request(method, url, *args, **kwargs):
-        return FakeResponse(method, url)
-
-    session = aiohttp.ClientSession()
-    session._request = _fake_request
-    return session
 
 
 class TestUtils(object):

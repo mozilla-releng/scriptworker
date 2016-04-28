@@ -2,6 +2,10 @@
 # coding=utf-8
 """Test base files
 """
+import aiohttp
+import asyncio
+import json
+import mock
 import pytest
 import taskcluster.exceptions
 
@@ -39,6 +43,14 @@ class SuccessfulQueue(object):
     async def reportFailed(self, *args, **kwargs):
         self.info = ['reportFailed', args, kwargs]
 
+    @pytest.mark.asyncio
+    async def createArtifact(self, *args, **kwargs):
+        self.info = ['createArtifact', args, kwargs]
+        return {
+            "contentType": "text/plain",
+            "putUrl": "url",
+        }
+
 
 class UnsuccessfulQueue(object):
     status = 409
@@ -56,6 +68,32 @@ class UnsuccessfulQueue(object):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
 
+class FakeResponse(aiohttp.client_reqrep.ClientResponse):
+    """Integration tests allow us to test everything's hooked up to aiohttp
+    correctly.  When we don't want to actually hit an external url, have
+    the aiohttp session's _request method return a FakeResponse.
+    """
+    def __init__(self, *args, status=200, payload=None, **kwargs):
+        super(FakeResponse, self).__init__(*args, **kwargs)
+        self._connection = mock.MagicMock()
+        self._payload = payload or {}
+        self.status = status
+        self.headers = {'content-type': 'application/json'}
+        self._loop = mock.MagicMock()
+
+    @asyncio.coroutine
+    def text(self, *args, **kwargs):
+        return json.dumps(self._payload)
+
+    @asyncio.coroutine
+    def json(self, *args, **kwargs):
+        return self._payload
+
+    @asyncio.coroutine
+    def release(self):
+        return
+
+
 @pytest.fixture(scope='function')
 def successful_queue():
     return SuccessfulQueue()
@@ -64,3 +102,14 @@ def successful_queue():
 @pytest.fixture(scope='function')
 def unsuccessful_queue():
     return UnsuccessfulQueue()
+
+
+@pytest.fixture(scope='function')
+def fake_session():
+    @asyncio.coroutine
+    def _fake_request(method, url, *args, **kwargs):
+        return FakeResponse(method, url)
+
+    session = aiohttp.ClientSession()
+    session._request = _fake_request
+    return session

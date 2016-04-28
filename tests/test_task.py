@@ -11,9 +11,9 @@ import scriptworker.task as task
 import scriptworker.log as log
 import taskcluster.exceptions
 import taskcluster.async
-from . import successful_queue, unsuccessful_queue, read
+from . import fake_session, successful_queue, unsuccessful_queue, read
 
-assert (successful_queue, unsuccessful_queue)  # silence flake8
+assert (fake_session, successful_queue, unsuccessful_queue)  # silence flake8
 
 
 def touch(path):
@@ -148,3 +148,21 @@ class TestTask(object):
             await task.upload_artifacts(context)
 
         assert sorted(args) == sorted(paths)
+
+    @pytest.mark.asyncio
+    async def test_create_artifact(self, context, fake_session, successful_queue):
+        path = os.path.join(context.config['artifact_dir'], "one.log")
+        os.makedirs(context.config['artifact_dir'])
+        touch(path)
+        context.session = fake_session
+        expires = datetime.datetime.utcnow()
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = successful_queue
+            await task.create_artifact(context, path, expires=expires)
+        assert successful_queue.info == [
+            "createArtifact", ('taskId', 'runId', "one.log", {
+                "storageType": "s3",
+                "expires": expires,
+                "contentType": "text/plain",
+            }), {}
+        ]
