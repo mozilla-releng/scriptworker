@@ -1,23 +1,4 @@
 #!/usr/bin/env python
-# X  queue - poll task urls
-# X   signedPollUrls
-# X  for each url, azure get(SignedPollUrls[i++ % n])
-# X   polling...
-# X   <QueueMessagesList/>
-# X  queue - claimTask
-# X   status
-# X    on 409, try the next one
-# X   azure - delete <PopReceipt/>
-# X  executing task
-# X   - create config files
-# X    - temp creds - in the task json
-# X    - job metadata, payload - in the task json
-# X   - launch script
-# X   during task, queue - reclaimTask periodically
-# _  createArtifact
-# X  queue -> reportCompleted
-# _ worker logfile
-# _ log rotation
 import aiohttp
 import asyncio
 import logging
@@ -56,7 +37,7 @@ async def async_main(context):
                 await running_task
                 await upload_artifacts(context)
                 await complete_task(context, running_task.result())
-                # TODO cleanup(context)
+                cleanup(context)
                 await asyncio.sleep(1)
                 break
         else:
