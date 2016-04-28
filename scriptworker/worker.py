@@ -69,7 +69,3 @@ def main():
         }, session=context.session)
         loop.create_task(async_main(context))
         loop.run_forever()
-
-
-if __name__ == '__main__':
-    main()
