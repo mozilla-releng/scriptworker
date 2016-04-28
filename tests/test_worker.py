@@ -3,6 +3,7 @@
 """Test scriptworker.worker
 """
 from copy import deepcopy
+import datetime
 import mock
 import os
 import pytest
@@ -22,16 +23,29 @@ def context(tmpdir_factory):
     context.config['log_dir'] = os.path.join(str(temp_dir), "log")
     context.config['work_dir'] = os.path.join(str(temp_dir), "work")
     context.config['artifact_dir'] = os.path.join(str(temp_dir), "artifact")
+    context.poll_task_urls = {
+        'queues': [{
+            "signedPollUrl": "poll0",
+            "signedDeleteUrl": "delete0",
+        }, {
+            "signedPollUrl": "poll1",
+            "signedDeleteUrl": "delete1",
+        }],
+        'expires': datetime.datetime.strftime(
+            datetime.datetime.utcnow() + datetime.timedelta(hours=10),
+            "%Y-%m-%dT%H:%M:%S.123Z"
+        ),
+    }
     return context
 
 
 class TestWorker(object):
-    def test_too_many_args(self):
+    def test_main_too_many_args(self):
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', new=[1, 2, 3, 4]):
                 worker.main()
 
-    def test_bad_json(self):
+    def test_main_bad_json(self):
         path = os.path.join(os.path.dirname(__file__), "data", "bad.json")
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', new=[__file__, path]):
