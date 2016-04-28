@@ -79,18 +79,16 @@ def cleanup(context):
         makedirs(path)
 
 
-async def retry_async(func, attempt=1, attempts=5, sleeptime_callback=None,
+async def retry_async(func, attempts=5, sleeptime_callback=None,
                       retry_exceptions=(Exception, ), args=(), kwargs=None):
     kwargs = kwargs or {}
     sleeptime_callback = sleeptime_callback or calculateSleepTime
-    try:
-        return await func(*args, **kwargs)
-    except retry_exceptions:
-        if attempt > attempts:
-            raise
-        await asyncio.sleep(sleeptime_callback(attempt))
-        attempt += 1
-        return await retry_async(func, attempt=attempt, attempts=attempts,
-                                 sleeptime_callback=sleeptime_callback,
-                                 retry_exceptions=retry_exceptions, args=args,
-                                 kwargs=kwargs)
+    attempt = 1
+    while True:
+        try:
+            return await func(*args, **kwargs)
+        except retry_exceptions:
+            if attempt > attempts:
+                raise
+            await asyncio.sleep(sleeptime_callback(attempt))
+            attempt += 1
