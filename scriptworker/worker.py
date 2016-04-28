@@ -46,8 +46,8 @@ async def async_main(context):
                 cleanup(context)
                 await asyncio.sleep(1)
                 break
-            else:
-                await asyncio.sleep(context.config['poll_interval'])
+        else:
+            await asyncio.sleep(context.config['poll_interval'])
 
 
 def main():
