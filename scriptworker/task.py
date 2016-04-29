@@ -37,6 +37,7 @@ async def run_task(context):
         'preexec_fn': lambda: os.setsid(),
     }
     context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    timeout_proc = await max_timeout(context, context.proc, context.config['task_max_timeout'])
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):
@@ -177,6 +178,7 @@ async def complete_task(context, result):
             await temp_queue.reportFailed(*args)
         # TODO reportException:
         #  worker-shutdown malformed-payload resource-unavailable internal-error superseded
+        # TODO kill task results: sigint == -2
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.debug("409: not reporting complete/failed.")
