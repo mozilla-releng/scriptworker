@@ -203,7 +203,8 @@ class TestTask(object):
         for path in glob.glob(os.path.join(temp_dir, '*')):
             files[path] = (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
             print("{} {}".format(path, files[path]))
-        time.sleep(2)
+        time.sleep(3)
         for path in glob.glob(os.path.join(temp_dir, '*')):
+            print("Checking {}...".format(path))
             assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
         assert len(files.keys()) == 6

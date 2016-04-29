@@ -192,14 +192,14 @@ async def max_timeout(context, proc, timeout):
         return
     try:
         pid = context.proc.pid
-        pgrp = os.getpgid(pid)
         log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
         siglist = [signal.SIGINT, signal.SIGTERM]
         while True:
             sig = signal.SIGKILL
             if siglist:
                 sig = siglist.pop(0)
-            os.killpg(pgrp, sig)
+            os.kill(-pid, sig)
+            os.kill(pid, sig)
             await asyncio.sleep(1)
             os.kill(pid, 0)
     except (AttributeError, OSError, ProcessLookupError):
