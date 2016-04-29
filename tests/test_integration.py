@@ -2,24 +2,11 @@
 # coding=utf-8
 """Scriptworker integration tests.
 """
-import datetime
-import glob
 import json
-import mock
 import os
 import pytest
-from scriptworker.config import DEFAULT_CONFIG
-from scriptworker.exceptions import ScriptWorkerRetryException
-import scriptworker.task as task
-import scriptworker.log as log
 import slugid
-import sys
-import taskcluster.exceptions
-import taskcluster.async
-import time
-from . import fake_session, fake_session_500, successful_queue, unsuccessful_queue, read
-
-assert (fake_session, fake_session_500, successful_queue, unsuccessful_queue)  # silence flake8
+# import taskcluster.async
 
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
@@ -30,7 +17,7 @@ def read_worker_creds():
     """
     files = (
         os.path.join(os.getcwd(), 'secrets.json'),
-#        os.path.join(os.environ['HOME'], '.scriptworker'),
+        os.path.join(os.environ['HOME'], '.scriptworker'),
     )
     for path in files:
         if not os.path.exists(path):
@@ -85,4 +72,4 @@ class TestIntegration(object):
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     def test_run_successful_task(self, event_loop):
         config = get_config(None)
-        print("We shouldn't even run this line")
+        assert config
