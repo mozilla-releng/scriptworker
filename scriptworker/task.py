@@ -186,22 +186,25 @@ async def complete_task(context, result):
             raise
 
 
+async def kill(pid, sleep_time=1):
+    siglist = [signal.SIGINT, signal.SIGTERM]
+    while True:
+        sig = signal.SIGKILL
+        if siglist:
+            sig = siglist.pop(0)
+        try:
+            os.kill(pid, sig)
+            await asyncio.sleep(sleep_time)
+            os.kill(pid, 0)
+            await asyncio.sleep(sleep_time)
+        except (OSError, ProcessLookupError):
+            return
+
+
 async def max_timeout(context, proc, timeout):
     await asyncio.sleep(timeout)
     if proc != context.proc:
         return
-    try:
-        pid = context.proc.pid
-        log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
-        siglist = [signal.SIGINT, signal.SIGTERM]
-        while True:
-            sig = signal.SIGKILL
-            if siglist:
-                sig = siglist.pop(0)
-            os.kill(-pid, sig)
-            os.kill(pid, sig)
-            await asyncio.sleep(1)
-            os.kill(pid, 0)
-    except (AttributeError, OSError, ProcessLookupError):
-        # content.proc is None, or the pid isn't running
-        pass
+    pid = context.proc.pid
+    log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
+    await asyncio.wait([kill(-pid), kill(pid)])
