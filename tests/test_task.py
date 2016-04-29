@@ -3,6 +3,7 @@
 """Test scriptworker.task
 """
 import datetime
+import glob
 import mock
 import os
 import pytest
@@ -10,11 +11,15 @@ from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
+import sys
 import taskcluster.exceptions
 import taskcluster.async
+import time
 from . import fake_session, fake_session_500, successful_queue, unsuccessful_queue, read
 
 assert (fake_session, fake_session_500, successful_queue, unsuccessful_queue)  # silence flake8
+
+TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
 
 
 def touch(path):
@@ -34,7 +39,7 @@ def context(tmpdir_factory):
         'artifact_expiration_hours': 1,
         'reclaim_interval': 0.001,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
-        'task_max_timeout': 3,
+        'task_max_timeout': .1,
     }
     context.task = {
         'credentials': {'a': 'b'},
@@ -185,3 +190,20 @@ class TestTask(object):
         with mock.patch.object(task.log, 'debug') as p:
             await task.max_timeout(context, "invalid_proc", 0)
             assert not p.called
+
+    @pytest.mark.asyncio
+    async def test_max_timeout(self, context):
+        temp_dir = os.path.join(context.config['work_dir'], "timeout")
+        context.config['task_script'] = (
+            sys.executable, TIMEOUT_SCRIPT, temp_dir
+        )
+        context.config['task_max_timeout'] = 3
+        await task.run_task(context)
+        files = {}
+        for path in glob.glob(os.path.join(temp_dir, '*')):
+            files[path] = (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
+            print("{} {}".format(path, files[path]))
+        time.sleep(2)
+        for path in glob.glob(os.path.join(temp_dir, '*')):
+            assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
+        assert len(files.keys()) == 6
