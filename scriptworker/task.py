@@ -37,7 +37,7 @@ async def run_task(context):
         'preexec_fn': lambda: os.setsid(),
     }
     context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
-    timeout_proc = await max_timeout(context, context.proc, context.config['task_max_timeout'])
+    await max_timeout(context, context.proc, context.config['task_max_timeout'])
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):

@@ -15,6 +15,8 @@ import subprocess
 import sys
 import time
 
+BASH_SCRIPT = os.path.join(os.path.dirname(__file__), "write_file.sh")
+
 
 def launch_second_instances():
     temp_dir = sys.argv[1]
@@ -48,10 +50,10 @@ async def write_file1(path):
 def write_files():
     loop = asyncio.get_event_loop()
     tasks = [
-        asyncio.ensure_future(write_file1(sys.argv[1])),
-        asyncio.ensure_future(write_file1(sys.argv[2])),
-        asyncio.ensure_future(write_file1(sys.argv[3])),
+        write_file1(sys.argv[1]),
     ]
+    subprocess.Popen(['bash', BASH_SCRIPT, sys.argv[2]])
+    subprocess.Popen("bash {} {}".format(BASH_SCRIPT, sys.argv[3]), shell=True)
     loop.run_until_complete(asyncio.wait(tasks))
 
 
