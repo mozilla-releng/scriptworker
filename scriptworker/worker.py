@@ -17,36 +17,42 @@ from scriptworker.utils import cleanup, retry_request
 log = logging.getLogger(__name__)
 
 
+async def run_loop(context):
+    """Split this out of the async_main while loop for easier testing.
+    """
+    loop = asyncio.get_event_loop()
+    await update_poll_task_urls(
+        context, context.queue.pollTaskUrls,
+        args=(context.config['provisioner_id'], context.config['worker_type']),
+    )
+    for poll_url, delete_url in get_azure_urls(context):
+        try:
+            task_defn = await find_task(context, poll_url, delete_url,
+                                        retry_request)
+        except ScriptWorkerException:
+            await asyncio.sleep(context.config['poll_interval'])
+            break
+        if task_defn:
+            log.info("Going to run task!")
+            context.task = task_defn
+            loop.create_task(reclaim_task(context))
+            running_task = loop.create_task(run_task(context))
+            await running_task
+            await upload_artifacts(context)
+            await complete_task(context, running_task.result())
+            cleanup(context)
+            await asyncio.sleep(1)
+            return True
+    else:
+        await asyncio.sleep(context.config['poll_interval'])
+
+
 async def async_main(context):
     """Main async loop, following the drawing at
     http://docs.taskcluster.net/queue/worker-interaction/
     """
-    loop = asyncio.get_event_loop()
     while True:
-        await update_poll_task_urls(
-            context, context.queue.pollTaskUrls,
-            args=(context.config['provisioner_id'], context.config['worker_type']),
-        )
-        for poll_url, delete_url in get_azure_urls(context):
-            try:
-                task_defn = await find_task(context, poll_url, delete_url,
-                                            retry_request)
-            except ScriptWorkerException:
-                await asyncio.sleep(context.config['poll_interval'])
-                break
-            if task_defn:
-                log.info("Going to run task!")
-                context.task = task_defn
-                loop.create_task(reclaim_task(context))
-                running_task = loop.create_task(run_task(context))
-                await running_task
-                await upload_artifacts(context)
-                await complete_task(context, running_task.result())
-                cleanup(context)
-                await asyncio.sleep(1)
-                break
-        else:
-            await asyncio.sleep(context.config['poll_interval'])
+        await run_loop(context)
 
 
 def main():

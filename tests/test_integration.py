@@ -2,11 +2,21 @@
 # coding=utf-8
 """Scriptworker integration tests.
 """
+import aiohttp
+import asyncio
+from contextlib import contextmanager
+from copy import deepcopy
+import datetime
 import json
 import os
 import pytest
 import slugid
-# import taskcluster.async
+from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.context import Context
+import scriptworker.log as swlog
+import scriptworker.worker as worker
+import scriptworker.utils as utils
+from taskcluster.async import Queue
 
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
@@ -47,29 +57,122 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
     )
 
 
-def get_config(override):
+def build_config(override):
     cwd = os.getcwd()
-    randstring = slugid.nice()[0:6]
-    config = {
-        'log_dir': os.path.join(cwd, "log"),
-        'artifact_dir': os.path.join(cwd, "artifact"),
-        'work_dir': os.path.join(cwd, "work"),
+    basedir = os.path.join(cwd, "integration")
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+    randstring = slugid.nice()[0:6].decode('utf-8')
+    config = deepcopy(DEFAULT_CONFIG)
+    config.update({
+        'log_dir': os.path.join(basedir, "log"),
+        'artifact_dir': os.path.join(basedir, "artifact"),
+        'work_dir': os.path.join(basedir, "work"),
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),
         'artifact_upload_timeout': 60 * 2,
         'artifact_expiration_hours': 1,
+        'poll_interval': .1,
         'reclaim_interval': 2,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
         'task_max_timeout': 60,
-    }
+    })
     config.update(read_worker_creds())
+    # TODO add read_worker_creds() into the main config, so we don't have to
+    # include creds in the config json?
+    # Might want to be able to specify "integration" as the prefix, so look
+    # for integration_taskcluster_client_id etc
     if isinstance(override, dict):
         config.update(override)
+    with open(os.path.join(basedir, "secrets.json"), "w") as fh:
+        json.dump(config, fh, indent=2, sort_keys=True)
     return config
+
+
+@contextmanager
+def get_context(config_override):
+    context = Context()
+    context.config = build_config(config_override)
+    swlog.update_logging_config(context)
+    utils.cleanup(context)
+    with aiohttp.ClientSession() as session:
+        context.session = session
+        context.queue = Queue({
+            "credentials": {
+                "clientId": context.config['taskcluster_client_id'],
+                "accessToken": context.config['taskcluster_access_token'],
+            },
+        }, session=session)
+        yield context
+
+
+async def create_task(context, task_id, task_group_id):
+    task_group_id = task_group_id or slugid.nice().decode('utf-8')
+    now = datetime.datetime.utcnow()
+    deadline = now + datetime.timedelta(hours=1)
+    expired = now + datetime.timedelta(days=3)
+    payload = {
+        'provisionerId': context.config['provisioner_id'],
+        'schedulerId': context.config['scheduler_id'],
+        'workerType': context.config['worker_type'],
+        'taskGroupId': task_group_id,
+        'dependencies': [],
+        'requires': 'all-completed',
+        'routes': [],
+        'priority': 'normal',
+        'retries': 5,
+        'created': now.timestamp(),  # TODO isoformat() ?
+        'deadline': deadline.timestamp(),
+        'expired': expired.timestamp(),
+        'scopes': [
+#            'assume:project:taskcluster:worker-test-scopes',
+#            'queue:claim-task:test-dummy-provisioner/dummy-worker-*',
+#            'queue:define-task:test-dummy-provisioner/dummy-worker-*',
+#            'queue:poll-task-urls:test-dummy-provisioner/dummy-worker-*',
+#            'queue:schedule-task:test-dummy-scheduler/*',
+#            'queue:task-group-id:test-dummy-scheduler/*',
+#            'queue:worker-id:test-dummy-workers/dummy-worker-*',
+        ],
+        'payload': {
+            'test_payload': 1,
+        },
+        'metadata': {
+            'name': 'ScriptWorker Integration Test',
+            'description': 'ScriptWorker Integration Test',
+            'owner': 'release+python@mozilla.com',
+            'source': 'https://github.com/escapewindow/scriptworker/'
+        },
+        'tags': {},
+        'extra': {}
+    }
+    return await context.queue.createTask(task_id, payload)
+
+
+@contextmanager
+def remember_cwd():
+    """http://stackoverflow.com/a/170174
+    """
+    curdir = os.getcwd()
+    try:
+        yield
+    finally:
+        os.chdir(curdir)
 
 
 class TestIntegration(object):
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-    def test_run_successful_task(self, event_loop):
-        config = get_config(None)
-        assert config
+    @pytest.mark.asyncio
+    async def test_run_successful_task(self, event_loop):
+        import pprint
+        task_id = slugid.nice().decode('utf-8')
+        task_group_id = slugid.nice().decode('utf-8')
+        loop = asyncio.get_event_loop()
+        with get_context(None) as context:
+            result = await create_task(context, task_id, task_group_id)
+            print(dir(result))
+            pprint.pprint(result)
+            with remember_cwd():
+                os.chdir("integration")
+                print(os.getcwd())
+                status = await worker.run_loop(context)
+            print(os.getcwd())
