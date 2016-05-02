@@ -72,9 +72,8 @@ def build_config(override):
         "worker_id": "dummy-worker-{}".format(randstring),
         'artifact_upload_timeout': 60 * 2,
         'artifact_expiration_hours': 1,
-        'poll_interval': .1,
-        'reclaim_interval': 2,
-        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
+        'reclaim_interval': 5,
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 2'),
         'task_max_timeout': 60,
     })
     config.update(read_worker_creds())
@@ -110,7 +109,7 @@ async def create_task(context, task_id, task_group_id):
     task_group_id = task_group_id or slugid.nice().decode('utf-8')
     now = datetime.datetime.utcnow()
     deadline = now + datetime.timedelta(hours=1)
-    expired = now + datetime.timedelta(days=3)
+    expires = now + datetime.timedelta(days=3)
     payload = {
         'provisionerId': context.config['provisioner_id'],
         'schedulerId': context.config['scheduler_id'],
@@ -121,9 +120,9 @@ async def create_task(context, task_id, task_group_id):
         'routes': [],
         'priority': 'normal',
         'retries': 5,
-        'created': now.timestamp(),  # TODO isoformat() ?
-        'deadline': deadline.timestamp(),
-        'expired': expired.timestamp(),
+        'created': now.isoformat() + "Z",
+        'deadline': deadline.isoformat() + "Z",
+        'expires': expires.isoformat() + "Z",
         'scopes': [
 #            'assume:project:taskcluster:worker-test-scopes',
 #            'queue:claim-task:test-dummy-provisioner/dummy-worker-*',
@@ -134,7 +133,6 @@ async def create_task(context, task_id, task_group_id):
 #            'queue:worker-id:test-dummy-workers/dummy-worker-*',
         ],
         'payload': {
-            'test_payload': 1,
         },
         'metadata': {
             'name': 'ScriptWorker Integration Test',
@@ -143,7 +141,9 @@ async def create_task(context, task_id, task_group_id):
             'source': 'https://github.com/escapewindow/scriptworker/'
         },
         'tags': {},
-        'extra': {}
+        'extra': {
+            'test_extra': 1,
+        }
     }
     return await context.queue.createTask(task_id, payload)
 
@@ -176,3 +176,4 @@ class TestIntegration(object):
                 print(os.getcwd())
                 status = await worker.run_loop(context)
             print(os.getcwd())
+            assert status == True
