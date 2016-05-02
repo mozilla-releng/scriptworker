@@ -37,12 +37,12 @@ async def run_loop(context):
             context.task = task_defn
             loop.create_task(reclaim_task(context))
             running_task = loop.create_task(run_task(context))
-            await running_task
+            status = await running_task
             await upload_artifacts(context)
             await complete_task(context, running_task.result())
             cleanup(context)
             await asyncio.sleep(1)
-            return True
+            return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
 

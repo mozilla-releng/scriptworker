@@ -3,7 +3,6 @@
 """Scriptworker integration tests.
 """
 import aiohttp
-import asyncio
 from contextlib import contextmanager
 from copy import deepcopy
 import datetime
@@ -123,15 +122,7 @@ async def create_task(context, task_id, task_group_id):
         'created': now.isoformat() + "Z",
         'deadline': deadline.isoformat() + "Z",
         'expires': expires.isoformat() + "Z",
-        'scopes': [
-#            'assume:project:taskcluster:worker-test-scopes',
-#            'queue:claim-task:test-dummy-provisioner/dummy-worker-*',
-#            'queue:define-task:test-dummy-provisioner/dummy-worker-*',
-#            'queue:poll-task-urls:test-dummy-provisioner/dummy-worker-*',
-#            'queue:schedule-task:test-dummy-scheduler/*',
-#            'queue:task-group-id:test-dummy-scheduler/*',
-#            'queue:worker-id:test-dummy-workers/dummy-worker-*',
-        ],
+        'scopes': [],
         'payload': {
         },
         'metadata': {
@@ -166,7 +157,6 @@ class TestIntegration(object):
         import pprint
         task_id = slugid.nice().decode('utf-8')
         task_group_id = slugid.nice().decode('utf-8')
-        loop = asyncio.get_event_loop()
         with get_context(None) as context:
             result = await create_task(context, task_id, task_group_id)
             print(dir(result))
@@ -176,4 +166,4 @@ class TestIntegration(object):
                 print(os.getcwd())
                 status = await worker.run_loop(context)
             print(os.getcwd())
-            assert status == True
+            assert status == 2
