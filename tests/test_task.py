@@ -185,10 +185,9 @@ class TestTask(object):
                 await task.create_artifact(context, path, expires=expires)
         context.session.close()
 
-    @pytest.mark.asyncio
-    async def test_max_timeout_noop(self, context):
+    def test_max_timeout_noop(self, context):
         with mock.patch.object(task.log, 'debug') as p:
-            await task.max_timeout(context, "invalid_proc", 0)
+            task.max_timeout(context, "invalid_proc", 0)
             assert not p.called
 
     @pytest.mark.asyncio

@@ -29,6 +29,7 @@ async def run_task(context):
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
     """
+    loop = asyncio.get_event_loop()
     kwargs = {
         'stdout': PIPE,
         'stderr': PIPE,
@@ -37,7 +38,7 @@ async def run_task(context):
         'preexec_fn': lambda: os.setsid(),
     }
     context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
-    await max_timeout(context, context.proc, context.config['task_max_timeout'])
+    loop.call_later(context.config['task_max_timeout'], max_timeout, context, context.proc, context.config['task_max_timeout'])
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):
@@ -201,10 +202,13 @@ async def kill(pid, sleep_time=1):
             return
 
 
-async def max_timeout(context, proc, timeout):
-    await asyncio.sleep(timeout)
+def max_timeout(context, proc, timeout):
     if proc != context.proc:
         return
     pid = context.proc.pid
     log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
-    await asyncio.wait([kill(-pid), kill(pid)])
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.wait([
+        asyncio.ensure_future(kill(-pid)),
+        asyncio.ensure_future(kill(pid))
+    ]))

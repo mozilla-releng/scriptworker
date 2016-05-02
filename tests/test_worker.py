@@ -40,18 +40,18 @@ def context(tmpdir_factory):
 
 
 class TestWorker(object):
-    def test_main_too_many_args(self):
+    def test_main_too_many_args(self, event_loop):
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', new=[1, 2, 3, 4]):
                 worker.main()
 
-    def test_main_bad_json(self):
+    def test_main_bad_json(self, event_loop):
         path = os.path.join(os.path.dirname(__file__), "data", "bad.json")
         with pytest.raises(SystemExit):
             with mock.patch('sys.argv', new=[__file__, path]):
                 worker.main()
 
-    def test_main(self, mocker):
+    def test_main(self, mocker, event_loop):
         path = os.path.join(os.path.dirname(__file__), "data", "good.json")
         config = create_config(path)
 
