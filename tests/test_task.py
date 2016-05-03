@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.task
 """
+import asyncio
 import datetime
 import glob
 import mock
@@ -190,19 +191,21 @@ class TestTask(object):
             task.max_timeout(context, "invalid_proc", 0)
             assert not p.called
 
-    @pytest.mark.asyncio
-    async def test_max_timeout(self, context):
+    def test_max_timeout(self, context, event_loop):
         temp_dir = os.path.join(context.config['work_dir'], "timeout")
         context.config['task_script'] = (
             sys.executable, TIMEOUT_SCRIPT, temp_dir
         )
         context.config['task_max_timeout'] = 3
-        await task.run_task(context)
+        event_loop.run_until_complete(task.run_task(context))
+        try:
+            event_loop.run_until_complete(asyncio.sleep(10))  # Let kill() calls run
+        except RuntimeError:
+            pass
         files = {}
         for path in glob.glob(os.path.join(temp_dir, '*')):
             files[path] = (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
             print("{} {}".format(path, files[path]))
-        time.sleep(3)
         for path in glob.glob(os.path.join(temp_dir, '*')):
             print("Checking {}...".format(path))
             assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
