@@ -161,9 +161,7 @@ class TestIntegration(object):
             assert result['status']['state'] == 'pending'
             with remember_cwd():
                 os.chdir("integration")
-                print(os.getcwd())
                 status = await worker.run_loop(context)
-            print(os.getcwd())
             assert status == 2
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
@@ -186,3 +184,12 @@ class TestIntegration(object):
                     )
                     # Because we're using asyncio to kill tasks in the loop,
                     # we're going to hit a RuntimeError
+
+    @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+    @pytest.mark.asyncio
+    async def test_empty_queue(self, event_loop):
+        with get_context(None) as context:
+            with remember_cwd():
+                os.chdir("integration")
+                status = await worker.run_loop(context)
+            assert status is None

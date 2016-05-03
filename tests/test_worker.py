@@ -10,9 +10,7 @@ import pytest
 from scriptworker.config import DEFAULT_CONFIG, create_config
 from scriptworker.context import Context
 import scriptworker.worker as worker
-from . import fake_session, successful_queue, unsuccessful_queue
-
-assert (fake_session, successful_queue, unsuccessful_queue)  # silence flake8
+import sys
 
 
 @pytest.fixture(scope='function')
@@ -61,3 +59,13 @@ class TestWorker(object):
         mocker.patch('asyncio.get_event_loop')
         mocker.patch('scriptworker.worker.async_main', new=foo)
         worker.main()
+
+    @pytest.mark.asyncio
+    async def test_async_main(self, context):
+
+        async def exit(*args, **kwargs):
+            sys.exit()
+
+        with mock.patch('scriptworker.worker.run_loop', new=exit):
+            with pytest.raises(SystemExit):
+                await worker.async_main(context)
