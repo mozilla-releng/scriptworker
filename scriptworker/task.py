@@ -197,7 +197,6 @@ async def kill(pid, sleep_time=1):
             os.kill(pid, sig)
             await asyncio.sleep(sleep_time)
             os.kill(pid, 0)
-            await asyncio.sleep(sleep_time)
         except (OSError, ProcessLookupError):
             return
 
