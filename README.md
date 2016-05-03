@@ -1,7 +1,7 @@
 Script Worker
 ===============================
 
-[![Build Status](https://travis-ci.org/escapewindow/scriptworker.svg?branch=master)](https://travis-ci.org/escapewindow/scriptworker)
+[![Build Status](https://travis-ci.org/escapewindow/scriptworker.svg?branch=master)](https://travis-ci.org/escapewindow/scriptworker) [![Coverage Status](https://coveralls.io/repos/github/escapewindow/scriptworker/badge.svg?branch=master)](https://coveralls.io/github/escapewindow/scriptworker?branch=master)
 
 Script worker implements the [TaskCluster](http://docs.taskcluster.net/queue/worker-interaction/) worker model, then launches a pre-defined script.
 
