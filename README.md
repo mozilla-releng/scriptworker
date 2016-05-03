@@ -16,4 +16,18 @@ Usage
 
 Testing
 -------
+Without integration tests,
+
+`NO_TESTS_OVER_WIRE=1 python setup.py test`
+
+With integration tests, first create a `./secrets.json` or `~/.scriptworker` that looks like
+
+```json
+{
+    "taskcluster_client_id": "...",
+    "taskcluster_access_token": "..."
+}
+```
+then
+
 `python setup.py test`
