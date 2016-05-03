@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.task
 """
+import arrow
 import asyncio
 import datetime
 import glob
@@ -66,17 +67,14 @@ class TestTask(object):
             'credentials': context.temp_credentials,
         }, session=context.session)
 
-    def test_expiration_datetime(self, context):
-        now = datetime.datetime.utcnow()
-
-        def utcnow():
-            return now
+    def test_expiration_arrow(self, context):
+        now = arrow.utcnow()
 
         # make sure time differences don't screw up the test
-        with mock.patch.object(datetime, 'datetime') as p:
-            p.utcnow = utcnow
-            expiration = task.get_expiration_datetime(context)
-            diff = expiration.timestamp() - now.timestamp()
+        with mock.patch.object(arrow, 'utcnow') as p:
+            p.return_value = now
+            expiration = task.get_expiration_arrow(context)
+            diff = expiration.timestamp - now.timestamp
             assert diff == 3600
 
     @pytest.mark.parametrize("mimetypes", [(k, v) for k, v in sorted(mimetypes.items())])

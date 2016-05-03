@@ -2,8 +2,8 @@
 """Scriptworker task execution
 """
 import aiohttp.hdrs
+import arrow
 import asyncio
-import datetime
 import glob
 import logging
 import mimetypes
@@ -89,11 +89,11 @@ async def reclaim_task(context):
                 raise
 
 
-def get_expiration_datetime(context):
-    """Return a datetime, `artifact_expiration_hours` in the future from now.
+def get_expiration_arrow(context):
+    """Return an arrow, `artifact_expiration_hours` in the future from now.
     """
-    now = datetime.datetime.utcnow()
-    return now + datetime.timedelta(hours=context.config['artifact_expiration_hours'])
+    now = arrow.utcnow()
+    return now.replace(hours=context.config['artifact_expiration_hours'])
 
 
 def guess_content_type(path):
@@ -113,7 +113,7 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
     filename = os.path.basename(path)
     payload = {
         "storageType": storage_type,
-        "expires": expires or get_expiration_datetime(context),
+        "expires": expires or get_expiration_arrow(context).isoformat(),
         "contentType": content_type or guess_content_type(path),
     }
     args = [context.task['status']['taskId'], context.task['runId'], filename, payload]

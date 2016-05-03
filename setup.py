@@ -5,6 +5,7 @@ import sys
 
 reqs = [
     "aiohttp",
+    "arrow",
     "defusedxml",
     "frozendict",
     "taskcluster",
