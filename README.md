@@ -1,6 +1,8 @@
 Script Worker
 ===============================
 
+[![Build Status](https://travis-ci.org/escapewindow/scriptworker.svg?branch=master)](https://travis-ci.org/escapewindow/scriptworker)
+
 Script worker implements the [TaskCluster](http://docs.taskcluster.net/queue/worker-interaction/) worker model, then launches a pre-defined script.
 
 This worker was designed for [Releng processes](https://bugzilla.mozilla.org/show_bug.cgi?id=1245837) that need specific, limited, and pre-defined capabilities.
