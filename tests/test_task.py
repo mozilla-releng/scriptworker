@@ -4,7 +4,6 @@
 """
 import arrow
 import asyncio
-import datetime
 import glob
 import mock
 import os
@@ -158,7 +157,7 @@ class TestTask(object):
         os.makedirs(context.config['artifact_dir'])
         touch(path)
         context.session = fake_session
-        expires = datetime.datetime.utcnow()
+        expires = arrow.utcnow().isoformat()
         with mock.patch('scriptworker.task.get_temp_queue') as p:
             p.return_value = successful_queue
             await task.create_artifact(context, path, expires=expires)
@@ -177,7 +176,7 @@ class TestTask(object):
         os.makedirs(context.config['artifact_dir'])
         touch(path)
         context.session = fake_session_500
-        expires = datetime.datetime.utcnow()
+        expires = arrow.utcnow().isoformat()
         with pytest.raises(ScriptWorkerRetryException):
             with mock.patch('scriptworker.task.get_temp_queue') as p:
                 p.return_value = successful_queue

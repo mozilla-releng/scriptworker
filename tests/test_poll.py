@@ -2,8 +2,8 @@
 # coding=utf-8
 """Test scriptworker.poll
 """
+import arrow
 from copy import deepcopy
-import datetime
 import os
 import pytest
 from scriptworker.context import Context
@@ -92,10 +92,8 @@ class TestPoll(object):
 
     @pytest.mark.asyncio
     async def test_update_unexpired_poll_task_urls(self, context):
-        context.poll_task_urls['expires'] = datetime.datetime.strftime(
-            datetime.datetime.utcnow() + datetime.timedelta(hours=10),
-            "%Y-%m-%dT%H:%M:%S.123Z"
-        )
+        expires = arrow.utcnow().replace(hours=10)
+        context.poll_task_urls['expires'] = expires.isoformat()
         good = deepcopy(context.poll_task_urls)
         await poll.update_poll_task_urls(context, fake_response)
         assert context.poll_task_urls == good

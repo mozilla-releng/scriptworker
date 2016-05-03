@@ -2,9 +2,9 @@
 # coding=utf-8
 """Test scriptworker.worker
 """
+import arrow
 import asyncio
 from copy import deepcopy
-import datetime
 import mock
 import os
 import pytest
@@ -35,10 +35,7 @@ def context(tmpdir_factory):
             "signedPollUrl": "poll1",
             "signedDeleteUrl": "delete1",
         }],
-        'expires': datetime.datetime.strftime(
-            datetime.datetime.utcnow() + datetime.timedelta(hours=10),
-            "%Y-%m-%dT%H:%M:%S.123Z"
-        ),
+        'expires': arrow.utcnow().replace(hours=10).isoformat(),
     }
     return context
 
