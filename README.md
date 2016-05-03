@@ -20,7 +20,9 @@ Without integration tests,
 
 `NO_TESTS_OVER_WIRE=1 python setup.py test`
 
-With integration tests, first create a `./secrets.json` or `~/.scriptworker` that looks like
+With integration tests, first create a client with the `assume:project:taskcluster:worker-test-scopes` scope.
+
+Then  create a `./secrets.json` or `~/.scriptworker` that looks like
 
 ```json
 {
