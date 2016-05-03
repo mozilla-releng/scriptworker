@@ -2,9 +2,8 @@
 """Utils for scriptworker
 """
 import aiohttp
+import arrow
 import asyncio
-import calendar
-import datetime
 import logging
 import os
 import shutil
@@ -44,10 +43,7 @@ def datestring_to_timestamp(datestring):
     """ Create a timetamp from a taskcluster datestring
     datestring: a string in the form of "2016-04-16T03:46:24.958Z"
     """
-    datestring = datestring.split('.')[0]
-    return calendar.timegm(
-        datetime.datetime.strptime(datestring, "%Y-%m-%dT%H:%M:%S").utctimetuple()
-    )
+    return arrow.get(datestring).timestamp
 
 
 def to_unicode(line):

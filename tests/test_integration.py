@@ -3,9 +3,9 @@
 """Scriptworker integration tests.
 """
 import aiohttp
+import arrow
 from contextlib import contextmanager
 from copy import deepcopy
-import datetime
 import json
 import os
 import pytest
@@ -106,9 +106,9 @@ def get_context(config_override):
 
 async def create_task(context, task_id, task_group_id):
     task_group_id = task_group_id or slugid.nice().decode('utf-8')
-    now = datetime.datetime.utcnow()
-    deadline = now + datetime.timedelta(hours=1)
-    expires = now + datetime.timedelta(days=3)
+    now = arrow.utcnow()
+    deadline = now.replace(hours=1)
+    expires = now.replace(days=3)
     payload = {
         'provisionerId': context.config['provisioner_id'],
         'schedulerId': context.config['scheduler_id'],
@@ -119,9 +119,9 @@ async def create_task(context, task_id, task_group_id):
         'routes': [],
         'priority': 'normal',
         'retries': 5,
-        'created': now.isoformat() + "Z",
-        'deadline': deadline.isoformat() + "Z",
-        'expires': expires.isoformat() + "Z",
+        'created': now.isoformat(),
+        'deadline': deadline.isoformat(),
+        'expires': expires.isoformat(),
         'scopes': [],
         'payload': {
         },
