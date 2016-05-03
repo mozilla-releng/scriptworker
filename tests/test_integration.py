@@ -154,16 +154,35 @@ class TestIntegration(object):
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     @pytest.mark.asyncio
     async def test_run_successful_task(self, event_loop):
-        import pprint
         task_id = slugid.nice().decode('utf-8')
         task_group_id = slugid.nice().decode('utf-8')
         with get_context(None) as context:
             result = await create_task(context, task_id, task_group_id)
-            print(dir(result))
-            pprint.pprint(result)
+            assert result['status']['state'] == 'pending'
             with remember_cwd():
                 os.chdir("integration")
                 print(os.getcwd())
                 status = await worker.run_loop(context)
             print(os.getcwd())
             assert status == 2
+
+    @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+    def test_run_maxtimeout(self, event_loop):
+        task_id = slugid.nice().decode('utf-8')
+        task_group_id = slugid.nice().decode('utf-8')
+        partial_config = {
+            'task_max_timeout': 2,
+        }
+        with get_context(partial_config) as context:
+            result = event_loop.run_until_complete(
+                create_task(context, task_id, task_group_id)
+            )
+            assert result['status']['state'] == 'pending'
+            with remember_cwd():
+                os.chdir("integration")
+                with pytest.raises(RuntimeError):
+                    event_loop.run_until_complete(
+                        worker.run_loop(context)
+                    )
+                    # Because we're using asyncio to kill tasks in the loop,
+                    # we're going to hit a RuntimeError
