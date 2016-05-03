@@ -78,5 +78,9 @@ def main():
                 'accessToken': context.config['taskcluster_access_token'],
             }
         }, session=context.session)
-        loop.create_task(async_main(context))
-        loop.run_forever()
+        while True:
+            try:
+                loop.create_task(async_main(context))
+                loop.run_forever()
+            except RuntimeError:
+                pass

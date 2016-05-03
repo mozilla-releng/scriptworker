@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.worker
 """
+import asyncio
 from copy import deepcopy
 import datetime
 import mock
@@ -57,13 +58,24 @@ class TestWorker(object):
     def test_main(self, mocker, event_loop):
         path = os.path.join(os.path.dirname(__file__), "data", "good.json")
         config = create_config(path)
+        loop = mock.MagicMock()
+        exceptions = [RuntimeError, ScriptWorkerException]
+
+        def run_forever():
+            exc = exceptions.pop(0)
+            raise exc("foo")
 
         def foo(arg):
             assert arg.config == config
-        mocker.patch('sys.argv', new=[__file__, path])
-        mocker.patch('asyncio.get_event_loop')
-        mocker.patch('scriptworker.worker.async_main', new=foo)
-        worker.main()
+
+        loop.run_forever = run_forever
+
+        mocker.patch.object(sys, 'argv', new=[__file__, path])
+        mocker.patch.object(worker, 'async_main', new=foo)
+        with mock.patch.object(asyncio, 'get_event_loop') as p:
+            p.return_value = loop
+            with pytest.raises(ScriptWorkerException):
+                worker.main()
 
     @pytest.mark.asyncio
     async def test_async_main(self, context):
