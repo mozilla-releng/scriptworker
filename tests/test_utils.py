@@ -84,7 +84,7 @@ class TestUtils(object):
         assert non_text == utils.to_unicode(non_text)
 
     def test_datestring_to_timestamp(self, datestring):
-        assert utils.datestring_to_timestamp(datestring) == 1460803584.0
+        assert utils.datestring_to_timestamp(datestring) == 1460778384
 
     def test_cleanup(self, context):
         for name in 'work_dir', 'artifact_dir':

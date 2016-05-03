@@ -3,11 +3,11 @@
 """
 import aiohttp
 import asyncio
+import calendar
 import datetime
 import logging
 import os
 import shutil
-import time
 from taskcluster.utils import calculateSleepTime
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 
@@ -45,8 +45,8 @@ def datestring_to_timestamp(datestring):
     datestring: a string in the form of "2016-04-16T03:46:24.958Z"
     """
     datestring = datestring.split('.')[0]
-    return time.mktime(
-        datetime.datetime.strptime(datestring, "%Y-%m-%dT%H:%M:%S").timetuple()
+    return calendar.timegm(
+        datetime.datetime.strptime(datestring, "%Y-%m-%dT%H:%M:%S").utctimetuple()
     )
 
 

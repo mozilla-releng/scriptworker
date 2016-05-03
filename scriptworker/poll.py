@@ -106,7 +106,6 @@ async def update_poll_task_urls(context, callback, min_seconds_left=300, args=()
     if urls is not None:
         # check expiration
         expires = datestring_to_timestamp(urls['expires'])
-        # is this right? 7+ hrs?
         seconds_left = int(expires - time.time())
         log.debug("poll_task_urls expires in %d seconds" % seconds_left)
         if seconds_left >= min_seconds_left:
