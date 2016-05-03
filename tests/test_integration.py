@@ -139,6 +139,10 @@ async def create_task(context, task_id, task_group_id):
     return await context.queue.createTask(task_id, payload)
 
 
+async def task_status(context, task_id):
+    return await context.queue.status(task_id)
+
+
 @contextmanager
 def remember_cwd():
     """http://stackoverflow.com/a/170174
@@ -163,6 +167,8 @@ class TestIntegration(object):
                 os.chdir("integration")
                 status = await worker.run_loop(context)
             assert status == 2
+            result = await task_status(context, task_id)
+            assert result['status']['state'] == 'failed'
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     def test_run_maxtimeout(self, event_loop):
@@ -184,6 +190,8 @@ class TestIntegration(object):
                     )
                     # Because we're using asyncio to kill tasks in the loop,
                     # we're going to hit a RuntimeError
+            result = event_loop.run_until_complete(task_status(context, task_id))
+            assert result['status']['state'] == 'running'
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     @pytest.mark.asyncio
