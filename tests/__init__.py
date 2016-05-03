@@ -51,6 +51,10 @@ class SuccessfulQueue(object):
             "putUrl": "url",
         }
 
+    @pytest.mark.asyncio
+    async def pollTaskUrls(self, *args, **kwargs):
+        return
+
 
 class UnsuccessfulQueue(object):
     status = 409

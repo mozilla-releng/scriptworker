@@ -9,8 +9,12 @@ import os
 import pytest
 from scriptworker.config import DEFAULT_CONFIG, create_config
 from scriptworker.context import Context
+from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
 import sys
+from . import successful_queue
+
+assert successful_queue  # silence flake8
 
 
 @pytest.fixture(scope='function')
@@ -21,6 +25,7 @@ def context(tmpdir_factory):
     context.config['log_dir'] = os.path.join(str(temp_dir), "log")
     context.config['work_dir'] = os.path.join(str(temp_dir), "work")
     context.config['artifact_dir'] = os.path.join(str(temp_dir), "artifact")
+    context.config['poll_interval'] = .1
     context.poll_task_urls = {
         'queues': [{
             "signedPollUrl": "poll0",
@@ -69,3 +74,14 @@ class TestWorker(object):
         with mock.patch('scriptworker.worker.run_loop', new=exit):
             with pytest.raises(SystemExit):
                 await worker.async_main(context)
+
+    def test_run_loop_exception(self, context, successful_queue, event_loop):
+        context.queue = successful_queue
+
+        async def raise_swe(*args, **kwargs):
+            raise ScriptWorkerException("foo")
+
+        with mock.patch.object(worker, 'find_task', new=raise_swe):
+            status = event_loop.run_until_complete(worker.run_loop(context))
+
+        assert status is None
