@@ -50,7 +50,7 @@ def context(tmpdir_factory):
     return context
 
 mimetypes = {
-    "/foo/bar/test.log": "text/plain",
+    "/foo/bar/test.txt": "text/plain",
     "/tmp/blah.tgz": "application/x-tar",
     "~/Firefox.dmg": "application/x-apple-diskimage",
 }
@@ -153,7 +153,7 @@ class TestTask(object):
 
     @pytest.mark.asyncio
     async def test_create_artifact(self, context, fake_session, successful_queue):
-        path = os.path.join(context.config['artifact_dir'], "one.log")
+        path = os.path.join(context.config['artifact_dir'], "one.txt")
         os.makedirs(context.config['artifact_dir'])
         touch(path)
         context.session = fake_session
@@ -162,7 +162,7 @@ class TestTask(object):
             p.return_value = successful_queue
             await task.create_artifact(context, path, expires=expires)
         assert successful_queue.info == [
-            "createArtifact", ('taskId', 'runId', "one.log", {
+            "createArtifact", ('taskId', 'runId', "one.txt", {
                 "storageType": "s3",
                 "expires": expires,
                 "contentType": "text/plain",
