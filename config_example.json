@@ -2,13 +2,16 @@
     "provisioner_id": "test-dummy-provisioner",
     "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
-    "worker_type": "dummy-worker-aki",
-    "worker_id": "my_hostname",
+    "worker_type": "dummy-worker-myname",
+    "worker_id": "dummy-worker-myname1",
 
     "work_dir": "/tmp/work",
     "log_dir": "/tmp/log",
     "artifact_dir": "/tmp/artifact",
+    "artifact_expiration_hours": 24,
+    "artifact_upload_timeout": 1200,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 2"),
+    "task_max_timeout": 1200,
 
     "taskcluster_client_id": "...",
     "taskcluster_access_token": "...",
