@@ -1,11 +1,11 @@
 language: python
 python:
-  - "3.5"
+  - 3.5
 
+install:
+    - python -mpip install virtualenv tox
+    - python setup.py develop
 env:
-  NO_TESTS_OVER_WIRE=1
+    NO_TESTS_OVER_WIRE=1
 script:
     - python setup.py test
-
-# http://docs.travis-ci.com/user/workers/container-based-infrastructure/
-sudo: false
