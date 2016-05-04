@@ -3,11 +3,10 @@ python:
   - 3.5
 
 install:
-    - python -mpip install virtualenv tox
-    - python setup.py develop
+    - python -mpip install tox
 env:
     NO_TESTS_OVER_WIRE=1
 script:
-    - python setup.py test
+    - tox
 after_success:
     - tox -e py35-coveralls

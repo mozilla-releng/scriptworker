@@ -25,11 +25,14 @@ With integration tests, first create a client with the `assume:project:taskclust
 Then  create a `./secrets.json` or `~/.scriptworker` that looks like
 
 ```json
+// (you can also optionally set "taskcluster_certificate" if using temp credentials)
 {
     "taskcluster_client_id": "...",
     "taskcluster_access_token": "..."
 }
 ```
+
+
 then
 
 `python setup.py test`

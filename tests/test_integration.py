@@ -37,6 +37,8 @@ def read_worker_creds():
                 creds = {}
                 for key in ("taskcluster_client_id", "taskcluster_access_token"):
                     creds[key] = contents[key]
+                if contents.get("taskcluster_certificate"):
+                    creds['taskcluster_certificate'] = contents['taskcluster_certificate']
                 return creds
             except (json.decoder.JSONDecodeError, KeyError):
                 pass
@@ -49,6 +51,8 @@ in one of these files:
 with the format
 
     {{"taskcluster_client_id": "...", "taskcluster_access_token": "..."}}
+
+(specify "taskcluster_certificate" in that dict as well if using temporary credentials)
 
 This clientId will need the scope assume:project:taskcluster:worker-test-scopes
 
@@ -93,14 +97,15 @@ def get_context(config_override):
     context.config = build_config(config_override)
     swlog.update_logging_config(context)
     utils.cleanup(context)
+    credentials = {
+        "clientId": context.config['taskcluster_client_id'],
+        "accessToken": context.config['taskcluster_access_token'],
+    }
+    if context.config.get('taskcluster_certificate'):
+        credentials['certificate'] = context.config['taskcluster_certificate']
     with aiohttp.ClientSession() as session:
         context.session = session
-        context.queue = Queue({
-            "credentials": {
-                "clientId": context.config['taskcluster_client_id'],
-                "accessToken": context.config['taskcluster_access_token'],
-            },
-        }, session=session)
+        context.queue = Queue({"credentials": credentials}, session=session)
         yield context
 
 

@@ -14,6 +14,7 @@ reqs = [
 
 tests_require = [
     "tox",
+    "virtualenv",
 ]
 
 
