@@ -73,10 +73,7 @@ def main():
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.queue = Queue({
-            'credentials': {
-                'clientId': context.config['taskcluster_client_id'],
-                'accessToken': context.config['taskcluster_access_token'],
-            }
+            'credentials': context.config['credentials'],
         }, session=context.session)
         while True:
             try:

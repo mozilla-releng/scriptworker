@@ -21,7 +21,7 @@ TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.p
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
 
 
-def read_worker_creds():
+def read_worker_creds(key="integration_credentials"):
     """
     """
     files = (
@@ -34,12 +34,7 @@ def read_worker_creds():
         with open(path, "r") as fh:
             try:
                 contents = json.load(fh)
-                creds = {}
-                for key in ("taskcluster_client_id", "taskcluster_access_token"):
-                    creds[key] = contents[key]
-                if contents.get("taskcluster_certificate"):
-                    creds['taskcluster_certificate'] = contents['taskcluster_certificate']
-                return creds
+                return contents[key]
             except (json.decoder.JSONDecodeError, KeyError):
                 pass
     raise Exception(
@@ -50,13 +45,13 @@ in one of these files:
 
 with the format
 
-    {{"taskcluster_client_id": "...", "taskcluster_access_token": "..."}}
+    {{"{key}": {{"accessToken": "...", "clientId": "...", "certificate": "..."}}}}
 
-(specify "taskcluster_certificate" in that dict as well if using temporary credentials)
+(only specify "certificate" if using temporary credentials)
 
 This clientId will need the scope assume:project:taskcluster:worker-test-scopes
 
-To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".format(files=files)
+To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".format(files=files, key=key)
     )
 
 
@@ -79,11 +74,9 @@ def build_config(override):
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 2'),
         'task_max_timeout': 60,
     })
-    config.update(read_worker_creds())
+    config['credentials'] = read_worker_creds()
     # TODO add read_worker_creds() into the main config, so we don't have to
     # include creds in the config json?
-    # Might want to be able to specify "integration" as the prefix, so look
-    # for integration_taskcluster_client_id etc
     if isinstance(override, dict):
         config.update(override)
     with open(os.path.join(basedir, "secrets.json"), "w") as fh:
@@ -97,12 +90,7 @@ def get_context(config_override):
     context.config = build_config(config_override)
     swlog.update_logging_config(context)
     utils.cleanup(context)
-    credentials = {
-        "clientId": context.config['taskcluster_client_id'],
-        "accessToken": context.config['taskcluster_access_token'],
-    }
-    if context.config.get('taskcluster_certificate'):
-        credentials['certificate'] = context.config['taskcluster_certificate']
+    credentials = context.config['credentials']
     with aiohttp.ClientSession() as session:
         context.session = session
         context.queue = Queue({"credentials": credentials}, session=session)

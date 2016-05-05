@@ -94,7 +94,9 @@ async def retry_async(func, attempts=5, sleeptime_callback=None,
             await asyncio.sleep(sleeptime_callback(attempt))
 
 
-def create_temp_creds(context, start=None, expires=None, scopes=(), name=None):
+def create_temp_creds(context, start=None, expires=None,
+                      scopes=('assume:project:taskcluster:worker-test-scopes', ),
+                      name=None):
     # now = arrow.utcnow().replace(minutes=-10)
     # start = start or now.timestamp
     # expires = expires or now.replace(days=31).timestamp

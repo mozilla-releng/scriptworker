@@ -13,7 +13,10 @@
     "task_script": ["bash", "-c", "echo foo && sleep 19 && exit 2"],
     "task_max_timeout": 1200,
 
-    "taskcluster_client_id": "...",
-    "taskcluster_access_token": "...",
+    "credentials": {
+        "clientId": "...",
+        "accessToken": "...",
+        "certificate": "..."
+    },
     "verbose": true
 }

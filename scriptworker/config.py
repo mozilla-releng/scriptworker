@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Config for scriptworker
 """
+from copy import deepcopy
 import json
 import logging
 import os
@@ -18,9 +19,11 @@ DEFAULT_CONFIG = {
     "worker_type": "dummy-worker-aki",
     "worker_id": "dummy-worker-aki1",
 
-    # Worker credentials
-    "taskcluster_client_id": "...",
-    "taskcluster_access_token": "...",
+    "credentials": {
+        "clientId": "...",
+        "accessToken": "...",
+        "certificate": "...",
+    },
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
@@ -51,6 +54,7 @@ def list_to_tuple(dictionary):
             dictionary[key] = tuple(value)
 
 
+# TODO check the credentials
 def check_config(config, path):
     messages = []
     for key, value in config.items():
@@ -63,7 +67,7 @@ def check_config(config, path):
             messages.append(
                 "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
             )
-        if value == "...":
+        if value in ("...", b"..."):
             messages.append("{} {} needs to be defined!".format(path, key))
     return messages
 
@@ -76,9 +80,9 @@ def create_config(path="secrets.json"):
               file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         secrets = json.load(fh)
-    config = dict(DEFAULT_CONFIG).copy()
+    config = deepcopy(DEFAULT_CONFIG)
     list_to_tuple(secrets)
     config.update(secrets)
     messages = check_config(config, path)

@@ -26,12 +26,15 @@ Then  create a `./secrets.json` or `~/.scriptworker` that looks like
 
 ```json
 {
-    "taskcluster_client_id": "...",
-    "taskcluster_access_token": "..."
+    "integration_credentials": {
+        "clientId": "...",
+        "accessToken": "...",
+        "certificate": "..."
+    }
 }
 ```
 
-(you can also optionally specify "taskcluster_certificate" if using temp credentials)
+(certificate is only specified if using temp creds)
 
 
 then
