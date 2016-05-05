@@ -22,10 +22,25 @@ def get_task(config):
         )
 
 
-def get_temp_creds_from_file(config):
-    path = os.path.join(config['work_dir'], "credentials.*.json")
-    files = glob.glob(path)
-    # TODO
+def get_temp_creds_from_file(config, num_files=2):
+    match = os.path.join(config['work_dir'], "credentials.*.json")
+    all_files = sorted(glob.glob(match), reverse=True)  # start with the latest file
+    if len(all_files) > num_files:
+        all_files = all_files[:num_files]
+    while all_files:
+        path = all_files.pop(0)
+        try:
+            with open(path, "r") as fh:
+                return json.load(fh)
+        except (OSError, ValueError) as exc:
+            if not all_files:
+                raise ScriptWorkerTaskException(
+                    "",
+                    super_exc=exc
+                )
+    raise ScriptWorkerTaskException(
+        "No credentials files found that match {}!".format(match)
+    )
 
 
 def validate_task_schema(task, schema):
