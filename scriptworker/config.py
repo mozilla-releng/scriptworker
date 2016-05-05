@@ -90,5 +90,6 @@ def create_config(path="secrets.json"):
         print('\n'.join(messages), file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
+    config['credentials'] = frozendict(config['credentials'])
     config = frozendict(config)
     return config
