@@ -47,6 +47,11 @@ DEFAULT_CONFIG = {
     "verbose": True,
 }
 
+CREDS_FILES = (
+    os.path.join(os.getcwd(), 'secrets.json'),
+    os.path.join(os.environ['HOME'], '.scriptworker'),
+)
+
 
 def list_to_tuple(dictionary):
     for key, value in dictionary.items():
@@ -54,7 +59,20 @@ def list_to_tuple(dictionary):
             dictionary[key] = tuple(value)
 
 
-# TODO check the credentials
+def read_worker_creds(key="credentials"):
+    """Get credentials from special files.
+    """
+    for path in CREDS_FILES:
+        if not os.path.exists(path):
+            continue
+        with open(path, "r") as fh:
+            try:
+                contents = json.load(fh)
+                return contents[key]
+            except (json.decoder.JSONDecodeError, KeyError):
+                pass
+
+
 def check_config(config, path):
     messages = []
     for key, value in config.items():
@@ -67,12 +85,12 @@ def check_config(config, path):
             messages.append(
                 "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
             )
-        if value in ("...", b"..."):
+        if value in ("...", b"...", None):
             messages.append("{} {} needs to be defined!".format(path, key))
     return messages
 
 
-def create_config(path="secrets.json"):
+def create_config(path="config.json"):
     """Create a config from DEFAULT_CONFIG, arguments, and config file.
     """
     if not os.path.exists(path):
@@ -83,6 +101,8 @@ def create_config(path="secrets.json"):
     with open(path, "r", encoding="utf-8") as fh:
         secrets = json.load(fh)
     config = deepcopy(DEFAULT_CONFIG)
+    if not secrets.get("credentials"):
+        secrets['credentials'] = read_worker_creds()
     list_to_tuple(secrets)
     config.update(secrets)
     messages = check_config(config, path)

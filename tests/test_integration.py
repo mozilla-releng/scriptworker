@@ -10,7 +10,7 @@ import json
 import os
 import pytest
 import slugid
-from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
 from scriptworker.context import Context
 import scriptworker.log as swlog
 import scriptworker.worker as worker
@@ -21,22 +21,10 @@ TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.p
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
 
 
-def read_worker_creds(key="integration_credentials"):
-    """
-    """
-    files = (
-        os.path.join(os.getcwd(), 'secrets.json'),
-        os.path.join(os.environ['HOME'], '.scriptworker'),
-    )
-    for path in files:
-        if not os.path.exists(path):
-            continue
-        with open(path, "r") as fh:
-            try:
-                contents = json.load(fh)
-                return contents[key]
-            except (json.decoder.JSONDecodeError, KeyError):
-                pass
+def read_integration_creds():
+    creds = read_worker_creds(key="integration_credentials")
+    if creds:
+        return creds
     raise Exception(
         """To run integration tests, put your worker-test clientId creds, in json format,
 in one of these files:
@@ -45,13 +33,13 @@ in one of these files:
 
 with the format
 
-    {{"{key}": {{"accessToken": "...", "clientId": "...", "certificate": "..."}}}}
+    {{"integration_credentials": {{"accessToken": "...", "clientId": "...", "certificate": "..."}}}}
 
 (only specify "certificate" if using temporary credentials)
 
 This clientId will need the scope assume:project:taskcluster:worker-test-scopes
 
-To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".format(files=files, key=key)
+To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".format(files=CREDS_FILES)
     )
 
 
@@ -74,9 +62,7 @@ def build_config(override):
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 2'),
         'task_max_timeout': 60,
     })
-    config['credentials'] = read_worker_creds()
-    # TODO add read_worker_creds() into the main config, so we don't have to
-    # include creds in the config json?
+    config['credentials'] = read_integration_creds()
     if isinstance(override, dict):
         config.update(override)
     with open(os.path.join(basedir, "secrets.json"), "w") as fh:
