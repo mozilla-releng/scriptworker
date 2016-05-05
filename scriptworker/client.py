@@ -2,6 +2,7 @@
 """Jobs running in scriptworker will use functions in this file.
 """
 import arrow
+import glob
 import json
 import jsonschema
 import os
@@ -19,6 +20,12 @@ def get_task(config):
             "Can't read task from {}!".format(path),
             super_exc=exc
         )
+
+
+def get_temp_creds_from_file(config):
+    path = os.path.join(config['work_dir'], "credentials.*.json")
+    files = glob.glob(path)
+    # TODO
 
 
 def validate_task_schema(task, schema):
