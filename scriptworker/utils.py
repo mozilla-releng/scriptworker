@@ -95,10 +95,16 @@ async def retry_async(func, attempts=5, sleeptime_callback=None,
 
 
 def create_temp_creds(client_id, access_token, start=None, expires=None,
-                      scopes=('assume:project:taskcluster:worker-test-scopes', ),
-                      name=None):
+                      scopes=None, name=None):
     now = arrow.utcnow().replace(minutes=-10)
-    start = start or now.timestamp
-    expires = expires or now.replace(days=31).timestamp
-    return createTemporaryCredentials(client_id, access_token, start, expires,
-                                      scopes, name=name)
+    start = start or now.datetime
+    expires = expires or now.replace(days=31).datetime
+    scopes = scopes or ['assume:project:taskcluster:worker-test-scopes', ]
+    creds = createTemporaryCredentials(client_id, access_token, start, expires,
+                                       scopes, name=name)
+    for key, value in creds.items():
+        try:
+            creds[key] = value.decode('utf-8')
+        except (AttributeError, UnicodeDecodeError):
+            pass
+    return creds

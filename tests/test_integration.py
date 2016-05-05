@@ -182,3 +182,15 @@ class TestIntegration(object):
                 os.chdir("integration")
                 status = await worker.run_loop(context, creds_key="integration_credentials")
             assert status is None
+
+    @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+    def test_temp_creds(self, event_loop):
+        with get_context(None) as context:
+            with remember_cwd():
+                os.chdir("integration")
+                context.temp_credentials = utils.create_temp_creds(
+                    context.credentials['clientId'], context.credentials['accessToken'],
+                    expires=arrow.utcnow().replace(minutes=10).datetime
+                )
+                result = event_loop.run_until_complete(context.temp_queue.ping())
+                assert result['alive']
