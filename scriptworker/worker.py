@@ -4,8 +4,6 @@ import asyncio
 import logging
 import sys
 
-from taskcluster.async import Queue
-
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config
 from scriptworker.context import Context
@@ -65,16 +63,14 @@ def main():
             print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)
         kwargs['path'] = sys.argv[1]
-    context.config = create_config(**kwargs)
+    context.config, credentials = create_config(**kwargs)
     update_logging_config(context)
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
-        context.queue = Queue({
-            'credentials': context.credentials,
-        }, session=context.session)
+        context.credentials = credentials
         while True:
             try:
                 loop.create_task(async_main(context))

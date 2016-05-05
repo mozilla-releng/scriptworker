@@ -52,6 +52,10 @@ class TestConfig(object):
         with open(path, "r") as fh:
             contents = json.load(fh)
         test_config.update(contents)
-        generated_config = config.create_config(path)
-        assert generated_config == frozendict(test_config)
+        test_creds = test_config['credentials']
+        del(test_config['credentials'])
+        generated_config, generated_creds = config.create_config(path)
+        assert generated_config == test_config
+        assert generated_creds == test_creds
         assert isinstance(generated_config, frozendict)
+        assert isinstance(generated_creds, frozendict)

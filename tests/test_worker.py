@@ -54,7 +54,7 @@ class TestWorker(object):
 
     def test_main(self, mocker, event_loop):
         path = os.path.join(os.path.dirname(__file__), "data", "good.json")
-        config = create_config(path)
+        config, creds = create_config(path)
         loop = mock.MagicMock()
         exceptions = [RuntimeError, ScriptWorkerException]
 
@@ -64,6 +64,7 @@ class TestWorker(object):
 
         def foo(arg):
             assert arg.config == config
+            assert arg.credentials == creds
 
         loop.run_forever = run_forever
 

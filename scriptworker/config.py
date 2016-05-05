@@ -27,6 +27,7 @@ DEFAULT_CONFIG = {
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
+    "credential_update_interval": 60,  # TODO longer
     "reclaim_interval": 5,  # TODO 300
     "poll_interval": 5,  # TODO 1 ?
 
@@ -110,6 +111,7 @@ def create_config(path="config.json"):
         print('\n'.join(messages), file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
-    config['credentials'] = frozendict(config['credentials'])
+    credentials = frozendict(secrets['credentials'])
+    del(config['credentials'])
     config = frozendict(config)
-    return config
+    return config, credentials
