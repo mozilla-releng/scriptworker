@@ -90,7 +90,7 @@ def get_context(config_override):
     context.config = build_config(config_override)
     swlog.update_logging_config(context)
     utils.cleanup(context)
-    credentials = context.config['credentials']
+    credentials = context.credentials
     with aiohttp.ClientSession() as session:
         context.session = session
         context.queue = Queue({"credentials": credentials}, session=session)

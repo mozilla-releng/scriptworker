@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import aiohttp
 import asyncio
-from copy import deepcopy
 import logging
 import sys
 
@@ -74,7 +73,7 @@ def main():
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.queue = Queue({
-            'credentials': deepcopy(context.config['credentials']),
+            'credentials': context.credentials,
         }, session=context.session)
         while True:
             try:

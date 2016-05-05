@@ -3,6 +3,7 @@
 having to pass them all around individually or create a monolithic 'self'
 object, let's point to them from a single context object.
 """
+from copy import deepcopy
 import json
 import logging
 import os
@@ -45,6 +46,13 @@ class Context(object):
         self.write_json(path, task, "Writing task file to {path}...")
         self.temp_credentials = task['credentials']
         self.reclaim_task = None
+
+    @property
+    def credentials(self):
+        """The current or most recent claimed task definition json from the queue.
+        """
+        if self.config and self.config.get("credentials"):
+            return dict(deepcopy(self.config['credentials']))
 
     @property
     def reclaim_task(self):
