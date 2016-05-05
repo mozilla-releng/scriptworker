@@ -59,6 +59,7 @@ def build_config(override):
         'artifact_upload_timeout': 60 * 2,
         'artifact_expiration_hours': 1,
         'reclaim_interval': 5,
+        'credential_update_interval': .1,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 2'),
         'task_max_timeout': 60,
     })
@@ -144,7 +145,7 @@ class TestIntegration(object):
             assert result['status']['state'] == 'pending'
             with remember_cwd():
                 os.chdir("integration")
-                status = await worker.run_loop(context)
+                status = await worker.run_loop(context, creds_key="integration_credentials")
             assert status == 2
             result = await task_status(context, task_id)
             assert result['status']['state'] == 'failed'
@@ -165,7 +166,7 @@ class TestIntegration(object):
                 os.chdir("integration")
                 with pytest.raises(RuntimeError):
                     event_loop.run_until_complete(
-                        worker.run_loop(context)
+                        worker.run_loop(context, creds_key="integration_credentials")
                     )
                     # Because we're using asyncio to kill tasks in the loop,
                     # we're going to hit a RuntimeError
@@ -179,5 +180,5 @@ class TestIntegration(object):
         with get_context(None) as context:
             with remember_cwd():
                 os.chdir("integration")
-                status = await worker.run_loop(context)
+                status = await worker.run_loop(context, creds_key="integration_credentials")
             assert status is None

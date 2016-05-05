@@ -8,7 +8,7 @@ import logging
 import os
 import shutil
 from taskcluster.utils import calculateSleepTime
-# from taskcluster.client import createTemporaryCredentials
+from taskcluster.client import createTemporaryCredentials
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 
 log = logging.getLogger(__name__)
@@ -94,11 +94,11 @@ async def retry_async(func, attempts=5, sleeptime_callback=None,
             await asyncio.sleep(sleeptime_callback(attempt))
 
 
-def create_temp_creds(context, start=None, expires=None,
+def create_temp_creds(client_id, access_token, start=None, expires=None,
                       scopes=('assume:project:taskcluster:worker-test-scopes', ),
                       name=None):
-    # now = arrow.utcnow().replace(minutes=-10)
-    # start = start or now.timestamp
-    # expires = expires or now.replace(days=31).timestamp
-    pass
-    # createTemporaryCredentials(clientId, accessToken, start, expiry, scopes, name=None)
+    now = arrow.utcnow().replace(minutes=-10)
+    start = start or now.timestamp
+    expires = expires or now.replace(days=31).timestamp
+    return createTemporaryCredentials(client_id, access_token, start, expires,
+                                      scopes, name=name)
