@@ -4,16 +4,14 @@
 
 
 class ScriptWorkerException(Exception):
-    pass
+    def __init__(self, msg, **kwargs):
+        super(ScriptWorkerException, self).__init__(self, msg)
+        self.kwargs = kwargs
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
-    def __init__(self, msg, **kwargs):
-        super(ScriptWorkerRetryException, self).__init__(self, msg)
-        self.kwargs = kwargs
+    pass
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
-    def __init__(self, msg, **kwargs):
-        super(ScriptWorkerTaskException, self).__init__(self, msg)
-        self.kwargs = kwargs
+    pass
