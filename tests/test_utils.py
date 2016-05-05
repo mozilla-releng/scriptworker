@@ -143,3 +143,11 @@ class TestUtils(object):
                 status = await utils.retry_async(always_fail)
                 assert status is None
         assert retry_count['always_fail'] == 5
+
+    def test_temp_creds(self):
+        with mock.patch.object(utils, 'createTemporaryCredentials') as p:
+            utils.create_temp_creds('clientId', 'accessToken', 'start', 'expires')
+            assert p.called_once_with(
+                'clientId', 'accessToken', 'start', 'expires',
+                ['assume:project:taskcluster:worker-test-scopes', ], name=None
+            )
