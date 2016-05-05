@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 import aiohttp
+import arrow
 import asyncio
 import logging
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import create_config
+from scriptworker.config import create_config, read_worker_creds
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.log import update_logging_config
@@ -15,7 +16,7 @@ from scriptworker.utils import cleanup, retry_request
 log = logging.getLogger(__name__)
 
 
-async def run_loop(context):
+async def run_loop(context, creds_key="credentials"):
     """Split this out of the async_main while loop for easier testing.
     """
     loop = asyncio.get_event_loop()
@@ -43,6 +44,10 @@ async def run_loop(context):
             return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
+        if arrow.utcnow().timestamp - context.credentials_timestamp > context.config['credential_update_interval']:
+            credentials = read_worker_creds(key=creds_key)
+            if credentials and credentials != context.credentials:
+                context.credentials = credentials
 
 
 async def async_main(context):

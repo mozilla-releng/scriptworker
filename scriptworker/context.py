@@ -3,6 +3,7 @@
 having to pass them all around individually or create a monolithic 'self'
 object, let's point to them from a single context object.
 """
+import arrow
 from copy import deepcopy
 import json
 import logging
@@ -23,10 +24,11 @@ class Context(object):
     config and easier overriding in tests.
     """
     config = None
+    credentials_timestamp = None
     poll_task_urls = None
-    session = None
-    queue = None
     proc = None
+    queue = None
+    session = None
     temp_queue = None
     _credentials = None
     _task = None  # This assumes a single task per worker.
@@ -68,6 +70,8 @@ class Context(object):
         """
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
+        if creds:
+            self.credentials_timestamp = arrow.utcnow().timestamp
 
     def create_queue(self, credentials):
         if credentials:
