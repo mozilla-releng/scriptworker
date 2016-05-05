@@ -92,3 +92,13 @@ class TestContext(object):
         assert len(files) == 2, "Invalid number of credentials files!"
         assert get_json(files[0]) == task['credentials']
         assert get_json(files[1]) == reclaim_task['credentials']
+
+    def test_set_reset_task(self, context, task, reclaim_task):
+        context.task = task
+        context.reclaim_task = reclaim_task
+        context.task = None
+        assert context.task is None
+        assert context.reclaim_task is None
+        assert context.proc is None
+        assert context.temp_credentials is None
+        assert context.temp_queue is None
