@@ -3,6 +3,7 @@
 """Scriptworker integration tests.
 """
 import aiohttp
+import arrow
 from contextlib import contextmanager
 from copy import deepcopy
 import json
