@@ -35,7 +35,7 @@ def get_temp_creds_from_file(config, num_files=2):
         except (OSError, ValueError) as exc:
             if not all_files:
                 raise ScriptWorkerTaskException(
-                    "",
+                    "Can't load credentials from latest {} {}!".format(num_files, match),
                     super_exc=exc
                 )
     raise ScriptWorkerTaskException(
