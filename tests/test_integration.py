@@ -66,7 +66,7 @@ def build_config(override):
     creds = read_integration_creds()
     if isinstance(override, dict):
         config.update(override)
-    with open(os.path.join(basedir, "secrets.json"), "w") as fh:
+    with open(os.path.join(basedir, "config.json"), "w") as fh:
         json.dump(config, fh, indent=2, sort_keys=True)
     return config, creds
 

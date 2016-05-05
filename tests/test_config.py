@@ -5,6 +5,7 @@
 from copy import deepcopy
 from frozendict import frozendict
 import json
+import mock
 import os
 import pytest
 import scriptworker.config as config
@@ -59,3 +60,19 @@ class TestConfig(object):
         assert generated_creds == test_creds
         assert isinstance(generated_config, frozendict)
         assert isinstance(generated_creds, frozendict)
+
+    def test_bad_worker_creds(self):
+        path = os.path.join(os.path.dirname(__file__), "data", "good.json")
+        with mock.patch.object(config, 'CREDS_FILES', new=(path, )):
+            assert config.read_worker_creds(key="nonexistent_key") is None
+
+    def test_no_creds_in_config(self):
+        fake_creds = {"foo": "bar"}
+
+        def fake_read(*args, **kwargs):
+            return deepcopy(fake_creds)
+
+        path = os.path.join(os.path.dirname(__file__), "data", "no_creds.json")
+        with mock.patch.object(config, 'read_worker_creds', new=fake_read):
+            _, creds = config.create_config(path=path)
+        assert creds == fake_creds
