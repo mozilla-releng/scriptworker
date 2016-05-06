@@ -2,11 +2,13 @@
 """Jobs running in scriptworker will use functions in this file.
 """
 import arrow
+import asyncio
 import glob
 import json
 import jsonschema
 import os
 from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.utils import retry_async
 
 
 def get_task(config):
@@ -25,13 +27,16 @@ def get_task(config):
         )
 
 
-async def get_temp_creds_from_file(config, num_files=2):
+async def _get_temp_creds_from_file(config, num_files=2):
     """The worker writes a credentials.TIMESTAMP.json with temp creds to
     the work_dir every time claimTask or reclaimTask is run.
 
     We should get our temp creds from the latest credentials file, but let's
     look at the latest 2 files just in case we try to read the credentials file
     while the next one is being written to.
+
+    There isn't a strong reason for this function to be async, other than
+    the existence of scriptworker.utils.retry_async.
     """
     match = os.path.join(config['work_dir'], "credentials.*.json")
     all_files = sorted(glob.glob(match), reverse=True)  # start with the latest file
@@ -51,6 +56,16 @@ async def get_temp_creds_from_file(config, num_files=2):
     raise ScriptWorkerTaskException(
         "No credentials files found that match {}!".format(match)
     )
+
+
+def get_temp_creds_from_file(config):
+    """Retry _get_temp_creds_from_file
+    """
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(retry_async(
+        _get_temp_creds_from_file, retry_exceptions=(ScriptWorkerTaskException,),
+        args=(config, ),
+    ))
 
 
 def validate_task_schema(task, schema):
