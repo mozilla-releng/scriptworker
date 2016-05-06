@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 import json
 import os
+import pprint
 import pytest
 import slugid
 from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
@@ -16,7 +17,6 @@ from scriptworker.context import Context
 import scriptworker.log as swlog
 import scriptworker.worker as worker
 import scriptworker.utils as utils
-from taskcluster.async import Queue
 
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
@@ -65,6 +65,7 @@ def build_config(override):
         'task_max_timeout': 60,
     })
     creds = read_integration_creds()
+    del(config['credentials'])
     if isinstance(override, dict):
         config.update(override)
     with open(os.path.join(basedir, "config.json"), "w") as fh:
@@ -81,7 +82,30 @@ def get_context(config_override):
     with aiohttp.ClientSession() as session:
         context.session = session
         context.credentials = credentials
-        context.queue = Queue({"credentials": credentials}, session=session)
+        yield context
+
+
+def get_temp_creds(context):
+    if 'certificate' in context.credentials:
+        return
+    temp_creds = utils.create_temp_creds(
+        context.credentials['clientId'],
+        context.credentials['accessToken'],
+        expires=arrow.utcnow().replace(minutes=10).datetime,
+    )
+    if temp_creds:
+        context.credentials = temp_creds
+        print("Using temp creds!")
+        pprint.pprint(temp_creds)
+        pprint.pprint(context.queue.options['credentials'])
+    else:
+        raise Exception("Can't get temp_creds!")
+
+
+@contextmanager
+def get_temp_creds_context(config_override):
+    with get_context(config_override) as context:
+        get_temp_creds(context)
         yield context
 
 
@@ -108,10 +132,11 @@ def remember_cwd():
 class TestIntegration(object):
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     @pytest.mark.asyncio
-    async def test_run_successful_task(self, event_loop):
+    @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+    async def test_run_successful_task(self, event_loop, context_function):
         task_id = slugid.nice().decode('utf-8')
         task_group_id = slugid.nice().decode('utf-8')
-        with get_context(None) as context:
+        with context_function(None) as context:
             result = await create_task(context, task_id, task_group_id)
             assert result['status']['state'] == 'pending'
             with remember_cwd():
@@ -122,13 +147,14 @@ class TestIntegration(object):
             assert result['status']['state'] == 'failed'
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-    def test_run_maxtimeout(self, event_loop):
+    @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+    def test_run_maxtimeout(self, event_loop, context_function):
         task_id = slugid.nice().decode('utf-8')
         task_group_id = slugid.nice().decode('utf-8')
         partial_config = {
             'task_max_timeout': 2,
         }
-        with get_context(partial_config) as context:
+        with context_function(partial_config) as context:
             result = event_loop.run_until_complete(
                 create_task(context, task_id, task_group_id)
             )
@@ -147,16 +173,18 @@ class TestIntegration(object):
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
     @pytest.mark.asyncio
-    async def test_empty_queue(self, event_loop):
-        with get_context(None) as context:
+    @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+    async def test_empty_queue(self, event_loop, context_function):
+        with context_function(None) as context:
             with remember_cwd():
                 os.chdir("integration")
                 status = await worker.run_loop(context, creds_key="integration_credentials")
             assert status is None
 
     @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-    def test_temp_creds(self, event_loop):
-        with get_context(None) as context:
+    @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+    def test_temp_creds(self, event_loop, context_function):
+        with context_function(None) as context:
             with remember_cwd():
                 os.chdir("integration")
                 context.temp_credentials = utils.create_temp_creds(
