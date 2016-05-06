@@ -44,6 +44,10 @@ class SuccessfulQueue(object):
         self.info = ['reportFailed', args, kwargs]
 
     @pytest.mark.asyncio
+    async def reportException(self, *args, **kwargs):
+        self.info = ['reportException', args, kwargs]
+
+    @pytest.mark.asyncio
     async def createArtifact(self, *args, **kwargs):
         self.info = ['createArtifact', args, kwargs]
         return {

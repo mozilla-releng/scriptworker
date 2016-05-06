@@ -39,7 +39,7 @@ def context(tmpdir_factory):
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,
         'reclaim_interval': 0.001,
-        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 2'),
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 1'),
         'task_max_timeout': .1,
     }
     context.task = {
@@ -85,9 +85,9 @@ class TestTask(object):
     async def test_run_task(self, context):
         status = await task.run_task(context)
         log_file, error_file = log.get_log_filenames(context)
-        assert read(log_file) in ("ERROR bar\nfoo\nexit code: 2\n", "foo\nERROR bar\nexit code: 2\n")
+        assert read(log_file) in ("ERROR bar\nfoo\nexit code: 1\n", "foo\nERROR bar\nexit code: 1\n")
         assert read(error_file) == "bar\n"
-        assert status == 2
+        assert status == 1
 
     @pytest.mark.asyncio
     async def test_reportCompleted(self, context, successful_queue):
@@ -102,6 +102,13 @@ class TestTask(object):
             p.return_value = successful_queue
             await task.complete_task(context, 1)
         assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
+
+    @pytest.mark.asyncio
+    async def test_reportException(self, context, successful_queue):
+        with mock.patch('scriptworker.task.get_temp_queue') as p:
+            p.return_value = successful_queue
+            await task.complete_task(context, 2)
+        assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
     @pytest.mark.asyncio
     async def test_complete_task_409(self, context, unsuccessful_queue):

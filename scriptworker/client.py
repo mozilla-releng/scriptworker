@@ -24,7 +24,7 @@ def get_task(config):
     except (OSError, ValueError) as exc:
         raise ScriptWorkerTaskException(
             "Can't read task from {}!\n{}".format(path, str(exc)),
-            exit_code=STATUSES['internal_error']
+            exit_code=STATUSES['internal-error']
         )
 
 
@@ -52,11 +52,11 @@ async def _get_temp_creds_from_file(config, num_files=2):
             if not all_files:
                 raise ScriptWorkerTaskException(
                     "Can't load credentials from latest {} {}!\n{}".format(num_files, match, str(exc)),
-                    exit_code=STATUSES['internal_error']
+                    exit_code=STATUSES['internal-error']
                 )
     raise ScriptWorkerTaskException(
         "No credentials files found that match {}!".format(match),
-        exit_code=STATUSES['internal_error']
+        exit_code=STATUSES['internal-error']
     )
 
 
@@ -80,7 +80,7 @@ def validate_task_schema(task, schema):
     except jsonschema.exceptions.ValidationError as exc:
         raise ScriptWorkerTaskException(
             "Can't validate task schema!\n{}".format(str(exc)),
-            exit_code=STATUSES['malformed_payload']
+            exit_code=STATUSES['malformed-payload']
         )
 
 

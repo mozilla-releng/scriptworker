@@ -61,7 +61,7 @@ def build_config(override):
         'artifact_expiration_hours': 1,
         'reclaim_interval': 5,
         'credential_update_interval': .1,
-        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 2'),
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
     })
     creds = read_integration_creds()
@@ -142,7 +142,7 @@ class TestIntegration(object):
             with remember_cwd():
                 os.chdir("integration")
                 status = await worker.run_loop(context, creds_key="integration_credentials")
-            assert status == 2
+            assert status == 1
             result = await task_status(context, task_id)
             assert result['status']['state'] == 'failed'
 

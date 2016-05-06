@@ -27,12 +27,13 @@ log = logging.getLogger(__name__)
 STATUSES = {
     'success': 0,
     'failure': 1,
-    'worker_shutdown': 2,
-    'malformed_payload': 3,
-    'resource_unavailable': 4,
-    'internal_error': 5,
-    'superseded': 5,
+    'worker-shutdown': 2,
+    'malformed-payload': 3,
+    'resource-unavailable': 4,
+    'internal-error': 5,
+    'superseded': 6,
 }
+REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
 
 
 async def run_task(context):
@@ -184,12 +185,14 @@ async def complete_task(context, result):
         if result == 0:
             log.debug("Reporting task complete...")
             await temp_queue.reportCompleted(*args)
+        elif result in list(range(2, 7)):
+            reason = REVERSED_STATUSES[result]
+            log.debug("Reporting task exception {}...".format(reason))
+            payload = {"reason": reason}
+            await temp_queue.reportException(*args, payload)
         else:
             log.debug("Reporting task failed...")
             await temp_queue.reportFailed(*args)
-        # TODO reportException:
-        #  worker-shutdown malformed-payload resource-unavailable internal-error superseded
-        # TODO kill task results: sigint == -2
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.debug("409: not reporting complete/failed.")
