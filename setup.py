@@ -59,8 +59,13 @@ setup(
         ],
     },
     zip_safe=True,
-    license="MPL2",
+    license="MPL 2.0",
     install_requires=reqs,
     tests_require=tests_require,
     cmdclass={'test': Tox},
+    classifiers=(
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+        'Programming Language :: Python :: 3.5',
+    ),
 )
