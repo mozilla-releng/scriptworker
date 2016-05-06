@@ -2,10 +2,7 @@
 # coding=utf-8
 """Test scriptworker.client
 """
-import arrow
-import asyncio
-import glob
-import mock
+# import mock
 import os
 import pytest
 from scriptworker.exceptions import ScriptWorkerTaskException
