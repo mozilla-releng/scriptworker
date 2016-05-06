@@ -3,6 +3,7 @@
 """Test scriptworker.client
 """
 import arrow
+import json
 import mock
 import os
 import pytest
@@ -14,6 +15,8 @@ import scriptworker.utils as utils
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
 CLIENT_CREDS = os.path.join(TEST_DATA_DIR, "client_credentials.json")
+SCHEMA = os.path.join(TEST_DATA_DIR, "basic_schema.json")
+BASIC_TASK = os.path.join(TEST_DATA_DIR, "basic_task.json")
 
 
 @pytest.fixture(scope='function')
@@ -29,6 +32,12 @@ def config(tmpdir_factory):
         'scheduler_id': 'scheduler_id',
         'worker_type': 'worker_type',
     }
+
+
+@pytest.fixture(scope='function')
+def schema():
+    with open(SCHEMA, "r") as fh:
+        return json.load(fh)
 
 
 def populate_credentials(config, sources, start=None):
@@ -48,11 +57,8 @@ class TestClient(object):
             client.get_task(config)
 
     def test_get_task(self, config):
-        copyfile(
-            os.path.join(TEST_DATA_DIR, "basic_task.json"),
-            os.path.join(config['work_dir'], "task.json"),
-        )
-        assert client.get_task(config) == {"this_is_a_task": True}
+        copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
+        assert client.get_task(config)["this_is_a_task"] is True
 
     def test_retry_fail_creds(self, config):
         populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
@@ -63,3 +69,14 @@ class TestClient(object):
     def test_get_missing_creds(self, config, event_loop):
         with pytest.raises(ScriptWorkerTaskException):
             event_loop.run_until_complete(client._get_temp_creds_from_file(config))
+
+    def test_validate_task(self, schema):
+        with open(BASIC_TASK, "r") as fh:
+            task = json.load(fh)
+        client.validate_task_schema(task['task'], schema)
+
+    def test_invalid_task(self, schema):
+        with open(BASIC_TASK, "r") as fh:
+            task = json.load(fh)
+        with pytest.raises(ScriptWorkerTaskException):
+            client.validate_task_schema(task, schema)

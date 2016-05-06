@@ -1,3 +1,8 @@
 {
-    "task": {"this_is_a_task": true}
+    "task": {
+        "this_is_a_task": true,
+        "payload": {
+            "payload_required_property": "..."
+        }
+    }
 }
