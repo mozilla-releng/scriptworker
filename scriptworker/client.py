@@ -10,6 +10,9 @@ from scriptworker.exceptions import ScriptWorkerTaskException
 
 
 def get_task(config):
+    """The worker writes a task.json to the work_dir; the task needs to be
+    able to retrieve it.
+    """
     try:
         path = os.path.join(config['work_dir'], "task.json")
         with open(path, "r") as fh:
@@ -22,7 +25,14 @@ def get_task(config):
         )
 
 
-def get_temp_creds_from_file(config, num_files=2):
+async def get_temp_creds_from_file(config, num_files=2):
+    """The worker writes a credentials.TIMESTAMP.json with temp creds to
+    the work_dir every time claimTask or reclaimTask is run.
+
+    We should get our temp creds from the latest credentials file, but let's
+    look at the latest 2 files just in case we try to read the credentials file
+    while the next one is being written to.
+    """
     match = os.path.join(config['work_dir'], "credentials.*.json")
     all_files = sorted(glob.glob(match), reverse=True)  # start with the latest file
     if len(all_files) > num_files:
@@ -44,6 +54,10 @@ def get_temp_creds_from_file(config, num_files=2):
 
 
 def validate_task_schema(task, schema):
+    """Given task json and a jsonschema, let's validate the task.
+    Most likely this will operate on the task_json['task'] rather than
+    the entire response from claimTask.
+    """
     try:
         jsonschema.validate(task, schema)
     except jsonschema.exceptions.ValidationError as exc:
