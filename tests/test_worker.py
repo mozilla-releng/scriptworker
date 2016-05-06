@@ -27,6 +27,8 @@ def context(tmpdir_factory):
     context.config['work_dir'] = os.path.join(str(temp_dir), "work")
     context.config['artifact_dir'] = os.path.join(str(temp_dir), "artifact")
     context.config['poll_interval'] = .1
+    context.config['credential_update_interval'] = .1
+    context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
     context.poll_task_urls = {
         'queues': [{
             "signedPollUrl": "poll0",
@@ -94,4 +96,67 @@ class TestWorker(object):
         with mock.patch.object(worker, 'find_task', new=raise_swe):
             status = event_loop.run_until_complete(worker.run_loop(context))
 
+        assert status is None
+
+    def test_mocker_run_loop(self, context, successful_queue, event_loop, mocker):
+        task = {"foo": "bar", "credentials": {"a": "b"}}
+
+        async def find_task(*args, **kwargs):
+            return deepcopy(task)
+
+        async def noop(*args, **kwargs):
+            return
+
+        context.queue = successful_queue
+        mocker.patch.object(worker, "find_task", new=find_task)
+        mocker.patch.object(worker, "reclaim_task", new=noop)
+        mocker.patch.object(worker, "run_task", new=find_task)
+        mocker.patch.object(worker, "upload_artifacts", new=noop)
+        mocker.patch.object(worker, "complete_task", new=noop)
+        status = event_loop.run_until_complete(worker.run_loop(context))
+        assert status == task
+
+    def test_mocker_run_loop_noop(self, context, successful_queue, event_loop, mocker):
+        async def find_task(*args, **kwargs):
+            return None
+
+        async def noop(*args, **kwargs):
+            return
+
+        def noop_sync(*args, **kwargs):
+            return
+
+        context.queue = successful_queue
+        mocker.patch.object(worker, "find_task", new=find_task)
+        mocker.patch.object(worker, "reclaim_task", new=noop)
+        mocker.patch.object(worker, "run_task", new=find_task)
+        mocker.patch.object(worker, "upload_artifacts", new=noop)
+        mocker.patch.object(worker, "complete_task", new=noop)
+        mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
+        status = event_loop.run_until_complete(worker.run_loop(context))
+        assert context.credentials is None
+        assert status is None
+
+    def test_mocker_run_loop_noop_update_creds(self, context, successful_queue,
+                                               event_loop, mocker):
+        new_creds = {"new_creds": "true"}
+
+        async def find_task(*args, **kwargs):
+            return None
+
+        async def noop(*args, **kwargs):
+            return
+
+        def get_creds(*args, **kwargs):
+            return deepcopy(new_creds)
+
+        context.queue = successful_queue
+        mocker.patch.object(worker, "find_task", new=find_task)
+        mocker.patch.object(worker, "reclaim_task", new=noop)
+        mocker.patch.object(worker, "run_task", new=find_task)
+        mocker.patch.object(worker, "upload_artifacts", new=noop)
+        mocker.patch.object(worker, "complete_task", new=noop)
+        mocker.patch.object(worker, "read_worker_creds", new=get_creds)
+        status = event_loop.run_until_complete(worker.run_loop(context))
+        assert context.credentials == new_creds
         assert status is None

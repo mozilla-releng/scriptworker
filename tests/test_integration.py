@@ -11,6 +11,7 @@ import os
 import pytest
 import slugid
 from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
+from scriptworker.client import integration_create_task_payload
 from scriptworker.context import Context
 import scriptworker.log as swlog
 import scriptworker.worker as worker
@@ -85,37 +86,7 @@ def get_context(config_override):
 
 
 async def create_task(context, task_id, task_group_id):
-    task_group_id = task_group_id or slugid.nice().decode('utf-8')
-    now = arrow.utcnow()
-    deadline = now.replace(hours=1)
-    expires = now.replace(days=3)
-    payload = {
-        'provisionerId': context.config['provisioner_id'],
-        'schedulerId': context.config['scheduler_id'],
-        'workerType': context.config['worker_type'],
-        'taskGroupId': task_group_id,
-        'dependencies': [],
-        'requires': 'all-completed',
-        'routes': [],
-        'priority': 'normal',
-        'retries': 5,
-        'created': now.isoformat(),
-        'deadline': deadline.isoformat(),
-        'expires': expires.isoformat(),
-        'scopes': [],
-        'payload': {
-        },
-        'metadata': {
-            'name': 'ScriptWorker Integration Test',
-            'description': 'ScriptWorker Integration Test',
-            'owner': 'release+python@mozilla.com',
-            'source': 'https://github.com/escapewindow/scriptworker/'
-        },
-        'tags': {},
-        'extra': {
-            'test_extra': 1,
-        }
-    }
+    payload = integration_create_task_payload(context.config, task_group_id)
     return await context.queue.createTask(task_id, payload)
 
 

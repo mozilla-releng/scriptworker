@@ -8,6 +8,7 @@ reqs = [
     "arrow",
     "defusedxml",
     "frozendict",
+    "jsonschema",
     "taskcluster",
     "virtualenv",
 ]
