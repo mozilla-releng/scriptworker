@@ -80,3 +80,7 @@ class TestClient(object):
             task = json.load(fh)
         with pytest.raises(ScriptWorkerTaskException):
             client.validate_task_schema(task, schema)
+
+    def test_payload(self, config):
+        payload = client.integration_create_task_payload(config, 'a1234')
+        assert payload['scopes'] == []

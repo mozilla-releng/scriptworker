@@ -146,8 +146,13 @@ class TestUtils(object):
 
     def test_temp_creds(self):
         with mock.patch.object(utils, 'createTemporaryCredentials') as p:
-            utils.create_temp_creds('clientId', 'accessToken', 'start', 'expires')
+            p.return_value = {
+                "one": b"one",
+                "two": "two",
+            }
+            creds = utils.create_temp_creds('clientId', 'accessToken', 'start', 'expires')
             assert p.called_once_with(
                 'clientId', 'accessToken', 'start', 'expires',
                 ['assume:project:taskcluster:worker-test-scopes', ], name=None
             )
+            assert creds == {"one": "one", "two": "two"}

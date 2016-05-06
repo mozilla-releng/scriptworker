@@ -76,3 +76,7 @@ class TestConfig(object):
         with mock.patch.object(config, 'read_worker_creds', new=fake_read):
             _, creds = config.create_config(path=path)
         assert creds == fake_creds
+
+    def test_missing_creds(self):
+        with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
+            assert config.read_worker_creds() is None
