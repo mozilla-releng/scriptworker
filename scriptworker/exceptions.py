@@ -4,9 +4,7 @@
 
 
 class ScriptWorkerException(Exception):
-    def __init__(self, msg, **kwargs):
-        super(ScriptWorkerException, self).__init__(self, msg)
-        self.kwargs = kwargs
+    pass
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
@@ -14,4 +12,16 @@ class ScriptWorkerRetryException(ScriptWorkerException):
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
-    pass
+    """To use:
+
+    import sys
+    import traceback
+    try:
+        ...
+    except ScriptWorkerTaskException as exc:
+        traceback.print_exc()
+        sys.exit(exc.exit_code)
+    """
+    def __init__(self, *args, exit_code=1, **kwargs):
+        self.exit_code = exit_code
+        super(ScriptWorkerTaskException, self).__init__(*args, **kwargs)

@@ -25,10 +25,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
             log.debug("Status {}".format(resp.status))
             message = "Bad status {}".format(resp.status)
             if resp.status in retry:
-                raise ScriptWorkerRetryException(
-                    message,
-                    status=resp.status
-                )
+                raise ScriptWorkerRetryException(message)
             if resp.status not in good:
                 raise ScriptWorkerException(message)
             return await resp.text()

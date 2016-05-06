@@ -24,6 +24,17 @@ from scriptworker.utils import retry_async
 log = logging.getLogger(__name__)
 
 
+STATUSES = {
+    'success': 0,
+    'failure': 1,
+    'worker_shutdown': 2,
+    'malformed_payload': 3,
+    'resource_unavailable': 4,
+    'internal_error': 5,
+    'superseded': 5,
+}
+
+
 async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 
@@ -135,7 +146,6 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
                 if resp.status not in (200, 204):
                     raise ScriptWorkerRetryException(
                         "Bad status {}".format(resp.status),
-                        status=resp.status
                     )
 
 

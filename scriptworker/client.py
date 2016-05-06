@@ -8,6 +8,7 @@ import json
 import jsonschema
 import os
 from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.task import STATUSES
 from scriptworker.utils import retry_async
 
 
@@ -22,8 +23,8 @@ def get_task(config):
             return contents['task']
     except (OSError, ValueError) as exc:
         raise ScriptWorkerTaskException(
-            "Can't read task from {}!".format(path),
-            super_exc=exc
+            "Can't read task from {}!\n{}".format(path, str(exc)),
+            exit_code=STATUSES['internal_error']
         )
 
 
@@ -50,11 +51,12 @@ async def _get_temp_creds_from_file(config, num_files=2):
         except (OSError, ValueError) as exc:
             if not all_files:
                 raise ScriptWorkerTaskException(
-                    "Can't load credentials from latest {} {}!".format(num_files, match),
-                    super_exc=exc
+                    "Can't load credentials from latest {} {}!\n{}".format(num_files, match, str(exc)),
+                    exit_code=STATUSES['internal_error']
                 )
     raise ScriptWorkerTaskException(
-        "No credentials files found that match {}!".format(match)
+        "No credentials files found that match {}!".format(match),
+        exit_code=STATUSES['internal_error']
     )
 
 
@@ -77,8 +79,8 @@ def validate_task_schema(task, schema):
         jsonschema.validate(task, schema)
     except jsonschema.exceptions.ValidationError as exc:
         raise ScriptWorkerTaskException(
-            "Can't validate task schema!",
-            super_exc=exc
+            "Can't validate task schema!\n{}".format(str(exc)),
+            exit_code=STATUSES['malformed_payload']
         )
 
 
