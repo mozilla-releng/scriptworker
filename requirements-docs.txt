@@ -1,0 +1,3 @@
+# Specifically for generating docs
+-e .
+Sphinx
