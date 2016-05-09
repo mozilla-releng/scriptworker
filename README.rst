@@ -8,6 +8,10 @@ scriptworker
 .. image:: https://coveralls.io/repos/github/escapewindow/scriptworker/badge.svg?branch=master
     :target: https://coveralls.io/github/escapewindow/scriptworker?branch=master
 
+.. image:: https://readthedocs.org/projects/scriptworker/badge/?version=latest
+    :target: http://scriptworker.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 Scriptworker implements the `TaskCluster worker model`_, then launches a pre-defined script.
 
 .. _TaskCluster worker model: http://docs.taskcluster.net/queue/worker-interaction/
