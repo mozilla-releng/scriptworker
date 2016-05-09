@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division, print_function
+import json
+import os
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 import sys
@@ -17,6 +18,10 @@ tests_require = [
     "tox",
     "virtualenv",
 ]
+
+PATH = os.path.join(os.path.dirname(__file__), "version.json")
+with open(PATH) as filehandle:
+    VERSION = json.load(filehandle)['version_string']
 
 
 class Tox(TestCommand):
@@ -46,7 +51,7 @@ class Tox(TestCommand):
 
 setup(
     name="scriptworker",
-    version="0.1",
+    version=VERSION,
     description="TaskCluster Script Worker",
     author="Mozilla Release Engineering",
     author_email="release+python@mozilla.com",
