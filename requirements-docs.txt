@@ -1,4 +1,6 @@
 # Specifically for generating docs
 -e .
+auxlib
+conda
 Sphinx
 sphinx_rtd_theme
