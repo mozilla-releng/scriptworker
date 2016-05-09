@@ -1,3 +1,4 @@
 # Specifically for generating docs
 -e .
 Sphinx
+sphinx_rtd_theme
