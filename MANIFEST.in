@@ -2,7 +2,7 @@ recursive-include scriptworker/data *
 recursive-include scriptworker/test *
 
 include LICENSE
-include README.md
+include README.rst
 include config_example.json
 
 recursive-exclude * __pycache__
