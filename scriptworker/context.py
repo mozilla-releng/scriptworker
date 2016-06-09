@@ -52,7 +52,7 @@ class Context(object):
         self.proc = None
         path = os.path.join(self.config['work_dir'], "task.json")
         self.write_json(path, task, "Writing task file to {path}...")
-        if task:
+        if task and task.get('credentials'):
             self.temp_credentials = task['credentials']
         else:
             self.temp_credentials = None

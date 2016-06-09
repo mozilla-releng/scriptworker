@@ -58,7 +58,7 @@ class TestClient(object):
 
     def test_get_task(self, config):
         copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
-        assert client.get_task(config)['task']["this_is_a_task"] is True
+        assert client.get_task(config)["this_is_a_task"] is True
 
     def test_retry_fail_creds(self, config):
         populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
