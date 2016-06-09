@@ -20,7 +20,7 @@ def get_task(config):
         path = os.path.join(config['work_dir'], "task.json")
         with open(path, "r") as fh:
             contents = json.load(fh)
-            return contents['task']
+            return contents
     except (OSError, ValueError) as exc:
         raise ScriptWorkerTaskException(
             "Can't read task from {}!\n{}".format(path, str(exc)),
