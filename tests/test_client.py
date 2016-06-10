@@ -73,13 +73,13 @@ class TestClient(object):
     def test_validate_task(self, schema):
         with open(BASIC_TASK, "r") as fh:
             task = json.load(fh)
-        client.validate_task_schema(task['task'], schema)
+        client.validate_task_schema(task, schema)
 
     def test_invalid_task(self, schema):
         with open(BASIC_TASK, "r") as fh:
             task = json.load(fh)
         with pytest.raises(ScriptWorkerTaskException):
-            client.validate_task_schema(task, schema)
+            client.validate_task_schema({'foo': task}, schema)
 
     def test_payload(self, config):
         payload = client.integration_create_task_payload(config, 'a1234')
