@@ -6,7 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 ### Changed
-- Pinned pytest-asyncio to 0.3.0 because 0.4.1 hits closed event loop errors.
+- Context now has a `claim_task` property that stores the output from `claimTask`.  `Context.task` is now the task definition itself.
 
 ### Fixed
 
@@ -14,3 +14,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - bundled version.json
 - CHANGELOG.md
+
+### Changed
+- Pinned `pytest-asyncio` to 0.3.0 because 0.4.1 hits closed event loop errors.
