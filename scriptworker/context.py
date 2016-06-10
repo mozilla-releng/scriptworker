@@ -16,7 +16,6 @@ from taskcluster.async import Queue
 log = logging.getLogger(__name__)
 
 
-# TODO create a WorkerContext child, so child tasks can use Context?
 class Context(object):
     """ Basic config holding object.
 
@@ -105,7 +104,7 @@ class Context(object):
             path = os.path.join(self.config['work_dir'],
                                 "reclaim_task.{}.json".format(time.time()))
             self.write_json(path, value, "Writing reclaim_task file to {path}...")
-            # TODO we may not need the reclaim_task.json or credentials.json...
+            # XXX we may not need the reclaim_task.json or credentials.json...
             self.temp_credentials = value['credentials']
 
     @property
