@@ -15,20 +15,27 @@ log = logging.getLogger(__name__)
 
 
 async def request(context, url, timeout=60, method='get', good=(200, ),
-                  retry=tuple(range(500, 512))):
+                  retry=tuple(range(500, 512)), return_type='text', **kwargs):
     """Async aiohttp request wrapper
     """
     session = context.session
     with aiohttp.Timeout(timeout):
         log.debug("{} {}".format(method.upper(), url))
-        async with session.request(method, url) as resp:
+        async with session.request(method, url, **kwargs) as resp:
             log.debug("Status {}".format(resp.status))
             message = "Bad status {}".format(resp.status)
             if resp.status in retry:
                 raise ScriptWorkerRetryException(message)
             if resp.status not in good:
                 raise ScriptWorkerException(message)
-            return await resp.text()
+            if return_type == 'text':
+                return await resp.text()
+            if return_type == 'content':
+                return await resp.content()
+            elif return_type == 'json':
+                return await resp.json()
+            else:
+                return resp
 
 
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),

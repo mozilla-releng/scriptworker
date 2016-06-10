@@ -7,6 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - Context now has a `claim_task` property that stores the output from `claimTask`.  `Context.task` is now the task definition itself.
+- `scriptworker.utils.request` now takes additional kwargs to be a more versatile function.
 
 ### Fixed
 
