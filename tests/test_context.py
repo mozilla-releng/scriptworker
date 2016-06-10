@@ -21,10 +21,13 @@ def context(tmpdir_factory):
 
 
 @pytest.fixture(scope='function')
-def task():
+def claim_task():
     return {
         "credentials": {
             "task_credentials": True,
+        },
+        "task": {
+            "task_defn": True,
         }
     }
 
@@ -64,39 +67,42 @@ def get_json(path):
 class TestContext(object):
     def test_empty_context(self, context):
         assert context.task is None
+        assert context.claim_task is None
         assert context.reclaim_task is None
         assert context.temp_credentials is None
 
-    def test_set_task(self, context, task):
-        context.task = task
-        assert context.task == task
+    def test_set_task(self, context, claim_task):
+        context.claim_task = claim_task
+        assert context.claim_task == claim_task
         assert context.reclaim_task is None
-        assert context.temp_credentials == task['credentials']
+        assert context.temp_credentials == claim_task['credentials']
         assert get_reclaim_task_files(context) == []
-        assert get_json(get_task_file(context)) == task
+        assert get_json(get_task_file(context)) == claim_task['task']
         files = get_credentials_files(context)
         assert len(files) == 1, "Invalid number of credentials files!"
-        assert get_json(files[0]) == task['credentials']
+        assert get_json(files[0]) == claim_task['credentials']
 
-    def test_set_reclaim_task(self, context, task, reclaim_task):
-        context.task = task
+    def test_set_reclaim_task(self, context, claim_task, reclaim_task):
+        context.claim_task = claim_task
         context.reclaim_task = reclaim_task
-        assert context.task == task
+        assert context.claim_task == claim_task
+        assert context.task == claim_task['task']
         assert context.reclaim_task == reclaim_task
         assert context.temp_credentials == reclaim_task['credentials']
-        assert get_json(get_task_file(context)) == task
+        assert get_json(get_task_file(context)) == claim_task['task']
         files = get_reclaim_task_files(context)
         assert len(files) == 1, "Invalid number of reclaim_task files!"
         assert get_json(files[0]) == reclaim_task
         files = get_credentials_files(context)
         assert len(files) == 2, "Invalid number of credentials files!"
-        assert get_json(files[0]) == task['credentials']
+        assert get_json(files[0]) == claim_task['credentials']
         assert get_json(files[1]) == reclaim_task['credentials']
 
-    def test_set_reset_task(self, context, task, reclaim_task):
-        context.task = task
+    def test_set_reset_task(self, context, claim_task, reclaim_task):
+        context.claim_task = claim_task
         context.reclaim_task = reclaim_task
-        context.task = None
+        context.claim_task = None
+        assert context.claim_task is None
         assert context.task is None
         assert context.reclaim_task is None
         assert context.proc is None

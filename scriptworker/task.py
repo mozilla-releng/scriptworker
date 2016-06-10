@@ -87,8 +87,8 @@ async def reclaim_task(context):
         await asyncio.sleep(context.config['reclaim_interval'])
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
-        taskId = context.task['status']['taskId']
-        runId = context.task['runId']
+        taskId = context.claim_task['status']['taskId']
+        runId = context.claim_task['runId']
         try:
             result = await temp_queue.reclaimTask(taskId, runId)
             log.debug(pprint.pformat(result))
@@ -128,7 +128,7 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
         "expires": expires or get_expiration_arrow(context).isoformat(),
         "contentType": content_type or guess_content_type(path),
     }
-    args = [context.task['status']['taskId'], context.task['runId'], filename, payload]
+    args = [context.claim_task['status']['taskId'], context.claim_task['runId'], filename, payload]
     tc_response = await temp_queue.createArtifact(*args)
     headers = {
         aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
@@ -180,7 +180,7 @@ async def complete_task(context, result):
     If the task has expired or been cancelled, we'll get a 409 status.
     """
     temp_queue = get_temp_queue(context)
-    args = [context.task['status']['taskId'], context.task['runId']]
+    args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
     try:
         if result == 0:
             log.debug("Reporting task complete...")

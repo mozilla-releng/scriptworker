@@ -26,14 +26,14 @@ async def run_loop(context, creds_key="credentials"):
     )
     for poll_url, delete_url in get_azure_urls(context):
         try:
-            task_defn = await find_task(context, poll_url, delete_url,
-                                        retry_request)
+            claim_task_defn = await find_task(context, poll_url, delete_url,
+                                              retry_request)
         except ScriptWorkerException:
             await asyncio.sleep(context.config['poll_interval'])
             break
-        if task_defn:
+        if claim_task_defn:
             log.info("Going to run task!")
-            context.task = task_defn
+            context.claim_task = claim_task_defn
             loop.create_task(reclaim_task(context))
             running_task = loop.create_task(run_task(context))
             status = await running_task

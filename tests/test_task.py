@@ -43,9 +43,10 @@ def context(tmpdir_factory):
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 1'),
         'task_max_timeout': .1,
     }
-    context.task = {
+    context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
+        'task': {'task_defn': True},
         'runId': 'runId',
     }
     return context

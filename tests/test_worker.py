@@ -99,7 +99,7 @@ class TestWorker(object):
         assert status is None
 
     def test_mocker_run_loop(self, context, successful_queue, event_loop, mocker):
-        task = {"foo": "bar", "credentials": {"a": "b"}}
+        task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
         async def find_task(*args, **kwargs):
             return deepcopy(task)
