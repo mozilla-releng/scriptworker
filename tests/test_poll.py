@@ -9,7 +9,7 @@ import pytest
 from scriptworker.context import Context
 import scriptworker.poll as poll
 from . import successful_queue, unsuccessful_queue
-assert (successful_queue, unsuccessful_queue)  # silence flake8
+assert successful_queue, unsuccessful_queue  # silence flake8
 
 
 @pytest.mark.asyncio

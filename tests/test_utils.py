@@ -10,7 +10,7 @@ from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryExce
 import scriptworker.utils as utils
 from . import fake_session, fake_session_500
 
-assert (fake_session, fake_session_500)  # silence flake8
+assert fake_session, fake_session_500  # silence flake8
 
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {
