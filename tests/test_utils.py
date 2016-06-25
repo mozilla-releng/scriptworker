@@ -8,7 +8,7 @@ import pytest
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import fake_session, fake_session_500
+from . import fake_session, fake_session_500, FakeResponse
 
 assert fake_session, fake_session_500  # silence flake8
 
@@ -103,6 +103,20 @@ class TestUtils(object):
         context.session = fake_session
         result = await utils.request(context, "url")
         assert result == '{}'
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_request_json(self, context, fake_session):
+        context.session = fake_session
+        result = await utils.request(context, "url", return_type="json")
+        assert result == {}
+        context.session.close()
+
+    @pytest.mark.asyncio
+    async def test_request_response(self, context, fake_session):
+        context.session = fake_session
+        result = await utils.request(context, "url", return_type="response")
+        assert isinstance(result, FakeResponse)
         context.session.close()
 
     @pytest.mark.asyncio
