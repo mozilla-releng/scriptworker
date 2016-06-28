@@ -163,11 +163,11 @@ async def upload_artifacts(context):
     """Upload the task logs and any files in `artifact_dir`.
     Currently we do not support recursing into subdirectories.
     """
-    files = glob.glob(os.path.join(context.config['artifact_dir'], '*'))
-    files.extend(get_log_filenames(context))
+    files = dict([(k, None) for k in glob.glob(os.path.join(context.config['artifact_dir'], '*'))])
+    files.update(dict([(k, 'text/plain') for k in get_log_filenames(context)]))
     tasks = []
-    for path in files:
-        tasks.append(retry_create_artifact(context, path))
+    for path, content_type in files.items():
+        tasks.append(retry_create_artifact(context, path, content_type=content_type))
     await asyncio.wait(tasks)
 
 
