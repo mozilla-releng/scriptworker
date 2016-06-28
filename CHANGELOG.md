@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.2.1] - 2016-06-27
+### Fixed
+- `upload_artifacts` now specifies a `content_type` of `text/plain` for the task logfiles, to fix linux uploading.
+
 ## [0.2.0] - 2016-06-24
 ### Changed
 - Context now has a `claim_task` property that stores the output from `claimTask`.  `Context.task` is now the task definition itself.

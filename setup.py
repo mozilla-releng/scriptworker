@@ -5,13 +5,13 @@ from setuptools.command.test import test as TestCommand
 import sys
 
 reqs = [
-    "aiohttp",
-    "arrow",
-    "defusedxml",
-    "frozendict",
-    "jsonschema",
-    "taskcluster",
-    "virtualenv",
+    "aiohttp==0.22.0a0",
+    "arrow==0.8.0",
+    "defusedxml==0.4.1",
+    "frozendict==0.6",
+    "jsonschema==2.5.1",
+    "taskcluster==0.3.4",
+    "virtualenv==15.0.2",
 ]
 
 tests_require = [
