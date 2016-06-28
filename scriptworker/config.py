@@ -16,8 +16,8 @@ DEFAULT_CONFIG = {
     "provisioner_id": "test-dummy-provisioner",
     "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
-    "worker_type": "dummy-worker-aki",
-    "worker_id": "dummy-worker-aki1",
+    "worker_type": "dummy-worker-myname",
+    "worker_id": "dummy-worker-myname1",
 
     "credentials": {
         "clientId": "...",
@@ -27,8 +27,8 @@ DEFAULT_CONFIG = {
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
-    "credential_update_interval": 60,  # TODO longer
-    "reclaim_interval": 5,  # TODO 300
+    "credential_update_interval": 300,
+    "reclaim_interval": 300,
     "poll_interval": 5,  # TODO 1 ?
 
     # Worker log settings
