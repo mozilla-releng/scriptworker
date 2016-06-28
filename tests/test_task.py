@@ -152,7 +152,7 @@ class TestTask(object):
         for path in paths:
             touch(path)
 
-        async def foo(_, path):
+        async def foo(_, path, **kwargs):
             args.append(path)
 
         with mock.patch('scriptworker.task.create_artifact', new=foo):
