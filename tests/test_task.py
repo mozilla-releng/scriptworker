@@ -171,7 +171,7 @@ class TestTask(object):
             p.return_value = successful_queue
             await task.create_artifact(context, path, expires=expires)
         assert successful_queue.info == [
-            "createArtifact", ('taskId', 'runId', "one.txt", {
+            "createArtifact", ('taskId', 'runId', "public/env/one.txt", {
                 "storageType": "s3",
                 "expires": expires,
                 "contentType": "text/plain",

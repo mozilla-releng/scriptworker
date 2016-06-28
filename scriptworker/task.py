@@ -128,7 +128,9 @@ async def create_artifact(context, path, storage_type='s3', expires=None,
         "expires": expires or get_expiration_arrow(context).isoformat(),
         "contentType": content_type or guess_content_type(path),
     }
-    args = [context.claim_task['status']['taskId'], context.claim_task['runId'], filename, payload]
+    target_path = "public/env/{}".format(filename)
+    args = [context.claim_task['status']['taskId'], context.claim_task['runId'],
+            target_path, payload]
     tc_response = await temp_queue.createArtifact(*args)
     headers = {
         aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
