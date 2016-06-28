@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Changed
+- we now upload artifacts to public/env/`filename`.
+
+### Fixed
+- the config defaults are now a bit more sane.
 
 ## [0.2.1] - 2016-06-27
 ### Fixed
