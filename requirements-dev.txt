@@ -1,0 +1,7 @@
+aiohttp
+arrow
+defusedxml
+frozendict
+jsonschema
+taskcluster
+virtualenv

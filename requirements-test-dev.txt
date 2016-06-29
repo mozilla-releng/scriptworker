@@ -1,0 +1,3 @@
+# Specifically for testing
+-r requirements-dev.txt
+tox
