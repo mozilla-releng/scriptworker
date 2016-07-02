@@ -3,11 +3,15 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Added
+- Added `requirements-*.txt` files.  The `-prod` files have pinned versions+hashes, via `reqhash`.
+
 ### Changed
-- we now upload artifacts to public/env/`filename`.
+- Upload artifacts to public/env/`filename`.
+- Enabled coverage branches in testing.
 
 ### Fixed
-- the config defaults are now a bit more sane.
+- Tweaked the config defaults to be a bit more sane.
 
 ## [0.2.1] - 2016-06-27
 ### Fixed
