@@ -44,7 +44,7 @@ async def run_loop(context, creds_key="credentials"):
             return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
-        if arrow.utcnow().timestamp - context.credentials_timestamp > context.config['credential_update_interval']:
+        if arrow.utcnow().timestamp - context.credentials_timestamp > context.config['credential_update_interval']:  # pragma: no branch
             credentials = read_worker_creds(key=creds_key)
             if credentials and credentials != context.credentials:
                 context.credentials = credentials
@@ -63,7 +63,7 @@ def main():
     """
     context = Context()
     kwargs = {}
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1:  # pragma: no branch
         if len(sys.argv) > 2:
             print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)

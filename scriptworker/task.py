@@ -42,7 +42,7 @@ async def run_task(context):
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
     """
     loop = asyncio.get_event_loop()
-    kwargs = {
+    kwargs = {  # pragma: no branch
         'stdout': PIPE,
         'stderr': PIPE,
         'stdin': None,
@@ -206,7 +206,7 @@ async def kill(pid, sleep_time=1):
     siglist = [signal.SIGINT, signal.SIGTERM]
     while True:
         sig = signal.SIGKILL
-        if siglist:
+        if siglist:  # pragma: no branch
             sig = siglist.pop(0)
         try:
             os.kill(pid, sig)

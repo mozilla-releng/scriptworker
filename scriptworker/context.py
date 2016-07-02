@@ -134,8 +134,6 @@ class Context(object):
         """
         if contents:
             log.debug(message.format(path=path))
-            parent_dir = os.path.dirname(path)
-            if parent_dir:
-                makedirs(os.path.dirname(path))
+            makedirs(os.path.dirname(path))
             with open(path, "w") as fh:
                 json.dump(contents, fh, indent=2, sort_keys=True)

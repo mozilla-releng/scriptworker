@@ -62,9 +62,10 @@ class TestPoll(object):
         }, {
             "messageId": "two_id",
             "popReceipt": "two_pop%3D",
-            "messageText": "eyJmb28iOiAiYmFyIn0K",
+            "messageText": "eyJydW5JZCI6IDAsICJ0YXNrSWQiOiAiYXNkZiJ9Cg==",
             "task_info": {
-                "foo": "bar",
+                "runId": 0,
+                "taskId": 'asdf',
             },
         }]
         count = -1
@@ -110,3 +111,9 @@ class TestPoll(object):
         context.queue = successful_queue
         result = await poll.find_task(context, "poll", "delete", fake_request)
         assert result == "yay"
+
+    @pytest.mark.asyncio
+    async def test_unsuccessful_find_task(self, context, unsuccessful_queue):
+        context.queue = unsuccessful_queue
+        result = await poll.find_task(context, "poll", "delete", fake_request)
+        assert result is None

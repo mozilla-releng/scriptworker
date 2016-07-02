@@ -62,7 +62,7 @@ def to_unicode(line):
 def makedirs(path):
     """mkdir -p
     """
-    if not os.path.exists(path):
+    if path and not os.path.exists(path):
         log.debug("makedirs({})".format(path))
         os.makedirs(path)
 

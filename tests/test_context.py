@@ -108,3 +108,9 @@ class TestContext(object):
         assert context.proc is None
         assert context.temp_credentials is None
         assert context.temp_queue is None
+
+    def test_reset_credentials(self, context, claim_task):
+        context.claim_task = claim_task
+        context.credentials = None
+        assert context.credentials is None
+        assert context.queue is None

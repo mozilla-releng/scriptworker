@@ -11,6 +11,6 @@
     <QueueMessage>
         <MessageId>two_id</MessageId>
         <PopReceipt>two_pop=</PopReceipt>
-        <MessageText>eyJmb28iOiAiYmFyIn0K</MessageText>
+        <MessageText>eyJydW5JZCI6IDAsICJ0YXNrSWQiOiAiYXNkZiJ9Cg==</MessageText>
     </QueueMessage>
 </QueueMessagesList>
