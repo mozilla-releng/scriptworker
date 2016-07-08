@@ -30,6 +30,8 @@ Usage
 .. _example config file: https://github.com/escapewindow/scriptworker/blob/master/config_example.json
 .. _scriptworker.config.DEFAULT_CONFIG: https://github.com/escapewindow/scriptworker/blob/master/scriptworker/config.py#L14-L49)
 
+Credentials can live in ``./config.json``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
+
 * Launch: ``scriptworker [config_path]``
 
 -------
