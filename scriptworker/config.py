@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
     "worker_type": "dummy-worker-myname",
-    "worker_id": "dummy-worker-myname1",
+    "worker_id": os.environ.get("SCRIPTWORKER_WORKER_ID", "dummy-worker-myname1"),
 
     "credentials": {
         "clientId": "...",
@@ -72,6 +72,16 @@ def read_worker_creds(key="credentials"):
                 return contents[key]
             except (json.decoder.JSONDecodeError, KeyError):
                 pass
+    else:
+        if key == "credentials" and os.environ.get("TASKCLUSTER_ACCESS_TOKEN") and \
+                os.environ.get("TASKCLUSTER_CLIENT_ID"):
+            credentials = {
+                "accessToken": os.environ["TASKCLUSTER_ACCESS_TOKEN"],
+                "clientId": os.environ["TASKCLUSTER_CLIENT_ID"],
+            }
+            if os.environ.get("TASKCLUSTER_CERTIFICATE"):
+                credentials['certificate'] = os.environ['TASKCLUSTER_CERTIFICATE']
+            return credentials
 
 
 def check_config(config, path):
