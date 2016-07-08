@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - Upload artifacts to public/env/`filename`.
 - Enabled coverage branches in testing.
+- Enabled environment variable configuration for credentials+workerid
 
 ### Fixed
 - Tweaked the config defaults to be a bit more sane.
