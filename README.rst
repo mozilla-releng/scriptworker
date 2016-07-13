@@ -2,11 +2,11 @@
 scriptworker
 ===============================
 
-.. image:: https://travis-ci.org/escapewindow/scriptworker.svg?branch=master
-    :target: https://travis-ci.org/escapewindow/scriptworker
+.. image:: https://travis-ci.org/mozilla-releng/scriptworker.svg?branch=master
+    :target: https://travis-ci.org/mozilla-releng/scriptworker
 
-.. image:: https://coveralls.io/repos/github/escapewindow/scriptworker/badge.svg?branch=master
-    :target: https://coveralls.io/github/escapewindow/scriptworker?branch=master
+.. image:: https://coveralls.io/repos/github/mozilla-releng/scriptworker/badge.svg?branch=master
+    :target: https://coveralls.io/github/mozilla-releng/scriptworker?branch=master
 
 .. image:: https://readthedocs.org/projects/scriptworker/badge/?version=latest
     :target: http://scriptworker.readthedocs.io/en/latest/?badge=latest
@@ -27,8 +27,8 @@ Usage
 -----
 * Create a config file.  By default scriptworker will look in ``./config.json``, but this config path can be specified as the first and only commandline argument.  There is an `example config file`_, and all config items are specified in `scriptworker.config.DEFAULT_CONFIG`_.
 
-.. _example config file: https://github.com/escapewindow/scriptworker/blob/master/config_example.json
-.. _scriptworker.config.DEFAULT_CONFIG: https://github.com/escapewindow/scriptworker/blob/master/scriptworker/config.py#L14-L49)
+.. _example config file: https://github.com/mozilla-releng/scriptworker/blob/master/config_example.json
+.. _scriptworker.config.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/config.py#L14-L49)
 
 Credentials can live in ``./config.json``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
 

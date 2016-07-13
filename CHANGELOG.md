@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Upload artifacts to public/env/`filename`.
 - Enabled coverage branches in testing.
 - Enabled environment variable configuration for credentials+workerid
+- Moved source repo to [mozilla-releng/scriptworker](https://github.com/mozilla-releng/scriptworker)
 
 ### Fixed
 - Tweaked the config defaults to be a bit more sane.

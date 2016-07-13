@@ -115,7 +115,7 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
             'name': 'ScriptWorker Integration Test',
             'description': 'ScriptWorker Integration Test',
             'owner': 'release+python@mozilla.com',
-            'source': 'https://github.com/escapewindow/scriptworker/'
+            'source': 'https://github.com/mozilla-releng/scriptworker/'
         },
         'tags': {},
         'extra': task_extra,
