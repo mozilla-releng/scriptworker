@@ -98,7 +98,7 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
     task_extra = task_extra or {}
     return {
         'provisionerId': config['provisioner_id'],
-        'schedulerId': config['scheduler_id'],
+        'schedulerId': 'test-dummy-scheduler',
         'workerType': config['worker_type'],
         'taskGroupId': task_group_id,
         'dependencies': [],

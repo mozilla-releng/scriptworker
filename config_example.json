@@ -1,6 +1,5 @@
 {
     "provisioner_id": "test-dummy-provisioner",
-    "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
     "worker_type": "dummy-worker-myname",
     "worker_id": "dummy-worker-myname1",

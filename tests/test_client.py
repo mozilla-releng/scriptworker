@@ -29,7 +29,6 @@ def config(tmpdir_factory):
         'log_dir': os.path.join(str(temp_dir), "log"),
         'artifact_dir': os.path.join(str(temp_dir), "artifact"),
         'provisioner_id': 'provisioner_id',
-        'scheduler_id': 'scheduler_id',
         'worker_type': 'worker_type',
     }
 

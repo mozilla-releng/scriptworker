@@ -14,7 +14,6 @@ log = logging.getLogger(__name__)
 DEFAULT_CONFIG = {
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
-    "scheduler_id": "test-dummy-scheduler",
     "worker_group": "test-dummy-workers",
     "worker_type": "dummy-worker-myname",
     "worker_id": os.environ.get("SCRIPTWORKER_WORKER_ID", "dummy-worker-myname1"),
