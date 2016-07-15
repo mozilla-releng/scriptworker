@@ -15,6 +15,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Tweaked the config defaults to be a bit more sane.
 
+## Removed
+- Removed `scheduler_id` from config; it's only used to schedule integration tests.
+
 ## [0.2.1] - 2016-06-27
 ### Fixed
 - `upload_artifacts` now specifies a `content_type` of `text/plain` for the task logfiles, to fix linux uploading.
