@@ -12,7 +12,8 @@ class ScriptWorkerRetryException(ScriptWorkerException):
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
-    """To use::
+    """
+    To use::
 
         import sys
         import traceback
@@ -21,6 +22,7 @@ class ScriptWorkerTaskException(ScriptWorkerException):
         except ScriptWorkerTaskException as exc:
             traceback.print_exc()
             sys.exit(exc.exit_code)
+
     """
     def __init__(self, *args, exit_code=1, **kwargs):
         self.exit_code = exit_code

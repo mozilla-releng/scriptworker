@@ -50,7 +50,7 @@ def datestring_to_timestamp(datestring):
 
 
 def to_unicode(line):
-    """Avoid |b'line'| type messages in the logs
+    """Avoid ``|b'line'|`` type messages in the logs
     """
     try:
         line = line.decode('utf-8')
