@@ -49,7 +49,7 @@ DEFAULT_CONFIG = {
 
 CREDS_FILES = (
     os.path.join(os.getcwd(), 'secrets.json'),
-    os.path.join(os.environ['HOME'], '.scriptworker'),
+    os.path.join(os.environ.get('HOME', '/etc/'), '.scriptworker'),
 )
 
 
