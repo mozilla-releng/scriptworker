@@ -8,7 +8,6 @@ import glob
 import logging
 import mimetypes
 import os
-import pprint
 import signal
 
 from asyncio.subprocess import PIPE
@@ -168,7 +167,11 @@ async def upload_artifacts(context):
     files.update(dict([(k, 'text/plain') for k in get_log_filenames(context)]))
     tasks = []
     for path, content_type in files.items():
-        tasks.append(retry_create_artifact(context, path, content_type=content_type))
+        tasks.append(
+            asyncio.ensure_future(
+                retry_create_artifact(context, path, content_type=content_type)
+            )
+        )
     await raise_future_exceptions(tasks)
 
 
