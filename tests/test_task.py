@@ -87,7 +87,7 @@ class TestTask(object):
     async def test_run_task(self, context):
         status = await task.run_task(context)
         log_file, error_file = log.get_log_filenames(context)
-        assert read(log_file) in ("ERROR bar\nfoo\nexit code: 1\n", "foo\nERROR bar\nexit code: 1\n")
+        assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
         assert read(error_file) == "bar\n"
         assert status == 1
 

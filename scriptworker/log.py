@@ -59,8 +59,8 @@ async def log_errors(reader, log_fh, error_fh):
         if not line:
             break
         line = to_unicode(line)
-        log.debug('ERROR {}'.format(line.rstrip()))
-        print('ERROR {}'.format(line), file=log_fh, end="")
+        log.debug(line.rstrip())
+        print(line, file=log_fh, end="")
         print(line, file=error_fh, end="")
 
 
