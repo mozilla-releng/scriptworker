@@ -19,7 +19,7 @@ from taskcluster.async import Queue
 
 from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, get_log_filenames, log_errors, read_stdout
-from scriptworker.utils import retry_async
+from scriptworker.utils import raise_future_exceptions, retry_async
 
 log = logging.getLogger(__name__)
 
@@ -169,11 +169,7 @@ async def upload_artifacts(context):
     tasks = []
     for path, content_type in files.items():
         tasks.append(retry_create_artifact(context, path, content_type=content_type))
-    await asyncio.wait(tasks)
-    for task in tasks:
-        exc = task.exception()
-        if exc is not None:
-            raise exc
+    await raise_future_exceptions(tasks)
 
 
 async def complete_task(context, result):
