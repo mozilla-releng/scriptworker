@@ -59,7 +59,7 @@ async def run_task(context):
         await asyncio.wait(tasks)
         exitcode = await context.proc.wait()
         status_line = "exit code: {}".format(exitcode)
-        log.debug(status_line)
+        log.info(status_line)
         print(status_line, file=log_fh)
 
     context.proc = None
@@ -91,7 +91,6 @@ async def reclaim_task(context):
         runId = context.claim_task['runId']
         try:
             result = await temp_queue.reclaimTask(taskId, runId)
-            log.debug(pprint.pformat(result))
             context.reclaim_task = result
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
@@ -112,7 +111,7 @@ def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
     """
     content_type, _ = mimetypes.guess_type(path)
-    return content_type
+    return content_type or "application/binary"
 
 
 async def create_artifact(context, path, storage_type='s3', expires=None,
@@ -171,6 +170,10 @@ async def upload_artifacts(context):
     for path, content_type in files.items():
         tasks.append(retry_create_artifact(context, path, content_type=content_type))
     await asyncio.wait(tasks)
+    for task in tasks:
+        exc = task.exception()
+        if exc is not None:
+            raise exc
 
 
 async def complete_task(context, result):
@@ -185,19 +188,19 @@ async def complete_task(context, result):
     args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
     try:
         if result == 0:
-            log.debug("Reporting task complete...")
+            log.info("Reporting task complete...")
             await temp_queue.reportCompleted(*args)
         elif result in list(range(2, 7)):
             reason = REVERSED_STATUSES[result]
-            log.debug("Reporting task exception {}...".format(reason))
+            log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
             await temp_queue.reportException(*args, payload)
         else:
-            log.debug("Reporting task failed...")
+            log.info("Reporting task failed...")
             await temp_queue.reportFailed(*args)
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
-            log.debug("409: not reporting complete/failed.")
+            log.info("409: not reporting complete/failed.")
         else:
             raise
 
@@ -220,7 +223,7 @@ def max_timeout(context, proc, timeout):
     if proc != context.proc:
         return
     pid = context.proc.pid
-    log.debug("Exceeded timeout of {} seconds: {}".format(timeout, pid))
+    log.warning("Exceeded timeout of {} seconds: {}".format(timeout, pid))
     loop = asyncio.get_event_loop()
     loop.run_until_complete(asyncio.wait([
         asyncio.ensure_future(kill(-pid)),
