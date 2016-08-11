@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.utils
 """
+import asyncio
 import mock
 import os
 import pytest
@@ -170,3 +171,16 @@ class TestUtils(object):
                 ['assume:project:taskcluster:worker-test-scopes', ], name=None
             )
             assert creds == {"one": "one", "two": "two"}
+
+    @pytest.mark.asyncio
+    async def test_raise_future_exceptions(self, event_loop):
+
+        async def one():
+            raise IOError("foo")
+
+        async def two():
+            pass
+
+        tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
+        with pytest.raises(IOError):
+            await utils.raise_future_exceptions(tasks)

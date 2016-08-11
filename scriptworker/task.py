@@ -83,6 +83,7 @@ async def reclaim_task(context):
     time we reclaim.
     """
     while True:
+        log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
         await asyncio.sleep(context.config['reclaim_interval'])
         log.debug("Reclaiming task...")
         temp_queue = get_temp_queue(context)
