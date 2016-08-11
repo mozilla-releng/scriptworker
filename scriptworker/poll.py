@@ -6,7 +6,6 @@ import base64
 import defusedxml.ElementTree
 import json
 import logging
-import pprint
 import time
 import urllib.parse
 
@@ -28,7 +27,6 @@ def parse_azure_message(message):
     for element in message:
         if element.tag in interesting_keys:
             message_info[interesting_keys[element.tag]] = element.text
-            log.debug("{} {}".format(element.tag, element.text))
     message_info['popReceipt'] = urllib.parse.quote(message_info['popReceipt'])
     message_info['task_info'] = json.loads(
         base64.b64decode(message_info['messageText']).decode('utf-8')
@@ -53,8 +51,6 @@ async def claim_task(context, taskId, runId):
     }
     try:
         result = await context.queue.claimTask(taskId, runId, payload)
-        log.debug("claim_task:")
-        log.debug(pprint.pformat(result))
         return result
     except taskcluster.exceptions.TaskclusterFailure as exc:
         # TODO 409 is expected.  Not sure if we should ignore other errors?
@@ -81,12 +77,10 @@ async def find_task(context, poll_url, delete_url, request_function):
     If the claim was successful, return the task json.
     """
     xml = await request_function(context, poll_url)
-    log.debug("find_task xml:")
-    log.debug(xml)
     for message_info in parse_azure_xml(xml):
-        log.debug(message_info['task_info'])
         task = await claim_task(context, **message_info['task_info'])
         if task is not None:
+            log.info("Found task! Deleting from azure...")
             delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
             response = await request_function(context, delete_url, method='delete', good=[200, 204])
             log.debug(response)
@@ -107,7 +101,6 @@ async def update_poll_task_urls(context, callback, min_seconds_left=300, args=()
         # check expiration
         expires = datestring_to_timestamp(urls['expires'])
         seconds_left = int(expires - time.time())
-        log.debug("poll_task_urls expires in %d seconds" % seconds_left)
         if seconds_left >= min_seconds_left:
             return
     log.debug("Updating poll_task_urls...")

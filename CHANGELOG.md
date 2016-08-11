@@ -5,15 +5,19 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 ### Added
 - Added `requirements-*.txt` files.  The `-prod` files have pinned versions+hashes, via `reqhash`.
+- Added `raise_future_exceptions` function from signingscript
 
 ### Changed
 - Upload artifacts to public/env/`filename`.
 - Enabled coverage branches in testing.
 - Enabled environment variable configuration for credentials+workerid
 - Moved source repo to [mozilla-releng/scriptworker](https://github.com/mozilla-releng/scriptworker)
+- No longer prepend stderr log lines with ERROR
+- Reduced debug logging
 
 ### Fixed
 - Tweaked the config defaults to be a bit more sane.
+- Fixed an exception where automated processes without HOME set would fail to launch scriptworker
 
 ## Removed
 - Removed `scheduler_id` from config; it's only used to schedule integration tests.

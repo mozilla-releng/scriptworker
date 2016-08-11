@@ -110,3 +110,11 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
         except (AttributeError, UnicodeDecodeError):
             pass
     return creds
+
+
+async def raise_future_exceptions(tasks):
+    await asyncio.wait(tasks)
+    for task in tasks:
+        exc = task.exception()
+        if exc is not None:
+            raise exc

@@ -11,6 +11,27 @@ import pytest
 import scriptworker.config as config
 
 
+ENV_CREDS_PARAMS = ((
+    {
+        'TASKCLUSTER_ACCESS_TOKEN': 'x',
+        'TASKCLUSTER_CLIENT_ID': 'y',
+    }, {
+        "accessToken": 'x',
+        "clientId": 'y',
+    }
+), (
+    {
+        'TASKCLUSTER_ACCESS_TOKEN': 'x',
+        'TASKCLUSTER_CLIENT_ID': 'y',
+        'TASKCLUSTER_CERTIFICATE': 'z',
+    }, {
+        "accessToken": 'x',
+        "clientId": 'y',
+        "certificate": 'z',
+    }
+))
+
+
 @pytest.fixture(scope='function')
 def test_config():
     return deepcopy(config.DEFAULT_CONFIG)
@@ -80,3 +101,11 @@ class TestConfig(object):
     def test_missing_creds(self):
         with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
             assert config.read_worker_creds() is None
+
+    @pytest.mark.parametrize("params", ENV_CREDS_PARAMS)
+    def test_environ_creds(self, params):
+        env = deepcopy(os.environ)
+        env.update(params[0])
+        with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
+            with mock.patch.object(os, 'environ', new=env):
+                assert config.read_worker_creds() == params[1]

@@ -52,15 +52,17 @@ def update_logging_config(context, log_name=None):
 
 async def log_errors(reader, log_fh, error_fh):
     """Log STDERR from the task subprocess to both the log and error
-    filehandles.
+    filehandles.  These may not actually be errors; python logging uses
+    STDERR for output.  The running process should be able to detect its own
+    status, rather than relying on scriptworker to do so.
     """
     while True:
         line = await reader.readline()
         if not line:
             break
         line = to_unicode(line)
-        log.debug('ERROR {}'.format(line.rstrip()))
-        print('ERROR {}'.format(line), file=log_fh, end="")
+        log.info(line.rstrip())
+        print(line, file=log_fh, end="")
         print(line, file=error_fh, end="")
 
 
@@ -70,7 +72,7 @@ async def read_stdout(stdout, log_fh):
     while True:
         line = await stdout.readline()
         if line:
-            log.debug(to_unicode(line.rstrip()))
+            log.info(to_unicode(line.rstrip()))
             print(to_unicode(line), file=log_fh, end="")
         else:
             break
