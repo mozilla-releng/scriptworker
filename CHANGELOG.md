@@ -4,6 +4,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 ### Added
+- added setup.cfg for wheels
+
+### Removed
+- Removed unneeded creds file generation.
+
+## [0.3.0] - 2016-08-11
+### Added
 - Added `requirements-*.txt` files.  The `-prod` files have pinned versions+hashes, via `reqhash`.
 - Added `raise_future_exceptions` function from signingscript
 
