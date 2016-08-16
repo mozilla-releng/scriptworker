@@ -8,7 +8,6 @@ from copy import deepcopy
 import json
 import logging
 import os
-import time
 
 from scriptworker.utils import makedirs
 from taskcluster.async import Queue
@@ -101,10 +100,6 @@ class Context(object):
         """
         self._reclaim_task = value
         if value is not None:
-            path = os.path.join(self.config['work_dir'],
-                                "reclaim_task.{}.json".format(time.time()))
-            self.write_json(path, value, "Writing reclaim_task file to {path}...")
-            # XXX we may not need the reclaim_task.json or credentials.json...
             self.temp_credentials = value['credentials']
 
     @property
@@ -119,15 +114,9 @@ class Context(object):
     def temp_credentials(self, credentials):
         """Set the temp_credentials from the latest claimTask or reclaimTask
         call.
-
-        Write these to disk with a timestamp so we can try to avoid i/o race
-        conditions.
         """
         self._temp_credentials = credentials
         self.temp_queue = self.create_queue(self.temp_credentials)
-        path = os.path.join(self.config['work_dir'],
-                            "credentials.{}.json".format(time.time()))
-        self.write_json(path, credentials, "Writing credentials file to {path}...")
 
     def write_json(self, path, contents, message):
         """Write json to disk.
