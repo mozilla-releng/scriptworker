@@ -2,7 +2,6 @@
 # coding=utf-8
 """Test scriptworker.context
 """
-import glob
 import json
 import os
 import pytest
@@ -41,18 +40,6 @@ def reclaim_task():
     }
 
 
-def get_credentials_files(context):
-    temp_dir = context.config['work_dir']
-    files = sorted(glob.glob(os.path.join(temp_dir, "credentials.*.json")))
-    return files
-
-
-def get_reclaim_task_files(context):
-    temp_dir = context.config['work_dir']
-    files = sorted(glob.glob(os.path.join(temp_dir, "reclaim_task.*.json")))
-    return files
-
-
 def get_task_file(context):
     temp_dir = context.config['work_dir']
     path = os.path.join(temp_dir, "task.json")
@@ -76,11 +63,7 @@ class TestContext(object):
         assert context.claim_task == claim_task
         assert context.reclaim_task is None
         assert context.temp_credentials == claim_task['credentials']
-        assert get_reclaim_task_files(context) == []
         assert get_json(get_task_file(context)) == claim_task['task']
-        files = get_credentials_files(context)
-        assert len(files) == 1, "Invalid number of credentials files!"
-        assert get_json(files[0]) == claim_task['credentials']
 
     def test_set_reclaim_task(self, context, claim_task, reclaim_task):
         context.claim_task = claim_task
@@ -90,13 +73,6 @@ class TestContext(object):
         assert context.reclaim_task == reclaim_task
         assert context.temp_credentials == reclaim_task['credentials']
         assert get_json(get_task_file(context)) == claim_task['task']
-        files = get_reclaim_task_files(context)
-        assert len(files) == 1, "Invalid number of reclaim_task files!"
-        assert get_json(files[0]) == reclaim_task
-        files = get_credentials_files(context)
-        assert len(files) == 2, "Invalid number of credentials files!"
-        assert get_json(files[0]) == claim_task['credentials']
-        assert get_json(files[1]) == reclaim_task['credentials']
 
     def test_set_reset_task(self, context, claim_task, reclaim_task):
         context.claim_task = claim_task
