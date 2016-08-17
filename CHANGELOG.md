@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - add `scriptworker.utils.filepaths_in_dir`
 - added setup.cfg for wheels
 - added `scriptworker.client.validate_artifact_url`.
+- added python-gnupg dependency
 
 ### Changed
 - test files no longer use a test class.

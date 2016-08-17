@@ -10,6 +10,7 @@ reqs = [
     "defusedxml",
     "frozendict",
     "jsonschema",
+    "python-gnupg",
     "taskcluster",
     "virtualenv",
 ]
