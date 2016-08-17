@@ -35,8 +35,11 @@ async def run_loop(context, creds_key="credentials"):
             log.info("Going to run task!")
             context.claim_task = claim_task_defn
             loop.create_task(reclaim_task(context))
+            # TODO download and verify chain of trust artifacts if
+            # context.config['verify_chain_of_trust']
             running_task = loop.create_task(run_task(context))
             status = await running_task
+            # TODO generate chain of trust artifact
             await upload_artifacts(context)
             await complete_task(context, running_task.result())
             cleanup(context)

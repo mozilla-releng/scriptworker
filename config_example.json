@@ -14,6 +14,7 @@
     "valid_artifact_schemes": ["https"],
     "valid_artifact_netlocs": ["queue.taskcluster.net"],
     "valid_artifact_path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\d+)?/artifacts/(?P<filepath>.*)$"],
+    "verify_chain_of_trust": true,
 
     "credentials": {
         "clientId": "...",

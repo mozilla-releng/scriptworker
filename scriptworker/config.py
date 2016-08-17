@@ -52,6 +52,7 @@ DEFAULT_CONFIG = {
     "artifact_upload_timeout": 60 * 20,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
     "task_max_timeout": 60 * 20,
+    "verify_chain_of_trust": False,  # TODO True
     "verbose": True,
 }
 
