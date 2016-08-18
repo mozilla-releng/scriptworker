@@ -128,7 +128,7 @@ def validate_artifact_url(config, url):
             parts.netloc not in validate_config['valid_artifact_netlocs']:
         messages.append('Invalid netloc: {}!'.format(parts.netloc))
     # check the paths
-    for regex in validate_config.get('valid_artifact_path_regexes', []):
+    for regex in validate_config.get('valid_artifact_path_regexes') or []:
         m = re.search(regex, parts.path)
         if m is None:
             continue
@@ -144,14 +144,15 @@ def validate_artifact_url(config, url):
         return_value = path_info['filepath']
         break
     else:
-        messages.append('Invalid path: {}!'.format(parts.path))
+        if validate_config.get('valid_artifact_path_regexes'):
+            messages.append('Invalid path: {}!'.format(parts.path))
 
     if messages:
         raise ScriptWorkerTaskException(
             "Can't validate url {}\n{}".format(url, messages),
             exit_code=STATUSES['malformed-payload']
         )
-    return return_value
+    return return_value.lstrip('/')
 
 
 def integration_create_task_payload(config, task_group_id, scopes=None,

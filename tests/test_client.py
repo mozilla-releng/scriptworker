@@ -20,6 +20,73 @@ BASIC_TASK = os.path.join(TEST_DATA_DIR, "basic_task.json")
 
 
 # constants helpers and fixtures {{{1
+# LEGAL_URLS format:
+#  1. config dictionary that can define `valid_artifact_schemes`,
+#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
+#     `valid_artifact_task_ids`
+#  2. url to test
+#  3. expected `filepath` return value from `validate_artifact_url()`
+LEGAL_URLS = ((
+    {'valid_artifact_task_ids': ("9999999", "VALID_TASK_ID", )},
+    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID/artifacts/FILE_PATH",
+    "FILE_PATH",
+), (
+    {'valid_artifact_path_regexes': ()},
+    "https://queue.taskcluster.net/FILE_PATH",
+    "FILE_PATH",
+), (
+    {
+        'valid_artifact_netlocs': ("example.com", "localhost"),
+        'valid_artifact_path_regexes': (),
+    },
+    "https://localhost/FILE/PATH.baz",
+    "FILE/PATH.baz",
+), (
+    {
+        'valid_artifact_schemes': ("https", "file"),
+        'valid_artifact_netlocs': ("example.com", "localhost"),
+        'valid_artifact_path_regexes': ("^/foo/(?P<filepath>.*)$", "^/bar/(?P<filepath>.*)$"),
+    },
+    "file://localhost/bar/FILE/PATH.baz",
+    "FILE/PATH.baz",
+), (
+    {
+        'valid_artifact_schemes': None,
+        'valid_artifact_netlocs': None,
+        'valid_artifact_path_regexes': None,
+    },
+    "anyscheme://anyhost/FILE/PATH.baz",
+    "FILE/PATH.baz",
+))
+
+# ILLEGAL_URLS format:
+#  1. config dictionary that can define `valid_artifact_schemes`,
+#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
+#     `valid_artifact_task_ids`
+#  2. url to test
+ILLEGAL_URLS = ((
+    {}, "https://queue.taskcluster.net/v1/task/INVALID_TASK_ID/artifacts/FILE_PATH"
+), (
+    {},
+    "https://queue.taskcluster.net/BAD_FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': ('BAD_FILE_PATH', )
+    },
+    "https://queue.taskcluster.net/BAD_FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': (),
+    },
+    "BAD_SCHEME://queue.taskcluster.net/FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': (),
+    },
+    "https://BAD_NETLOC/FILE_PATH"
+))
+
+
 @pytest.fixture(scope='function')
 def config(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("work_dir", numbered=True)
@@ -90,3 +157,15 @@ def test_invalid_task(schema):
 def test_payload(config):
     payload = client.integration_create_task_payload(config, 'a1234')
     assert payload['scopes'] == []
+
+
+@pytest.mark.parametrize("params", LEGAL_URLS)
+def test_artifact_url(params):
+    value = client.validate_artifact_url(params[0], params[1])
+    assert value == params[2]
+
+
+@pytest.mark.parametrize("params", ILLEGAL_URLS)
+def test_bad_artifact_url(params):
+    with pytest.raises(ScriptWorkerTaskException):
+        client.validate_artifact_url(params[0], params[1])
