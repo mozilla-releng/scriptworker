@@ -19,6 +19,74 @@ SCHEMA = os.path.join(TEST_DATA_DIR, "basic_schema.json")
 BASIC_TASK = os.path.join(TEST_DATA_DIR, "basic_task.json")
 
 
+# constants helpers and fixtures {{{1
+# LEGAL_URLS format:
+#  1. config dictionary that can define `valid_artifact_schemes`,
+#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
+#     `valid_artifact_task_ids`
+#  2. url to test
+#  3. expected `filepath` return value from `validate_artifact_url()`
+LEGAL_URLS = ((
+    {'valid_artifact_task_ids': ("9999999", "VALID_TASK_ID", )},
+    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID/artifacts/FILE_PATH",
+    "FILE_PATH",
+), (
+    {'valid_artifact_path_regexes': ()},
+    "https://queue.taskcluster.net/FILE_PATH",
+    "FILE_PATH",
+), (
+    {
+        'valid_artifact_netlocs': ("example.com", "localhost"),
+        'valid_artifact_path_regexes': (),
+    },
+    "https://localhost/FILE/PATH.baz",
+    "FILE/PATH.baz",
+), (
+    {
+        'valid_artifact_schemes': ("https", "file"),
+        'valid_artifact_netlocs': ("example.com", "localhost"),
+        'valid_artifact_path_regexes': ("^/foo/(?P<filepath>.*)$", "^/bar/(?P<filepath>.*)$"),
+    },
+    "file://localhost/bar/FILE/PATH.baz",
+    "FILE/PATH.baz",
+), (
+    {
+        'valid_artifact_schemes': None,
+        'valid_artifact_netlocs': None,
+        'valid_artifact_path_regexes': None,
+    },
+    "anyscheme://anyhost/FILE/PATH.baz",
+    "FILE/PATH.baz",
+))
+
+# ILLEGAL_URLS format:
+#  1. config dictionary that can define `valid_artifact_schemes`,
+#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
+#     `valid_artifact_task_ids`
+#  2. url to test
+ILLEGAL_URLS = ((
+    {}, "https://queue.taskcluster.net/v1/task/INVALID_TASK_ID/artifacts/FILE_PATH"
+), (
+    {},
+    "https://queue.taskcluster.net/BAD_FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': ('BAD_FILE_PATH', )
+    },
+    "https://queue.taskcluster.net/BAD_FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': (),
+    },
+    "BAD_SCHEME://queue.taskcluster.net/FILE_PATH"
+), (
+    {
+        'valid_artifact_path_regexes': (),
+    },
+    "https://BAD_NETLOC/FILE_PATH"
+))
+
+
 @pytest.fixture(scope='function')
 def config(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("work_dir", numbered=True)
@@ -50,36 +118,54 @@ def no_sleep(*args, **kwargs):
     return 0
 
 
-class TestClient(object):
-    def test_get_missing_task(self, config):
+# tests {{{1
+def test_get_missing_task(config):
+    with pytest.raises(ScriptWorkerTaskException):
+        client.get_task(config)
+
+
+def test_get_task(config):
+    copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
+    assert client.get_task(config)["this_is_a_task"] is True
+
+
+def test_retry_fail_creds(config):
+    populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
+    with mock.patch.object(utils, "calculateSleepTime", new=no_sleep):
         with pytest.raises(ScriptWorkerTaskException):
-            client.get_task(config)
+            client.get_temp_creds_from_file(config)
 
-    def test_get_task(self, config):
-        copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
-        assert client.get_task(config)["this_is_a_task"] is True
 
-    def test_retry_fail_creds(self, config):
-        populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
-        with mock.patch.object(utils, "calculateSleepTime", new=no_sleep):
-            with pytest.raises(ScriptWorkerTaskException):
-                client.get_temp_creds_from_file(config)
+def test_get_missing_creds(config, event_loop):
+    with pytest.raises(ScriptWorkerTaskException):
+        event_loop.run_until_complete(client._get_temp_creds_from_file(config))
 
-    def test_get_missing_creds(self, config, event_loop):
-        with pytest.raises(ScriptWorkerTaskException):
-            event_loop.run_until_complete(client._get_temp_creds_from_file(config))
 
-    def test_validate_task(self, schema):
-        with open(BASIC_TASK, "r") as fh:
-            task = json.load(fh)
-        client.validate_task_schema(task, schema)
+def test_validate_task(schema):
+    with open(BASIC_TASK, "r") as fh:
+        task = json.load(fh)
+    client.validate_task_schema(task, schema)
 
-    def test_invalid_task(self, schema):
-        with open(BASIC_TASK, "r") as fh:
-            task = json.load(fh)
-        with pytest.raises(ScriptWorkerTaskException):
-            client.validate_task_schema({'foo': task}, schema)
 
-    def test_payload(self, config):
-        payload = client.integration_create_task_payload(config, 'a1234')
-        assert payload['scopes'] == []
+def test_invalid_task(schema):
+    with open(BASIC_TASK, "r") as fh:
+        task = json.load(fh)
+    with pytest.raises(ScriptWorkerTaskException):
+        client.validate_task_schema({'foo': task}, schema)
+
+
+def test_payload(config):
+    payload = client.integration_create_task_payload(config, 'a1234')
+    assert payload['scopes'] == []
+
+
+@pytest.mark.parametrize("params", LEGAL_URLS)
+def test_artifact_url(params):
+    value = client.validate_artifact_url(params[0], params[1])
+    assert value == params[2]
+
+
+@pytest.mark.parametrize("params", ILLEGAL_URLS)
+def test_bad_artifact_url(params):
+    with pytest.raises(ScriptWorkerTaskException):
+        client.validate_artifact_url(params[0], params[1])

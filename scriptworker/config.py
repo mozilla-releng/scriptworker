@@ -24,11 +24,19 @@ DEFAULT_CONFIG = {
         "certificate": "...",
     },
 
+    # for download url validation.  The regexes need to define a 'filepath'.
+    'valid_artifact_schemes': ('https', ),
+    'valid_artifact_netlocs': ('queue.taskcluster.net', ),
+    'valid_artifact_path_regexes': (
+        r'''^/v1/task/(?P<taskId>[^/]+)/artifacts/(?P<filepath>.*)$''',
+    ),
+    'valid_artifact_task_ids': (),
+
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
     "credential_update_interval": 300,
     "reclaim_interval": 300,
-    "poll_interval": 5,  # TODO 1 ?
+    "poll_interval": 5,
 
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",

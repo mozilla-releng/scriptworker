@@ -5,6 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 ### Added
 - added setup.cfg for wheels
+- added `scriptworker.client.validate_artifact_url`.
+
+### Changed
+- test files no longer use a test class.
 
 ### Removed
 - Removed unneeded creds file generation.

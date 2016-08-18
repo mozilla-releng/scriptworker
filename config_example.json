@@ -11,6 +11,9 @@
     "artifact_upload_timeout": 1200,
     "task_script": ["bash", "-c", "echo foo && sleep 19 && exit 1"],
     "task_max_timeout": 1200,
+    "valid_artifact_schemes": ["https"],
+    "valid_artifact_netlocs": ["queue.taskcluster.net"],
+    "valid_artifact_path_regexes": ["^/v1/task/(?P<taskId>[^/]+)/artifacts/(?P<filepath>.*)$"],
 
     "credentials": {
         "clientId": "...",

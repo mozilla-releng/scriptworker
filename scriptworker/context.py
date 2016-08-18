@@ -121,8 +121,7 @@ class Context(object):
     def write_json(self, path, contents, message):
         """Write json to disk.
         """
-        if contents:
-            log.debug(message.format(path=path))
-            makedirs(os.path.dirname(path))
-            with open(path, "w") as fh:
-                json.dump(contents, fh, indent=2, sort_keys=True)
+        log.debug(message.format(path=path))
+        makedirs(os.path.dirname(path))
+        with open(path, "w") as fh:
+            json.dump(contents, fh, indent=2, sort_keys=True)
