@@ -13,6 +13,7 @@ from . import fake_session, fake_session_500, FakeResponse
 
 assert fake_session, fake_session_500  # silence flake8
 
+# constants helpers and fixtures {{{1
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {
     # some basic utf-8 test strings - these should all pass
@@ -74,113 +75,126 @@ def context(tmpdir_factory):
     return context
 
 
-class TestUtils(object):
-    @pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
-    def test_text_to_unicode(self, text):
-        assert text == utils.to_unicode(text)
-        assert text == utils.to_unicode(text.encode('utf-8'))
+# tests {{{1
+@pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
+def test_text_to_unicode(text):
+    assert text == utils.to_unicode(text)
+    assert text == utils.to_unicode(text.encode('utf-8'))
 
-    @pytest.mark.parametrize("non_text", [v for _, v in sorted(non_text.items())])
-    def test_nontext_to_unicode(self, non_text):
-        assert non_text == utils.to_unicode(non_text)
 
-    def test_datestring_to_timestamp(self, datestring):
-        assert utils.datestring_to_timestamp(datestring) == 1460778384
+@pytest.mark.parametrize("non_text", [v for _, v in sorted(non_text.items())])
+def test_nontext_to_unicode(non_text):
+    assert non_text == utils.to_unicode(non_text)
 
-    def test_cleanup(self, context):
-        for name in 'work_dir', 'artifact_dir':
-            path = context.config[name]
-            os.makedirs(path)
-            open(os.path.join(path, 'tempfile'), "w").close()
-            assert os.path.exists(os.path.join(path, "tempfile"))
-        utils.cleanup(context)
-        for name in 'work_dir', 'artifact_dir':
-            path = context.config[name]
-            assert os.path.exists(path)
-            assert not os.path.exists(os.path.join(path, "tempfile"))
 
-    @pytest.mark.asyncio
-    async def test_request(self, context, fake_session):
-        context.session = fake_session
-        result = await utils.request(context, "url")
-        assert result == '{}'
-        context.session.close()
+def test_datestring_to_timestamp(datestring):
+    assert utils.datestring_to_timestamp(datestring) == 1460778384
 
-    @pytest.mark.asyncio
-    async def test_request_json(self, context, fake_session):
-        context.session = fake_session
-        result = await utils.request(context, "url", return_type="json")
-        assert result == {}
-        context.session.close()
 
-    @pytest.mark.asyncio
-    async def test_request_response(self, context, fake_session):
-        context.session = fake_session
-        result = await utils.request(context, "url", return_type="response")
-        assert isinstance(result, FakeResponse)
-        context.session.close()
+def test_cleanup(context):
+    for name in 'work_dir', 'artifact_dir':
+        path = context.config[name]
+        os.makedirs(path)
+        open(os.path.join(path, 'tempfile'), "w").close()
+        assert os.path.exists(os.path.join(path, "tempfile"))
+    utils.cleanup(context)
+    for name in 'work_dir', 'artifact_dir':
+        path = context.config[name]
+        assert os.path.exists(path)
+        assert not os.path.exists(os.path.join(path, "tempfile"))
 
-    @pytest.mark.asyncio
-    async def test_request_retry(self, context, fake_session_500):
-        context.session = fake_session_500
-        with pytest.raises(ScriptWorkerRetryException):
-            await utils.request(context, "url")
-        context.session.close()
 
-    @pytest.mark.asyncio
-    async def test_request_exception(self, context, fake_session_500):
-        context.session = fake_session_500
+@pytest.mark.asyncio
+async def test_request(context, fake_session):
+    context.session = fake_session
+    result = await utils.request(context, "url")
+    assert result == '{}'
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_request_json(context, fake_session):
+    context.session = fake_session
+    result = await utils.request(context, "url", return_type="json")
+    assert result == {}
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_request_response(context, fake_session):
+    context.session = fake_session
+    result = await utils.request(context, "url", return_type="response")
+    assert isinstance(result, FakeResponse)
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_request_retry(context, fake_session_500):
+    context.session = fake_session_500
+    with pytest.raises(ScriptWorkerRetryException):
+        await utils.request(context, "url")
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_request_exception(context, fake_session_500):
+    context.session = fake_session_500
+    with pytest.raises(ScriptWorkerException):
+        await utils.request(context, "url", retry=())
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_retry_request(context, fake_session):
+    context.session = fake_session
+    result = await utils.retry_request(context, "url")
+    assert result == '{}'
+    context.session.close()
+
+
+@pytest.mark.asyncio
+async def test_retry_async_fail_first():
+    global retry_count
+    retry_count['fail_first'] = 0
+    status = await utils.retry_async(fail_first)
+    assert status == "yay"
+    assert retry_count['fail_first'] == 2
+
+
+@pytest.mark.asyncio
+async def test_retry_async_always_fail():
+    global retry_count
+    retry_count['always_fail'] = 0
+    with mock.patch('asyncio.sleep', new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
-            await utils.request(context, "url", retry=())
-        context.session.close()
+            status = await utils.retry_async(always_fail)
+            assert status is None
+    assert retry_count['always_fail'] == 5
 
-    @pytest.mark.asyncio
-    async def test_retry_request(self, context, fake_session):
-        context.session = fake_session
-        result = await utils.retry_request(context, "url")
-        assert result == '{}'
-        context.session.close()
 
-    @pytest.mark.asyncio
-    async def test_retry_async_fail_first(self):
-        global retry_count
-        retry_count['fail_first'] = 0
-        status = await utils.retry_async(fail_first)
-        assert status == "yay"
-        assert retry_count['fail_first'] == 2
+def test_temp_creds():
+    with mock.patch.object(utils, 'createTemporaryCredentials') as p:
+        p.return_value = {
+            "one": b"one",
+            "two": "two",
+        }
+        creds = utils.create_temp_creds('clientId', 'accessToken', 'start', 'expires')
+        assert p.called_once_with(
+            'clientId', 'accessToken', 'start', 'expires',
+            ['assume:project:taskcluster:worker-test-scopes', ], name=None
+        )
+        assert creds == {"one": "one", "two": "two"}
 
-    @pytest.mark.asyncio
-    async def test_retry_async_always_fail(self):
-        global retry_count
-        retry_count['always_fail'] = 0
-        with mock.patch('asyncio.sleep', new=fake_sleep):
-            with pytest.raises(ScriptWorkerException):
-                status = await utils.retry_async(always_fail)
-                assert status is None
-        assert retry_count['always_fail'] == 5
 
-    def test_temp_creds(self):
-        with mock.patch.object(utils, 'createTemporaryCredentials') as p:
-            p.return_value = {
-                "one": b"one",
-                "two": "two",
-            }
-            creds = utils.create_temp_creds('clientId', 'accessToken', 'start', 'expires')
-            assert p.called_once_with(
-                'clientId', 'accessToken', 'start', 'expires',
-                ['assume:project:taskcluster:worker-test-scopes', ], name=None
-            )
-            assert creds == {"one": "one", "two": "two"}
+@pytest.mark.asyncio
+async def test_raise_future_exceptions(event_loop):
 
-    @pytest.mark.asyncio
-    async def test_raise_future_exceptions(self, event_loop):
+    async def one():
+        raise IOError("foo")
 
-        async def one():
-            raise IOError("foo")
+    async def two():
+        pass
 
-        async def two():
-            pass
-
-        tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
-        with pytest.raises(IOError):
-            await utils.raise_future_exceptions(tasks)
+    tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
+    with pytest.raises(IOError):
+        await utils.raise_future_exceptions(tasks)

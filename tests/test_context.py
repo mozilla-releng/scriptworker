@@ -8,6 +8,7 @@ import pytest
 from scriptworker.context import Context
 
 
+# constants helpers and fixtures {{{1
 @pytest.fixture(scope='function')
 def context(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("context", numbered=True)
@@ -51,42 +52,46 @@ def get_json(path):
         return json.load(fh)
 
 
-class TestContext(object):
-    def test_empty_context(self, context):
-        assert context.task is None
-        assert context.claim_task is None
-        assert context.reclaim_task is None
-        assert context.temp_credentials is None
+# tests {{{1
+def test_empty_context(context):
+    assert context.task is None
+    assert context.claim_task is None
+    assert context.reclaim_task is None
+    assert context.temp_credentials is None
 
-    def test_set_task(self, context, claim_task):
-        context.claim_task = claim_task
-        assert context.claim_task == claim_task
-        assert context.reclaim_task is None
-        assert context.temp_credentials == claim_task['credentials']
-        assert get_json(get_task_file(context)) == claim_task['task']
 
-    def test_set_reclaim_task(self, context, claim_task, reclaim_task):
-        context.claim_task = claim_task
-        context.reclaim_task = reclaim_task
-        assert context.claim_task == claim_task
-        assert context.task == claim_task['task']
-        assert context.reclaim_task == reclaim_task
-        assert context.temp_credentials == reclaim_task['credentials']
-        assert get_json(get_task_file(context)) == claim_task['task']
+def test_set_task(context, claim_task):
+    context.claim_task = claim_task
+    assert context.claim_task == claim_task
+    assert context.reclaim_task is None
+    assert context.temp_credentials == claim_task['credentials']
+    assert get_json(get_task_file(context)) == claim_task['task']
 
-    def test_set_reset_task(self, context, claim_task, reclaim_task):
-        context.claim_task = claim_task
-        context.reclaim_task = reclaim_task
-        context.claim_task = None
-        assert context.claim_task is None
-        assert context.task is None
-        assert context.reclaim_task is None
-        assert context.proc is None
-        assert context.temp_credentials is None
-        assert context.temp_queue is None
 
-    def test_reset_credentials(self, context, claim_task):
-        context.claim_task = claim_task
-        context.credentials = None
-        assert context.credentials is None
-        assert context.queue is None
+def test_set_reclaim_task(context, claim_task, reclaim_task):
+    context.claim_task = claim_task
+    context.reclaim_task = reclaim_task
+    assert context.claim_task == claim_task
+    assert context.task == claim_task['task']
+    assert context.reclaim_task == reclaim_task
+    assert context.temp_credentials == reclaim_task['credentials']
+    assert get_json(get_task_file(context)) == claim_task['task']
+
+
+def test_set_reset_task(context, claim_task, reclaim_task):
+    context.claim_task = claim_task
+    context.reclaim_task = reclaim_task
+    context.claim_task = None
+    assert context.claim_task is None
+    assert context.task is None
+    assert context.reclaim_task is None
+    assert context.proc is None
+    assert context.temp_credentials is None
+    assert context.temp_queue is None
+
+
+def test_reset_credentials(context, claim_task):
+    context.claim_task = claim_task
+    context.credentials = None
+    assert context.credentials is None
+    assert context.queue is None
