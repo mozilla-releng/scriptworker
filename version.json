@@ -2,7 +2,8 @@
     "version": [
         0,
         4,
-        0
+        1,
+        "alpha"
     ],
-    "version_string": "0.4.0"
+    "version_string": "0.4.1-alpha"
 }
