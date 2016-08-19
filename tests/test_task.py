@@ -16,18 +16,13 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import fake_session, fake_session_500, successful_queue, unsuccessful_queue, read
+from . import fake_session, fake_session_500, successful_queue, touch, unsuccessful_queue, read
 
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
-
-
-def touch(path):
-    with open(path, "w") as fh:
-        print(path, file=fh, end="")
 
 
 @pytest.fixture(scope='function')

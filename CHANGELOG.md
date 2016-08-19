@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 ### Added
+- add `scriptworker.utils.filepaths_in_dir`
 - added setup.cfg for wheels
 - added `scriptworker.client.validate_artifact_url`.
 

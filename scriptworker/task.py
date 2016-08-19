@@ -206,6 +206,8 @@ async def complete_task(context, result):
 
 
 async def kill(pid, sleep_time=1):
+    """Kill `pid`.
+    """
     siglist = [signal.SIGINT, signal.SIGTERM]
     while True:
         sig = signal.SIGKILL
@@ -220,6 +222,11 @@ async def kill(pid, sleep_time=1):
 
 
 def max_timeout(context, proc, timeout):
+    """Make sure the proc pid's process and process group are killed.
+    """
+    # We may be called with proc1.  proc1 may finish, and proc2 may start
+    # before this function is called.  Make sure we're still running the
+    # proc we were called with.
     if proc != context.proc:
         return
     pid = context.proc.pid

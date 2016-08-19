@@ -38,6 +38,8 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
                         **kwargs):
+    """Retry the `request` function
+    """
     return await retry_async(request, retry_exceptions=retry_exceptions,
                              args=args, kwargs=kwargs)
 
@@ -80,6 +82,8 @@ def cleanup(context):
 
 async def retry_async(func, attempts=5, sleeptime_callback=None,
                       retry_exceptions=(Exception, ), args=(), kwargs=None):
+    """Retry `func`, where `func` is an awaitable.
+    """
     kwargs = kwargs or {}
     sleeptime_callback = sleeptime_callback or calculateSleepTime
     attempt = 1
@@ -98,6 +102,8 @@ async def retry_async(func, attempts=5, sleeptime_callback=None,
 
 def create_temp_creds(client_id, access_token, start=None, expires=None,
                       scopes=None, name=None):
+    """Create temp TC creds from our permanent creds.
+    """
     now = arrow.utcnow().replace(minutes=-10)
     start = start or now.datetime
     expires = expires or now.replace(days=31).datetime
@@ -113,6 +119,9 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
 
 
 async def raise_future_exceptions(tasks):
+    """Given a list of futures, await them, then raise their exceptions if
+    any.  Without something like this, any exceptions will be ignored.
+    """
     await asyncio.wait(tasks)
     for task in tasks:
         exc = task.exception()
