@@ -6,10 +6,11 @@ import asyncio
 import mock
 import os
 import pytest
+import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import fake_session, fake_session_500, FakeResponse
+from . import fake_session, fake_session_500, FakeResponse, touch
 
 assert fake_session, fake_session_500  # silence flake8
 
@@ -198,3 +199,18 @@ async def test_raise_future_exceptions(event_loop):
     tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
     with pytest.raises(IOError):
         await utils.raise_future_exceptions(tasks)
+
+
+def test_filepaths_in_dir():
+    filepaths = sorted([
+        "asdfasdf/lwekrjweoi/lsldkfjs",
+        "lkdsjf/werew/sdlkfds",
+        "lsdkjf/sdlkfds",
+        "lkdlkf/lsldkfjs",
+    ])
+    with tempfile.TemporaryDirectory() as tmp:
+        for path in filepaths:
+            parent_dir = os.path.join(tmp, os.path.dirname(path))
+            os.makedirs(parent_dir)
+            touch(os.path.join(tmp, path))
+        assert sorted(utils.filepaths_in_dir(tmp)) == filepaths

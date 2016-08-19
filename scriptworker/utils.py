@@ -127,3 +127,16 @@ async def raise_future_exceptions(tasks):
         exc = task.exception()
         if exc is not None:
             raise exc
+
+
+def filepaths_in_dir(path):
+    """Given a directory path, find all files in that directory, and return
+    the relative paths to those files.
+    """
+    filepaths = []
+    for root, directories, filenames in os.walk(path):
+        for filename in filenames:
+            filepath = os.path.join(root, filename)
+            filepath = filepath.replace(path, '').lstrip('/')
+            filepaths.append(filepath)
+    return filepaths
