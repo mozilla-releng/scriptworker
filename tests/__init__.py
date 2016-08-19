@@ -11,8 +11,18 @@ import taskcluster.exceptions
 
 
 def read(path):
+    """Return the contents of a file.
+    """
     with open(path, "r") as fh:
         return fh.read()
+
+
+def touch(path):
+    """ Create an empty file.  Different from the system 'touch' in that it
+    will overwrite an existing file.
+    """
+    with open(path, "w") as fh:
+        print(path, file=fh, end="")
 
 
 class SuccessfulQueue(object):

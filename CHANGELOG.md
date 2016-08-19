@@ -3,12 +3,16 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## [0.4.0] - 2016-08-19
 ### Added
+- add `scriptworker.utils.filepaths_in_dir`
 - added setup.cfg for wheels
 - added `scriptworker.client.validate_artifact_url`.
 
 ### Changed
 - test files no longer use a test class.
+- `upload_artifacts` now uploads files in subdirectories of `artifact_dir`, preserving the relative paths.
 
 ### Removed
 - Removed unneeded creds file generation.
