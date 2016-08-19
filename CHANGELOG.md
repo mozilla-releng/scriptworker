@@ -10,6 +10,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - test files no longer use a test class.
+- `upload_artifacts` now uploads files in subdirectories of `artifact_dir`, preserving the relative paths.
 
 ### Removed
 - Removed unneeded creds file generation.

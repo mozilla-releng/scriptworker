@@ -9,7 +9,7 @@ import mock
 import os
 import pytest
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerRetryException
+from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 import scriptworker.task as task
 import scriptworker.log as log
 import sys
@@ -150,11 +150,11 @@ async def test_reclaim_task_non_409(context, successful_queue):
 @pytest.mark.asyncio
 async def test_upload_artifacts(context):
     args = []
-    os.makedirs(context.config['artifact_dir'])
+    os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
     os.makedirs(context.config['log_dir'])
     paths = list(log.get_log_filenames(context)) + [
         os.path.join(context.config['artifact_dir'], 'one'),
-        os.path.join(context.config['artifact_dir'], 'two'),
+        os.path.join(context.config['artifact_dir'], 'public/two'),
     ]
     for path in paths:
         touch(path)
@@ -168,6 +168,20 @@ async def test_upload_artifacts(context):
     assert sorted(args) == sorted(paths)
 
 
+def test_bad_update_upload_file_list():
+    with pytest.raises(ScriptWorkerTaskException):
+        task._update_upload_file_list(
+            {'existing_key': {
+                'path': 'one',
+                'target_path': 'existing_key',
+            }},
+            {
+                'path': 'two',
+                'target_path': 'existing_key'
+            }
+        )
+
+
 @pytest.mark.asyncio
 async def test_create_artifact(context, fake_session, successful_queue):
     path = os.path.join(context.config['artifact_dir'], "one.txt")
@@ -177,7 +191,7 @@ async def test_create_artifact(context, fake_session, successful_queue):
     expires = arrow.utcnow().isoformat()
     with mock.patch('scriptworker.task.get_temp_queue') as p:
         p.return_value = successful_queue
-        await task.create_artifact(context, path, expires=expires)
+        await task.create_artifact(context, path, "public/env/one.txt", expires=expires)
     assert successful_queue.info == [
         "createArtifact", ('taskId', 'runId', "public/env/one.txt", {
             "storageType": "s3",
@@ -198,7 +212,7 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
     with pytest.raises(ScriptWorkerRetryException):
         with mock.patch('scriptworker.task.get_temp_queue') as p:
             p.return_value = successful_queue
-            await task.create_artifact(context, path, expires=expires)
+            await task.create_artifact(context, path, "public/env/one.log", expires=expires)
     context.session.close()
 
 
