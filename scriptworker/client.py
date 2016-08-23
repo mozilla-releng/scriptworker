@@ -8,7 +8,7 @@ import json
 import jsonschema
 import os
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.exceptions import ScriptWorkerTaskException
@@ -118,7 +118,8 @@ def validate_artifact_url(config, url):
         else:
             validate_config[key] = DEFAULT_CONFIG[key]
     parts = urlparse(url)
-    return_value = parts.path
+    path = unquote(parts.path)
+    return_value = path
     # scheme whitelisted?
     if validate_config['valid_artifact_schemes'] is not None and \
             parts.scheme not in validate_config['valid_artifact_schemes']:
@@ -129,7 +130,7 @@ def validate_artifact_url(config, url):
         messages.append('Invalid netloc: {}!'.format(parts.netloc))
     # check the paths
     for regex in validate_config.get('valid_artifact_path_regexes') or []:
-        m = re.search(regex, parts.path)
+        m = re.search(regex, path)
         if m is None:
             continue
         path_info = m.groupdict()
@@ -145,7 +146,7 @@ def validate_artifact_url(config, url):
         break
     else:
         if validate_config.get('valid_artifact_path_regexes'):
-            messages.append('Invalid path: {}!'.format(parts.path))
+            messages.append('Invalid path: {}!'.format(path))
 
     if messages:
         raise ScriptWorkerTaskException(

@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Changed
+- `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
 
 ## [0.4.0] - 2016-08-19
 ### Added
