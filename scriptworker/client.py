@@ -74,16 +74,15 @@ def get_temp_creds_from_file(config):
     ))
 
 
-def validate_task_schema(task, schema):
-    """Given task json and a jsonschema, let's validate the task.
-    Most likely this will operate on the task_json['task'] rather than
-    the entire response from claimTask.
+def validate_json_schema(data, schema, name="task"):
+    """Given data and a jsonschema, let's validate it.
+    This happens for tasks and chain of trust artifacts.
     """
     try:
-        jsonschema.validate(task, schema)
+        jsonschema.validate(data, schema)
     except jsonschema.exceptions.ValidationError as exc:
         raise ScriptWorkerTaskException(
-            "Can't validate task schema!\n{}".format(str(exc)),
+            "Can't validate {} schema!\n{}".format(name, str(exc)),
             exit_code=STATUSES['malformed-payload']
         )
 

@@ -1,5 +1,4 @@
 recursive-include scriptworker/data *
-recursive-include scriptworker/test *
 
 include LICENSE
 include README.rst

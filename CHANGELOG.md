@@ -3,8 +3,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Added
+- added `firefox_cot_schema.json` for firefox chain of trust
+
 ### Changed
 - `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
+- `validate_task_schema` renamed to `validate_json_schema`
 
 ## [0.4.0] - 2016-08-19
 ### Added
