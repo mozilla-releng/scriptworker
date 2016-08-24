@@ -1,0 +1,65 @@
+{
+  "title": "Firefox Chain of Trust Schema",
+  "type": "object",
+  "properties": {
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "properties": {
+          "hash": "string",
+          "name": "string"
+        },
+        "required": ["hash", "name"]
+      }
+    },
+    "extra": {
+      "type": "object"
+    },
+    "runId": {
+      "type": "int"
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "payload": {
+          "type": "object"
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "taskGroupId": {
+          "type": "string"
+        },
+        "workerType": {
+          "type": "string"
+        }
+      },
+      "required": ["dependencies", "payload", "routes", "taskGroupId", "workerType"]
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "workerGroup": {
+      "type": "string"
+    },
+    "workerId": {
+      "type": "string"
+    }
+  },
+  "required": ["artifacts", "extra", "runId", "task", "taskId", "workerGroup", "workerId"]
+}
