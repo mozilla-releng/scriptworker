@@ -4,6 +4,7 @@
 import aiohttp
 import arrow
 import asyncio
+import json
 import logging
 import os
 import shutil
@@ -140,3 +141,9 @@ def filepaths_in_dir(path):
             filepath = filepath.replace(path, '').lstrip('/')
             filepaths.append(filepath)
     return filepaths
+
+
+def dump_json(data):
+    """ Given a json blob, dump it as an indented and sorted string
+    """
+    return json.dumps(data, indent=2, sort_keys=True)
