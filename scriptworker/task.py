@@ -34,6 +34,10 @@ STATUSES = {
 REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
 
 
+def worst_level(level1, level2):
+    return level1 if level1 > level2 else level2
+
+
 async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 

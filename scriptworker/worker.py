@@ -39,7 +39,10 @@ async def run_loop(context, creds_key="credentials"):
             # context.config['verify_chain_of_trust']
             running_task = loop.create_task(run_task(context))
             status = await running_task
+            # TODO copy logfile(s) into artifact dir
             # TODO generate chain of trust artifact
+            # compare running_task.result() vs cot/upload results, get
+            # worst_level; that's what we should complete_task as
             await upload_artifacts(context)
             await complete_task(context, running_task.result())
             cleanup(context)
