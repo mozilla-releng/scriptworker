@@ -81,8 +81,8 @@ async def read_stdout(stdout, log_fh):
 def get_log_filenames(context):
     """Helper function to get the task log/error file paths.
     """
-    log_file = os.path.join(context.config['log_dir'], 'task_output.log')
-    error_file = os.path.join(context.config['log_dir'], 'task_error.log')
+    log_file = os.path.join(context.config['task_log_dir'], 'task_output.log')
+    error_file = os.path.join(context.config['task_log_dir'], 'task_error.log')
     return log_file, error_file
 
 
@@ -92,7 +92,7 @@ def get_log_fhs(context):
     filehandles.
     """
     log_file, error_file = get_log_filenames(context)
-    makedirs(context.config['log_dir'])
+    makedirs(context.config['task_log_dir'])
     with open(log_file, "w") as log_fh:
         with open(error_file, "w") as error_fh:
             yield (log_fh, error_fh)

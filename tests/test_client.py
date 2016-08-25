@@ -96,6 +96,7 @@ def config(tmpdir_factory):
         'work_dir': work_dir,
         'log_dir': os.path.join(str(temp_dir), "log"),
         'artifact_dir': os.path.join(str(temp_dir), "artifact"),
+        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
         'provisioner_id': 'provisioner_id',
         'worker_type': 'worker_type',
     }

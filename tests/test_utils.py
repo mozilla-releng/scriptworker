@@ -70,6 +70,7 @@ def context(tmpdir_factory):
     context = Context()
     context.config = {
         'log_dir': os.path.join(path, 'log'),
+        'task_log_dir': os.path.join(path, 'artifact', 'public', 'logs'),
         'artifact_dir': os.path.join(path, 'artifact'),
         'work_dir': os.path.join(path, 'work'),
     }
@@ -93,7 +94,7 @@ def test_datestring_to_timestamp(datestring):
 
 
 def test_cleanup(context):
-    for name in 'work_dir', 'artifact_dir':
+    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
         os.makedirs(path)
         open(os.path.join(path, 'tempfile'), "w").close()

@@ -32,6 +32,7 @@ def context(tmpdir_factory):
     context.config = {
         'log_dir': os.path.join(str(temp_dir), "log"),
         'artifact_dir': os.path.join(str(temp_dir), "artifact"),
+        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
         'work_dir': os.path.join(str(temp_dir), "work"),
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,

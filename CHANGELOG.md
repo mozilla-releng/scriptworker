@@ -12,8 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
 - `validate_task_schema` renamed to `validate_json_schema`
-- call `copy_task_logs_to_artifact_dir` before `upload_artifacts`, instead of magically
-  doing so inside of `upload_artifacts`
+- write task log files directly to the `task_log_dir`; this should be a subdir of `artifact_dir` if we want them uploaded.
 - `ScriptWorkerException` now has an `exit_code` of 5 (`internal-error`); `ScriptWorkerRetryException` now has an `exit_code` of 4 (`resource-unavailable`)
 
 ## [0.4.0] - 2016-08-19

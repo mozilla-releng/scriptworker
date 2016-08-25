@@ -73,7 +73,7 @@ def makedirs(path):
 def cleanup(context):
     """Clean up the work_dir and artifact_dir between task runs.
     """
-    for name in 'work_dir', 'artifact_dir':
+    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
         if os.path.exists(path):
             log.debug("rmtree({})".format(path))

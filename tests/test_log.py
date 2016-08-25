@@ -21,6 +21,7 @@ def context(tmpdir_factory):
         "log_fmt": "%(message)s",
         "log_datefmt": "%H:%M:%S",
         "log_dir": str(temp_dir),
+        "task_log_dir": os.path.join(str(temp_dir), "public", "logs"),
         "log_max_bytes": 100,
         "log_num_backups": 1,
         "verbose": True,
@@ -40,8 +41,8 @@ of text
 # tests {{{1
 def test_get_log_filenames(context):
     log_file, error_file = swlog.get_log_filenames(context)
-    assert log_file == os.path.join(context.config['log_dir'], 'task_output.log')
-    assert error_file == os.path.join(context.config['log_dir'], 'task_error.log')
+    assert log_file == os.path.join(context.config['task_log_dir'], 'task_output.log')
+    assert error_file == os.path.join(context.config['task_log_dir'], 'task_error.log')
 
 
 def test_get_log_fhs(context, text):

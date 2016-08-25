@@ -55,6 +55,7 @@ def build_config(override):
     config.update({
         'log_dir': os.path.join(basedir, "log"),
         'artifact_dir': os.path.join(basedir, "artifact"),
+        'task_log_dir': os.path.join(basedir, "artifact", "public", "logs"),
         'work_dir': os.path.join(basedir, "work"),
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),

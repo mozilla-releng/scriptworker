@@ -48,6 +48,7 @@ DEFAULT_CONFIG = {
     "work_dir": "...",
     "log_dir": "...",
     "artifact_dir": "...",
+    "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),

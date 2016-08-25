@@ -8,10 +8,9 @@ import sys
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config, read_worker_creds
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, copy_task_logs_to_artifact_dir, \
-    reclaim_task, run_task, upload_artifacts, worst_level
+from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
 
 log = logging.getLogger(__name__)
@@ -40,13 +39,15 @@ async def run_loop(context, creds_key="credentials"):
             try:
                 # TODO download and verify chain of trust artifacts if
                 # context.config['verify_chain_of_trust']
+                # write a logfile to task_log_dir
                 status = await run_task(context)
-                copy_task_logs_to_artifact_dir(context)
                 # TODO generate chain of trust artifact
-                # compare running_task.result() vs cot/upload results, get
-                # worst_level; that's what we should complete_task as
+            except ScriptWorkerException as e:
+                status = worst_level(status, e.exit_code)
+                log.error("Hit ScriptWorkerTaskException: {}".format(str(e)))
+            try:
                 await upload_artifacts(context)
-            except ScriptWorkerTaskException as e:
+            except ScriptWorkerException as e:
                 status = worst_level(status, e.exit_code)
                 log.error("Hit ScriptWorkerTaskException: {}".format(str(e)))
             await complete_task(context, status)

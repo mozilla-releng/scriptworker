@@ -7,7 +7,6 @@ import asyncio
 import logging
 import mimetypes
 import os
-import shutil
 import signal
 
 from asyncio.subprocess import PIPE
@@ -16,9 +15,9 @@ import taskcluster
 import taskcluster.exceptions
 from taskcluster.async import Queue
 
-from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
-from scriptworker.log import get_log_fhs, get_log_filenames, log_errors, read_stdout
-from scriptworker.utils import filepaths_in_dir, makedirs, raise_future_exceptions, retry_async
+from scriptworker.exceptions import ScriptWorkerRetryException
+from scriptworker.log import get_log_fhs, log_errors, read_stdout
+from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async
 
 log = logging.getLogger(__name__)
 
@@ -164,25 +163,6 @@ async def retry_create_artifact(*args, **kwargs):
     )
 
 
-def copy_task_logs_to_artifact_dir(context, relpath="public/logs", cp=shutil.copy2):
-    """Copy the logs to the upload dir.
-    """
-    for path in get_log_filenames(context):
-        target_name = os.path.basename(path)
-        target_dir = os.path.join(context.config['artifact_dir'], relpath)
-        makedirs(target_dir)
-        target_path = os.path.join(target_dir, target_name)
-        try:
-            cp(path, target_path)
-        except IOError as e:
-            raise ScriptWorkerTaskException(
-                "Can't copy {} to {}: {}".format(
-                    path, target_path, str(e)
-                ),
-                exit_code=STATUSES['internal-error']
-            )
-
-
 async def upload_artifacts(context):
     """Upload the files in `artifact_dir`, preserving relative paths.
 
@@ -210,7 +190,8 @@ async def upload_artifacts(context):
                 )
             )
         )
-    await raise_future_exceptions(tasks)
+    if tasks:
+        await raise_future_exceptions(tasks)
 
 
 async def complete_task(context, result):
