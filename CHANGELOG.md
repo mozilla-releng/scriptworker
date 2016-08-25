@@ -12,6 +12,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
 - `validate_task_schema` renamed to `validate_json_schema`
+- call `copy_task_logs_to_artifact_dir` before `upload_artifacts`, instead of magically
+  doing so inside of `upload_artifacts`
 
 ## [0.4.0] - 2016-08-19
 ### Added

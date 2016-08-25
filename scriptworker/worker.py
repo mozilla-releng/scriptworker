@@ -8,9 +8,10 @@ import sys
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config, read_worker_creds
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerException
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts
+from scriptworker.task import complete_task, copy_task_logs_to_artifact_dir, \
+    reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
 
 log = logging.getLogger(__name__)
@@ -33,18 +34,22 @@ async def run_loop(context, creds_key="credentials"):
             break
         if claim_task_defn:
             log.info("Going to run task!")
+            status = 0
             context.claim_task = claim_task_defn
             loop.create_task(reclaim_task(context))
-            # TODO download and verify chain of trust artifacts if
-            # context.config['verify_chain_of_trust']
-            running_task = loop.create_task(run_task(context))
-            status = await running_task
-            # TODO copy logfile(s) into artifact dir
-            # TODO generate chain of trust artifact
-            # compare running_task.result() vs cot/upload results, get
-            # worst_level; that's what we should complete_task as
-            await upload_artifacts(context)
-            await complete_task(context, running_task.result())
+            try:
+                # TODO download and verify chain of trust artifacts if
+                # context.config['verify_chain_of_trust']
+                status = await run_task(context)
+                copy_task_logs_to_artifact_dir(context)
+                # TODO generate chain of trust artifact
+                # compare running_task.result() vs cot/upload results, get
+                # worst_level; that's what we should complete_task as
+                await upload_artifacts(context)
+            except ScriptWorkerTaskException as e:
+                status = worst_level(status, e.exit_code)
+                log.error("Hit ScriptWorkerTaskException: {}".format(str(e)))
+            await complete_task(context, status)
             cleanup(context)
             await asyncio.sleep(1)
             return status

@@ -9,7 +9,7 @@ import mock
 import os
 import pytest
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
 import sys
@@ -151,8 +151,7 @@ async def test_reclaim_task_non_409(context, successful_queue):
 async def test_upload_artifacts(context):
     args = []
     os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
-    os.makedirs(context.config['log_dir'])
-    paths = list(log.get_log_filenames(context)) + [
+    paths = [
         os.path.join(context.config['artifact_dir'], 'one'),
         os.path.join(context.config['artifact_dir'], 'public/two'),
     ]
@@ -166,20 +165,6 @@ async def test_upload_artifacts(context):
         await task.upload_artifacts(context)
 
     assert sorted(args) == sorted(paths)
-
-
-def test_bad_update_upload_file_list():
-    with pytest.raises(ScriptWorkerTaskException):
-        task._update_upload_file_list(
-            {'existing_key': {
-                'path': 'one',
-                'target_path': 'existing_key',
-            }},
-            {
-                'path': 'two',
-                'target_path': 'existing_key'
-            }
-        )
 
 
 @pytest.mark.asyncio

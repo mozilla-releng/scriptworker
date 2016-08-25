@@ -7,6 +7,7 @@ import asyncio
 import logging
 import mimetypes
 import os
+import shutil
 import signal
 
 from asyncio.subprocess import PIPE
@@ -17,7 +18,7 @@ from taskcluster.async import Queue
 
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.log import get_log_fhs, get_log_filenames, log_errors, read_stdout
-from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async
+from scriptworker.utils import filepaths_in_dir, makedirs, raise_future_exceptions, retry_async
 
 log = logging.getLogger(__name__)
 
@@ -114,6 +115,8 @@ def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
     """
     content_type, _ = mimetypes.guess_type(path)
+    if content_type is None and path.endswith('.log'):
+        content_type = "text/plain"
     return content_type or "application/binary"
 
 
@@ -161,45 +164,41 @@ async def retry_create_artifact(*args, **kwargs):
     )
 
 
-def _update_upload_file_list(file_list, upload_config):
-    """Helper function to update `file_list` with upload_config, while
-    making sure that only one file will be uploaded per `target_path`
+def copy_task_logs_to_artifact_dir(context, relpath="public/logs", cp=shutil.copy2):
+    """Copy the logs to the upload dir.
     """
-    target_path = upload_config['target_path']
-    value = file_list.setdefault(target_path, upload_config)
-    if value != upload_config:
-        raise ScriptWorkerTaskException(
-            "Conflict in upload_artifacts target_paths: {} and {} are both {}!".format(
-                value['path'], upload_config['path'], target_path
-            ),
-            exit_code=STATUSES['malformed-payload']
-        )
+    for path in get_log_filenames(context):
+        target_name = os.path.basename(path)
+        target_dir = os.path.join(context.config['artifact_dir'], relpath)
+        makedirs(target_dir)
+        target_path = os.path.join(target_dir, target_name)
+        try:
+            cp(path, target_path)
+        except IOError as e:
+            raise ScriptWorkerTaskException(
+                "Can't copy {} to {}: {}".format(
+                    path, target_path, str(e)
+                ),
+                exit_code=STATUSES['internal-error']
+            )
 
 
 async def upload_artifacts(context):
-    """Upload the task logs and any files in `artifact_dir`.
-    Currently we do not support recursing into subdirectories.
+    """Upload the files in `artifact_dir`, preserving relative paths.
+
+    This function expects the directory structure in `artifact_dir` to remain
+    the same.  So if we want the files in `public/...`, create an
+    `artifact_dir/public` and put the files in there.
     """
     file_list = {}
     for target_path in filepaths_in_dir(context.config['artifact_dir']):
         path = os.path.join(context.config['artifact_dir'], target_path)
-        if not target_path.startswith('public/'):
-            target_path = 'public/{}'.format(target_path)
-        upload_config = {
+        file_list[target_path] = {
             'path': path,
             'target_path': target_path,
             'content_type': None,
         }
-        _update_upload_file_list(file_list, upload_config)
 
-    for path in get_log_filenames(context):
-        target_path = 'public/logs/{}'.format(os.path.basename(path))
-        upload_config = {
-            'path': path,
-            'target_path': target_path,
-            'content_type': 'text/plain'
-        }
-        _update_upload_file_list(file_list, upload_config)
     tasks = []
     for upload_config in file_list.values():
         tasks.append(
