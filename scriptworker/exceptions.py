@@ -4,11 +4,11 @@
 
 
 class ScriptWorkerException(Exception):
-    pass
+    exit_code = 5
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
-    pass
+    exit_code = 4
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
