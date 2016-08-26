@@ -5,7 +5,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 ### Added
 - added `firefox_cot_schema.json` for firefox chain of trust
-- added `dump_json` helper function
 - added `generate_cot` function
 - added `worst_level` function for determining overall result of task
 

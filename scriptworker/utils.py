@@ -4,7 +4,8 @@
 import aiohttp
 import arrow
 import asyncio
-import json
+import functools
+import hashlib
 import logging
 import os
 import shutil
@@ -143,7 +144,10 @@ def filepaths_in_dir(path):
     return filepaths
 
 
-def dump_json(data):
-    """ Given a json blob, dump it as an indented and sorted string
-    """
-    return json.dumps(data, indent=2, sort_keys=True)
+def get_hash(path, hash_type="sha256"):
+    # I'd love to make this async, but evidently file i/o is always ready
+    h = hashlib.new(hash_type)
+    with open(path, "rb") as f:
+        for chunk in iter(functools.partial(f.read, 4096), b''):
+            h.update(chunk)
+    return h.hexdigest()

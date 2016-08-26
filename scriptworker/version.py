@@ -76,8 +76,6 @@ def write_version(name=None, path=None):
             'version_string': __version_string__,
         }
         with open(path, 'w') as filehandle:
-            # don't import dump_json here because this file shouldn't have any
-            # in-package dependencies
             filehandle.write(json.dumps(contents, sort_keys=True, indent=4))
 
 

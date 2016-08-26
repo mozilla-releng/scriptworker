@@ -38,6 +38,10 @@ DEFAULT_CONFIG = {
     "reclaim_interval": 300,
     "poll_interval": 5,
 
+    # chain of trust settings
+    "verify_chain_of_trust": False,  # TODO True
+    "chain_of_trust_hash_algorithm": "sha256",
+
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",
     "log_fmt": "%(asctime)s %(levelname)8s - %(message)s",
@@ -53,7 +57,6 @@ DEFAULT_CONFIG = {
     "artifact_upload_timeout": 60 * 20,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
     "task_max_timeout": 60 * 20,
-    "verify_chain_of_trust": False,  # TODO True
     "verbose": True,
 }
 

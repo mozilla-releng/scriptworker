@@ -39,7 +39,8 @@ async def run_loop(context, creds_key="credentials"):
             try:
                 # TODO download and verify chain of trust artifacts if
                 # context.config['verify_chain_of_trust']
-                # write a logfile to task_log_dir
+                # write an audit logfile to task_log_dir; copy cot into
+                # artifact_dir/cot ?
                 status = await run_task(context)
                 # TODO generate chain of trust artifact
             except ScriptWorkerException as e:
