@@ -114,8 +114,9 @@ def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
     """
     content_type, _ = mimetypes.guess_type(path)
-    if content_type is None and path.endswith('.log'):
-        content_type = "text/plain"
+    if path.endswith('.log'):
+        # linux mimetypes returns None for .log
+        content_type = content_type or "text/plain"
     return content_type or "application/binary"
 
 
@@ -190,8 +191,7 @@ async def upload_artifacts(context):
                 )
             )
         )
-    if tasks:
-        await raise_future_exceptions(tasks)
+    await raise_future_exceptions(tasks)
 
 
 async def complete_task(context, result):

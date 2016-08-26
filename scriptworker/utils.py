@@ -6,6 +6,7 @@ import arrow
 import asyncio
 import functools
 import hashlib
+import json
 import logging
 import os
 import shutil
@@ -124,6 +125,8 @@ async def raise_future_exceptions(tasks):
     """Given a list of futures, await them, then raise their exceptions if
     any.  Without something like this, any exceptions will be ignored.
     """
+    if not tasks:
+        return
     await asyncio.wait(tasks)
     for task in tasks:
         exc = task.exception()
@@ -151,3 +154,7 @@ def get_hash(path, hash_type="sha256"):
         for chunk in iter(functools.partial(f.read, 4096), b''):
             h.update(chunk)
     return h.hexdigest()
+
+
+def format_json(data):
+    return json.dumps(data, indent=2, sort_keys=True)

@@ -7,19 +7,14 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "type": "object",
-        "properties": {
-          "hash": "string",
-          "name": "string"
-        },
-        "required": ["hash", "name"]
+        "type": "object"
       }
     },
     "extra": {
       "type": "object"
     },
     "runId": {
-      "type": "int"
+      "type": "number"
     },
     "task": {
       "type": "object",
@@ -34,12 +29,11 @@
         "payload": {
           "type": "object"
         },
-        "routes": {
+        "scopes": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "minItems": 1,
           "uniqueItems": true
         },
         "taskGroupId": {
@@ -49,7 +43,7 @@
           "type": "string"
         }
       },
-      "required": ["dependencies", "payload", "routes", "taskGroupId", "workerType"]
+      "required": ["dependencies", "payload", "scopes", "taskGroupId", "workerType"]
     },
     "taskId": {
       "type": "string"

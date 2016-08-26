@@ -52,6 +52,8 @@ mimetypes = {
     "/foo/bar/test.txt": "text/plain",
     "/tmp/blah.tgz": "application/x-tar",
     "~/Firefox.dmg": "application/x-apple-diskimage",
+    "/foo/bar/blah.log": "text/plain",
+    "/totally/unknown": "application/binary",
 }
 
 

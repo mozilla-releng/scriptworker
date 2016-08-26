@@ -10,6 +10,35 @@ import pytest
 import taskcluster.exceptions
 
 
+GOOD_GPG_KEYS = {
+    "docker.root@example.com": {
+        "fingerprint": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
+        "keyid": "FFFABCCF",
+    },
+    "docker@example.com": {
+        "fingerprint": "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
+        "keyid": "BEAB7ED4",
+    },
+    "scriptworker@example.com": {
+        "fingerprint": "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
+        "keyid": "4C7D44CF",
+    },
+}
+
+BAD_GPG_KEYS = {
+    "unknown@example.com": {
+        "fingerprint": "B45FE2F4035C3786120998174ACA2B25224905DA",
+        "keyid": "224905DA",
+    },
+}
+
+ARTIFACT_SHAS = {
+    "public/foo": "b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c",
+    "public/baz": "bf07a7fbb825fc0aae7bf4a1177b2b31fcf8a3feeaf7092761e18c859ee52a9c",
+    "public/logs/bar": "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730",
+}
+
+
 def read(path):
     """Return the contents of a file.
     """

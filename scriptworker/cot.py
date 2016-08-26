@@ -3,11 +3,14 @@
 """
 
 import json
+import logging
 import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import sign
-from scriptworker.utils import filepaths_in_dir, get_hash
+from scriptworker.utils import filepaths_in_dir, format_json, get_hash
+
+log = logging.getLogger(__name__)
 
 
 def get_cot_artifacts(context):
@@ -34,14 +37,14 @@ def generate_cot_body(context):
             'artifacts': get_cot_artifacts(context),
             'runId': context.claim_task['runId'],
             'task': context.task,
-            'taskId': context.claim_task['taskId'],
-            'workerGroup': context.config['worker_group'],
+            'taskId': context.claim_task['status']['taskId'],
+            'workerGroup': context.claim_task['workerGroup'],
             'workerId': context.config['worker_id'],
             'workerType': context.config['worker_type'],
             'extra': {},  # TODO
         }
     except (KeyError, ) as e:
-        raise ScriptWorkerException("Can't generate chain of trust!")
+        raise ScriptWorkerException("Can't generate chain of trust! {}".format(str(e)))
 
     return cot
 
@@ -49,17 +52,18 @@ def generate_cot_body(context):
 def generate_cot(context, path=None):
     """Format and sign the cot body, and write to disk
     """
-    body = json.dumps(generate_cot_body(context), indent=2, sort_keys=True)
+    body = generate_cot_body(context)
     try:
         with open(context.config['cot_schema_path'], "r") as fh:
-            schema = json.read(fh)
+            schema = json.load(fh)
     except (IOError, ValueError) as e:
         raise ScriptWorkerException(
             "Can't read schema file {}: {}".format(context.config['cot_schema_path'], str(e))
         )
     validate_json_schema(body, schema, name="chain of trust")
+    formatted_body = format_json(body)
     path = path or os.path.join(context.config['artifact_dir'], "public", "certificate.json.gpg")
-    signed_body = sign(context, body)
+    signed_body = sign(context, formatted_body)
     with open(path, "w") as fh:
         print(signed_body, file=fh, end="")
     return signed_body

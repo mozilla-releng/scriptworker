@@ -74,15 +74,24 @@ async def test_read_stdout(context):
 
 
 def test_update_logging_config_verbose(context):
-    swlog.update_logging_config(context, context.config['log_dir'])
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 3
 
 
+def test_update_logging_config_verbose_existing_handler(context):
+    log = logging.getLogger(context.config['log_dir'])
+    log.addHandler(logging.NullHandler())
+    log.addHandler(logging.NullHandler())
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    assert log.level == logging.DEBUG
+    assert len(log.handlers) == 4
+
+
 def test_update_logging_config_not_verbose(context):
     context.config['verbose'] = False
-    swlog.update_logging_config(context, context.config['log_dir'])
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.INFO
     assert len(log.handlers) == 2
