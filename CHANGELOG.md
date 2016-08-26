@@ -5,14 +5,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 ### Added
 - added `firefox_cot_schema.json` for firefox chain of trust
-- added `generate_cot` function
-- added `worst_level` function for determining overall result of task
+- added `scriptworker.gpg` for gpg support
+- added `scriptworker.cot` for chain of trust generation
+- added `scriptworker.task.worst_level` function for determining overall result of task
 
 ### Changed
 - `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
 - `validate_task_schema` renamed to `validate_json_schema`
 - write task log files directly to the `task_log_dir`; this should be a subdir of `artifact_dir` if we want them uploaded.
 - `ScriptWorkerException` now has an `exit_code` of 5 (`internal-error`); `ScriptWorkerRetryException` now has an `exit_code` of 4 (`resource-unavailable`)
+
+### Fixed
+- Functions in `test_config` now ignore existing `TASKCLUSTER_` env vars for a clean testing environment
 
 ## [0.4.0] - 2016-08-19
 ### Added

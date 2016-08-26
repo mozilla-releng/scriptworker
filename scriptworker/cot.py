@@ -2,21 +2,12 @@
 """Chain of Trust artifact validation and creation.
 """
 
-import gnupg
 import json
 import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
+from scriptworker.gpg import sign
 from scriptworker.utils import filepaths_in_dir, get_hash
-
-# XXX Temporarily silence flake8
-assert gnupg
-
-
-def validate_cot_schema(cot, schema):
-    """Simple wrapper function, probably overkill.
-    """
-    return validate_json_schema(cot, schema, name="chain of trust")
 
 
 def get_cot_artifacts(context):
@@ -39,7 +30,6 @@ def generate_cot_body(context):
     """Generate the chain of trust dictionary
     """
     try:
-        # TODO checks to make sure the below aren't empty?  maybe jsonschema?
         cot = {
             'artifacts': get_cot_artifacts(context),
             'runId': context.claim_task['runId'],
@@ -60,8 +50,16 @@ def generate_cot(context, path=None):
     """Format and sign the cot body, and write to disk
     """
     body = json.dumps(generate_cot_body(context), indent=2, sort_keys=True)
+    try:
+        with open(context.config['cot_schema_path'], "r") as fh:
+            schema = json.read(fh)
+    except (IOError, ValueError) as e:
+        raise ScriptWorkerException(
+            "Can't read schema file {}: {}".format(context.config['cot_schema_path'], str(e))
+        )
+    validate_json_schema(body, schema, name="chain of trust")
     path = path or os.path.join(context.config['artifact_dir'], "public", "certificate.json.gpg")
-    # TODO sign
+    signed_body = sign(context, body)
     with open(path, "w") as fh:
-        print(body, file=fh, end="")
-    return body
+        print(signed_body, file=fh, end="")
+    return signed_body

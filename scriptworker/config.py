@@ -41,6 +41,20 @@ DEFAULT_CONFIG = {
     # chain of trust settings
     "verify_chain_of_trust": False,  # TODO True
     "chain_of_trust_hash_algorithm": "sha256",
+    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_schema.json"),
+    # Specify to override $HOME/.gnupg
+    "gpg_home": None,
+    # A list of additional gpg cmdline options
+    "gpg_options": None,
+    # The path to the gpg executable.
+    "gpg_path": None,
+    # The path to the public/secret keyrings, if we're not using the default
+    "gpg_public_keyring": None,
+    "gpg_secret_keyring": None,
+    # Boolean to use the gpg agent
+    "gpg_use_agent": False,
+    # Encoding to use.  Defaults to latin-1
+    "gpg_encoding": None,
 
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",
@@ -102,13 +116,14 @@ def check_config(config, path):
         if key not in DEFAULT_CONFIG:
             messages.append("Unknown key {} in {}!".format(key, path))
             continue
-        value_type = type(value)
-        default_type = type(DEFAULT_CONFIG[key])
-        if value_type != default_type:
-            messages.append(
-                "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
-            )
-        if value in ("...", b"...", None):
+        if DEFAULT_CONFIG[key] is not None:
+            value_type = type(value)
+            default_type = type(DEFAULT_CONFIG[key])
+            if value_type != default_type:
+                messages.append(
+                    "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
+                )
+        if value in ("...", b"..."):
             messages.append("{} {} needs to be defined!".format(path, key))
     return messages
 
