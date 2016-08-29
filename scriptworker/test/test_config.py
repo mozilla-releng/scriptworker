@@ -34,8 +34,17 @@ ENV_CREDS_PARAMS = ((
 
 
 @pytest.fixture(scope='function')
-def test_config():
+def t_config():
     return deepcopy(config.DEFAULT_CONFIG)
+
+
+@pytest.fixture(scope='function')
+def t_env():
+    env = {}
+    for key, value in os.environ.items():
+        if not key.startswith('TASKCLUSTER_'):
+            env[key] = value
+    return env
 
 
 # tests {{{1
@@ -45,23 +54,23 @@ def test_nontext_to_unicode():
     assert d == {'a': (1, 2, 3)}
 
 
-def test_check_config_invalid_key(test_config):
-    test_config['invalid_key_for_testing'] = 1
-    messages = config.check_config(test_config, "test_path")
+def test_check_config_invalid_key(t_config):
+    t_config['invalid_key_for_testing'] = 1
+    messages = config.check_config(t_config, "test_path")
     assert "Unknown key" in "\n".join(messages)
 
 
-def test_check_config_invalid_type(test_config):
-    test_config['log_dir'] = tuple(test_config['log_dir'])
-    messages = config.check_config(test_config, "test_path")
+def test_check_config_invalid_type(t_config):
+    t_config['log_dir'] = tuple(t_config['log_dir'])
+    messages = config.check_config(t_config, "test_path")
     assert "log_dir: type" in "\n".join(messages)
 
 
-def test_check_config_good(test_config):
-    for key, value in test_config.items():
+def test_check_config_good(t_config):
+    for key, value in t_config.items():
         if value == "...":
-            test_config[key] = "filled_in"
-    messages = config.check_config(test_config, "test_path")
+            t_config[key] = "filled_in"
+    messages = config.check_config(t_config, "test_path")
     assert messages == []
 
 
@@ -76,15 +85,15 @@ def test_create_config_bad_config():
         config.create_config(path)
 
 
-def test_create_config_good(test_config):
+def test_create_config_good(t_config):
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     with open(path, "r") as fh:
         contents = json.load(fh)
-    test_config.update(contents)
-    test_creds = test_config['credentials']
-    del(test_config['credentials'])
+    t_config.update(contents)
+    test_creds = t_config['credentials']
+    del(t_config['credentials'])
     generated_config, generated_creds = config.create_config(path)
-    assert generated_config == test_config
+    assert generated_config == t_config
     assert generated_creds == test_creds
     assert isinstance(generated_config, frozendict)
     assert isinstance(generated_creds, frozendict)
@@ -108,15 +117,15 @@ def test_no_creds_in_config():
     assert creds == fake_creds
 
 
-def test_missing_creds():
+def test_missing_creds(t_env):
     with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
-        assert config.read_worker_creds() is None
+        with mock.patch.object(os, 'environ', new=t_env):
+            assert config.read_worker_creds() is None
 
 
 @pytest.mark.parametrize("params", ENV_CREDS_PARAMS)
-def test_environ_creds(params):
-    env = deepcopy(os.environ)
-    env.update(params[0])
+def test_environ_creds(params, t_env):
+    t_env.update(params[0])
     with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
-        with mock.patch.object(os, 'environ', new=env):
+        with mock.patch.object(os, 'environ', new=t_env):
             assert config.read_worker_creds() == params[1]

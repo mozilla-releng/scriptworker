@@ -105,6 +105,13 @@ async def test_update_unexpired_poll_task_urls(context):
     assert context.poll_task_urls == good
 
 
+@pytest.mark.asyncio
+async def test_update_empty_poll_task_urls(context):
+    context.poll_task_urls = None
+    await poll.update_poll_task_urls(context, fake_response)
+    assert context.poll_task_urls == ((), {})
+
+
 def test_get_azure_urls(context):
     count = 0
     for poll_url, delete_url in poll.get_azure_urls(context):

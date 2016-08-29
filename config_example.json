@@ -7,13 +7,16 @@
     "work_dir": "/tmp/work",
     "log_dir": "/tmp/log",
     "artifact_dir": "/tmp/artifact",
+    "task_log_dir": "/tmp/artifact/public/logs",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 1200,
     "task_script": ["bash", "-c", "echo foo && sleep 19 && exit 1"],
     "task_max_timeout": 1200,
     "valid_artifact_schemes": ["https"],
     "valid_artifact_netlocs": ["queue.taskcluster.net"],
-    "valid_artifact_path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\d+)?/artifacts/(?P<filepath>.*)$"],
+    "valid_artifact_path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"],
+    "verify_chain_of_trust": false,
+    "sign_chain_of_trust": false,
 
     "credentials": {
         "clientId": "...",

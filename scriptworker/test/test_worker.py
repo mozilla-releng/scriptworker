@@ -117,6 +117,7 @@ def test_mocker_run_loop(context, successful_queue, event_loop, mocker):
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop)
     mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "generate_cot", new=noop)
     mocker.patch.object(worker, "upload_artifacts", new=noop)
     mocker.patch.object(worker, "complete_task", new=noop)
     status = event_loop.run_until_complete(worker.run_loop(context))
@@ -137,6 +138,7 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop)
     mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop)
     mocker.patch.object(worker, "complete_task", new=noop)
     mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
@@ -155,6 +157,9 @@ def test_mocker_run_loop_noop_update_creds(context, successful_queue,
     async def noop(*args, **kwargs):
         return
 
+    def noop_sync(*args, **kwargs):
+        return
+
     def get_creds(*args, **kwargs):
         return deepcopy(new_creds)
 
@@ -162,9 +167,48 @@ def test_mocker_run_loop_noop_update_creds(context, successful_queue,
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop)
     mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop)
     mocker.patch.object(worker, "complete_task", new=noop)
     mocker.patch.object(worker, "read_worker_creds", new=get_creds)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert context.credentials == new_creds
     assert status is None
+
+
+@pytest.mark.parametrize("func_to_raise", ['run_task', 'upload_artifacts'])
+def test_mocker_run_loop_exception(context, successful_queue,
+                                   event_loop, mocker, func_to_raise):
+    """Raise an exception within the run_loop try/excepts and make sure the
+    status is changed
+    """
+    task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
+
+    async def find_task(*args, **kwargs):
+        return task
+
+    async def noop(*args, **kwargs):
+        return 0
+
+    def noop_sync(*args, **kwargs):
+        return 0
+
+    async def exc(*args, **kwargs):
+        raise ScriptWorkerException("foo")
+
+    context.queue = successful_queue
+    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "reclaim_task", new=noop)
+    if func_to_raise == "run_task":
+        mocker.patch.object(worker, "run_task", new=exc)
+    else:
+        mocker.patch.object(worker, "run_task", new=noop)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
+    if func_to_raise == "upload_artifacts":
+        mocker.patch.object(worker, "upload_artifacts", new=exc)
+    else:
+        mocker.patch.object(worker, "upload_artifacts", new=noop)
+    mocker.patch.object(worker, "complete_task", new=noop)
+    mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
+    status = event_loop.run_until_complete(worker.run_loop(context))
+    assert status == ScriptWorkerException.exit_code

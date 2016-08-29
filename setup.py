@@ -10,6 +10,7 @@ reqs = [
     "defusedxml",
     "frozendict",
     "jsonschema",
+    "python-gnupg",
     "taskcluster",
     "virtualenv",
 ]
@@ -64,7 +65,7 @@ setup(
             "scriptworker = scriptworker.worker:main",
         ],
     },
-    zip_safe=True,
+    zip_safe=False,
     license="MPL 2.0",
     install_requires=reqs,
     tests_require=tests_require,

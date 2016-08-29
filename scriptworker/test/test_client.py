@@ -96,6 +96,7 @@ def config(tmpdir_factory):
         'work_dir': work_dir,
         'log_dir': os.path.join(str(temp_dir), "log"),
         'artifact_dir': os.path.join(str(temp_dir), "artifact"),
+        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
         'provisioner_id': 'provisioner_id',
         'worker_type': 'worker_type',
     }
@@ -144,14 +145,14 @@ def test_get_missing_creds(config, event_loop):
 def test_validate_task(schema):
     with open(BASIC_TASK, "r") as fh:
         task = json.load(fh)
-    client.validate_task_schema(task, schema)
+    client.validate_json_schema(task, schema)
 
 
 def test_invalid_task(schema):
     with open(BASIC_TASK, "r") as fh:
         task = json.load(fh)
     with pytest.raises(ScriptWorkerTaskException):
-        client.validate_task_schema({'foo': task}, schema)
+        client.validate_json_schema({'foo': task}, schema)
 
 
 def test_payload(config):

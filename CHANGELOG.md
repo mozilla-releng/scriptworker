@@ -3,14 +3,32 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## [0.5.0] - 2016-08-29
+### Added
+- added `firefox_cot_schema.json` for firefox chain of trust
+- added gpg signature creation + verification
+- added chain of trust generation
+- added `scriptworker.task.worst_level` function for determining overall result of task
+
 ### Changed
 - `unsignedArtifacts` url paths are now unquoted, so `%2F` becomes `/`
+- `validate_task_schema` renamed to `validate_json_schema`
+- write task log files directly to the `task_log_dir`; this should be a subdir of `artifact_dir` if we want them uploaded.
+- `ScriptWorkerException` now has an `exit_code` of 5 (`internal-error`); `ScriptWorkerRetryException` now has an `exit_code` of 4 (`resource-unavailable`)
+- moved `tests` directory to `scriptworker/test`
+
+### Fixed
+- Functions in `test_config` now ignore existing `TASKCLUSTER_` env vars for a clean testing environment
+- `raise_future_exceptions` no longer throws an exception for an empty list of tasks
+- Updated `CONTRIBUTING.rst` to reflect reality
 
 ## [0.4.0] - 2016-08-19
 ### Added
 - add `scriptworker.utils.filepaths_in_dir`
 - added setup.cfg for wheels
 - added `scriptworker.client.validate_artifact_url`.
+- added python-gnupg dependency
 
 ### Changed
 - test files no longer use a test class.

@@ -8,9 +8,10 @@ import sys
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config, read_worker_creds
 from scriptworker.context import Context
+from scriptworker.cot import generate_cot
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts
+from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
 
 log = logging.getLogger(__name__)
@@ -33,12 +34,25 @@ async def run_loop(context, creds_key="credentials"):
             break
         if claim_task_defn:
             log.info("Going to run task!")
+            status = 0
             context.claim_task = claim_task_defn
             loop.create_task(reclaim_task(context))
-            running_task = loop.create_task(run_task(context))
-            status = await running_task
-            await upload_artifacts(context)
-            await complete_task(context, running_task.result())
+            try:
+                # TODO download and verify chain of trust artifacts if
+                # context.config['verify_chain_of_trust']
+                # write an audit logfile to task_log_dir; copy cot into
+                # artifact_dir/cot ?
+                status = await run_task(context)
+                generate_cot(context)
+            except ScriptWorkerException as e:
+                status = worst_level(status, e.exit_code)
+                log.error("Hit ScriptWorkerException: {}".format(str(e)))
+            try:
+                await upload_artifacts(context)
+            except ScriptWorkerException as e:
+                status = worst_level(status, e.exit_code)
+                log.error("Hit ScriptWorkerException: {}".format(str(e)))
+            await complete_task(context, status)
             cleanup(context)
             await asyncio.sleep(1)
             return status

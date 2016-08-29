@@ -21,6 +21,7 @@ def context(tmpdir_factory):
         "log_fmt": "%(message)s",
         "log_datefmt": "%H:%M:%S",
         "log_dir": str(temp_dir),
+        "task_log_dir": os.path.join(str(temp_dir), "public", "logs"),
         "log_max_bytes": 100,
         "log_num_backups": 1,
         "verbose": True,
@@ -40,8 +41,8 @@ of text
 # tests {{{1
 def test_get_log_filenames(context):
     log_file, error_file = swlog.get_log_filenames(context)
-    assert log_file == os.path.join(context.config['log_dir'], 'task_output.log')
-    assert error_file == os.path.join(context.config['log_dir'], 'task_error.log')
+    assert log_file == os.path.join(context.config['task_log_dir'], 'task_output.log')
+    assert error_file == os.path.join(context.config['task_log_dir'], 'task_error.log')
 
 
 def test_get_log_fhs(context, text):
@@ -73,15 +74,24 @@ async def test_read_stdout(context):
 
 
 def test_update_logging_config_verbose(context):
-    swlog.update_logging_config(context, context.config['log_dir'])
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 3
 
 
+def test_update_logging_config_verbose_existing_handler(context):
+    log = logging.getLogger(context.config['log_dir'])
+    log.addHandler(logging.NullHandler())
+    log.addHandler(logging.NullHandler())
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    assert log.level == logging.DEBUG
+    assert len(log.handlers) == 4
+
+
 def test_update_logging_config_not_verbose(context):
     context.config['verbose'] = False
-    swlog.update_logging_config(context, context.config['log_dir'])
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.INFO
     assert len(log.handlers) == 2

@@ -52,14 +52,23 @@ def build_config(override):
         os.makedirs(basedir)
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = deepcopy(DEFAULT_CONFIG)
+    GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
     config.update({
         'log_dir': os.path.join(basedir, "log"),
         'artifact_dir': os.path.join(basedir, "artifact"),
+        'task_log_dir': os.path.join(basedir, "artifact", "public", "logs"),
         'work_dir': os.path.join(basedir, "work"),
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),
         'artifact_upload_timeout': 60 * 2,
         'artifact_expiration_hours': 1,
+        'gpg_home': GPG_HOME,
+        "gpg_encoding": None,
+        "gpg_options": None,
+        "gpg_path": os.environ.get("GPG_PATH", None),
+        "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),
+        "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
+        "gpg_use_agent": None,
         'reclaim_interval': 5,
         'credential_update_interval': .1,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),

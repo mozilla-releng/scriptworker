@@ -9,7 +9,7 @@ import mock
 import os
 import pytest
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
 import sys
@@ -32,6 +32,7 @@ def context(tmpdir_factory):
     context.config = {
         'log_dir': os.path.join(str(temp_dir), "log"),
         'artifact_dir': os.path.join(str(temp_dir), "artifact"),
+        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
         'work_dir': os.path.join(str(temp_dir), "work"),
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,
@@ -51,6 +52,8 @@ mimetypes = {
     "/foo/bar/test.txt": "text/plain",
     "/tmp/blah.tgz": "application/x-tar",
     "~/Firefox.dmg": "application/x-apple-diskimage",
+    "/foo/bar/blah.log": "text/plain",
+    "/totally/unknown": "application/binary",
 }
 
 
@@ -151,8 +154,7 @@ async def test_reclaim_task_non_409(context, successful_queue):
 async def test_upload_artifacts(context):
     args = []
     os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
-    os.makedirs(context.config['log_dir'])
-    paths = list(log.get_log_filenames(context)) + [
+    paths = [
         os.path.join(context.config['artifact_dir'], 'one'),
         os.path.join(context.config['artifact_dir'], 'public/two'),
     ]
@@ -166,20 +168,6 @@ async def test_upload_artifacts(context):
         await task.upload_artifacts(context)
 
     assert sorted(args) == sorted(paths)
-
-
-def test_bad_update_upload_file_list():
-    with pytest.raises(ScriptWorkerTaskException):
-        task._update_upload_file_list(
-            {'existing_key': {
-                'path': 'one',
-                'target_path': 'existing_key',
-            }},
-            {
-                'path': 'two',
-                'target_path': 'existing_key'
-            }
-        )
 
 
 @pytest.mark.asyncio

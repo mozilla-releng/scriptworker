@@ -4,6 +4,9 @@
 import aiohttp
 import arrow
 import asyncio
+import functools
+import hashlib
+import json
 import logging
 import os
 import shutil
@@ -72,7 +75,7 @@ def makedirs(path):
 def cleanup(context):
     """Clean up the work_dir and artifact_dir between task runs.
     """
-    for name in 'work_dir', 'artifact_dir':
+    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
         if os.path.exists(path):
             log.debug("rmtree({})".format(path))
@@ -122,6 +125,8 @@ async def raise_future_exceptions(tasks):
     """Given a list of futures, await them, then raise their exceptions if
     any.  Without something like this, any exceptions will be ignored.
     """
+    if not tasks:
+        return
     await asyncio.wait(tasks)
     for task in tasks:
         exc = task.exception()
@@ -140,3 +145,16 @@ def filepaths_in_dir(path):
             filepath = filepath.replace(path, '').lstrip('/')
             filepaths.append(filepath)
     return filepaths
+
+
+def get_hash(path, hash_type="sha256"):
+    # I'd love to make this async, but evidently file i/o is always ready
+    h = hashlib.new(hash_type)
+    with open(path, "rb") as f:
+        for chunk in iter(functools.partial(f.read, 4096), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def format_json(data):
+    return json.dumps(data, indent=2, sort_keys=True)

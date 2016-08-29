@@ -70,6 +70,7 @@ def context(tmpdir_factory):
     context = Context()
     context.config = {
         'log_dir': os.path.join(path, 'log'),
+        'task_log_dir': os.path.join(path, 'artifact', 'public', 'logs'),
         'artifact_dir': os.path.join(path, 'artifact'),
         'work_dir': os.path.join(path, 'work'),
     }
@@ -93,7 +94,7 @@ def test_datestring_to_timestamp(datestring):
 
 
 def test_cleanup(context):
-    for name in 'work_dir', 'artifact_dir':
+    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
         os.makedirs(path)
         open(os.path.join(path, 'tempfile'), "w").close()
@@ -201,6 +202,11 @@ async def test_raise_future_exceptions(event_loop):
         await utils.raise_future_exceptions(tasks)
 
 
+@pytest.mark.asyncio
+async def test_raise_future_exceptions_noop(event_loop):
+    await utils.raise_future_exceptions([])
+
+
 def test_filepaths_in_dir():
     filepaths = sorted([
         "asdfasdf/lwekrjweoi/lsldkfjs",
@@ -214,3 +220,9 @@ def test_filepaths_in_dir():
             os.makedirs(parent_dir)
             touch(os.path.join(tmp, path))
         assert sorted(utils.filepaths_in_dir(tmp)) == filepaths
+
+
+def test_get_hash():
+    path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
+    sha = utils.get_hash(path, hash_type="sha256")
+    assert sha == "584818280d7908da33c810a25ffb838b1e7cec1547abd50c859521229942c5a5"
