@@ -94,4 +94,4 @@ Tips
 
 To run a subset of tests::
 
-    $ py.test tests/test_task.py
+    $ py.test scriptworker/test/test_task.py

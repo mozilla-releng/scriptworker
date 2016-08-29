@@ -1,4 +1,5 @@
 recursive-include scriptworker/data *
+recursive-include scriptworker/test/data *
 
 include LICENSE
 include CHANGELOG.md
