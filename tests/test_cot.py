@@ -40,6 +40,7 @@ def get_context():
             "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),
             "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
             "gpg_use_agent": None,
+            "sign_chain_of_trust": True,
 
             "worker_id": "worker_id",
             "worker_type": "worker_type",
@@ -114,6 +115,14 @@ def test_generate_cot(artifacts):
         body = gpg.get_body(context, signed_body)
         log.info(body)
         assert body.rstrip() == cot.format_json(cot.generate_cot_body(context))
+
+
+def test_generate_cot_unsigned(artifacts):
+    with get_context() as context:
+        context.config['sign_chain_of_trust'] = False
+        path = os.path.join(context.config['work_dir'], "foo")
+        body = cot.generate_cot(context, path=path)
+        assert body == cot.format_json(cot.generate_cot_body(context))
 
 
 def test_generate_cot_exception(artifacts):

@@ -40,6 +40,7 @@ DEFAULT_CONFIG = {
 
     # chain of trust settings
     "verify_chain_of_trust": False,  # TODO True
+    "sign_chain_of_trust": False,  # TODO True
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_schema.json"),
     # Specify to override $HOME/.gnupg

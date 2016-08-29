@@ -61,9 +61,10 @@ def generate_cot(context, path=None):
             "Can't read schema file {}: {}".format(context.config['cot_schema_path'], str(e))
         )
     validate_json_schema(body, schema, name="chain of trust")
-    formatted_body = format_json(body)
+    body = format_json(body)
     path = path or os.path.join(context.config['artifact_dir'], "public", "certificate.json.gpg")
-    signed_body = sign(context, formatted_body)
+    if context.config['sign_chain_of_trust']:
+        body = sign(context, body)
     with open(path, "w") as fh:
-        print(signed_body, file=fh, end="")
-    return signed_body
+        print(body, file=fh, end="")
+    return body
