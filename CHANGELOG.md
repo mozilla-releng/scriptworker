@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Functions in `test_config` now ignore existing `TASKCLUSTER_` env vars for a clean testing environment
 - `raise_future_exceptions` no longer throws an exception for an empty list of tasks
+- Updated `CONTRIBUTING.rst` to reflect reality
 
 ## [0.4.0] - 2016-08-19
 ### Added

@@ -25,8 +25,8 @@ If you are reporting a bug, please include:
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-Relengworker could always use more documentation, whether as part of the
-official relengworker docs, in docstrings, or even on the web in blog posts,
+Scriptworker could always use more documentation, whether as part of the
+official scriptworker docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 Submit Feedback
@@ -45,17 +45,17 @@ If you are proposing a feature:
 Get Started!
 ------------
 
-Ready to contribute? Here's how to set up `relengworker` for local development.
+Ready to contribute? Here's how to set up `scriptworker` for local development.
 
-1. Fork the `relengworker` repo on GitHub.
+1. Fork the `scriptworker` repo on GitHub.
 2. Clone your fork locally::
 
-    $ git clone git@github.com:your_name_here/relengworker.git
+    $ git clone git@github.com:your_name_here/scriptworker.git
 
 3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
 
-    $ mkvirtualenv relengworker
-    $ cd relengworker
+    $ mkvirtualenv scriptworker
+    $ cd scriptworker
     $ python setup.py develop
 
 4. Create a branch for local development::
@@ -81,12 +81,12 @@ Pull Request Guidelines
 
 Before you submit a pull request, check that it meets these guidelines:
 
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put
+1. The pull request should include full test coverage.
+2. If the pull request adds or changes functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python 2.7. Check
-   https://travis-ci.org/mozilla/relengworker/pull_requests
+3. The pull request should work for Python 3.5. Check
+   https://travis-ci.org/mozilla/scriptworker/pull_requests
    and make sure that the tests pass for all supported Python versions.
 
 Tips
@@ -94,4 +94,4 @@ Tips
 
 To run a subset of tests::
 
-    $ py.test relengworker/test/test_task.py
+    $ py.test tests/test_task.py

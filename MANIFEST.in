@@ -1,6 +1,8 @@
 recursive-include scriptworker/data *
 
 include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.rst
 include README.rst
 include config_example.json
 include version.json
