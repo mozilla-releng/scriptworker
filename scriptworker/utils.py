@@ -67,9 +67,16 @@ def to_unicode(line):
 def makedirs(path):
     """mkdir -p
     """
-    if path and not os.path.exists(path):
-        log.debug("makedirs({})".format(path))
-        os.makedirs(path)
+    if path:
+        if not os.path.exists(path):
+            log.debug("makedirs({})".format(path))
+            os.makedirs(path)
+        else:
+            realpath = os.path.realpath(path)
+            if not os.path.isdir(realpath):
+                raise ScriptWorkerException(
+                    "makedirs: {} already exists and is not a directory!".format(path)
+                )
 
 
 def cleanup(context):

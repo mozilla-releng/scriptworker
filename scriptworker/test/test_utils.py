@@ -226,3 +226,18 @@ def test_get_hash():
     path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
     sha = utils.get_hash(path, hash_type="sha256")
     assert sha == "584818280d7908da33c810a25ffb838b1e7cec1547abd50c859521229942c5a5"
+
+
+def test_makedirs_empty():
+    utils.makedirs(None)
+
+
+def test_makedirs_existing_file():
+    path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
+    with pytest.raises(ScriptWorkerException):
+        utils.makedirs(path)
+
+
+def test_makedirs_existing_dir():
+    path = os.path.join(os.path.dirname(__file__))
+    utils.makedirs(path)
