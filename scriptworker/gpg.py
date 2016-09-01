@@ -47,7 +47,7 @@ def guess_gpg_home(obj, gpg_home=None):
     try:
         if hasattr(obj, 'config'):
             gpg_home = gpg_home or obj.config['gpg_home']
-        elif hasattr(obj, 'gnupghome'):
+        if hasattr(obj, 'gnupghome'):
             gpg_home = gpg_home or obj.gnupghome
         gpg_home = gpg_home or os.path.join(os.environ['HOME'], '.gnupg')
     except KeyError:

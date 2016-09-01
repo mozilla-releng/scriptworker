@@ -45,9 +45,10 @@ def test_guess_gpg_home(context, gpg_home, expected):
     assert sgpg.guess_gpg_home(context, gpg_home=gpg_home) == expected
 
 
-def test_guess_gpg_home_GPG(context):
-    gpg = sgpg.GPG(context)
-    assert sgpg.guess_gpg_home(gpg) == GPG_HOME
+@pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, "bar")))
+def test_guess_gpg_home_GPG(context, gpg_home, expected):
+    gpg = sgpg.GPG(context, "bar")
+    assert sgpg.guess_gpg_home(gpg, gpg_home) == expected
 
 
 def test_guess_gpg_home_exception(context, mocker):
