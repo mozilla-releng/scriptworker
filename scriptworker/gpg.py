@@ -36,10 +36,20 @@ def gpg_default_args(gpg_home):
     ]
 
 
-def guess_gpg_home(context, gpg_home=None):
+def guess_gpg_home(obj, gpg_home=None):
+    """Guess gpg_home.  If `gpg_home` is specified, return that.
+    If `obj` is a context object and `context.config['gpg_home']` is not None,
+    return that.
+    If `obj` is a GPG object and `obj.gnupghome` is not None, return that.
+    Otherwise look in `~/.gnupg`.  If os.environ['HOME'] isn't set, raise
+    a ScriptWorkerGPGException.
+    """
     try:
-        gpg_home = gpg_home or context.config['gpg_home'] or \
-            os.path.join(os.environ['HOME'], '.gnupg')
+        if hasattr(obj, 'config'):
+            gpg_home = gpg_home or obj.config['gpg_home']
+        elif hasattr(obj, 'gnupghome'):
+            gpg_home = gpg_home or obj.gnupghome
+        gpg_home = gpg_home or os.path.join(os.environ['HOME'], '.gnupg')
     except KeyError:
         raise ScriptWorkerGPGException("Can't guess_gpg_home: $HOME not set!")
     return gpg_home
@@ -107,7 +117,7 @@ def export_key(gpg, fingerprint, private=False):
 
     Raises ScriptworkerGPGException if the key isn't there.
     """
-    message = "Exporting key {} from gnupghome {}".format(fingerprint, str(gpg.gnupghome))
+    message = "Exporting key {} from gnupghome {}".format(fingerprint, guess_gpg_home(gpg))
     log.info(message)
     key = gpg.export_keys(fingerprint)
     if not key:
@@ -193,7 +203,7 @@ def verify_signature(gpg, signed_data, **kwargs):
 
     Raises ScriptWorkerGPGException on failure.
     """
-    log.info("Verifying signature (gnupghome {})".format(str(gpg.gnupghome)))
+    log.info("Verifying signature (gnupghome {})".format(guess_gpg_home(gpg)))
     verified = gpg.verify(signed_data, **kwargs)
     if verified.trust_level is not None and verified.trust_level >= verified.TRUST_FULLY:
         log.info("Fully trusted signature from {}, {}".format(verified.username, verified.key_id))
