@@ -21,7 +21,7 @@ GPG_CONFIG_MAPPING = {
 }
 
 
-def create_gpg_conf(homedir, my_fingerprint):
+def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
     """ Set infosec guidelines; use my_fingerprint by default
     """
     gpg_conf = os.path.join(homedir, "gpg.conf")
@@ -34,13 +34,14 @@ def create_gpg_conf(homedir, my_fingerprint):
               "default-preference-list SHA512 SHA384 AES256 ZLIB BZIP2 ZIP Uncompressed\n"
               "keyid-format 0xlong\n", file=fh)
 
-        # XXX If we want keyservers, we can specify, ideally configurable:
-        # print("keyserver gpg.mozilla.org\n"
-        #       "keyserver hkp://keys.gnupg.net\n"
-        #       "keyserver-options auto-key-retrieve\n", file=fh)
+        if keyservers:
+            for keyserver in keyservers:
+                print("keyserver {}".format(keyserver), file=fh)
+            print("keyserver-options auto-key-retrieve\n", file=fh)
 
-        # default key
-        print("default-key {}".format(my_fingerprint), file=fh)
+        if my_fingerprint is not None:
+            # default key
+            print("default-key {}".format(my_fingerprint), file=fh)
 
 
 def GPG(context, gpg_home=None):
