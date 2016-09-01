@@ -5,8 +5,11 @@ import arrow
 import gnupg
 import logging
 import os
+import pexpect
+import pprint
+import subprocess
 
-from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerGPGException
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +24,28 @@ GPG_CONFIG_MAPPING = {
 }
 
 
+# helper functions {{{1
+def gpg_default_args(gpg_home):
+    """ For commandline gpg calls, use these args by default
+    """
+    return [
+        "--homedir", gpg_home,
+        "--no-default-keyring",
+        "--secret-keyring", os.path.join(gpg_home, "secring.gpg"),
+        "--keyring", os.path.join(gpg_home, "pubring.gpg"),
+    ]
+
+
+def guess_gpg_home(context, gpg_home=None):
+    try:
+        gpg_home = gpg_home or context.config['gpg_home'] or \
+            os.path.join(os.environ['HOME'], '.gnupg')
+    except KeyError:
+        raise ScriptWorkerGPGException("Can't guess_gpg_home: $HOME not set!")
+    return gpg_home
+
+
+# create_gpg_conf {{{1
 def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
     """ Set infosec guidelines; use my_fingerprint by default
     """
@@ -44,6 +69,7 @@ def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
             print("default-key {}".format(my_fingerprint), file=fh)
 
 
+# GPG {{{1
 def GPG(context, gpg_home=None):
     """Return a python-gnupg GPG instance
     """
@@ -58,6 +84,105 @@ def GPG(context, gpg_home=None):
     return gpg
 
 
+# key generation and export{{{1
+def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
+    """Generate a gpg keypair.
+    """
+    log.info("Generating key for {}...".format(email))
+    kwargs = {
+        "name_real": name,
+        "name_comment": comment,
+        "name_email": email,
+        "key_length": key_length,
+    }
+    if expiration:
+        kwargs['expire_date'] = expiration
+    key = gpg.gen_key(gpg.gen_key_input(**kwargs))
+    log.info("Fingerprint {}".format(key.fingerprint))
+    return key.fingerprint
+
+
+def export_key(gpg, fingerprint, private=False):
+    """Return the ascii armored key identified by `fingerprint`.
+
+    Raises ScriptworkerGPGException if the key isn't there.
+    """
+    message = "Exporting key {}".format(fingerprint)
+    if gpg.gnupghome:
+        message += " from {}".format(gpg.gnupghome)
+    log.info(message)
+    key = gpg.export_keys(fingerprint)
+    if not key:
+        raise ScriptWorkerGPGException("Can't find key with fingerprint {}!".format(fingerprint))
+    return key
+
+
+def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
+    """Sign the `target_fingerprint` key with the `signing_key` or default key
+    """
+    args = []
+    gpg_path = context.config['gpg_path'] or 'gpg'
+    gpg_home = guess_gpg_home(context, gpg_home)
+    message = "Signing key {} in {}".format(target_fingerprint, gpg_home)
+    if signing_key:
+        args.extend(['-u', signing_key])
+        message += " with {}...".format(signing_key)
+    log.info(message)
+    # local, non-exportable signature
+    args.append("--lsign-key")
+    args.append(target_fingerprint)
+    cmd_args = gpg_default_args(context.config['gpg_home']) + args
+    child = pexpect.spawn(gpg_path, cmd_args)
+    child.expect(b".*Really sign\? \(y/N\) ")
+    child.sendline(b'y')
+    index = child.expect([pexpect.EOF, pexpect.TIMEOUT])
+    if index != 0:
+        raise ScriptWorkerGPGException("Failed signing {}! Timeout".format(target_fingerprint))
+    else:
+        child.close()
+        if child.exitstatus != 0 or child.signalstatus is not None:
+            raise ScriptWorkerGPGException(
+                "Failed signing {}! exit {} signal {}".format(
+                    target_fingerprint, child.exitstatus, child.signalstatus
+                )
+            )
+
+
+def update_trust(context, my_fingerprint, trusted_fingerprints=None, gpg_home=None):
+    """ Trust my key ultimately; trusted_fingerprints fully
+    """
+    gpg_home = guess_gpg_home(context, gpg_home)
+    log.info("Updating ownertrust in {}...".format(gpg_home))
+    ownertrust = []
+    trusted_fingerprints = trusted_fingerprints or []
+    gpg_path = context.config['gpg_path'] or 'gpg'
+    trustdb = os.path.join(gpg_home, "trustdb.gpg")
+    if os.path.exists(trustdb):
+        os.remove(trustdb)
+    # trust my_fingerprint ultimately
+    ownertrust.append("{}:6\n".format(my_fingerprint))
+    # Trust trusted_fingerprints fully.  Once they are signed by my key, any
+    # key they sign will be valid.  Only do this for root/intermediate keys
+    # that are intended to sign other keys.
+    for fingerprint in trusted_fingerprints:
+        ownertrust.append("{}:5\n".format(fingerprint))
+    log.debug(pprint.pformat(ownertrust))
+    ownertrust = ''.join(ownertrust).encode('utf-8')
+    cmd = [gpg_path] + gpg_default_args(gpg_home) + ["--import-ownertrust"]
+    # TODO asyncio?
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout = p.communicate(input=ownertrust)[0]
+    if p.returncode:
+        message = "gpg update_trust error!"
+        if stdout:
+            message += "\n{}".format(stdout.decode('utf-8'))
+        raise ScriptWorkerGPGException(message)
+    log.debug(subprocess.check_output(
+        [gpg_path] + gpg_default_args(gpg_home) + ["--export-ownertrust"]).decode('utf-8')
+    )
+
+
+# data signatures and verification {{{1
 def sign(gpg, data, **kwargs):
     """Sign `data` with the key `kwargs['keyid']`, or the default key if not specified
     """
@@ -65,14 +190,20 @@ def sign(gpg, data, **kwargs):
 
 
 def verify_signature(gpg, signed_data, **kwargs):
-    """Verify `signed_data` with the key `kwargs['keyid']`, or the default key if not specified
+    """Verify `signed_data` with the key `kwargs['keyid']`, or the default key
+    if not specified.
+
+    Raises ScriptWorkerGPGException on failure.
     """
-    log.info("Verifying signature...")
+    message = "Verifying signature"
+    if gpg.gnupghome:
+        message += " (gnupghome {})".format(gpg.gnupghome)
+    log.info(message)
     verified = gpg.verify(signed_data, **kwargs)
     if verified.trust_level is not None and verified.trust_level >= verified.TRUST_FULLY:
         log.info("Fully trusted signature from {}, {}".format(verified.username, verified.key_id))
     else:
-        raise ScriptWorkerTaskException("Signature could not be verified!")
+        raise ScriptWorkerGPGException("Signature could not be verified!")
     return verified
 
 

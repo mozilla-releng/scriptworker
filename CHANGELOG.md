@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## Unreleased
 ### Added
 - ability to create new gpg homedirs
+- scriptworker now requires `pexpect` for gpg key signing
 
 ### Changed
 - `utils.makedirs` now throws `ScriptWorkerException` if the path exists and is not a directory or a softlink pointing to a directory.

@@ -7,6 +7,10 @@ class ScriptWorkerException(Exception):
     exit_code = 5
 
 
+class ScriptWorkerGPGException(ScriptWorkerException):
+    exit_code = 5
+
+
 class ScriptWorkerRetryException(ScriptWorkerException):
     exit_code = 4
 

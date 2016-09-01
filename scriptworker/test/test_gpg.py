@@ -5,7 +5,7 @@
 import os
 import pytest
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
 from . import GOOD_GPG_KEYS, BAD_GPG_KEYS
 
@@ -39,5 +39,5 @@ def test_verify_good_signatures(context, params):
 def test_verify_bad_signatures(context, params):
     gpg = sgpg.GPG(context)
     data = sgpg.sign(gpg, "foo", keyid=params[1]["fingerprint"])
-    with pytest.raises(ScriptWorkerTaskException):
+    with pytest.raises(ScriptWorkerGPGException):
         sgpg.verify_signature(gpg, data)
