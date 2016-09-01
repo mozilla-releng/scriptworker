@@ -11,9 +11,11 @@ from . import GOOD_GPG_KEYS, BAD_GPG_KEYS
 
 
 # constants helpers and fixtures {{{1
+GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
+
+
 @pytest.fixture(scope='function')
 def context():
-    GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
     context = Context()
     context.config = {
         "gpg_home": GPG_HOME,
@@ -28,6 +30,29 @@ def context():
 
 
 # tests {{{1
+def test_gpg_default_args():
+    expected = [
+        "--homedir", GPG_HOME,
+        "--no-default-keyring",
+        "--secret-keyring", os.path.join(GPG_HOME, "secring.gpg"),
+        "--keyring", os.path.join(GPG_HOME, "pubring.gpg"),
+    ]
+    assert sgpg.gpg_default_args(GPG_HOME) == expected
+
+
+@pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, GPG_HOME)))
+def test_guess_gpg_home(context, gpg_home, expected):
+    assert sgpg.guess_gpg_home(context, gpg_home=gpg_home) == expected
+
+
+def test_guess_gpg_home_exception(context, mocker):
+    env = {}
+    context.config['gpg_home'] = None
+    mocker.patch.object(os, "environ", new=env)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.guess_gpg_home(context)
+
+
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
 def test_verify_good_signatures(context, params):
     gpg = sgpg.GPG(context)

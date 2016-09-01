@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from copy import deepcopy
 import json
 import os
-import pprint
 import pytest
 import slugid
 from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
@@ -106,8 +105,6 @@ def get_temp_creds(context):
     if temp_creds:
         context.credentials = temp_creds
         print("Using temp creds!")
-        pprint.pprint(temp_creds)
-        pprint.pprint(context.queue.options['credentials'])
     else:
         raise Exception("Can't get temp_creds!")
 

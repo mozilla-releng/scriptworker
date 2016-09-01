@@ -107,9 +107,7 @@ def export_key(gpg, fingerprint, private=False):
 
     Raises ScriptworkerGPGException if the key isn't there.
     """
-    message = "Exporting key {}".format(fingerprint)
-    if gpg.gnupghome:
-        message += " from {}".format(gpg.gnupghome)
+    message = "Exporting key {} from gnupghome {}".format(fingerprint, str(gpg.gnupghome))
     log.info(message)
     key = gpg.export_keys(fingerprint)
     if not key:
@@ -195,10 +193,7 @@ def verify_signature(gpg, signed_data, **kwargs):
 
     Raises ScriptWorkerGPGException on failure.
     """
-    message = "Verifying signature"
-    if gpg.gnupghome:
-        message += " (gnupghome {})".format(gpg.gnupghome)
-    log.info(message)
+    log.info("Verifying signature (gnupghome {})".format(str(gpg.gnupghome)))
     verified = gpg.verify(signed_data, **kwargs)
     if verified.trust_level is not None and verified.trust_level >= verified.TRUST_FULLY:
         log.info("Fully trusted signature from {}, {}".format(verified.username, verified.key_id))
