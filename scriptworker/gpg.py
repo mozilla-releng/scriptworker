@@ -67,12 +67,12 @@ def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
         print("personal-digest-preferences SHA512 SHA384\n"
               "cert-digest-algo SHA256\n"
               "default-preference-list SHA512 SHA384 AES256 ZLIB BZIP2 ZIP Uncompressed\n"
-              "keyid-format 0xlong\n", file=fh)
+              "keyid-format 0xlong", file=fh)
 
         if keyservers:
             for keyserver in keyservers:
                 print("keyserver {}".format(keyserver), file=fh)
-            print("keyserver-options auto-key-retrieve\n", file=fh)
+            print("keyserver-options auto-key-retrieve", file=fh)
 
         if my_fingerprint is not None:
             # default key

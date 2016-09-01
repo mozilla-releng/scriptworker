@@ -2,8 +2,11 @@
 # coding=utf-8
 """Test scriptworker.gpg
 """
+import arrow
+import mock
 import os
 import pytest
+import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
@@ -25,6 +28,22 @@ TEXT = {
     'poo': 'Hello, \U0001F4A9!\n\n',
 }
 
+GPG_CONF_BASE = "personal-digest-preferences SHA512 SHA384\n" + \
+                "cert-digest-algo SHA256\n" + \
+                "default-preference-list SHA512 SHA384 AES256 ZLIB BZIP2 ZIP Uncompressed\n" + \
+                "keyid-format 0xlong\n"
+GPG_CONF_KEYSERVERS = "keyserver key1\nkeyserver key2\nkeyserver-options auto-key-retrieve\n"
+GPG_CONF_FINGERPRINT = "default-key MY_FINGERPRINT\n"
+GPG_CONF_PARAMS = ((
+    [], None, GPG_CONF_BASE
+), (
+    ["key1", "key2"], None, GPG_CONF_BASE + GPG_CONF_KEYSERVERS
+), (
+    [], "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_FINGERPRINT
+), (
+    ["key1", "key2"], "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_KEYSERVERS + GPG_CONF_FINGERPRINT
+))
+
 
 @pytest.fixture(scope='function')
 def context():
@@ -41,7 +60,7 @@ def context():
     return context
 
 
-# tests {{{1
+# gpg_default_args {{{1
 def test_gpg_default_args():
     expected = [
         "--homedir", GPG_HOME,
@@ -52,6 +71,7 @@ def test_gpg_default_args():
     assert sgpg.gpg_default_args(GPG_HOME) == expected
 
 
+# guess_gpg_home {{{1
 @pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, GPG_HOME)))
 def test_guess_gpg_home(context, gpg_home, expected):
     assert sgpg.guess_gpg_home(context, gpg_home=gpg_home) == expected
@@ -71,6 +91,7 @@ def test_guess_gpg_home_exception(context, mocker):
         sgpg.guess_gpg_home(context)
 
 
+# signatures {{{1
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
 def test_verify_good_signatures(context, params):
     gpg = sgpg.GPG(context)
@@ -94,3 +115,29 @@ def test_get_body(context, text, params):
     if not text.endswith('\n'):
         text = "{}\n".format(text)
     assert sgpg.get_body(gpg, data) == text
+
+
+# create_gpg_conf {{{1
+@pytest.mark.parametrize("keyservers,fingerprint,expected", GPG_CONF_PARAMS)
+def test_create_gpg_conf(keyservers, fingerprint, expected):
+    with tempfile.TemporaryDirectory() as tmp:
+        sgpg.create_gpg_conf(tmp, keyservers=keyservers, my_fingerprint=fingerprint)
+        with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
+            assert fh.read() == expected
+
+
+def test_create_second_gpg_conf(mocker):
+    now = arrow.utcnow()
+    with mock.patch.object(arrow, 'utcnow') as p:
+        p.return_value = now
+        with tempfile.TemporaryDirectory() as tmp:
+            sgpg.create_gpg_conf(
+                tmp, keyservers=GPG_CONF_PARAMS[0][0], my_fingerprint=GPG_CONF_PARAMS[0][1]
+            )
+            sgpg.create_gpg_conf(
+                tmp, keyservers=GPG_CONF_PARAMS[1][0], my_fingerprint=GPG_CONF_PARAMS[1][1]
+            )
+            with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
+                assert fh.read() == GPG_CONF_PARAMS[1][2]
+            with open(os.path.join(tmp, "gpg.conf.{}".format(now.timestamp)), "r") as fh:
+                assert fh.read() == GPG_CONF_PARAMS[0][2]
