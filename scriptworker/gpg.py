@@ -57,18 +57,16 @@ def GPG(context, gpg_home=None):
     return gpg
 
 
-def sign(context, data, gpg_home=None, **kwargs):
+def sign(gpg, data, **kwargs):
     """Sign `data` with the key `kwargs['keyid']`, or the default key if not specified
     """
-    gpg = GPG(context, gpg_home=gpg_home)
     return str(gpg.sign(data, **kwargs))
 
 
-def verify_signature(context, signed_data, gpg_home=None, **kwargs):
+def verify_signature(gpg, signed_data, **kwargs):
     """Verify `signed_data` with the key `kwargs['keyid']`, or the default key if not specified
     """
     log.info("Verifying signature...")
-    gpg = GPG(context, gpg_home=gpg_home)
     verified = gpg.verify(signed_data, **kwargs)
     if verified.trust_level is not None and verified.trust_level >= verified.TRUST_FULLY:
         log.info("Fully trusted signature from {}, {}".format(verified.username, verified.key_id))
@@ -77,10 +75,9 @@ def verify_signature(context, signed_data, gpg_home=None, **kwargs):
     return verified
 
 
-def get_body(context, signed_data, gpg_home=None, **kwargs):
+def get_body(gpg, signed_data, gpg_home=None, **kwargs):
     """Returned the unsigned data from `signed_data`.
     """
-    gpg = GPG(context, gpg_home=gpg_home)
-    verify_signature(context, signed_data)
+    verify_signature(gpg, signed_data)
     body = gpg.decrypt(signed_data, **kwargs)
     return str(body)

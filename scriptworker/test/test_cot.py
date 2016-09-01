@@ -11,7 +11,7 @@ from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.cot as cot
-import scriptworker.gpg as gpg
+import scriptworker.gpg as sgpg
 from . import ARTIFACT_SHAS
 
 log = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ def test_generate_cot(artifacts):
         signed_body = cot.generate_cot(context, path=path)
         with open(path, "r") as fh:
             assert fh.read() == signed_body
-        body = gpg.get_body(context, signed_body)
+        body = sgpg.get_body(sgpg.GPG(context), signed_body)
         log.info(body)
         assert body.rstrip() == cot.format_json(cot.generate_cot_body(context))
 

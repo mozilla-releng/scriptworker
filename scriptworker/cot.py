@@ -7,7 +7,7 @@ import logging
 import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.gpg import sign
+from scriptworker.gpg import GPG, sign
 from scriptworker.utils import filepaths_in_dir, format_json, get_hash
 
 log = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def generate_cot(context, path=None):
     body = format_json(body)
     path = path or os.path.join(context.config['artifact_dir'], "public", "certificate.json.gpg")
     if context.config['sign_chain_of_trust']:
-        body = sign(context, body)
+        body = sign(GPG(context), body)
     with open(path, "w") as fh:
         print(body, file=fh, end="")
     return body
