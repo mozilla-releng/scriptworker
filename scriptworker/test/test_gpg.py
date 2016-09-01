@@ -13,6 +13,18 @@ from . import GOOD_GPG_KEYS, BAD_GPG_KEYS
 # constants helpers and fixtures {{{1
 GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
 
+TEXT = {
+    # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
+    'english': 'The quick brown fox jumped over the lazy dog',
+    # this hiragana pangram comes from http://www.columbia.edu/~fdc/utf8/
+    'hiragana': 'いろはにほへど　ちりぬるを\n'
+                'わがよたれぞ　つねならむ\n'
+                'うゐのおくやま　けふこえて\n'
+                'あさきゆめみじ　ゑひもせず',
+
+    'poo': 'Hello, \U0001F4A9!\n\n',
+}
+
 
 @pytest.fixture(scope='function')
 def context():
@@ -72,3 +84,13 @@ def test_verify_bad_signatures(context, params):
     data = sgpg.sign(gpg, "foo", keyid=params[1]["fingerprint"])
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.verify_signature(gpg, data)
+
+
+@pytest.mark.parametrize("text", [v for _, v in sorted(TEXT.items())])
+@pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
+def test_get_body(context, text, params):
+    gpg = sgpg.GPG(context)
+    data = sgpg.sign(gpg, text, keyid=params[1]["fingerprint"])
+    if not text.endswith('\n'):
+        text = "{}\n".format(text)
+    assert sgpg.get_body(gpg, data) == text

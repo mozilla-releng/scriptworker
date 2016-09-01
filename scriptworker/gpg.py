@@ -90,7 +90,7 @@ def GPG(context, gpg_home=None):
     if gpg_home is not None:
         kwargs['gnupghome'] = gpg_home
     gpg = gnupg.GPG(**kwargs)
-    gpg.encoding = context.config['gpg_encoding'] or gpg.encoding
+    gpg.encoding = context.config['gpg_encoding'] or 'utf-8'
     return gpg
 
 
