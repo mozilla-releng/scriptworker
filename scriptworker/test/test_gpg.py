@@ -57,6 +57,16 @@ EXPORT_KEY_PARAMS = ((
 ))
 
 
+def versionless(ascii_key):
+    """Strip the gpg version out of a key, to aid in comparison
+    """
+    new = []
+    for line in ascii_key.split('\n'):
+        if line and not line.startswith("Version: "):
+            new.append("{}\n".format(line))
+    return ''.join(new)
+
+
 def get_context(homedir):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
@@ -184,9 +194,10 @@ def test_generate_key(expires, expected):
 @pytest.mark.parametrize("fingerprint,private,expected", EXPORT_KEY_PARAMS)
 def test_export_key(context, fingerprint, private, expected):
     gpg = sgpg.GPG(context)
-    key = sgpg.export_key(gpg, fingerprint, private=private)
+    key = sgpg.export_key(gpg, fingerprint, private=private) + "\n"
     with open(expected, "r") as fh:
-        assert fh.read() == "{}\n".format(key)
+        contents = fh.read()
+        assert contents == key + "\n" or versionless(contents) == versionless(key)
 
 
 def test_export_unknown_key(context):
