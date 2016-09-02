@@ -119,7 +119,7 @@ def export_key(gpg, fingerprint, private=False):
     """
     message = "Exporting key {} from gnupghome {}".format(fingerprint, guess_gpg_home(gpg))
     log.info(message)
-    key = gpg.export_keys(fingerprint)
+    key = gpg.export_keys(fingerprint, private)
     if not key:
         raise ScriptWorkerGPGException("Can't find key with fingerprint {}!".format(fingerprint))
     return key

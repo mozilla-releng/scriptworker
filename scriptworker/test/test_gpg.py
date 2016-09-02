@@ -50,8 +50,17 @@ GENERATE_KEY_EXPIRATION = ((
     "2017-10-1", "2017-10-1"
 ))
 
+EXPORT_KEY_PARAMS = ((
+    "4ACA2B25224905DA", False, os.path.join(GPG_HOME, "keys", "unknown@example.com.pub")
+), (
+    "4ACA2B25224905DA", True, os.path.join(GPG_HOME, "keys", "unknown@example.com.sec")
+))
+
 
 def get_context(homedir):
+    """Use this function to get a context obj pointing at any directory as
+    gnupghome.
+    """
     context = Context()
     context.config = {
         "gpg_home": homedir,
@@ -67,6 +76,9 @@ def get_context(homedir):
 
 @pytest.fixture(scope='function')
 def context():
+    """Use this fixture to use the existing gpg homedir in the data/ directory
+    (treat this as read-only)
+    """
     return get_context(GPG_HOME)
 
 
@@ -166,3 +178,18 @@ def test_generate_key(expires, expected):
                 assert key['expires'] == expected
                 assert key['trust'] == 'u'
                 assert key['length'] == '4096'
+
+
+# export_key {{{1
+@pytest.mark.parametrize("fingerprint,private,expected", EXPORT_KEY_PARAMS)
+def test_export_key(context, fingerprint, private, expected):
+    gpg = sgpg.GPG(context)
+    key = sgpg.export_key(gpg, fingerprint, private=private)
+    with open(expected, "r") as fh:
+        assert fh.read() == "{}\n".format(key)
+
+
+def test_export_unknown_key(context):
+    gpg = sgpg.GPG(context)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.export_key(gpg, "illegal_fingerprint_lksjdflsjdkls")
