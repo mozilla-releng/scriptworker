@@ -44,20 +44,30 @@ GPG_CONF_PARAMS = ((
     ["key1", "key2"], "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_KEYSERVERS + GPG_CONF_FINGERPRINT
 ))
 
+GENERATE_KEY_EXPIRATION = ((
+    None, ''
+), (
+    "2017-10-1", "2017-10-1"
+))
 
-@pytest.fixture(scope='function')
-def context():
+
+def get_context(homedir):
     context = Context()
     context.config = {
-        "gpg_home": GPG_HOME,
+        "gpg_home": homedir,
         "gpg_encoding": None,
         "gpg_options": None,
         "gpg_path": os.environ.get("GPG_PATH", None),
-        "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),
-        "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
+        "gpg_public_keyring": os.path.join(homedir, "pubring.gpg"),
+        "gpg_secret_keyring": os.path.join(homedir, "secring.gpg"),
         "gpg_use_agent": None,
     }
     return context
+
+
+@pytest.fixture(scope='function')
+def context():
+    return get_context(GPG_HOME)
 
 
 # gpg_default_args {{{1
@@ -141,3 +151,18 @@ def test_create_second_gpg_conf(mocker):
                 assert fh.read() == GPG_CONF_PARAMS[1][2]
             with open(os.path.join(tmp, "gpg.conf.{}".format(now.timestamp)), "r") as fh:
                 assert fh.read() == GPG_CONF_PARAMS[0][2]
+
+
+# generate_key {{{1
+@pytest.mark.parametrize("expires,expected", GENERATE_KEY_EXPIRATION)
+def test_generate_key(expires, expected):
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        gpg = sgpg.GPG(context)
+        fingerprint = sgpg.generate_key(gpg, "foo", "bar", "baz", expiration=expires)
+        for key in gpg.list_keys():
+            if key['fingerprint'] == fingerprint:
+                assert key['uids'] == ['foo (bar) <baz>']
+                assert key['expires'] == expected
+                assert key['trust'] == 'u'
+                assert key['length'] == '4096'
