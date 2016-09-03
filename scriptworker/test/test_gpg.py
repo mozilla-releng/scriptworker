@@ -214,6 +214,21 @@ def test_export_unknown_key(context):
 
 # sign_key {{{1
 def test_sign_key():
+    """
+tru:o:1:1472876459:1:3:1:5
+pub:u:4096:1:EA608995918B2DF9:1472876455:::u:::escaESCA:
+fpr:::::::::A9F598A3179551CC664C15DEEA608995918B2DF9:
+uid:u::::1472876455::6477C0BAC30FB3E244C8F1907D78C6B243AFD516::two (two) <two>:
+sig:::1:EA608995918B2DF9:1472876455::::two (two) <two>:13x:::::8:
+sig:::1:9633F5F38B9BD3C5:1472876459::::one (one) <one>:10l:::::8:
+
+
+tru::1:1472876460:0:3:1:5
+pub:u:4096:1:BC76BF8F77D1B3F5:1472876457:::u:::escaESCA:
+fpr:::::::::7CFAD9E699D8559F1D3A50CCBC76BF8F77D1B3F5:
+uid:u::::1472876457::91AC286E48FDA7378B86F63FA6DDC2A46B54808F::three (three) <three>:
+sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
+    """
     with tempfile.TemporaryDirectory() as tmp:
         context = get_context(tmp)
         gpg = sgpg.GPG(context)
@@ -222,4 +237,10 @@ def test_sign_key():
         unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
         sgpg.sign_key(context, signed_fingerprint)
-        # TODO verify signature on signed_fingerprint key; verify no signature on unsigned_fingerprint
+        signed_output = sgpg.list_key_signatures(context, signed_fingerprint)
+        unsigned_output = sgpg.list_key_signatures(context, unsigned_fingerprint)
+        # TODO we need a function in sgpg
+        assert "two (two) <two>" in signed_output
+        assert "one (one) <one>" in signed_output
+        assert "three (three) <three>" in unsigned_output
+        assert "one (one) <one>" not in unsigned_output
