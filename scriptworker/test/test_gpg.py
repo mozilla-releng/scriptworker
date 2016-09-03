@@ -244,3 +244,31 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
         assert "one (one) <one>" in signed_output
         assert "three (three) <three>" in unsigned_output
         assert "one (one) <one>" not in unsigned_output
+
+
+# ownertrust {{{1
+@pytest.mark.parametrize("trusted_names", ((), ("two", "three")))
+def test_ownertrust(trusted_names):
+    """This is a fairly complex test.
+
+    Create a new gnupg_home, update ownertrust with just my fingerprint.
+    The original update will run its own verify; we then make sure to get full
+    code coverage by testing that extra and missing fingerprints raise a
+    ScriptWorkerGPGException.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        gpg = sgpg.GPG(context)
+        my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+        sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
+        sgpg.update_ownertrust(context, my_fingerprint)
+        trusted_fingerprints = []
+        for name in trusted_names:
+            trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
+        unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
+        with pytest.raises(ScriptWorkerGPGException):
+            sgpg.verify_ownertrust(context, my_fingerprint, trusted_fingerprints + [unsigned_fingerprint])
+        if trusted_fingerprints:
+            sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
+            with pytest.raises(ScriptWorkerGPGException):
+                sgpg.verify_ownertrust(context, my_fingerprint, [trusted_fingerprints[0]])

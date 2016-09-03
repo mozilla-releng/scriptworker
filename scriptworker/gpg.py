@@ -162,6 +162,7 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
             )
 
 
+# ownertrust {{{1
 def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_home=None):
     """ Trust my key ultimately; trusted_fingerprints fully
     """
@@ -209,7 +210,7 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
         stderr=subprocess.STDOUT
     ).decode('utf-8')
     for line in output.split('\n'):
-        if not line.startswith('#'):
+        if line and not line.startswith('#'):
             real.append(line)
     real = set(real)
     messages = []
