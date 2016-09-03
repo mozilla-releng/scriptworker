@@ -103,7 +103,7 @@ def test_gpg_default_args():
     assert sgpg.gpg_default_args(GPG_HOME) == expected
 
 
-# guess_gpg_home {{{1
+# guess_gpg_* {{{1
 @pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, GPG_HOME)))
 def test_guess_gpg_home(context, gpg_home, expected):
     assert sgpg.guess_gpg_home(context, gpg_home=gpg_home) == expected
@@ -121,6 +121,12 @@ def test_guess_gpg_home_exception(context, mocker):
     mocker.patch.object(os, "environ", new=env)
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.guess_gpg_home(context)
+
+
+@pytest.mark.parametrize("gpg_path, expected", (("path/to/gpg", "path/to/gpg"), (None, "gpg")))
+def test_guess_gpg_path(context, gpg_path, expected):
+    context.config['gpg_path'] = gpg_path
+    assert sgpg.guess_gpg_path(context) == expected
 
 
 # signatures {{{1
@@ -204,3 +210,16 @@ def test_export_unknown_key(context):
     gpg = sgpg.GPG(context)
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.export_key(gpg, "illegal_fingerprint_lksjdflsjdkls")
+
+
+# sign_key {{{1
+def test_sign_key():
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        gpg = sgpg.GPG(context)
+        my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+        signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
+        unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
+        sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
+        sgpg.sign_key(context, signed_fingerprint)
+        # TODO verify signature on signed_fingerprint key; verify no signature on unsigned_fingerprint
