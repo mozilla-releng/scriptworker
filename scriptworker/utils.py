@@ -79,6 +79,14 @@ def makedirs(path):
                 )
 
 
+def rm(path):
+    if path and os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+
+
 def cleanup(context):
     """Clean up the work_dir and artifact_dir between task runs.
     """

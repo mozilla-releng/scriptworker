@@ -237,12 +237,17 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
         unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
         sgpg.sign_key(context, signed_fingerprint)
-        signed_output = sgpg.list_key_signatures(context, signed_fingerprint)
-        unsigned_output = sgpg.list_key_signatures(context, unsigned_fingerprint)
+        signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
+        unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
         # TODO we need a function in sgpg
         assert "two (two) <two>" in signed_output
         assert "one (one) <one>" in signed_output
         assert "three (three) <three>" in unsigned_output
+        assert "one (one) <one>" not in unsigned_output
+        sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+        unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
+        assert "three (three) <three>" in unsigned_output
+        assert "two (two) <two>" in unsigned_output
         assert "one (one) <one>" not in unsigned_output
 
 
@@ -261,14 +266,13 @@ def test_ownertrust(trusted_names):
         gpg = sgpg.GPG(context)
         my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
-        sgpg.update_ownertrust(context, my_fingerprint)
         trusted_fingerprints = []
         for name in trusted_names:
             trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
         unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
+        sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
         with pytest.raises(ScriptWorkerGPGException):
             sgpg.verify_ownertrust(context, my_fingerprint, trusted_fingerprints + [unsigned_fingerprint])
         if trusted_fingerprints:
-            sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
             with pytest.raises(ScriptWorkerGPGException):
                 sgpg.verify_ownertrust(context, my_fingerprint, [trusted_fingerprints[0]])

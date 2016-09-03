@@ -241,3 +241,21 @@ def test_makedirs_existing_file():
 def test_makedirs_existing_dir():
     path = os.path.join(os.path.dirname(__file__))
     utils.makedirs(path)
+
+
+def test_rm_empty():
+    utils.rm(None)
+
+
+def test_rm_file():
+    _, tmp = tempfile.mkstemp()
+    assert os.path.exists(tmp)
+    utils.rm(tmp)
+    assert not os.path.exists(tmp)
+
+
+def test_rm_dir():
+    tmp = tempfile.mkdtemp()
+    assert os.path.exists(tmp)
+    utils.rm(tmp)
+    assert not os.path.exists(tmp)

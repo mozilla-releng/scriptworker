@@ -10,6 +10,7 @@ import pprint
 import subprocess
 
 from scriptworker.exceptions import ScriptWorkerGPGException
+from scriptworker.utils import rm
 
 log = logging.getLogger(__name__)
 
@@ -172,8 +173,7 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     trusted_fingerprints = trusted_fingerprints or []
     gpg_path = context.config['gpg_path'] or 'gpg'
     trustdb = os.path.join(gpg_home, "trustdb.gpg")
-    if os.path.exists(trustdb):
-        os.remove(trustdb)
+    rm(trustdb)
     # trust my_fingerprint ultimately
     ownertrust.append("{}:6\n".format(my_fingerprint))
     # Trust trusted_fingerprints fully.  Once they are signed by my key, any
@@ -457,7 +457,7 @@ def parse_fpr_line(fpr_line, desc, expected=None):
     return fingerprint
 
 
-def parse_list_key_signatures(output, ):
+def parse_list_sigs_output(output, expected_signatures=None):
     """
     1. Field:  Type of record
                pub = public key
@@ -481,7 +481,7 @@ def parse_list_key_signatures(output, ):
     # TODO rvk, rev
 
 
-def list_key_signatures(context, key_fingerprint, gpg_home=None):
+def get_list_sigs_output(context, key_fingerprint, gpg_home=None):
     """gpg --list-sigs, with machine parsable output, for gpg 2.0.x
     """
     gpg_home = guess_gpg_home(context, gpg_home)
