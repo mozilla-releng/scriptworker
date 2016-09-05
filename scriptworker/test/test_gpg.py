@@ -233,23 +233,24 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
         context = get_context(tmp)
         gpg = sgpg.GPG(context)
         my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+        my_keyid = sgpg.fingerprint_to_keyid(gpg, my_fingerprint)
         signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
+        signed_keyid = sgpg.fingerprint_to_keyid(gpg, signed_fingerprint)
         unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
+        unsigned_keyid = sgpg.fingerprint_to_keyid(gpg, unsigned_fingerprint)
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
-        sgpg.update_ownertrust(context, my_fingerprint)
+        sgpg.check_ownertrust(context)
         sgpg.sign_key(context, signed_fingerprint)
         signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
         unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
-        # TODO we need a function in sgpg
-        assert "two (two) <two>" in signed_output
-        assert "one (one) <one>" in signed_output
-        assert "three (three) <three>" in unsigned_output
-        assert "one (one) <one>" not in unsigned_output
+        assert sorted([signed_keyid, my_keyid]) == sorted(signed_output['sig_keyids'])
+        assert ["one (one) <one>", "two (two) <two>"] == sorted(signed_output['sig_uids'])
+        assert [unsigned_keyid] == unsigned_output['sig_keyids']
+        assert ["three (three) <three>"] == unsigned_output['sig_uids']
         sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
-        unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
-        assert "three (three) <three>" in unsigned_output
-        assert "two (two) <two>" in unsigned_output
-        assert "one (one) <one>" not in unsigned_output
+        new_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
+        assert sorted([signed_keyid, unsigned_keyid]) == sorted(new_output['sig_keyids'])
+        assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
 # ownertrust {{{1
