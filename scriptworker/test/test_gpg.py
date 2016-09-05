@@ -56,6 +56,13 @@ EXPORT_KEY_PARAMS = ((
     "4ACA2B25224905DA", True, os.path.join(GPG_HOME, "keys", "unknown@example.com.sec")
 ))
 
+KEYS_TO_FINGERPRINTS = {
+    "9DA033D5FFFABCCF": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
+    "CD3C13EFBEAB7ED4": "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
+    "D9DC50F64C7D44CF": "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
+    "4ACA2B25224905DA": "B45FE2F4035C3786120998174ACA2B25224905DA",
+}
+
 
 def versionless(ascii_key):
     """Strip the gpg version out of a key, to aid in comparison
@@ -127,6 +134,23 @@ def test_guess_gpg_home_exception(context, mocker):
 def test_guess_gpg_path(context, gpg_path, expected):
     context.config['gpg_path'] = gpg_path
     assert sgpg.guess_gpg_path(context) == expected
+
+
+# keyid / fingerprint conversion {{{1
+@pytest.mark.parametrize("keyid,fingerprint", sorted(KEYS_TO_FINGERPRINTS.items()))
+def test_keyid_fingerprint_conversion(context, keyid, fingerprint):
+    gpg = sgpg.GPG(context)
+    assert sgpg.keyid_to_fingerprint(gpg, keyid) == fingerprint
+    assert sgpg.fingerprint_to_keyid(gpg, fingerprint) == keyid
+
+
+@pytest.mark.parametrize("keyid,fingerprint", sorted(KEYS_TO_FINGERPRINTS.items()))
+def test_keyid_fingerprint_exception(context, keyid, fingerprint):
+    gpg = sgpg.GPG(context)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.keyid_to_fingerprint(gpg, keyid.replace('C', '1').replace('F', 'C'))
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.fingerprint_to_keyid(gpg, fingerprint.replace('C', '1').replace('F', 'C'))
 
 
 # signatures {{{1
