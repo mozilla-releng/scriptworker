@@ -801,9 +801,6 @@ def parse_list_sigs_output(output, desc, expected=None):
             messages.append(
                 "Found a revocation marker {} in {}!\nRevocation parsing is incomplete; assuming this key is bad.".format(parts[0], desc)
             )
-        elif parts[0] == 'gpg':
-            # afaict this is extraneous output, possibly from stderr
-            continue
         else:
             log.warning("Signature parsing doesn't yet support {} lines (in {})...\n {}".format(parts[0], desc, line))
     expected_sigs = set(expected.get('sig_keyids', real['sig_keyids']))

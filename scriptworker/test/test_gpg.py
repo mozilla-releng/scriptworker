@@ -5,6 +5,7 @@
 import arrow
 import mock
 import os
+import pexpect
 import pytest
 import tempfile
 from scriptworker.context import Context
@@ -89,6 +90,25 @@ def get_context(homedir):
         "gpg_use_agent": None,
     }
     return context
+
+
+class PexpectChild():
+    """Pretend to be a pexpect child proc for sign_key failures
+    """
+    def __init__(self, exitstatus=1, expect_status=1, signalstatus=None):
+        pass
+        self.exitstatus = exitstatus
+        self.expect_status = expect_status
+        self.signalstatus = signalstatus
+
+    def expect(self, _):
+        return self.expect_status
+
+    def sendline(*_):
+        pass
+
+    def close(*_):
+        pass
 
 
 @pytest.fixture(scope='function')
@@ -272,9 +292,29 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
         assert [unsigned_keyid] == unsigned_output['sig_keyids']
         assert ["three (three) <three>"] == unsigned_output['sig_uids']
         sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
-        new_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
-        assert sorted([signed_keyid, unsigned_keyid]) == sorted(new_output['sig_keyids'])
+        new_output = sgpg.get_list_sigs_output(
+            context, unsigned_fingerprint, expected={
+                "keyid": unsigned_keyid,
+                "fingerprint": unsigned_fingerprint,
+                "uid": "three (three) <three>",
+                "sig_keyids": [signed_keyid, unsigned_keyid],
+                "sig_uids": ["three (three) <three>", "two (two) <two>"]
+            }
+        )
         assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
+
+
+@pytest.mark.parametrize("expect_status", (0, 1))
+def test_sign_key_failure(mocker, expect_status):
+
+    def child(*_):
+        return PexpectChild(expect_status=expect_status)
+
+    mocker.patch.object(pexpect, 'spawn', new=child)
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        with pytest.raises(ScriptWorkerGPGException):
+            sgpg.sign_key(context, "foo")
 
 
 # ownertrust {{{1
