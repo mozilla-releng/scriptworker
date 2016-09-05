@@ -62,6 +62,30 @@ def guess_gpg_path(context):
     return context.config['gpg_path'] or 'gpg'
 
 
+def keyid_to_fingerprint(gpg, keyid, private=False):
+    for key in gpg.list_keys(private):
+        if key['keyid'] == keyid:
+            return key['fingerprint']
+    else:
+        raise ScriptWorkerGPGException(
+            "Can't find keyid {} for {}!".format(
+                keyid, guess_gpg_home(gpg)
+            )
+        )
+
+
+def fingerprint_to_keyid(gpg, fingerprint, private=False):
+    for key in gpg.list_keys(private):
+        if key['fingerprint'] == fingerprint:
+            return key['keyid']
+    else:
+        raise ScriptWorkerGPGException(
+            "Can't find fingerprint {} for {}!".format(
+                fingerprint, guess_gpg_home(gpg)
+            )
+        )
+
+
 # create_gpg_conf {{{1
 def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
     """ Set infosec guidelines; use my_fingerprint by default
@@ -254,7 +278,8 @@ def get_body(gpg, signed_data, gpg_home=None, **kwargs):
     return str(body)
 
 
-def parse_trust_line(trust_line, desc):
+# key signature verification {{{1
+def _parse_trust_line(trust_line, desc):
     """parse `gpg --list-sigs --with-colons` `tru` line
 
        https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
@@ -292,28 +317,26 @@ def parse_trust_line(trust_line, desc):
     """
     parts = trust_line.split(':')
     messages = []
-    if parts[0] != 'tru':
-        messages.append("{} is not a trust line!".format(trust_line))
     # check for staleness
     if parts[1]:
         messages.append(
             "{} trustdb is invalid! staleness '{}'\n"
             "o: Trustdb is old\n"
             "t: Trustdb was built with a different trust model than the one we\n"
-            "are using now.".format(desc, parts[1])
+            "are using now.\n{}".format(desc, parts[1], trust_line)
         )
     # check for expiration; assuming 0 is no expiration
-    if parts[4] and parts[4] < arrow.utcnow().timestamp:
+    if parts[4] and int(parts[4]) < arrow.utcnow().timestamp:
         messages.append(
             "{} trustdb is expired, as of {}Z!".format(
-                desc, arrow.get(parts[4]).format("YYYY-MM-DDTHH:mm:ssZZ")
+                desc, arrow.get(int(parts[4])).format("YYYY-MM-DDTHH:mm:ssZZ")
             )
         )
     if messages:
         raise ScriptWorkerGPGException('\n'.join(messages))
 
 
-def parse_pub_line(pub_line, desc):
+def _parse_pub_line(pub_line, desc):
     """parse `gpg --list-sigs --with-colons` `pub` line
     https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
      2. Field:  A letter describing the calculated validity. This is a single
@@ -429,10 +452,34 @@ def parse_pub_line(pub_line, desc):
                     8 = SHA-256
                 (for other id's see include/cipher.h)
     """
-    pass
+    parts = pub_line.split(':')
+    messages = []
+    VALIDITY = {
+        "o": "The key validity is unknown (this key is new to the system)",
+        "i": "The key is invalid (e.g. due to a missing self-signature)",
+        "d": "The key has been disabled",
+        "r": "The key has been revoked",
+        "e": "The key has expired",
+        "-": "The key is of unknown validity (i.e. no value assigned)",
+        "q": "The key is of undefined validity",
+        "n": "The key is valid",
+        "m": "The key is marginal valid.",
+        "f": "The key is fully valid",
+        "u": "The key is ultimately valid.",
+    }
+    if parts[0] != 'pub':
+        messages.append("{} {} is not a pub line!".format(desc, pub_line))
+    if parts[1] in ('i', 'd', 'r', 'e'):
+        messages.append("{}: {}".format(desc, VALIDITY[parts[2]]))
+    if 'D' in parts[11]:
+        messages.append("{}: The key has been disabled (field 12)".format(desc))
+    if messages:
+        raise ScriptWorkerGPGException('\n'.join(messages))
+    keyid = parts[4]
+    return keyid
 
 
-def parse_fpr_line(fpr_line, desc, expected=None):
+def _parse_fpr_line(fpr_line, desc, expected=None):
     """
      10. Field:  User-ID.  The value is quoted like a C string to avoid
                  control characters (the colon is quoted "\x3a").
@@ -445,20 +492,28 @@ def parse_fpr_line(fpr_line, desc, expected=None):
     """
     parts = fpr_line.split(':')
     messages = []
-    if parts[0] != 'fpr':
-        messages.append("{} is not a fingerprint line!".format(fpr_line))
     fingerprint = parts[9]
-    if expected and expected != fingerprint:
-        messages.append("{} fingerprint {} doesn't match expected {}!".format(
-            desc, fingerprint, expected)
-        )
     if messages:
         raise ScriptWorkerGPGException('\n'.join(messages))
     return fingerprint
 
 
-def parse_list_sigs_output(output, expected_signatures=None):
+def _parse_sig_line(sig_line, desc):
     """
+sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
+    """
+    parts = sig_line.split(':')
+    keyid = parts[4]
+    uid = parts[9]
+    return keyid, uid
+
+
+def parse_list_sigs_output(output, desc, expected=None):
+    """Parse the output from --list-sigs; validate.
+
+    NOTE: This doesn't work with complex key/subkeys; this is only written for
+    the keys generated through the functions in this module.
+
     1. Field:  Type of record
                pub = public key
                crt = X.509 certificate
@@ -477,15 +532,59 @@ def parse_list_sigs_output(output, expected_signatures=None):
                tru = trust database information
                spk = signature subpacket
     """
-    pass
-    # TODO rvk, rev
+    expected = expected or {}
+    real = {
+        'sig_keyids': [],
+        'sig_uids': [],
+    }
+    messages = []
+    for line in output.split('\n'):
+        parts = line.split(':')
+        if parts[0] == "tru":
+            _parse_trust_line(line, desc)
+        elif parts[0] == "pub":
+            real['keyid'] = _parse_pub_line(line, desc)
+            if expected.get('keyid', real['keyid']) != real['keyid']:
+                messages.append(
+                    "keyid {} differs from expected {}!".format(
+                        real['keyid'], expected['keyid']
+                    )
+                )
+        elif parts[0] == "fpr":
+            real['fingerprint'] = _parse_fpr_line(line, desc)
+            if expected.get('fingerprint', real['fingerprint']) != real['fingerprint']:
+                messages.append(
+                    "fingerprint {} differs from expected {}!".format(
+                        real['fingerprint'], expected['fingerprint']
+                    )
+                )
+        elif parts[0] == "sig":
+            sig_keyid, sig_uid = _parse_sig_line(line, desc)
+            real['sig_keyids'].append(sig_keyid)
+            real['sig_uids'].append(sig_uid)
+        elif parts[0] in ("rev", "rvk"):
+            messages.append(
+                "Found a revocation marker {} in {}!\nRevocation parsing is incomplete; assuming this key is bad.".format(parts[0], desc)
+            )
+        elif parts[0] == 'gpg':
+            continue
+        else:
+            log.warning("Signature parsing doesn't yet support {} lines (in {})...\n {}".format(parts[0], desc, line))
+    expected_sigs = set(expected.get('sig_keyids', real['sig_keyids']))
+    real_sigs = set(real['sig_keyids'])
+    if not expected_sigs.issubset(real_sigs):
+        messages.append("Missing expected signatures on {}!\n{}".format(desc, expected_sigs.difference(real_sigs)))
+    if messages:
+        raise ScriptWorkerGPGException("\n".join(messages))
+    return real
 
 
-def get_list_sigs_output(context, key_fingerprint, gpg_home=None):
+def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=False, expected=None):
     """gpg --list-sigs, with machine parsable output, for gpg 2.0.x
     """
     gpg_home = guess_gpg_home(context, gpg_home)
     gpg_path = guess_gpg_path(context)
+    log.info("Getting --list-sigs output for {} in {}...".format(key_fingerprint, gpg_home))
     sig_output = subprocess.check_output(
         [gpg_path] + gpg_default_args(gpg_home) +
         ["--with-colons", "--list-sigs", "--with-fingerprint", "--with-fingerprint",
@@ -494,4 +593,6 @@ def get_list_sigs_output(context, key_fingerprint, gpg_home=None):
     ).decode('utf-8')
     if "No public key" in sig_output:
         raise ScriptWorkerGPGException("No gpg key {} in {}!".format(key_fingerprint, gpg_home))
+    if validate:
+        return parse_list_sigs_output(sig_output, key_fingerprint, expected=expected)
     return sig_output

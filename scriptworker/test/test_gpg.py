@@ -236,6 +236,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
         signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
         unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
+        sgpg.update_ownertrust(context, my_fingerprint)
         sgpg.sign_key(context, signed_fingerprint)
         signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
         unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
