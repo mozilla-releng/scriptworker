@@ -1,5 +1,15 @@
 #!/usr/bin/env python
 """GPG functions.  These currently assume gpg 2.0.x
+
+These GPG functions expose considerable functionality over gpg key management,
+data signatures, and validation, but by no means are they intended to cover all
+gnupg functionality.  They are intended for automated key management and
+validation for scriptworker.
+
+Attributes:
+    log (logging.Logger): the log object for this module.
+    GPG_CONFIG_MAPPING (dict): This maps the scriptworker config key names to
+        the python-gnupg names.
 """
 import arrow
 import gnupg
@@ -27,7 +37,14 @@ GPG_CONFIG_MAPPING = {
 
 # helper functions {{{1
 def gpg_default_args(gpg_home):
-    """For commandline gpg calls, use these args by default
+    """For commandline gpg calls, use these args by default.
+
+    Args:
+        gpg_home (str): The path to the gpg homedir.  gpg will look for
+            the gpg.conf, trustdb.gpg, and keyring files in here.
+
+    Returns:
+        list: the list of default commandline arguments to add to the gpg call.
     """
     return [
         "--homedir", gpg_home,
@@ -39,11 +56,20 @@ def gpg_default_args(gpg_home):
 
 def guess_gpg_home(obj, gpg_home=None):
     """Guess gpg_home.  If `gpg_home` is specified, return that.
-    If `obj` is a context object and `context.config['gpg_home']` is not None,
-    return that.
-    If `obj` is a GPG object and `obj.gnupghome` is not None, return that.
-    Otherwise look in `~/.gnupg`.  If os.environ['HOME'] isn't set, raise
-    a ScriptWorkerGPGException.
+    Args:
+        obj (object): If gpg_home is set, return that. Otherwise, if `obj` is a
+            context object and `context.config['gpg_home']` is not None, return
+            that. If `obj` is a GPG object and `obj.gnupghome` is not None,
+            return that.  Otherwise look in `~/.gnupg`.
+        gpg_home (str, optional): The path to the gpg homedir.  gpg will look for
+            the gpg.conf, trustdb.gpg, and keyring files in here.  Defaults to None.
+
+    Returns:
+        str: the path to the guessed gpg homedir.
+
+    Raises:
+        ScriptWorkerGPGException: if obj doesn't contain the gpg home info and
+            os.environ['HOME'] isn't set.
     """
     try:
         if hasattr(obj, 'config'):
@@ -57,12 +83,36 @@ def guess_gpg_home(obj, gpg_home=None):
 
 
 def guess_gpg_path(context):
-    """Simple gpg_path guessing function
+    """Simple gpg_path guessing function.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        str: either `context.config['gpg_path']` or 'gpg' if that's not defined.
     """
     return context.config['gpg_path'] or 'gpg'
 
 
 def keyid_to_fingerprint(gpg, keyid, private=False):
+    """Return the fingerprint of the key that corresponds to `keyid`.
+
+    Keyids should default to long keyids; this will happen once
+    `create_gpg_conf()` is called.
+
+    Args:
+        gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
+        keyid (str): the long keyid that represents the key we're searching
+            for.
+        private (bool, optional): If True, search the private keyring instead
+            of the public keyring.  Defaults to False.
+
+    Returns:
+        fingerprint (str): the fingerprint of the key with keyid `keyid`
+
+    Raises:
+        ScriptworkerGPGException: if we can't find `keyid` in this keyring.
+    """
     for key in gpg.list_keys(private):
         if key['keyid'] == keyid:
             return key['fingerprint']
@@ -75,6 +125,23 @@ def keyid_to_fingerprint(gpg, keyid, private=False):
 
 
 def fingerprint_to_keyid(gpg, fingerprint, private=False):
+    """Return the keyid of the key that corresponds to `fingerprint`.
+
+    Keyids should default to long keyids; this will happen once
+    `create_gpg_conf()` is called.
+
+    Args:
+        gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
+        fingerpint (str): the fingerprint of the key we're searching for.
+        private (bool, optional): If True, search the private keyring instead
+            of the public keyring.  Defaults to False.
+
+    Returns:
+        keyid (str): the keyid of the key with fingerprint `fingerprint`
+
+    Raises:
+        ScriptworkerGPGException: if we can't find `fingerprint` in this keyring.
+    """
     for key in gpg.list_keys(private):
         if key['fingerprint'] == fingerprint:
             return key['keyid']
@@ -87,10 +154,19 @@ def fingerprint_to_keyid(gpg, fingerprint, private=False):
 
 
 # create_gpg_conf {{{1
-def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
-    """ Set infosec guidelines; use my_fingerprint by default
+def create_gpg_conf(gpg_home, keyservers=None, my_fingerprint=None):
+    """Create a gpg.conf with Mozilla infosec guidelines.
+
+    Args:
+        gpg_home (str): the homedir for this keyring.
+        keyservers (list, optional): a list of keyservers.  These can take the
+            form of `gpg.mozilla.org` or `hkp://keys.gnupg.net`.  If set, we also
+            enable `auto-key-retrieve`.  Defaults to None.
+        my_fingerprint (str, optional): the fingerprint of the default key.
+            Once set, gpg will use it by default, unless a different key is
+            specified.  Defaults to None.
     """
-    gpg_conf = os.path.join(homedir, "gpg.conf")
+    gpg_conf = os.path.join(gpg_home, "gpg.conf")
     if os.path.exists(gpg_conf):
         os.rename(gpg_conf, "{}.{}".format(gpg_conf, arrow.utcnow().timestamp))
     with open(gpg_conf, "w") as fh:
@@ -112,7 +188,15 @@ def create_gpg_conf(homedir, keyservers=None, my_fingerprint=None):
 
 # GPG {{{1
 def GPG(context, gpg_home=None):
-    """Return a python-gnupg GPG instance
+    """Get a python-gnupg GPG instance based on the settings in `context`.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        gpg_home (str, optional): override `context.config['gpg_home']` if
+            desired.  Defaults to None.
+
+    Returns:
+        gnupg.GPG: the GPG instance with the appropriate configs.
     """
     kwargs = {}
     for config_key, gnupg_key in GPG_CONFIG_MAPPING.items():
@@ -121,6 +205,8 @@ def GPG(context, gpg_home=None):
     if gpg_home is not None:
         kwargs['gnupghome'] = gpg_home
     gpg = gnupg.GPG(**kwargs)
+    # gpg.encoding defaults to latin-1, but python3 defaults to utf-8 for
+    # everything else
     gpg.encoding = context.config['gpg_encoding'] or 'utf-8'
     return gpg
 
@@ -128,6 +214,19 @@ def GPG(context, gpg_home=None):
 # key generation and export{{{1
 def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     """Generate a gpg keypair.
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        name (str): the name attached to the key.  1/3 of the key user id.
+        comment (str): the comment attached to the key.  1/3 of the key user id.
+        email (str): the email attached to the key.  1/3 of the key user id.
+        key_length (int, optional): the key length in bits.  Defaults to 4096.
+        expiration (str, optional):  The expiration of the key.  This can take
+            the forms “2009-12-31”, “365d”, “3m”, “6w”, “5y”, “seconds=<epoch>”,
+            or 0 for no expiry.  Defaults to None.
+
+    Returns:
+        fingerprint (str): the fingerprint of the key just generated.
     """
     log.info("Generating key for {}...".format(email))
     kwargs = {
@@ -146,7 +245,17 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
 def export_key(gpg, fingerprint, private=False):
     """Return the ascii armored key identified by `fingerprint`.
 
-    Raises ScriptworkerGPGException if the key isn't there.
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        fingerprint (str): the fingerprint of the key to export.
+        private (bool, optional): If True, return the private key instead
+            of the public key.  Defaults to False.
+
+    Returns:
+        str: the ascii armored key identified by `fingerprint`.
+
+    Raises:
+        ScriptworkerGPGException: if the key isn't found.
     """
     message = "Exporting key {} from gnupghome {}".format(fingerprint, guess_gpg_home(gpg))
     log.info(message)
@@ -158,6 +267,20 @@ def export_key(gpg, fingerprint, private=False):
 
 def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
     """Sign the `target_fingerprint` key with the `signing_key` or default key
+
+    This signs the target key with the signing key, which adds to the web of trust.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        target_fingerprint (str): the fingerprint of the key to sign.
+        signing_key (str, optional): the fingerprint of the signing key to sign
+            with.  If not set, this defaults to the default-key in the gpg.conf.
+            Defaults to None.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
+
+    Raises:
+        ScriptWorkerGPGException: on a failed signature.
     """
     args = []
     gpg_path = guess_gpg_path(context)
@@ -189,7 +312,14 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
 
 # ownertrust {{{1
 def check_ownertrust(context, gpg_home=None):
-    """In theory this will repair the trustdb
+    """In theory, this will repair a broken trustdb.
+
+    Rebuild the trustdb via --import-ownertrust if not.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
     """
     gpg_home = guess_gpg_home(context, gpg_home)
     gpg_path = guess_gpg_path(context)
@@ -198,6 +328,19 @@ def check_ownertrust(context, gpg_home=None):
 
 def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_home=None):
     """ Trust my key ultimately; trusted_fingerprints fully
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        my_fingerprint (str): the fingerprint of the key we want to specify
+            as ultimately trusted.
+        trusted_fingerprints (list, optional): the list of fingerprints that
+            we want to mark as fully trusted.  These need to be signed by
+            the my_fingerprint key before they are trusted.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
+
+    Raises:
+        ScriptWorkerGPGException: if there is an error.
     """
     gpg_home = guess_gpg_home(context, gpg_home)
     log.info("Updating ownertrust in {}...".format(gpg_home))
@@ -228,8 +371,20 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 
 
 def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_home=None):
-    # List of assigned trustvalues, created Fri Sep  2 19:00:42 2016 PDT
-    # (Use "gpg --import-ownertrust" to restore them)
+    """Verify the ownertrust is exactly as expected.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        my_fingerprint (str): the fingerprint of the key we specified
+            as ultimately trusted.
+        trusted_fingerprints (list, optional): the list of fingerprints that
+            we marked as fully trusted.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
+
+    Raises:
+        ScriptWorkerGPGException: if there is an error.
+    """
     gpg_home = guess_gpg_home(context, gpg_home)
     gpg_path = guess_gpg_path(context)
     expected = ['{}:6:'.format(my_fingerprint)]
@@ -259,6 +414,16 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 # data signatures and verification {{{1
 def sign(gpg, data, **kwargs):
     """Sign `data` with the key `kwargs['keyid']`, or the default key if not specified
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        data (str): The contents to sign with the key.
+        kwargs (dict, optional): These are passed directly to gpg.sign().
+            Defaults to {}.
+            https://pythonhosted.org/python-gnupg/#signing
+
+    Returns:
+        str: the ascii armored signed data.
     """
     return str(gpg.sign(data, **kwargs))
 
@@ -267,7 +432,18 @@ def verify_signature(gpg, signed_data, **kwargs):
     """Verify `signed_data` with the key `kwargs['keyid']`, or the default key
     if not specified.
 
-    Raises ScriptWorkerGPGException on failure.
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        signed_data (str): The ascii armored signed data.
+        kwargs (dict, optional): These are passed directly to gpg.verify().
+            Defaults to {}.
+            https://pythonhosted.org/python-gnupg/#verification
+
+    Returns:
+        gnupg.Verify: on success.
+
+    Raises:
+        ScriptWorkerGPGException: on failure.
     """
     log.info("Verifying signature (gnupghome {})".format(guess_gpg_home(gpg)))
     verified = gpg.verify(signed_data, **kwargs)
@@ -279,7 +455,22 @@ def verify_signature(gpg, signed_data, **kwargs):
 
 
 def get_body(gpg, signed_data, gpg_home=None, **kwargs):
-    """Returned the unsigned data from `signed_data`.
+    """Verifies the signature, then returns the unsigned data from `signed_data`.
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        signed_data (str): The ascii armored signed data.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
+        kwargs (dict, optional): These are passed directly to gpg.decrypt().
+            Defaults to {}.
+            https://pythonhosted.org/python-gnupg/#decryption
+
+    Returns:
+        str: unsigned contents on success.
+
+    Raises:
+        ScriptWorkerGPGException: on signature verification failure.
     """
     verify_signature(gpg, signed_data)
     body = gpg.decrypt(signed_data, **kwargs)
@@ -548,6 +739,23 @@ def parse_list_sigs_output(output, desc, expected=None):
                rvk = revocation key
                tru = trust database information
                spk = signature subpacket
+
+    Args:
+        output (str): the output from get_list_sigs_output()
+        desc (str): a description of the key being tested, for exception
+            message purposes.
+        expected (dict, optional): expected outputs.  If specified and
+            the expected doesn't match the real, raise an exception.
+            Expected takes `keyid`, `fingerprint`, `uid`, `sig_keyids` (list),
+            and `sig_uids` (list), all optional.  Defaults to None.
+
+    Returns:
+        real (dict): the real values from the key.  This specifies
+            `keyid`, `fingerprint`, `uid`, `sig_keyids`, and `sig_uids`.
+
+    Raises:
+        ScriptWorkerGPGException: on mismatched expectations, or if we found
+            revocation markers or the like that make for a bad key.
     """
     expected = expected or {}
     real = {
@@ -594,6 +802,7 @@ def parse_list_sigs_output(output, desc, expected=None):
                 "Found a revocation marker {} in {}!\nRevocation parsing is incomplete; assuming this key is bad.".format(parts[0], desc)
             )
         elif parts[0] == 'gpg':
+            # afaict this is extraneous output, possibly from stderr
             continue
         else:
             log.warning("Signature parsing doesn't yet support {} lines (in {})...\n {}".format(parts[0], desc, line))
@@ -608,6 +817,24 @@ def parse_list_sigs_output(output, desc, expected=None):
 
 def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=True, expected=None):
     """gpg --list-sigs, with machine parsable output, for gpg 2.0.x
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        key_fingerprint (str): the fingerprint of the key we want to get
+            signature information about.
+        gpg_home (str, optional): override the gpg_home with a different
+            gnupg home directory here.  Defaults to None.
+        validate (bool, optional): Validate the output via parse_list_sigs_output()
+            Defaults to True.
+        expected (dict, optional): This is passed on to parse_list_sigs_output()
+            if validate is True.  Defaults to None.
+
+    Returns:
+        str: the output from gpg --list-sigs, if validate is False
+        dict: the output from parse_list_sigs_output, if validate is True
+
+    Raises:
+        ScriptWorkerGPGException: if there is an issue with the key.
     """
     gpg_home = guess_gpg_home(context, gpg_home)
     gpg_path = guess_gpg_path(context)
