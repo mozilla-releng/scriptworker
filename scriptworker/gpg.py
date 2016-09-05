@@ -477,8 +477,6 @@ def _parse_pub_line(pub_line, desc):
         "f": "The key is fully valid",
         "u": "The key is ultimately valid.",
     }
-    if parts[0] != 'pub':
-        messages.append("{} {} is not a pub line!".format(desc, pub_line))
     if parts[1] in ('i', 'd', 'r', 'e'):
         messages.append("{}: {}".format(desc, VALIDITY[parts[2]]))
     if 'D' in parts[11]:
