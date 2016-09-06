@@ -2,8 +2,6 @@
 """Jobs running in scriptworker will use functions in this file.
 """
 import arrow
-import asyncio
-import glob
 import json
 import jsonschema
 import os
@@ -13,7 +11,6 @@ from urllib.parse import urlparse, unquote
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.exceptions import ScriptWorkerTaskException
 from scriptworker.task import STATUSES
-from scriptworker.utils import retry_async
 
 
 def get_task(config):

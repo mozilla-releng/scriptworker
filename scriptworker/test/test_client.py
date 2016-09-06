@@ -4,13 +4,11 @@
 """
 import arrow
 import json
-import mock
 import os
 import pytest
 from shutil import copyfile
 from scriptworker.exceptions import ScriptWorkerTaskException
 import scriptworker.client as client
-import scriptworker.utils as utils
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
