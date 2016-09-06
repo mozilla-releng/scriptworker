@@ -60,21 +60,15 @@ class Context(object):
 
         This contains the task definition, as well as other task-specific
         info.
+
+        When setting `claim_task`, we also set `self.task` and
+        `self.temp_credentails`, zero out `self.reclaim_task` and `self.proc`,
+        then write a task.json to disk.
         """
         return self._claim_task
 
     @claim_task.setter
     def claim_task(self, claim_task):
-        """Update the claim_task and other related attributes.
-
-        Set the task, then write a task.json to disk and update
-        `self.temp_credentials`.  Zero out `self.reclaim_task` and `self.proc`
-        because we haven't reclaimed or run this task yet.
-
-        Args:
-            claim_task (dict): the claim_task value from claimTask.  If None,
-                zero out self.claim_task, self.temp_credentials, and self.task
-        """
         self._claim_task = claim_task
         self.reclaim_task = None
         self.proc = None
@@ -91,18 +85,15 @@ class Context(object):
     def credentials(self):
         """dict: The current scriptworker credentials, from the config or CREDS_FILES
         or environment.
+
+        When setting credentials, also create a new `self.queue` and
+        update self.credentials_timestamp.
         """
         if self._credentials:
             return dict(deepcopy(self._credentials))
 
     @credentials.setter
     def credentials(self, creds):
-        """Set the credentials, create a new Queue, and update the
-            credentials_timestamp.
-
-        Args:
-            creds (dict): the taskcluster credentials to use.
-        """
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
         self.credentials_timestamp = arrow.utcnow().timestamp
@@ -122,8 +113,9 @@ class Context(object):
     def reclaim_task(self):
         """dict: The most recent reclaimTask definition.
 
-        This contains the newest
-        expiration time and the newest temp credentials.
+        This contains the newest expiration time and the newest temp credentials.
+
+        When setting reclaim_task, we also set self.temp_credentials.
 
         reclaim_task will be None if there hasn't been a claimed task yet,
         or if a task has been claimed more recently than the most recent
@@ -133,14 +125,6 @@ class Context(object):
 
     @reclaim_task.setter
     def reclaim_task(self, value):
-        """Set the reclaim_task json (or None if a new task has been claimed)
-
-        If `value` is json, write it to disk with a timestamp so we can try to
-        avoid i/o race conditions.  Then update `self.temp_credentials`
-
-        Args:
-            value (dict): the reclaim task definition, or None.
-        """
         self._reclaim_task = value
         if value is not None:
             self.temp_credentials = value['credentials']
@@ -149,18 +133,14 @@ class Context(object):
     def temp_credentials(self):
         """dict: The latest temp credentials, or None if we haven't claimed a
             task yet.
+
+        When setting, create `self.temp_queue` from the temp taskcluster creds.
         """
         if self._temp_credentials:
             return dict(deepcopy(self._temp_credentials))
 
     @temp_credentials.setter
     def temp_credentials(self, credentials):
-        """Set the temp_credentials from the latest claimTask or reclaimTask
-        call, then create self.temp_queue.
-
-        Args:
-            credentials (dict): the taskcluster credentials for this task
-        """
         self._temp_credentials = credentials
         self.temp_queue = self.create_queue(self.temp_credentials)
 
