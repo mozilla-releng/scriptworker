@@ -59,12 +59,19 @@ EXPORT_KEY_PARAMS = ((
     "4ACA2B25224905DA", True, os.path.join(GPG_HOME, "keys", "unknown@example.com.sec")
 ))
 
-KEYS_TO_FINGERPRINTS = {
-    "9DA033D5FFFABCCF": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
-    "CD3C13EFBEAB7ED4": "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
-    "D9DC50F64C7D44CF": "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
-    "4ACA2B25224905DA": "B45FE2F4035C3786120998174ACA2B25224905DA",
-}
+KEYS_AND_FINGERPRINTS = ((
+    "9DA033D5FFFABCCF", "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
+    os.path.join(GPG_HOME, "keys", "docker.root@example.com"),
+), (
+    "CD3C13EFBEAB7ED4", "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
+    os.path.join(GPG_HOME, "keys", "docker@example.com"),
+), (
+    "D9DC50F64C7D44CF", "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
+    os.path.join(GPG_HOME, "keys", "scriptworker@example.com"),
+), (
+    "4ACA2B25224905DA", "B45FE2F4035C3786120998174ACA2B25224905DA",
+    os.path.join(GPG_HOME, "keys", "unknown@example.com"),
+))
 
 
 def versionless(ascii_key):
@@ -174,16 +181,18 @@ def test_guess_gpg_path(context, gpg_path, expected):
 
 
 # keyid / fingerprint conversion {{{1
-@pytest.mark.parametrize("keyid,fingerprint", sorted(KEYS_TO_FINGERPRINTS.items()))
-def test_keyid_fingerprint_conversion(context, keyid, fingerprint):
+@pytest.mark.parametrize("keyid,fingerprint,path", KEYS_AND_FINGERPRINTS)
+def test_keyid_fingerprint_conversion(context, keyid, fingerprint, path):
     gpg = sgpg.GPG(context)
+    assert path
     assert sgpg.keyid_to_fingerprint(gpg, keyid) == fingerprint
     assert sgpg.fingerprint_to_keyid(gpg, fingerprint) == keyid
 
 
-@pytest.mark.parametrize("keyid,fingerprint", sorted(KEYS_TO_FINGERPRINTS.items()))
-def test_keyid_fingerprint_exception(context, keyid, fingerprint):
+@pytest.mark.parametrize("keyid,fingerprint,path", KEYS_AND_FINGERPRINTS)
+def test_keyid_fingerprint_exception(context, keyid, fingerprint, path):
     gpg = sgpg.GPG(context)
+    assert path
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.keyid_to_fingerprint(gpg, keyid.replace('C', '1').replace('F', 'C'))
     with pytest.raises(ScriptWorkerGPGException):
@@ -257,7 +266,18 @@ def test_generate_key(expires, expected):
                 assert key['length'] == '4096'
 
 
-# export_key {{{1
+# import / export keys {{{1
+@pytest.mark.parametrize("suffix", (".pub", ".sec"))
+def test_import_keys(suffix):
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        gpg = sgpg.GPG(context)
+        with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
+            contents = fh.read()
+        fingerprints = sgpg.import_keys(gpg, contents)
+        assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
+
+
 @pytest.mark.parametrize("fingerprint,private,expected", EXPORT_KEY_PARAMS)
 def test_export_key(context, fingerprint, private, expected):
     gpg = sgpg.GPG(context)

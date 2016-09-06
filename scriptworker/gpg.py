@@ -211,7 +211,7 @@ def GPG(context, gpg_home=None):
     return gpg
 
 
-# key generation and export{{{1
+# key generation, import, and export{{{1
 def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     """Generate a gpg keypair.
 
@@ -240,6 +240,21 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     key = gpg.gen_key(gpg.gen_key_input(**kwargs))
     log.info("Fingerprint {}".format(key.fingerprint))
     return key.fingerprint
+
+
+def import_keys(gpg, key_data):
+    """Import ascii key_data (can be multiple keys).
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        key_data (str): ascii armored key data
+
+    Returns:
+        list: the fingerprints of the imported keys.
+            https://pythonhosted.org/python-gnupg/#importing-and-receiving-keys
+    """
+    import_result = gpg.import_keys(key_data)
+    return import_result.fingerprints
 
 
 def export_key(gpg, fingerprint, private=False):
