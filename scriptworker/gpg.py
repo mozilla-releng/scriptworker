@@ -155,13 +155,13 @@ def fingerprint_to_keyid(gpg, fingerprint, private=False):
 
 
 # create_gpg_conf {{{1
-def create_gpg_conf(gpg_home, keyservers=None, my_fingerprint=None):
+def create_gpg_conf(gpg_home, keyserver=None, my_fingerprint=None):
     """Create a gpg.conf with Mozilla infosec guidelines.
 
     Args:
         gpg_home (str): the homedir for this keyring.
-        keyservers (list, optional): a list of keyservers.  These can take the
-            form of `gpg.mozilla.org` or `hkp://keys.gnupg.net`.  If set, we also
+        keyserver (str, optional): The gpg keyserver to specify, e.g.
+            `hkp://gpg.mozilla.org` or `hkp://keys.gnupg.net`.  If set, we also
             enable `auto-key-retrieve`.  Defaults to None.
         my_fingerprint (str, optional): the fingerprint of the default key.
             Once set, gpg will use it by default, unless a different key is
@@ -177,9 +177,8 @@ def create_gpg_conf(gpg_home, keyservers=None, my_fingerprint=None):
               "default-preference-list SHA512 SHA384 AES256 ZLIB BZIP2 ZIP Uncompressed\n"
               "keyid-format 0xlong", file=fh)
 
-        if keyservers:
-            for keyserver in keyservers:
-                print("keyserver {}".format(keyserver), file=fh)
+        if keyserver:
+            print("keyserver {}".format(keyserver), file=fh)
             print("keyserver-options auto-key-retrieve", file=fh)
 
         if my_fingerprint is not None:

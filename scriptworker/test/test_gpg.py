@@ -35,16 +35,16 @@ GPG_CONF_BASE = "personal-digest-preferences SHA512 SHA384\n" + \
                 "cert-digest-algo SHA256\n" + \
                 "default-preference-list SHA512 SHA384 AES256 ZLIB BZIP2 ZIP Uncompressed\n" + \
                 "keyid-format 0xlong\n"
-GPG_CONF_KEYSERVERS = "keyserver key1\nkeyserver key2\nkeyserver-options auto-key-retrieve\n"
+GPG_CONF_KEYSERVERS = "keyserver key1\nkeyserver-options auto-key-retrieve\n"
 GPG_CONF_FINGERPRINT = "default-key MY_FINGERPRINT\n"
 GPG_CONF_PARAMS = ((
-    [], None, GPG_CONF_BASE
+    None, None, GPG_CONF_BASE
 ), (
-    ["key1", "key2"], None, GPG_CONF_BASE + GPG_CONF_KEYSERVERS
+    "key1", None, GPG_CONF_BASE + GPG_CONF_KEYSERVERS
 ), (
-    [], "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_FINGERPRINT
+    None, "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_FINGERPRINT
 ), (
-    ["key1", "key2"], "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_KEYSERVERS + GPG_CONF_FINGERPRINT
+    "key1", "MY_FINGERPRINT", GPG_CONF_BASE + GPG_CONF_KEYSERVERS + GPG_CONF_FINGERPRINT
 ))
 
 GENERATE_KEY_EXPIRATION = ((
@@ -226,10 +226,10 @@ def test_get_body(context, text, params):
 
 
 # create_gpg_conf {{{1
-@pytest.mark.parametrize("keyservers,fingerprint,expected", GPG_CONF_PARAMS)
-def test_create_gpg_conf(keyservers, fingerprint, expected):
+@pytest.mark.parametrize("keyserver,fingerprint,expected", GPG_CONF_PARAMS)
+def test_create_gpg_conf(keyserver, fingerprint, expected):
     with tempfile.TemporaryDirectory() as tmp:
-        sgpg.create_gpg_conf(tmp, keyservers=keyservers, my_fingerprint=fingerprint)
+        sgpg.create_gpg_conf(tmp, keyserver=keyserver, my_fingerprint=fingerprint)
         with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
             assert fh.read() == expected
 
@@ -240,10 +240,10 @@ def test_create_second_gpg_conf(mocker):
         p.return_value = now
         with tempfile.TemporaryDirectory() as tmp:
             sgpg.create_gpg_conf(
-                tmp, keyservers=GPG_CONF_PARAMS[0][0], my_fingerprint=GPG_CONF_PARAMS[0][1]
+                tmp, keyserver=GPG_CONF_PARAMS[0][0], my_fingerprint=GPG_CONF_PARAMS[0][1]
             )
             sgpg.create_gpg_conf(
-                tmp, keyservers=GPG_CONF_PARAMS[1][0], my_fingerprint=GPG_CONF_PARAMS[1][1]
+                tmp, keyserver=GPG_CONF_PARAMS[1][0], my_fingerprint=GPG_CONF_PARAMS[1][1]
             )
             with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
                 assert fh.read() == GPG_CONF_PARAMS[1][2]
