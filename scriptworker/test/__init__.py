@@ -3,6 +3,7 @@
 """Test base files
 """
 import aiohttp
+import arrow
 import asyncio
 import json
 import mock
@@ -171,3 +172,41 @@ def fake_session_500():
     session = aiohttp.ClientSession()
     session._request = _fake_request
     return session
+
+
+def integration_create_task_payload(config, task_group_id, scopes=None,
+                                    task_payload=None, task_extra=None):
+    """For various integration tests, we need to call createTask for test tasks.
+
+    This function creates a dummy payload for those createTask calls.
+    """
+    now = arrow.utcnow()
+    deadline = now.replace(hours=1)
+    expires = now.replace(days=3)
+    scopes = scopes or []
+    task_payload = task_payload or {}
+    task_extra = task_extra or {}
+    return {
+        'provisionerId': config['provisioner_id'],
+        'schedulerId': 'test-dummy-scheduler',
+        'workerType': config['worker_type'],
+        'taskGroupId': task_group_id,
+        'dependencies': [],
+        'requires': 'all-completed',
+        'routes': [],
+        'priority': 'normal',
+        'retries': 5,
+        'created': now.isoformat(),
+        'deadline': deadline.isoformat(),
+        'expires': expires.isoformat(),
+        'scopes': scopes,
+        'payload': task_payload,
+        'metadata': {
+            'name': 'ScriptWorker Integration Test',
+            'description': 'ScriptWorker Integration Test',
+            'owner': 'release+python@mozilla.com',
+            'source': 'https://github.com/mozilla-releng/scriptworker/'
+        },
+        'tags': {},
+        'extra': task_extra,
+    }

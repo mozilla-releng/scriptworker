@@ -141,11 +141,6 @@ def test_invalid_task(schema):
         client.validate_json_schema({'foo': task}, schema)
 
 
-def test_payload(config):
-    payload = client.integration_create_task_payload(config, 'a1234')
-    assert payload['scopes'] == []
-
-
 @pytest.mark.parametrize("params", LEGAL_URLS)
 def test_artifact_url(params):
     value = client.validate_artifact_url(params[0], params[1])

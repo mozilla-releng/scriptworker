@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Jobs running in scriptworker will use functions in this file.
 """
-import arrow
 import json
 import jsonschema
 import os
@@ -39,7 +38,17 @@ def get_task(config):
 
 def validate_json_schema(data, schema, name="task"):
     """Given data and a jsonschema, let's validate it.
+
     This happens for tasks and chain of trust artifacts.
+
+    Args:
+        data (dict): the json to validate.
+        schema (dict): the jsonschema to validate against.
+        name (str, optional): the name of the json, for exception messages.
+            Defaults to "task".
+
+    Raises:
+        ScriptWorkerTaskException: on failure
     """
     try:
         jsonschema.validate(data, schema)
@@ -68,6 +77,16 @@ def validate_artifact_url(config, url):
 
     If we fail any checks, raise a ScriptWorkerTaskException with
     `malformed-payload`.
+
+    Args:
+        config (dict): the running config.
+        url (str): the url of the artifact.
+
+    Returns:
+        str: the `filepath` of the path regex.
+
+    Raises:
+        ScriptWorkerTaskException: on failure to validate.
     """
     messages = []
     validate_config = {}
@@ -116,41 +135,3 @@ def validate_artifact_url(config, url):
             exit_code=STATUSES['malformed-payload']
         )
     return return_value.lstrip('/')
-
-
-def integration_create_task_payload(config, task_group_id, scopes=None,
-                                    task_payload=None, task_extra=None):
-    """For various integration tests, we need to call createTask for test tasks.
-
-    This function creates a dummy payload for those createTask calls.
-    """
-    now = arrow.utcnow()
-    deadline = now.replace(hours=1)
-    expires = now.replace(days=3)
-    scopes = scopes or []
-    task_payload = task_payload or {}
-    task_extra = task_extra or {}
-    return {
-        'provisionerId': config['provisioner_id'],
-        'schedulerId': 'test-dummy-scheduler',
-        'workerType': config['worker_type'],
-        'taskGroupId': task_group_id,
-        'dependencies': [],
-        'requires': 'all-completed',
-        'routes': [],
-        'priority': 'normal',
-        'retries': 5,
-        'created': now.isoformat(),
-        'deadline': deadline.isoformat(),
-        'expires': expires.isoformat(),
-        'scopes': scopes,
-        'payload': task_payload,
-        'metadata': {
-            'name': 'ScriptWorker Integration Test',
-            'description': 'ScriptWorker Integration Test',
-            'owner': 'release+python@mozilla.com',
-            'source': 'https://github.com/mozilla-releng/scriptworker/'
-        },
-        'tags': {},
-        'extra': task_extra,
-    }

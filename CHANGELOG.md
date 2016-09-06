@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - `utils.makedirs` now throws `ScriptWorkerException` if the path exists and is not a directory or a softlink pointing to a directory.
 - gpg functions now take a `gpg_home` kwarg to specify a different homedir
+- moved `scriptworker.client.integration_create_task_payload` into `scriptworker.test`
 
 ### Removed
 - Removed `get_temp_creds_from_file`, since we're not writing `temp_creds` to disk anymore

@@ -11,11 +11,11 @@ import os
 import pytest
 import slugid
 from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
-from scriptworker.client import integration_create_task_payload
 from scriptworker.context import Context
 import scriptworker.log as swlog
 import scriptworker.worker as worker
 import scriptworker.utils as utils
+from . import integration_create_task_payload
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
