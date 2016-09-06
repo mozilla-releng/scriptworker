@@ -3,10 +3,12 @@
 """Test scriptworker.gpg
 """
 import arrow
+from contextlib import contextmanager
 import mock
 import os
 import pexpect
 import pytest
+import subprocess
 import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
@@ -109,6 +111,21 @@ class PexpectChild():
 
     def close(*_):
         pass
+
+
+class FakeProc():
+    """Pretend to be a subprocess proc
+    """
+    def __init__(self, returncode=1, args=(), output=b''):
+        self.returncode = returncode
+        self.args = args
+        self.output = output
+
+    def communicate(self, *args, **kwargs):
+        return (self.output, b'')
+
+    def poll(self, *args, **kwargs):
+        return self.returncode
 
 
 @pytest.fixture(scope='function')
@@ -258,7 +275,9 @@ def test_export_unknown_key(context):
 
 # sign_key {{{1
 def test_sign_key():
-    """
+    """This test calls get_list_sigs_output in several different ways.  Each
+    is valid; the main thing is more code coverage.
+
 tru:o:1:1472876459:1:3:1:5
 pub:u:4096:1:EA608995918B2DF9:1472876455:::u:::escaESCA:
 fpr:::::::::A9F598A3179551CC664C15DEEA608995918B2DF9:
@@ -276,22 +295,34 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     with tempfile.TemporaryDirectory() as tmp:
         context = get_context(tmp)
         gpg = sgpg.GPG(context)
+        # create my key, get fingerprint + keyid
         my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
         my_keyid = sgpg.fingerprint_to_keyid(gpg, my_fingerprint)
+        # create signed key, get fingerprint + keyid
         signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
         signed_keyid = sgpg.fingerprint_to_keyid(gpg, signed_fingerprint)
+        # create unsigned key, get fingerprint + keyid
         unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
         unsigned_keyid = sgpg.fingerprint_to_keyid(gpg, unsigned_fingerprint)
+        # update gpg configs, sign signed key
         sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
         sgpg.check_ownertrust(context)
         sgpg.sign_key(context, signed_fingerprint)
+        # signed key get_list_sigs_output
         signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
-        unsigned_output = sgpg.get_list_sigs_output(context, unsigned_fingerprint)
+        # unsigned key get_list_sigs_output
+        # Call get_list_sigs_output with validate=False, then parse it, for more code coverage
+        unsigned_output1 = sgpg.get_list_sigs_output(context, unsigned_fingerprint, validate=False)
+        unsigned_output = sgpg.parse_list_sigs_output(unsigned_output1, "unsigned")
+        # signed key has my signature + self-signed
         assert sorted([signed_keyid, my_keyid]) == sorted(signed_output['sig_keyids'])
         assert ["one (one) <one>", "two (two) <two>"] == sorted(signed_output['sig_uids'])
+        # unsigned key is only self-signed
         assert [unsigned_keyid] == unsigned_output['sig_keyids']
         assert ["three (three) <three>"] == unsigned_output['sig_uids']
+        # sign the unsigned key and test
         sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+        # Call get_list_sigs_output with expected, for more code coverage
         new_output = sgpg.get_list_sigs_output(
             context, unsigned_fingerprint, expected={
                 "keyid": unsigned_keyid,
@@ -301,6 +332,8 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
                 "sig_uids": ["three (three) <three>", "two (two) <two>"]
             }
         )
+        # sig_uids goes unchecked; sig_keyids only checks that it's a subset.
+        # let's do another check.
         assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
@@ -315,6 +348,18 @@ def test_sign_key_failure(mocker, expect_status):
         context = get_context(tmp)
         with pytest.raises(ScriptWorkerGPGException):
             sgpg.sign_key(context, "foo")
+
+
+def test_get_list_sigs_output_failure(context, mocker):
+
+    # check_call needs popen to be a decorator
+    @contextmanager
+    def popen(*args, **kwargs):
+        yield FakeProc(output=b'No public key', returncode=0)
+
+    mocker.patch.object(subprocess, "Popen", new=popen)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.get_list_sigs_output(context, "nonexistent_fingerprint")
 
 
 # ownertrust {{{1
@@ -342,3 +387,15 @@ def test_ownertrust(trusted_names):
         if trusted_fingerprints:
             with pytest.raises(ScriptWorkerGPGException):
                 sgpg.verify_ownertrust(context, my_fingerprint, [trusted_fingerprints[0]])
+
+
+def test_update_ownertrust_failure(mocker):
+
+    def popen(*args, **kwargs):
+        return FakeProc(returncode=1)
+
+    mocker.patch.object(subprocess, 'Popen', new=popen)
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        with pytest.raises(ScriptWorkerGPGException):
+            sgpg.update_ownertrust(context, "foo")
