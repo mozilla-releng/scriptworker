@@ -737,6 +737,19 @@ def parse_list_sigs_output(output, desc, expected=None):
                tru = trust database information
                spk = signature subpacket
 
+    There are also 'gpg' lines like
+
+        gpg: checking the trustdb
+        gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+        gpg: depth: 0  valid:   3  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 3u
+
+    This is a description of the web of trust.  I'm currently not parsing
+    these; per [1] and [2] I would need to read the source for full parsing.
+
+    [1] http://security.stackexchange.com/a/41209
+
+    [2] http://gnupg.10057.n7.nabble.com/placing-trust-in-imported-keys-td30124.html#a30125
+
     Args:
         output (str): the output from get_list_sigs_output()
         desc (str): a description of the key being tested, for exception
