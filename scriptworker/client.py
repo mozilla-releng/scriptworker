@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Jobs running in scriptworker will use functions in this file.
+"""Scripts running in scriptworker will use functions in this file.
 """
 import json
 import jsonschema
