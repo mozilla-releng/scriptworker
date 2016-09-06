@@ -243,8 +243,8 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     return key.fingerprint
 
 
-def import_keys(gpg, key_data):
-    """Import ascii key_data (can be multiple keys).
+def import_key(gpg, key_data):
+    """Import ascii key_data.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
