@@ -6,10 +6,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - ability to create new gpg homedirs
 - scriptworker now requires `pexpect` for gpg key signing
+- docstrings!
 
 ### Changed
 - `utils.makedirs` now throws `ScriptWorkerException` if the path exists and is not a directory or a softlink pointing to a directory.
 - gpg functions now take a `gpg_home` kwarg to specify a different homedir
+
+### Removed
+- Removed `get_temp_creds_from_file`, since we're not writing `temp_creds` to disk anymore
 
 ## [0.5.0] - 2016-08-29
 ### Added

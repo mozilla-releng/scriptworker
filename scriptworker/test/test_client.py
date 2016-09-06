@@ -130,18 +130,6 @@ def test_get_task(config):
     assert client.get_task(config)["this_is_a_task"] is True
 
 
-def test_retry_fail_creds(config):
-    populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
-    with mock.patch.object(utils, "calculateSleepTime", new=no_sleep):
-        with pytest.raises(ScriptWorkerTaskException):
-            client.get_temp_creds_from_file(config)
-
-
-def test_get_missing_creds(config, event_loop):
-    with pytest.raises(ScriptWorkerTaskException):
-        event_loop.run_until_complete(client._get_temp_creds_from_file(config))
-
-
 def test_validate_task(schema):
     with open(BASIC_TASK, "r") as fh:
         task = json.load(fh)
