@@ -88,10 +88,3 @@ def test_set_reset_task(context, claim_task, reclaim_task):
     assert context.proc is None
     assert context.temp_credentials is None
     assert context.temp_queue is None
-
-
-def test_reset_credentials(context, claim_task):
-    context.claim_task = claim_task
-    context.credentials = None
-    assert context.credentials is None
-    assert context.queue is None

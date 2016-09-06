@@ -2,6 +2,10 @@
 """Most functions need access to a similar set of objects.  Rather than
 having to pass them all around individually or create a monolithic 'self'
 object, let's point to them from a single context object.
+
+
+Attributes:
+    log (logging.Logger): the log object for the module.
 """
 import arrow
 from copy import deepcopy
@@ -18,8 +22,24 @@ log = logging.getLogger(__name__)
 class Context(object):
     """ Basic config holding object.
 
-    Avoids putting everything in a big object, but allows for passing around
-    config and easier overriding in tests.
+    Avoids putting everything in single monolithic object, but allows for
+    passing around config and easier overriding in tests.
+
+    Attributes:
+        config (dict): the running config.  In production this will be a
+            FrozenDict.
+        credentials_timestamp (int): the unix timestamp when we last updated
+            our credentials.
+        poll_task_urls (dict): contains the Azure `queues` urls and an `expires`
+            datestring.
+        proc (asyncio.subprocess.Process): when launching the script, this is
+            the process object.
+        queue (taskcluster.async.Queue): the taskcluster Queue object
+            containing the scriptworker credentials.
+        session (aiohttp.ClientSession): the default aiohttp session
+        task (dict): the task definition for the current task.
+        temp_queue (taskcluster.async.Queue): the taskcluster Queue object
+            containing the task-specific temporary credentials.
     """
     config = None
     credentials_timestamp = None
@@ -36,22 +56,31 @@ class Context(object):
 
     @property
     def claim_task(self):
-        """The current or most recent claimed task definition json from the queue.
+        """dict: The current or most recent claimTask definition json from the queue.
+
+        This contains the task definition, as well as other task-specific
+        info.
         """
         return self._claim_task
 
     @claim_task.setter
-    def claim_task(self, task):
-        """Set the task, then write a task.json to disk and update
-        `self.temp_credentials`.  Zero out `self.reclaim_task` because we
-        haven't reclaimed this task yet.
+    def claim_task(self, claim_task):
+        """Update the claim_task and other related attributes.
+
+        Set the task, then write a task.json to disk and update
+        `self.temp_credentials`.  Zero out `self.reclaim_task` and `self.proc`
+        because we haven't reclaimed or run this task yet.
+
+        Args:
+            claim_task (dict): the claim_task value from claimTask.  If None,
+                zero out self.claim_task, self.temp_credentials, and self.task
         """
-        self._claim_task = task
+        self._claim_task = claim_task
         self.reclaim_task = None
         self.proc = None
-        if task:
-            self.task = task['task']
-            self.temp_credentials = task['credentials']
+        if claim_task:
+            self.task = claim_task['task']
+            self.temp_credentials = claim_task['credentials']
             path = os.path.join(self.config['work_dir'], "task.json")
             self.write_json(path, self.task, "Writing task file to {path}...")
         else:
@@ -60,21 +89,30 @@ class Context(object):
 
     @property
     def credentials(self):
-        """The current or most recent claimed task definition json from the queue.
+        """dict: The current scriptworker credentials, from the config or CREDS_FILES
+        or environment.
         """
         if self._credentials:
             return dict(deepcopy(self._credentials))
 
     @credentials.setter
     def credentials(self, creds):
-        """Set the credentials, and create a new Queue.
+        """Set the credentials, create a new Queue, and update the
+            credentials_timestamp.
+
+        Args:
+            creds (dict): the taskcluster credentials to use.
         """
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
-        if creds:
-            self.credentials_timestamp = arrow.utcnow().timestamp
+        self.credentials_timestamp = arrow.utcnow().timestamp
 
     def create_queue(self, credentials):
+        """Create a taskcluster queue.
+
+        Args:
+            credentials (dict): taskcluster credentials.
+        """
         if credentials:
             return Queue({
                 'credentials': credentials,
@@ -82,7 +120,9 @@ class Context(object):
 
     @property
     def reclaim_task(self):
-        """The most recent reclaimTask definition -- this contains the newest
+        """dict: The most recent reclaimTask definition.
+
+        This contains the newest
         expiration time and the newest temp credentials.
 
         reclaim_task will be None if there hasn't been a claimed task yet,
@@ -97,6 +137,9 @@ class Context(object):
 
         If `value` is json, write it to disk with a timestamp so we can try to
         avoid i/o race conditions.  Then update `self.temp_credentials`
+
+        Args:
+            value (dict): the reclaim task definition, or None.
         """
         self._reclaim_task = value
         if value is not None:
@@ -104,8 +147,8 @@ class Context(object):
 
     @property
     def temp_credentials(self):
-        """The latest temp credentials, or None if we haven't claimed a task
-        yet.
+        """dict: The latest temp credentials, or None if we haven't claimed a
+            task yet.
         """
         if self._temp_credentials:
             return dict(deepcopy(self._temp_credentials))
@@ -113,13 +156,21 @@ class Context(object):
     @temp_credentials.setter
     def temp_credentials(self, credentials):
         """Set the temp_credentials from the latest claimTask or reclaimTask
-        call.
+        call, then create self.temp_queue.
+
+        Args:
+            credentials (dict): the taskcluster credentials for this task
         """
         self._temp_credentials = credentials
         self.temp_queue = self.create_queue(self.temp_credentials)
 
     def write_json(self, path, contents, message):
         """Write json to disk.
+
+        Args:
+            path (str): the path to write to
+            contents (dict): the contents of the json blob
+            message (str): the message to log
         """
         log.debug(message.format(path=path))
         makedirs(os.path.dirname(path))
