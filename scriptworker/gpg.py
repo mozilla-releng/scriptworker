@@ -56,6 +56,7 @@ def gpg_default_args(gpg_home):
 
 def guess_gpg_home(obj, gpg_home=None):
     """Guess gpg_home.  If `gpg_home` is specified, return that.
+
     Args:
         obj (object): If gpg_home is set, return that. Otherwise, if `obj` is a
             context object and `context.config['gpg_home']` is not None, return
