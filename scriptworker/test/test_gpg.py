@@ -350,6 +350,7 @@ def test_sign_key_failure(mocker, expect_status):
             sgpg.sign_key(context, "foo")
 
 
+# list sigs and parsing {{{1
 def test_get_list_sigs_output_failure(context, mocker):
 
     # check_call needs popen to be a decorator
@@ -360,6 +361,38 @@ def test_get_list_sigs_output_failure(context, mocker):
     mocker.patch.object(subprocess, "Popen", new=popen)
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.get_list_sigs_output(context, "nonexistent_fingerprint")
+
+
+def test_parse_trust_line_failure():
+    line = 'tru:t:::::::::'
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg._parse_trust_line(line, "foo")
+
+
+def test_parse_pub_line_failure():
+    line = 'pub:i::::::::::D:'
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg._parse_pub_line(line, "foo")
+
+
+def test_parse_list_sigs_failure(context):
+    output = """tru::1:1472242430:0:3:1:5
+pub:f:2048:1:CD3C13EFBEAB7ED4:1472242430:::-:::escaESCA:
+fpr:::::::::F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4:
+uid:f::::1472242430::F7EC4B43E7A20A1ED5D875D9FC1EF955269EBC54::Docker Embedded (embedded key for the docker ami) <docker@example.com>:
+sig:::1:CD3C13EFBEAB7ED4:1472242430::::Docker Embedded (embedded key for the docker ami) <docker@example.com>:13x:::::8:
+sig:::1:9DA033D5FFFABCCF:1472242430::::Docker Root (root key for the docker task keys) <docker.root@example.com>:10l:::::8:
+rvk:
+"""
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.parse_list_sigs_output(
+            output, "foo", expected={
+                "keyid": "bad_keyid",
+                "fingerprint": "bad_fingerprint",
+                "uid": "bad uid",
+                "sig_keyids": ["bad sig keyid"],
+            }
+        )
 
 
 # ownertrust {{{1

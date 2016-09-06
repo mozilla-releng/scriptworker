@@ -669,7 +669,7 @@ def _parse_pub_line(pub_line, desc):
         "u": "The key is ultimately valid.",
     }
     if parts[1] in ('i', 'd', 'r', 'e'):
-        messages.append("{}: {}".format(desc, VALIDITY[parts[2]]))
+        messages.append("{}: {}".format(desc, VALIDITY[parts[1]]))
     if 'D' in parts[11]:
         messages.append("{}: The key has been disabled (field 12)".format(desc))
     if messages:
@@ -690,10 +690,7 @@ def _parse_fpr_line(fpr_line, desc, expected=None):
                  The fingerprint of an revocation key is stored here.
     """
     parts = fpr_line.split(':')
-    messages = []
     fingerprint = parts[9]
-    if messages:
-        raise ScriptWorkerGPGException('\n'.join(messages))
     return fingerprint
 
 
