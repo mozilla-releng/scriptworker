@@ -20,7 +20,7 @@ import pprint
 import subprocess
 
 from scriptworker.exceptions import ScriptWorkerGPGException
-from scriptworker.utils import rm
+from scriptworker.utils import filepaths_in_dir, rm
 
 log = logging.getLogger(__name__)
 
@@ -242,19 +242,28 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     return key.fingerprint
 
 
-def import_key(gpg, key_data):
-    """Import ascii key_data.
+def import_keys(gpg, key_data, return_type='fingerprints'):
+    """Import ascii key_data (can be multiple keys).
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
         key_data (str): ascii armored key data
+        return_type (str, optional): if 'fingerprints', return the fingerprints
+            only.  Otherwise return the result list.
 
     Returns:
-        list: the fingerprints of the imported keys.
+        list: if return_type is 'fingerprints', return the fingerprints of the
+            imported keys.  Otherwise return the results list.
             https://pythonhosted.org/python-gnupg/#importing-and-receiving-keys
     """
     import_result = gpg.import_keys(key_data)
-    return import_result.fingerprints
+    if return_type == 'fingerprints':
+        fingerprints = []
+        for fp in import_result.results:
+            if fp['fingerprint'] is not None:
+                fingerprints.append(fp['fingerprint'])
+        return fingerprints
+    return import_result.results
 
 
 def export_key(gpg, fingerprint, private=False):
@@ -299,7 +308,7 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
     """
     args = []
     gpg_path = guess_gpg_path(context)
-    gpg_home = guess_gpg_home(context, gpg_home)
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     message = "Signing key {} in {}".format(target_fingerprint, gpg_home)
     if signing_key:
         args.extend(['-u', signing_key])
@@ -336,7 +345,7 @@ def check_ownertrust(context, gpg_home=None):
         gpg_home (str, optional): override the gpg_home with a different
             gnupg home directory here.  Defaults to None.
     """
-    gpg_home = guess_gpg_home(context, gpg_home)
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
     subprocess.check_call([gpg_path] + gpg_default_args(gpg_home) + ["--check-trustdb"])
 
@@ -357,7 +366,7 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     Raises:
         ScriptWorkerGPGException: if there is an error.
     """
-    gpg_home = guess_gpg_home(context, gpg_home)
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     log.info("Updating ownertrust in {}...".format(gpg_home))
     ownertrust = []
     trusted_fingerprints = trusted_fingerprints or []
@@ -400,7 +409,7 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     Raises:
         ScriptWorkerGPGException: if there is an error.
     """
-    gpg_home = guess_gpg_home(context, gpg_home)
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
     expected = ['{}:6:'.format(my_fingerprint)]
     for fp in trusted_fingerprints:
@@ -858,7 +867,7 @@ def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=True,
     Raises:
         ScriptWorkerGPGException: if there is an issue with the key.
     """
-    gpg_home = guess_gpg_home(context, gpg_home)
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
     log.info("Getting --list-sigs output for {} in {}...".format(key_fingerprint, gpg_home))
     sig_output = subprocess.check_output(
@@ -872,3 +881,54 @@ def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=True,
     if validate:
         return parse_list_sigs_output(sig_output, key_fingerprint, expected=expected)
     return sig_output
+
+
+# consume pubkey libraries {{{1
+def has_suffix(path, suffixes):
+    """Given a list of suffixes, return True if path ends with one of them.
+
+    Args:
+        path (str): the file path to check
+        suffixes (list): the suffixes to check for
+    """
+    for suffix in suffixes:
+        if path.endswith(suffix):
+            return True
+    return False
+
+
+def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
+    """Given a path, traverse the path, and import all gpg public keys.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        path (str): the path of the directory to traverse.
+        ignore_suffixes (list, optional): file suffixes to ignore.  Default is ().
+        gpg_home (str, optional): override the gpg_home dir.  Default is None.
+
+    Returns:
+        list: fingerprints
+
+    Raises:
+        ScriptworkerGPGException: on error.
+    """
+    gpg = GPG(context, gpg_home=gpg_home)
+    fingerprints = []
+    messages = []
+    if not os.path.isdir(os.path.realpath(path)):
+        raise ScriptWorkerGPGException("consume_valid_keys: {} is not a dir!".format(path))
+    filepaths = filepaths_in_dir(path)
+    for filepath in filepaths:
+        if has_suffix(filepath, ignore_suffixes):
+            continue
+        with open(filepath, "r") as fh:
+            result = import_keys(gpg, fh.read(), return_type='result')
+            for fp in result.results:
+                if fp['fingerprint'] is not None:
+                    fingerprints.append(fp['fingerprint'])
+                else:
+                    messages.append("Can't import key from {}: {}!".format(path, fp['text']))
+    if messages:
+        raise ScriptWorkerGPGException('\n'.join(messages))
+    # TODO sign all these fingerprints with my_fingerprint key?
+    return fingerprints

@@ -274,9 +274,28 @@ def test_import_single_key(suffix):
         gpg = sgpg.GPG(context)
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
             contents = fh.read()
-        fingerprints = sgpg.import_key(gpg, contents)
+        result = sgpg.import_keys(gpg, contents, return_type='result')
+        fingerprints = []
+        for d in result:
+            fingerprints.append(d['fingerprint'])
         # the .sec fingerprints are doubled; use set() for unsorted & uniq
         assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
+
+
+@pytest.mark.parametrize("suffix", (".pub", ".sec"))
+def test_import_keys(suffix):
+    with tempfile.TemporaryDirectory() as tmp:
+        context = get_context(tmp)
+        gpg = sgpg.GPG(context)
+        contents = ""
+        expected = []
+        for kaf in KEYS_AND_FINGERPRINTS:
+            with open("{}{}".format(kaf[2], suffix), "r") as fh:
+                contents += fh.read()
+            expected.append(kaf[1])
+        fingerprints = sgpg.import_keys(gpg, contents)
+        # the .sec fingerprints are doubled; use set() for unsorted & uniq
+        assert set(fingerprints) == set(expected)
 
 
 @pytest.mark.parametrize("fingerprint,private,expected", EXPORT_KEY_PARAMS)
