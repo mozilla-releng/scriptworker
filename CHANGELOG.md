@@ -13,8 +13,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - gpg functions now take a `gpg_home` kwarg to specify a different homedir
 - moved `scriptworker.client.integration_create_task_payload` into `scriptworker.test`
 
+### Fixed
+- pass a `task` to `scriptworker.task.reclaimTask` and exit the loop if it doesn't match `context.task`
+
 ### Removed
 - Removed `get_temp_creds_from_file`, since we're not writing `temp_creds` to disk anymore
+- Removed `scriptworker.task.get_temp_queue`, since we already have `context.temp_queue`
 
 ## [0.5.0] - 2016-08-29
 ### Added

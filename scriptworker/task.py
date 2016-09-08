@@ -19,7 +19,6 @@ from asyncio.subprocess import PIPE
 
 import taskcluster
 import taskcluster.exceptions
-from taskcluster.async import Queue
 
 from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, log_errors, read_stdout
@@ -89,17 +88,7 @@ async def run_task(context):
     return exitcode
 
 
-def get_temp_queue(context):
-    """Create an async taskcluster client Queue from the latest temp
-    credentials.
-    """
-    temp_queue = Queue({
-        'credentials': context.temp_credentials,
-    }, session=context.session)
-    return temp_queue
-
-
-async def reclaim_task(context):
+async def reclaim_task(context, task):
     """Try to reclaim a task from the queue.
 
     This is a keepalive / heartbeat.  Without it the job will expire and
@@ -117,13 +106,14 @@ async def reclaim_task(context):
     while True:
         log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
         await asyncio.sleep(context.config['reclaim_interval'])
+        if task != context.task:
+            return
         log.debug("Reclaiming task...")
-        temp_queue = get_temp_queue(context)
-        taskId = context.claim_task['status']['taskId']
-        runId = context.claim_task['runId']
         try:
-            result = await temp_queue.reclaimTask(taskId, runId)
-            context.reclaim_task = result
+            context.reclaim_task = await context.temp_queue.reclaimTask(
+                context.claim_task['status']['taskId'],
+                context.claim_task['runId']
+            )
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
@@ -155,7 +145,6 @@ async def create_artifact(context, path, target_path, storage_type='s3',
     out of the box; we'll need some tweaking if we want to support
     redirect/error artifacts.
     """
-    temp_queue = get_temp_queue(context)
     payload = {
         "storageType": storage_type,
         "expires": expires or get_expiration_arrow(context).isoformat(),
@@ -163,7 +152,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
     }
     args = [context.claim_task['status']['taskId'], context.claim_task['runId'],
             target_path, payload]
-    tc_response = await temp_queue.createArtifact(*args)
+    tc_response = await context.temp_queue.createArtifact(*args)
     headers = {
         aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
     }
@@ -231,20 +220,19 @@ async def complete_task(context, result):
 
     If the task has expired or been cancelled, we'll get a 409 status.
     """
-    temp_queue = get_temp_queue(context)
     args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
     try:
         if result == 0:
             log.info("Reporting task complete...")
-            await temp_queue.reportCompleted(*args)
+            await context.temp_queue.reportCompleted(*args)
         elif result in list(range(2, 7)):
             reason = REVERSED_STATUSES[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
-            await temp_queue.reportException(*args, payload)
+            await context.temp_queue.reportException(*args, payload)
         else:
             log.info("Reporting task failed...")
-            await temp_queue.reportFailed(*args)
+            await context.temp_queue.reportFailed(*args)
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.info("409: not reporting complete/failed.")

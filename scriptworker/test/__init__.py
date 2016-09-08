@@ -69,11 +69,8 @@ class SuccessfulQueue(object):
 
     @pytest.mark.asyncio
     async def reclaimTask(self, *args, **kwargs):
-        if self.info is None:
-            self.info = ['reclaimTask', args, kwargs]
-            return self.reclaim_task
-        else:
-            raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
+        self.info = ['reclaimTask', args, kwargs]
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
     @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):

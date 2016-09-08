@@ -59,10 +59,9 @@ mimetypes = {
 
 # tests {{{1
 def test_temp_queue(context, mocker):
-    context.temp_credentials = {'a': 'b'}
-    context.session = {'c': 'd'}
     mocker.patch('taskcluster.async.Queue')
-    task.get_temp_queue(context)
+    context.session = {'c': 'd'}
+    context.temp_credentials = {'a': 'b'}
     assert taskcluster.async.Queue.called_once_with({
         'credentials': context.temp_credentials,
     }, session=context.session)
@@ -96,58 +95,57 @@ async def test_run_task(context):
 
 @pytest.mark.asyncio
 async def test_reportCompleted(context, successful_queue):
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = successful_queue
-        await task.complete_task(context, 0)
+    context.temp_queue = successful_queue
+    await task.complete_task(context, 0)
     assert successful_queue.info == ["reportCompleted", ('taskId', 'runId'), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportFailed(context, successful_queue):
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = successful_queue
-        await task.complete_task(context, 1)
+    context.temp_queue = successful_queue
+    await task.complete_task(context, 1)
     assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportException(context, successful_queue):
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = successful_queue
-        await task.complete_task(context, 2)
+    context.temp_queue = successful_queue
+    await task.complete_task(context, 2)
     assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
 
 @pytest.mark.asyncio
 async def test_complete_task_409(context, unsuccessful_queue):
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = unsuccessful_queue
-        await task.complete_task(context, 0)
+    context.temp_queue = unsuccessful_queue
+    await task.complete_task(context, 0)
 
 
 @pytest.mark.asyncio
 async def test_complete_task_non_409(context, unsuccessful_queue):
     unsuccessful_queue.status = 500
+    context.temp_queue = unsuccessful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
-        with mock.patch('scriptworker.task.get_temp_queue') as p:
-            p.return_value = unsuccessful_queue
-            await task.complete_task(context, 0)
+        await task.complete_task(context, 0)
 
 
 @pytest.mark.asyncio
 async def test_reclaim_task(context, successful_queue):
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = successful_queue
-        await task.reclaim_task(context)
+    context.temp_queue = successful_queue
+    await task.reclaim_task(context, context.task)
+
+
+@pytest.mark.asyncio
+async def test_skip_reclaim_task(context, successful_queue):
+    context.temp_queue = successful_queue
+    await task.reclaim_task(context, {"unrelated": "task"})
 
 
 @pytest.mark.asyncio
 async def test_reclaim_task_non_409(context, successful_queue):
     successful_queue.status = 500
+    context.temp_queue = successful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
-        with mock.patch('scriptworker.task.get_temp_queue') as p:
-            p.return_value = successful_queue
-            await task.reclaim_task(context)
+        await task.reclaim_task(context, context.task)
 
 
 @pytest.mark.asyncio
@@ -177,9 +175,8 @@ async def test_create_artifact(context, fake_session, successful_queue):
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
-    with mock.patch('scriptworker.task.get_temp_queue') as p:
-        p.return_value = successful_queue
-        await task.create_artifact(context, path, "public/env/one.txt", expires=expires)
+    context.temp_queue = successful_queue
+    await task.create_artifact(context, path, "public/env/one.txt", expires=expires)
     assert successful_queue.info == [
         "createArtifact", ('taskId', 'runId', "public/env/one.txt", {
             "storageType": "s3",
@@ -198,9 +195,8 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
     with pytest.raises(ScriptWorkerRetryException):
-        with mock.patch('scriptworker.task.get_temp_queue') as p:
-            p.return_value = successful_queue
-            await task.create_artifact(context, path, "public/env/one.log", expires=expires)
+        context.temp_queue = successful_queue
+        await task.create_artifact(context, path, "public/env/one.log", expires=expires)
     context.session.close()
 
 

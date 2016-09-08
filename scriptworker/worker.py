@@ -36,7 +36,7 @@ async def run_loop(context, creds_key="credentials"):
             log.info("Going to run task!")
             status = 0
             context.claim_task = claim_task_defn
-            loop.create_task(reclaim_task(context))
+            loop.create_task(reclaim_task(context, context.task))
             try:
                 # TODO download and verify chain of trust artifacts if
                 # context.config['verify_chain_of_trust']
