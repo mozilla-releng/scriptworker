@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """Chain of Trust artifact validation and creation.
+
+Attributes:
+    log (logging.Logger): the log object for this module.
 """
 
 import json
@@ -15,6 +18,12 @@ log = logging.getLogger(__name__)
 
 def get_cot_artifacts(context):
     """Generate the artifact relative paths and shas for the chain of trust
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        list: a list of dictionaries, each describing an artifact path+hash
     """
     artifacts = []
     filepaths = filepaths_in_dir(context.config['artifact_dir'])
@@ -30,7 +39,18 @@ def get_cot_artifacts(context):
 
 
 def generate_cot_body(context):
-    """Generate the chain of trust dictionary
+    """Generate the chain of trust dictionary.
+
+    This is the unsigned and unformatted chain of trust artifact contents.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        dict: the unsignd and unformatted chain of trust artifact contents.
+
+    Raises:
+        ScriptWorkerException: on error.
     """
     try:
         cot = {
@@ -51,6 +71,18 @@ def generate_cot_body(context):
 
 def generate_cot(context, path=None):
     """Format and sign the cot body, and write to disk
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        path (str, optional): The path to write the chain of trust artifact to.
+            If None, this is artifact_dir/public/certificate.json.gpg.
+            Defaults to None.
+
+    Returns:
+        str: the contents of the chain of trust artifact.
+
+    Raises:
+        ScriptWorkerException: on schema error.
     """
     body = generate_cot_body(context)
     try:

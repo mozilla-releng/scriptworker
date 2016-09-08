@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 """scriptworker logging
+
+Attributes:
+    log (logging.Logger): the log object for this module.
 """
 import logging
 import logging.handlers
@@ -21,6 +24,12 @@ def update_logging_config(context, log_name=None):
     * Use formatting from config settings.
     * Log to screen if `verbose`
     * Add a rotating logfile from config settings.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        log_name (str, optional): the name of the Logger to modify.
+            If None, use the top level module ('scriptworker').
+            Defaults to None.
     """
     log_name = log_name or __name__.split('.')[0]
     top_level_logger = logging.getLogger(log_name)
@@ -51,10 +60,16 @@ def update_logging_config(context, log_name=None):
 
 
 async def log_errors(reader, log_fh, error_fh):
-    """Log STDERR from the task subprocess to both the log and error
-    filehandles.  These may not actually be errors; python logging uses
+    """Log STDERR from the task subprocess to the log and error filehandles.
+
+    These may not actually be errors; python logging uses
     STDERR for output.  The running process should be able to detect its own
     status, rather than relying on scriptworker to do so.
+
+    Args:
+        reader (filehandle): subprocess process stderr
+        log_fh (filehandle): the stdout log filehandle
+        error_fh (filehandle): the stderr log filehandle
     """
     while True:
         line = await reader.readline()
@@ -68,6 +83,10 @@ async def log_errors(reader, log_fh, error_fh):
 
 async def read_stdout(stdout, log_fh):
     """Log STDOUT from the task subprocess to the log filehandle.
+
+    Args:
+        stdout (filehandle): subprocess process stdout
+        log_fh (filehandle): the stdout log filehandle
     """
     while True:
         line = await stdout.readline()
@@ -80,6 +99,12 @@ async def read_stdout(stdout, log_fh):
 
 def get_log_filenames(context):
     """Helper function to get the task log/error file paths.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        tuple: log file path, error log file path
     """
     log_file = os.path.join(context.config['task_log_dir'], 'task_output.log')
     error_file = os.path.join(context.config['task_log_dir'], 'task_error.log')
@@ -90,6 +115,12 @@ def get_log_filenames(context):
 def get_log_fhs(context):
     """Helper contextmanager function to open the log and error
     filehandles.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Yields:
+        tuple: log filehandle, error log filehandle
     """
     log_file, error_file = get_log_filenames(context)
     makedirs(context.config['task_log_dir'])

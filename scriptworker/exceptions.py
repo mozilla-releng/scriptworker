@@ -1,17 +1,35 @@
 #!/usr/bin/env python
-"""Exceptions
+"""scriptworker exceptions
 """
 
 
 class ScriptWorkerException(Exception):
+    """The base exception in scriptworker.
+
+    When raised inside of the run_loop loop, set the taskcluster task
+    status to at least `self.exit_code`.
+
+    Attributes:
+        exit_code (int): this is set to 5 (internal-error).
+    """
     exit_code = 5
 
 
 class ScriptWorkerGPGException(ScriptWorkerException):
+    """Scriptworker GPG error.
+
+    Attributes:
+        exit_code (int): this is set to 5 (internal-error).
+    """
     exit_code = 5
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
+    """ScriptWorkerRetryException.
+
+    Attributes:
+        exit_code (int): this is set to 4 (resource-unavailable)
+    """
     exit_code = 4
 
 
@@ -27,6 +45,12 @@ class ScriptWorkerTaskException(ScriptWorkerException):
             traceback.print_exc()
             sys.exit(exc.exit_code)
 
+    Args:
+        exit_code (int, optional): The exit_code we should exit with when
+            this exception is raised.  Defaults to 1 (failure).
+
+    Attributes:
+        exit_code (int): this is 1 by default (failure)
     """
     def __init__(self, *args, exit_code=1, **kwargs):
         self.exit_code = exit_code

@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 """Scriptworker task execution
+
+Attributes:
+    log (logging.Logger): the log object for the module
+    STATUSES (dict): maps taskcluster status (string) to exit code (int).
+    REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
+        (int) to the taskcluster status (string).
 """
 import aiohttp.hdrs
 import arrow
@@ -35,6 +41,15 @@ REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
 
 
 def worst_level(level1, level2):
+    """Given two int levels, return the larger.
+
+    Args:
+        level1 (int): exit code 1.
+        level2 (int): exit code 2.
+
+    Returns:
+        int: the larger of the two levels.
+    """
     return level1 if level1 > level2 else level2
 
 
@@ -42,6 +57,12 @@ async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        int: exit code
     """
     loop = asyncio.get_event_loop()
     kwargs = {  # pragma: no branch
@@ -80,10 +101,18 @@ def get_temp_queue(context):
 
 async def reclaim_task(context):
     """Try to reclaim a task from the queue.
+
     This is a keepalive / heartbeat.  Without it the job will expire and
     potentially be re-queued.  Since this is run async from the task, the
     task may complete before we run, in which case we'll get a 409 the next
     time we reclaim.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Raises:
+        taskcluster.exceptions.TaskclusterRestFailure: on non-409 status_code
+            from taskcluster.async.Queue.reclaimTask()
     """
     while True:
         log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
