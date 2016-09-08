@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 """Scripts running in scriptworker will use functions in this file.
+
+Attributes:
+    STATUSES (dict): maps taskcluster status (string) to exit code (int).
+    REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
+        (int) to the taskcluster status (string).
 """
 import json
 import jsonschema
@@ -9,7 +14,31 @@ from urllib.parse import urlparse, unquote
 
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.exceptions import ScriptWorkerTaskException
-from scriptworker.task import STATUSES
+
+
+STATUSES = {
+    'success': 0,
+    'failure': 1,
+    'worker-shutdown': 2,
+    'malformed-payload': 3,
+    'resource-unavailable': 4,
+    'internal-error': 5,
+    'superseded': 6,
+}
+REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
+
+
+def worst_level(level1, level2):
+    """Given two int levels, return the larger.
+
+    Args:
+        level1 (int): exit code 1.
+        level2 (int): exit code 2.
+
+    Returns:
+        int: the larger of the two levels.
+    """
+    return level1 if level1 > level2 else level2
 
 
 def get_task(config):

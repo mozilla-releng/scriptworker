@@ -3,10 +3,9 @@
 
 Attributes:
     log (logging.Logger): the log object for the module
-    STATUSES (dict): maps taskcluster status (string) to exit code (int).
-    REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
-        (int) to the taskcluster status (string).
 """
+from copy import deepcopy
+
 import aiohttp.hdrs
 import arrow
 import asyncio
@@ -22,34 +21,10 @@ import taskcluster.exceptions
 
 from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, log_errors, read_stdout
-from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async
+from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async, download_file
+from scriptworker.client import validate_artifact_url, REVERSED_STATUSES
 
 log = logging.getLogger(__name__)
-
-
-STATUSES = {
-    'success': 0,
-    'failure': 1,
-    'worker-shutdown': 2,
-    'malformed-payload': 3,
-    'resource-unavailable': 4,
-    'internal-error': 5,
-    'superseded': 6,
-}
-REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
-
-
-def worst_level(level1, level2):
-    """Given two int levels, return the larger.
-
-    Args:
-        level1 (int): exit code 1.
-        level2 (int): exit code 2.
-
-    Returns:
-        int: the larger of the two levels.
-    """
-    return level1 if level1 > level2 else level2
 
 
 async def run_task(context):
@@ -329,3 +304,24 @@ def max_timeout(context, proc, timeout):
         asyncio.ensure_future(kill(-pid)),
         asyncio.ensure_future(kill(pid))
     ]))
+
+
+async def download_artifacts(context, file_urls, download_func=download_file):
+    work_dir = context.config['work_dir']
+
+    tasks = []
+    files = []
+    download_config = deepcopy(context.config)
+    download_config.setdefault('valid_artifact_task_ids', context.task['dependencies'])
+    for file_url in file_urls:
+        rel_path = validate_artifact_url(download_config, file_url)
+        abs_file_path = os.path.join(work_dir, rel_path)
+        files.append(rel_path)
+        tasks.append(
+            asyncio.ensure_future(
+                retry_async(download_func, args=(context, file_url, abs_file_path))
+            )
+        )
+
+    await raise_future_exceptions(tasks)
+    return files
