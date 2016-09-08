@@ -242,8 +242,13 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
     return key.fingerprint
 
 
-def import_keys(gpg, key_data, return_type='fingerprints'):
-    """Import ascii key_data (can be multiple keys).
+def import_key(gpg, key_data, return_type='fingerprints'):
+    """Import ascii key_data.
+
+    In theory this can be multiple keys.  However, jenkins is barfing on
+    multiple key import tests, although multiple key import tests are working
+    locally.  Until we identify what the problem is (likely gpg version?)
+    we should only import 1 key at a time.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -922,7 +927,7 @@ def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
         if has_suffix(filepath, ignore_suffixes):
             continue
         with open(filepath, "r") as fh:
-            result = import_keys(gpg, fh.read(), return_type='result')
+            result = import_key(gpg, fh.read(), return_type='result')
             for fp in result.results:
                 if fp['fingerprint'] is not None:
                     fingerprints.append(fp['fingerprint'])

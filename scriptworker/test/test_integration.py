@@ -46,7 +46,6 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
 
 
 def build_config(override, basedir):
-    cwd = os.getcwd()
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = deepcopy(DEFAULT_CONFIG)
     GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
