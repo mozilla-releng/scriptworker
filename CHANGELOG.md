@@ -14,6 +14,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - moved `scriptworker.client.integration_create_task_payload` into `scriptworker.test`
 - renamed `scriptworker.util.get-_hash` kwarg `hash_type` to `hash_alg`
 - renamed `firefox_cot_schema.json` to `cot_v1_schema.json`; also, the schema has changed.
+- reenabled parallelized tests via pytest-xdist.
 
 ### Fixed
 - pass a `task` to `scriptworker.task.reclaimTask` and exit the loop if it doesn't match `context.task`

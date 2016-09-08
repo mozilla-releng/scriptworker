@@ -263,11 +263,7 @@ def import_key(gpg, key_data, return_type='fingerprints'):
     """
     import_result = gpg.import_keys(key_data)
     if return_type == 'fingerprints':
-        fingerprints = []
-        for fp in import_result.results:
-            if fp['fingerprint'] is not None:
-                fingerprints.append(fp['fingerprint'])
-        return fingerprints
+        return import_result.fingerprints
     return import_result.results
 
 

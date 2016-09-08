@@ -274,10 +274,7 @@ def test_import_single_key(suffix):
         gpg = sgpg.GPG(context)
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
             contents = fh.read()
-        result = sgpg.import_key(gpg, contents, return_type='result')
-        fingerprints = []
-        for d in result:
-            fingerprints.append(d['fingerprint'])
+        fingerprints = sgpg.import_key(gpg, contents)
         # the .sec fingerprints are doubled; use set() for unsorted & uniq
         assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
 
