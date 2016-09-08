@@ -124,6 +124,12 @@ async def reclaim_task(context, task):
 
 def get_expiration_arrow(context):
     """Return an arrow, `artifact_expiration_hours` in the future from now.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Returns:
+        arrow: now + artifact_expiration_hours
     """
     now = arrow.utcnow()
     return now.replace(hours=context.config['artifact_expiration_hours'])
@@ -131,6 +137,12 @@ def get_expiration_arrow(context):
 
 def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
+
+    Args:
+        path (str): the path to guess the mimetype of
+
+    Returns:
+        str: the content type of the file
     """
     content_type, _ = mimetypes.guess_type(path)
     if path.endswith('.log'):
@@ -141,9 +153,24 @@ def guess_content_type(path):
 
 async def create_artifact(context, path, target_path, storage_type='s3',
                           expires=None, content_type=None):
-    """Create an artifact and upload it.  This should support s3 and azure
-    out of the box; we'll need some tweaking if we want to support
-    redirect/error artifacts.
+    """Create an artifact and upload it.
+
+    This should support s3 and azure out of the box; we'll need some tweaking
+    if we want to support redirect/error artifacts.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        path (str): the path of the file to upload.
+        target_path (str):
+        storage_type (str, optional): the taskcluster storage type to use.
+            Defaults to 's3'
+        expires (str, optional): datestring of when the artifact expires.
+            Defaults to None.
+        content_type (str, optional): Specify the content type of the artifact.
+            If None, use guess_content_type().  Defaults to None.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
     """
     payload = {
         "storageType": storage_type,
@@ -174,7 +201,13 @@ async def create_artifact(context, path, target_path, storage_type='s3',
 
 
 async def retry_create_artifact(*args, **kwargs):
-    return await retry_async(
+    """Retry create_artifact() calls.
+
+    Args:
+        *args: the args to pass on to create_artifact
+        **kwargs: the args to pass on to create_artifact
+    """
+    await retry_async(
         create_artifact,
         retry_exceptions=(ScriptWorkerRetryException, ),
         args=args,
@@ -188,6 +221,12 @@ async def upload_artifacts(context):
     This function expects the directory structure in `artifact_dir` to remain
     the same.  So if we want the files in `public/...`, create an
     `artifact_dir/public` and put the files in there.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        Exception: any exceptions the tasks raise.
     """
     file_list = {}
     for target_path in filepaths_in_dir(context.config['artifact_dir']):
@@ -219,6 +258,12 @@ async def complete_task(context, result):
     based on the exit status of the script.
 
     If the task has expired or been cancelled, we'll get a 409 status.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
     """
     args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
     try:
@@ -241,7 +286,12 @@ async def complete_task(context, result):
 
 
 async def kill(pid, sleep_time=1):
-    """Kill `pid`.
+    """Kill `pid` with various signals.
+
+    Args:
+        pid (int): the process id to kill.
+        sleep_time (int, optional): how long to sleep between killing the pid
+            and checking if the pid is still running.
     """
     siglist = [signal.SIGINT, signal.SIGTERM]
     while True:
@@ -258,6 +308,14 @@ async def kill(pid, sleep_time=1):
 
 def max_timeout(context, proc, timeout):
     """Make sure the proc pid's process and process group are killed.
+
+    First, kill the process group (-pid) and then the pid.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        proc (subprocess.Process): the subprocess proc.  This is compared against context.proc
+            to make sure we're killing the right pid.
+        timeout (int): Used for the log message.
     """
     # We may be called with proc1.  proc1 may finish, and proc2 may start
     # before this function is called.  Make sure we're still running the
