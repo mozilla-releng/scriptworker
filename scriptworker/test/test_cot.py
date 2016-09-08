@@ -66,24 +66,22 @@ def get_context():
 def expected_cot_body(context, artifacts):
     return {
         'artifacts': artifacts,
+        'chainOfTrustVersion': 1,
         'runId': context.claim_task['runId'],
         'task': context.task,
         'taskId': context.claim_task['status']['taskId'],
         'workerGroup': context.claim_task['workerGroup'],
         'workerId': context.config['worker_id'],
         'workerType': context.config['worker_type'],
-        'extra': {}
+        'environment': {}
     }
 
 
 @pytest.fixture(scope='function')
 def artifacts():
-    artifacts = []
-    for k, v in sorted(ARTIFACT_SHAS.items()):
-        artifacts.append({
-            "name": k,
-            "hash": "sha256:{}".format(v),
-        })
+    artifacts = {}
+    for k, v in ARTIFACT_SHAS.items():
+        artifacts[k] = {"sha256": v}
     return artifacts
 
 

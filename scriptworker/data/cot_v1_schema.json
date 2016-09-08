@@ -1,16 +1,14 @@
 {
-  "title": "Firefox Chain of Trust Schema",
+  "title": "Chain of Trust Schema v1",
   "type": "object",
   "properties": {
     "artifacts": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "object"
-      }
+      "type": "object"
     },
-    "extra": {
+    "chainOfTrustVersion": {
+      "type": "number"
+    },
+    "environment": {
       "type": "object"
     },
     "runId": {
@@ -55,5 +53,5 @@
       "type": "string"
     }
   },
-  "required": ["artifacts", "extra", "runId", "task", "taskId", "workerGroup", "workerId"]
+  "required": ["artifacts", "chainOfTrustVersion", "environment", "runId", "task", "taskId", "workerGroup", "workerId"]
 }

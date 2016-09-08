@@ -23,19 +23,30 @@ def get_cot_artifacts(context):
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        list: a list of dictionaries, each describing an artifact path+hash
+        dict: a dictionary of {"path/to/artifact": {"hash_alg": "..."}, ...}
     """
-    artifacts = []
+    artifacts = {}
     filepaths = filepaths_in_dir(context.config['artifact_dir'])
     hash_alg = context.config['chain_of_trust_hash_algorithm']
     for filepath in sorted(filepaths):
         path = os.path.join(context.config['artifact_dir'], filepath)
         sha = get_hash(path, hash_alg=hash_alg)
-        artifacts.append({
-            "name": filepath,
-            "hash": "{}:{}".format(hash_alg, sha),
-        })
+        artifacts[filepath] = {hash_alg: sha}
     return artifacts
+
+
+def get_environment(context):
+    """Get environment information for the chain of trust artifact.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        dict: the environment info.
+    """
+    env = {}
+    # TODO
+    return env
 
 
 def generate_cot_body(context):
@@ -55,16 +66,17 @@ def generate_cot_body(context):
     try:
         cot = {
             'artifacts': get_cot_artifacts(context),
+            'chainOfTrustVersion': 1,
             'runId': context.claim_task['runId'],
             'task': context.task,
             'taskId': context.claim_task['status']['taskId'],
             'workerGroup': context.claim_task['workerGroup'],
             'workerId': context.config['worker_id'],
             'workerType': context.config['worker_type'],
-            'extra': {},  # TODO
+            'environment': get_environment(context),
         }
-    except (KeyError, ) as e:
-        raise ScriptWorkerException("Can't generate chain of trust! {}".format(str(e)))
+    except (KeyError, ) as exc:
+        raise ScriptWorkerException("Can't generate chain of trust! {}".format(str(exc)))
 
     return cot
 
@@ -75,7 +87,7 @@ def generate_cot(context, path=None):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         path (str, optional): The path to write the chain of trust artifact to.
-            If None, this is artifact_dir/public/certificate.json.gpg.
+            If None, this is artifact_dir/public/chainOfTrust.json.asc.
             Defaults to None.
 
     Returns:
@@ -94,7 +106,7 @@ def generate_cot(context, path=None):
         )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
-    path = path or os.path.join(context.config['artifact_dir'], "public", "certificate.json.gpg")
+    path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
     if context.config['sign_chain_of_trust']:
         body = sign(GPG(context), body)
     with open(path, "w") as fh:

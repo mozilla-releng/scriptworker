@@ -49,7 +49,7 @@ DEFAULT_CONFIG = {
     "verify_chain_of_trust": False,  # TODO True
     "sign_chain_of_trust": False,  # TODO True
     "chain_of_trust_hash_algorithm": "sha256",
-    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_schema.json"),
+    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
 

@@ -13,6 +13,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - gpg functions now take a `gpg_home` kwarg to specify a different homedir
 - moved `scriptworker.client.integration_create_task_payload` into `scriptworker.test`
 - renamed `scriptworker.util.get-_hash` kwarg `hash_type` to `hash_alg`
+- renamed `firefox_cot_schema.json` to `cot_v1_schema.json`; also, the schema has changed.
 
 ### Fixed
 - pass a `task` to `scriptworker.task.reclaimTask` and exit the loop if it doesn't match `context.task`
