@@ -30,7 +30,7 @@ def get_cot_artifacts(context):
     hash_alg = context.config['chain_of_trust_hash_algorithm']
     for filepath in sorted(filepaths):
         path = os.path.join(context.config['artifact_dir'], filepath)
-        sha = get_hash(path, hash_type=hash_alg)
+        sha = get_hash(path, hash_alg=hash_alg)
         artifacts.append({
             "name": filepath,
             "hash": "{}:{}".format(hash_alg, sha),

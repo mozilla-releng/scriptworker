@@ -19,6 +19,15 @@ log = logging.getLogger(__name__)
 
 async def run_loop(context, creds_key="credentials"):
     """Split this out of the async_main while loop for easier testing.
+
+    args:
+        context (scriptworker.context.Context): the scriptworker context.
+        creds_key (str, optional): when reading the creds file, this dict key
+            corresponds to the credentials value we want to use.  Defaults to
+            "credentials".
+
+    Returns:
+        int: status
     """
     loop = asyncio.get_event_loop()
     await update_poll_task_urls(
@@ -67,6 +76,11 @@ async def run_loop(context, creds_key="credentials"):
 async def async_main(context):
     """Main async loop, following the drawing at
     http://docs.taskcluster.net/queue/worker-interaction/
+
+    This is a simple loop, mainly to keep each function more testable.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
     """
     while True:
         await run_loop(context)

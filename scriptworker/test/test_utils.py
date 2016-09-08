@@ -224,7 +224,7 @@ def test_filepaths_in_dir():
 
 def test_get_hash():
     path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
-    sha = utils.get_hash(path, hash_type="sha256")
+    sha = utils.get_hash(path, hash_alg="sha256")
     assert sha == "584818280d7908da33c810a25ffb838b1e7cec1547abd50c859521229942c5a5"
 
 
