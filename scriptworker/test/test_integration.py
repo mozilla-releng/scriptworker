@@ -10,6 +10,7 @@ import json
 import os
 import pytest
 import slugid
+import tempfile
 from scriptworker.config import CREDS_FILES, DEFAULT_CONFIG, read_worker_creds
 from scriptworker.context import Context
 import scriptworker.log as swlog
@@ -44,11 +45,8 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
     )
 
 
-def build_config(override):
+def build_config(override, basedir):
     cwd = os.getcwd()
-    basedir = os.path.join(cwd, "integration")
-    if not os.path.exists(basedir):
-        os.makedirs(basedir)
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = deepcopy(DEFAULT_CONFIG)
     GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
@@ -85,13 +83,14 @@ def build_config(override):
 @contextmanager
 def get_context(config_override):
     context = Context()
-    context.config, credentials = build_config(config_override)
-    swlog.update_logging_config(context)
-    utils.cleanup(context)
-    with aiohttp.ClientSession() as session:
-        context.session = session
-        context.credentials = credentials
-        yield context
+    with tempfile.TemporaryDirectory() as tmp:
+        context.config, credentials = build_config(config_override, basedir=tmp)
+        swlog.update_logging_config(context)
+        utils.cleanup(context)
+        with aiohttp.ClientSession() as session:
+            context.session = session
+            context.credentials = credentials
+            yield context
 
 
 def get_temp_creds(context):
@@ -147,7 +146,7 @@ async def test_run_successful_task(event_loop, context_function):
         result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
         with remember_cwd():
-            os.chdir("integration")
+            os.chdir(os.path.dirname(context.config['work_dir']))
             status = await worker.run_loop(context, creds_key="integration_credentials")
         assert status == 1
         result = await task_status(context, task_id)
@@ -168,7 +167,7 @@ def test_run_maxtimeout(event_loop, context_function):
         )
         assert result['status']['state'] == 'pending'
         with remember_cwd():
-            os.chdir("integration")
+            os.chdir(os.path.dirname(context.config['work_dir']))
             with pytest.raises(RuntimeError):
                 event_loop.run_until_complete(
                     worker.run_loop(context, creds_key="integration_credentials")
@@ -186,7 +185,7 @@ def test_run_maxtimeout(event_loop, context_function):
 async def test_empty_queue(event_loop, context_function):
     with context_function(None) as context:
         with remember_cwd():
-            os.chdir("integration")
+            os.chdir(os.path.dirname(context.config['work_dir']))
             status = await worker.run_loop(context, creds_key="integration_credentials")
         assert status is None
 
@@ -196,7 +195,7 @@ async def test_empty_queue(event_loop, context_function):
 def test_temp_creds(event_loop, context_function):
     with context_function(None) as context:
         with remember_cwd():
-            os.chdir("integration")
+            os.chdir(os.path.dirname(context.config['work_dir']))
             context.temp_credentials = utils.create_temp_creds(
                 context.credentials['clientId'], context.credentials['accessToken'],
                 expires=arrow.utcnow().replace(minutes=10).datetime
