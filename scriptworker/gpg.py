@@ -18,9 +18,10 @@ import os
 import pexpect
 import pprint
 import subprocess
+import tempfile
 
 from scriptworker.exceptions import ScriptWorkerGPGException
-from scriptworker.utils import filepaths_in_dir, rm
+from scriptworker.utils import filepaths_in_dir, makedirs, rm
 
 log = logging.getLogger(__name__)
 
@@ -199,11 +200,12 @@ def GPG(context, gpg_home=None):
         gnupg.GPG: the GPG instance with the appropriate configs.
     """
     kwargs = {}
+    gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     for config_key, gnupg_key in GPG_CONFIG_MAPPING.items():
         if context.config[config_key] is not None:
-            kwargs[gnupg_key] = context.config[config_key]
-    if gpg_home is not None:
-        kwargs['gnupghome'] = gpg_home
+            # allow for the keyring paths to contain %(gpg_home)s (recommended)
+            kwargs[gnupg_key] = context.config[config_key] % {'gpg_home': gpg_home}
+    kwargs['gnupghome'] = gpg_home
     gpg = gnupg.GPG(**kwargs)
     # gpg.encoding defaults to latin-1, but python3 defaults to utf-8 for
     # everything else
@@ -931,5 +933,61 @@ def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
                     messages.append("Can't import key from {}: {}!".format(path, fp['text']))
     if messages:
         raise ScriptWorkerGPGException('\n'.join(messages))
-    # TODO sign all these fingerprints with my_fingerprint key?
     return fingerprints
+
+
+def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_path,
+                          consume_path, ignore_suffixes=(),
+                          consume_function=consume_valid_keys):
+    """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
+
+    In this 'flat' model, import all the pubkeys in `consume_path` and sign
+    them directly.  This makes them valid but not trusted.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        real_gpg_home (str): the gpg_home path we want to rebuild
+        my_pubkey_path (str): the ascii pubkey file we want to import
+        my_seckey_path (str): the ascii seckey file we want to import
+        consume_path (str): the path to the directory tree to import pubkeys
+            from
+        ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
+            Defaults to ()
+        consume_function (function, optional): the function to call to consume
+            the public keys.  Defaults to consume_valid_keys()
+    """
+    # Make sure we're not going to use our default keyrings
+    for key in ('gpg_public_keyring', 'gpg_secret_keyring'):
+        if '%(gpg_home)s' not in context.config[key]:
+            raise ScriptWorkerGPGException("config {} doesn't contain '%(gpg_home)s in rebuild_gpg_home()".format(key))
+    # Create a new tmp_gpg_home to import into
+    with tempfile.TemporaryDirectory() as tmp_gpg_home:
+        gpg = GPG(context, gpg_home=tmp_gpg_home)
+        # import my key and create gpg.conf and trustdb.gpg
+        for path in (my_pub_key_path, my_sec_key_path):
+            with open(path, "r") as fh:
+                my_fingerprint = import_key(gpg, fh.read())[0]
+        create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
+        update_ownertrust(context, my_fingerprint, gpg_home=tmp_gpg_home)
+        # import all the keys
+        fingerprints = consume_function(
+            context, consume_path,
+            ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
+        )
+        # sign all the keys
+        for fingerprint in fingerprints:
+            sign_key(
+                context, fingerprint, signing_key=my_fingerprint,
+                gpg_home=tmp_gpg_home
+            )
+        # Back up real_gpg_home until we have more confidence in blowing this away
+        if os.path.exists(real_gpg_home):
+            os.rename(real_gpg_home, "{}.{}".format(
+                real_gpg_home, str(arrow.utcnow().timestamp)
+            ))
+        makedirs(real_gpg_home)
+        for filepath in filepaths_in_dir(tmp_gpg_home):
+            os.rename(
+                os.path.join(tmp_gpg_home, filepath),
+                os.path.join(real_gpg_home, filepath)
+            )

@@ -58,8 +58,8 @@ DEFAULT_CONFIG = {
     # The path to the gpg executable.
     "gpg_path": None,
     # The path to the public/secret keyrings, if we're not using the default
-    "gpg_public_keyring": None,
-    "gpg_secret_keyring": None,
+    "gpg_public_keyring": '%(gpg_home)s/pubring.gpg',
+    "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
     # Encoding to use.  Defaults to latin-1
