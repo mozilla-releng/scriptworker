@@ -162,7 +162,7 @@ def check_config(config, path):
         if value in ("...", b"..."):
             messages.append("{} {} needs to be defined!".format(path, key))
         if key in ("gpg_public_keyring", "gpg_secret_keyring") and not value.startswith('%(gpg_home)s/'):
-            messages.append("{} needs to start with %(gpg_home)s to be portable!")
+            messages.append("{} needs to start with %(gpg_home)s/ to be portable!")
     return messages
 
 
