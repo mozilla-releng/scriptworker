@@ -936,6 +936,51 @@ def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
     return fingerprints
 
 
+def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_sec_key_path):
+    """import my key and create gpg.conf and trustdb.gpg
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        tmp_gpg_home (str): the path to the tmp gpg_home.  This should already
+            exist.
+        my_pubkey_path (str): the ascii pubkey file we want to import as the
+            primary key
+        my_seckey_path (str): the ascii seckey file we want to import as the
+            primary key
+    """
+    gpg = GPG(context, gpg_home=tmp_gpg_home)
+    for path in (my_pub_key_path, my_sec_key_path):
+        with open(path, "r") as fh:
+            my_fingerprint = import_key(gpg, fh.read())[0]
+    create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
+    update_ownertrust(context, my_fingerprint, gpg_home=tmp_gpg_home)
+    return my_fingerprint
+
+
+def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
+    """Take the contents of tmp_gpg_home and copy them to real_gpg_home.
+
+    For now, back up real_gpg_home before doing so.  We may want to revisit
+    for disk space reasons: only keep N backups?
+
+    Args:
+        tmp_gpg_home (str): path to the rebuilt gpg_home with the new keychains+
+            trust models
+        real_gpg_home (str): path to the old gpg_home to overwrite
+    """
+    # Back up real_gpg_home until we have more confidence in blowing this away
+    if os.path.exists(real_gpg_home):
+        os.rename(real_gpg_home, "{}.{}".format(
+            real_gpg_home, str(arrow.utcnow().timestamp)
+        ))
+    makedirs(real_gpg_home)
+    for filepath in filepaths_in_dir(tmp_gpg_home):
+        os.rename(
+            os.path.join(tmp_gpg_home, filepath),
+            os.path.join(real_gpg_home, filepath)
+        )
+
+
 def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_path,
                           consume_path, ignore_suffixes=(),
                           consume_function=consume_valid_keys):
@@ -947,8 +992,10 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         real_gpg_home (str): the gpg_home path we want to rebuild
-        my_pubkey_path (str): the ascii pubkey file we want to import
-        my_seckey_path (str): the ascii seckey file we want to import
+        my_pubkey_path (str): the ascii pubkey file we want to import as the
+            primary key
+        my_seckey_path (str): the ascii seckey file we want to import as the
+            primary key
         consume_path (str): the path to the directory tree to import pubkeys
             from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
@@ -956,19 +1003,11 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
         consume_function (function, optional): the function to call to consume
             the public keys.  Defaults to consume_valid_keys()
     """
-    # Make sure we're not going to use our default keyrings
-    for key in ('gpg_public_keyring', 'gpg_secret_keyring'):
-        if '%(gpg_home)s' not in context.config[key]:
-            raise ScriptWorkerGPGException("config {} doesn't contain '%(gpg_home)s in rebuild_gpg_home()".format(key))
     # Create a new tmp_gpg_home to import into
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
-        gpg = GPG(context, gpg_home=tmp_gpg_home)
-        # import my key and create gpg.conf and trustdb.gpg
-        for path in (my_pub_key_path, my_sec_key_path):
-            with open(path, "r") as fh:
-                my_fingerprint = import_key(gpg, fh.read())[0]
-        create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
-        update_ownertrust(context, my_fingerprint, gpg_home=tmp_gpg_home)
+        my_fingerprint = rebuild_gpg_home(
+            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+        )
         # import all the keys
         fingerprints = consume_function(
             context, consume_path,
@@ -980,14 +1019,61 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
-        # Back up real_gpg_home until we have more confidence in blowing this away
-        if os.path.exists(real_gpg_home):
-            os.rename(real_gpg_home, "{}.{}".format(
-                real_gpg_home, str(arrow.utcnow().timestamp)
-            ))
-        makedirs(real_gpg_home)
-        for filepath in filepaths_in_dir(tmp_gpg_home):
-            os.rename(
-                os.path.join(tmp_gpg_home, filepath),
-                os.path.join(real_gpg_home, filepath)
+        # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/
+        overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
+
+
+def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
+                            my_sec_key_path, trusted_path, untrusted_path,
+                            ignore_suffixes=(),
+                            consume_function=consume_valid_keys):
+    """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
+
+    In this 'flat' model, import all the pubkeys in `consume_path` and sign
+    them directly.  This makes them valid but not trusted.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        real_gpg_home (str): the gpg_home path we want to rebuild
+        my_pubkey_path (str): the ascii pubkey file we want to import as the
+            primary key
+        my_seckey_path (str): the ascii seckey file we want to import as the
+            primary key
+        trusted_path (str): the path to the directory tree to import trusted
+            pubkeys from
+        untrusted_path (str): the path to the directory tree to import untrusted
+            but valid pubkeys from
+        ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
+            Defaults to ()
+        consume_function (function, optional): the function to call to consume
+            the public keys.  Defaults to consume_valid_keys()
+    """
+    # Create a new tmp_gpg_home to import into
+    with tempfile.TemporaryDirectory() as tmp_gpg_home:
+        my_fingerprint = rebuild_gpg_home(
+            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+        )
+        # import all the trusted keys
+        trusted_fingerprints = consume_function(
+            context, trusted_path,
+            ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
+        )
+        # sign all the keys
+        for fingerprint in trusted_fingerprints:
+            sign_key(
+                context, fingerprint, signing_key=my_fingerprint,
+                gpg_home=tmp_gpg_home
             )
+        # trust trusted_fingerprints
+        update_ownertrust(
+            context, my_fingerprint, trusted_fingerprints=trusted_fingerprints,
+            gpg_home=tmp_gpg_home
+        )
+        # import valid_fingerprints; don't sign or trust (one of the trusted
+        # fingerprints should have already signed them).
+        consume_function(
+            context, untrusted_path,
+            ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
+        )
+        # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/
+        overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
