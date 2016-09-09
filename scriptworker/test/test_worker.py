@@ -13,9 +13,9 @@ from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
 import sys
-from . import successful_queue
+from . import event_loop, successful_queue
 
-assert successful_queue  # silence flake8
+assert successful_queue, event_loop  # silence flake8
 
 
 # constants helpers and fixtures {{{1
@@ -81,7 +81,7 @@ def test_main(mocker, event_loop):
             worker.main()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_async_main(context):
 
     async def exit(*args, **kwargs):

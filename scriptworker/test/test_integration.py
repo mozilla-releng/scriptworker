@@ -16,7 +16,9 @@ from scriptworker.context import Context
 import scriptworker.log as swlog
 import scriptworker.worker as worker
 import scriptworker.utils as utils
-from . import integration_create_task_payload
+from . import event_loop, integration_create_task_payload
+
+assert event_loop  # silence flake8
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")

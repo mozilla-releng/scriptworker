@@ -207,3 +207,19 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
         'tags': {},
         'extra': task_extra,
     }
+
+
+@pytest.yield_fixture
+def event_loop():
+    """Create an instance of the default event loop for each test case.
+    From https://github.com/pytest-dev/pytest-asyncio/issues/29#issuecomment-226947296
+    """
+    policy = asyncio.get_event_loop_policy()
+    res = policy.new_event_loop()
+    asyncio.set_event_loop(res)
+    res._close = res.close
+    res.close = lambda: None
+
+    yield res
+
+    res._close()

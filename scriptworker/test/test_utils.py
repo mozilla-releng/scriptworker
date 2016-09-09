@@ -10,8 +10,9 @@ import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import fake_session, fake_session_500, FakeResponse, touch
+from . import event_loop, fake_session, fake_session_500, FakeResponse, touch
 
+assert event_loop  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1

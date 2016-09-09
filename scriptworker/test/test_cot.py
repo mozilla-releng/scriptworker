@@ -37,8 +37,8 @@ def get_context():
             "gpg_encoding": None,
             "gpg_options": None,
             "gpg_path": os.environ.get("GPG_PATH", None),
-            "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),
-            "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
+            "gpg_public_keyring": "%(gpg_home)s/pubring.gpg",
+            "gpg_secret_keyring": "%(gpg_home)s/secring.gpg",
             "gpg_use_agent": None,
             "sign_chain_of_trust": True,
 

@@ -16,8 +16,10 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import fake_session, fake_session_500, successful_queue, touch, unsuccessful_queue, read
+from . import event_loop, fake_session, fake_session_500, successful_queue, \
+    touch, unsuccessful_queue, read
 
+assert event_loop  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
