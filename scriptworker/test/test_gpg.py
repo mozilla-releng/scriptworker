@@ -453,3 +453,10 @@ def test_update_ownertrust_failure(mocker):
         context = get_context(tmp)
         with pytest.raises(ScriptWorkerGPGException):
             sgpg.update_ownertrust(context, "foo")
+
+# consume {{{1
+def test_consume_valid_keys():
+    with tempfile.TemporaryDirectory() as tmp1:
+        with tempfile.TemporaryDirectory() as tmp2:
+            context = get_context(tmp)
+            # TODO
