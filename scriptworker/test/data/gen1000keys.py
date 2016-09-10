@@ -7,8 +7,10 @@ import glob
 import gnupg
 import logging
 import os
+import pprint
 import tempfile
 
+from scriptworker.context import Context
 import scriptworker.gpg
 import scriptworker.utils
 
@@ -22,7 +24,7 @@ def import_priv_keys(gpg, trusted_key_dir):
     for path in file_list:
         if 'unknown@' in path:  # treat unknown@example.com as a real unknown key
             continue
-        email = os.path.filename(path).replace('.sec', '')
+        email = os.path.basename(path).replace('.sec', '')
         with open(path, "r") as fh:
             trusted_fingerprint_dict[email] = scriptworker.gpg.import_key(gpg, fh.read())[0]
     return trusted_fingerprint_dict
@@ -38,8 +40,15 @@ def write_key(gpg, fingerprint, path, private=False):
 def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
     start = arrow.utcnow()
     manifest = {}
+    context = Context()
+    scriptworker.utils.rm(pubkey_dir)
+    scriptworker.utils.makedirs(os.path.join(pubkey_dir, "data"))
 
     with tempfile.TemporaryDirectory() as tmp:
+        context.config = {
+            'gpg_home': tmp,
+            'gpg_path': None,
+        }
         gpg = gnupg.GPG(gnupghome=tmp)
         trusted_fingerprint_dict = import_priv_keys(gpg, trusted_key_dir)
         trusted_list = sorted(trusted_fingerprint_dict.keys())
@@ -56,22 +65,30 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
                 )
             )
             fingerprint = key.fingerprint
+            unsigned_path = os.path.join(pubkey_dir, "unsigned", "{}.unsigned.pub".format(fingerprint))
             manifest[fingerprint] = {
-                "uid": "{} ({}) <{}>".format(str_i, str_i, str_i)
+                "message": str_i,
+                "uid": "{} ({}) <{}>".format(str_i, str_i, str_i),
+                "unsigned_path": unsigned_path,
             }
             write_key(
-                gpg, fingerprint,
-                os.path.join(pubkey_dir, "unsigned", "{}.pub".format(fingerprint))
+                gpg, fingerprint, unsigned_path
             )
             signed_data = gpg.sign(str_i, keyid=fingerprint)
             with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint)), "w") as fh:
                 print(signed_data, file=fh, end="")
             signing_email = trusted_list.pop(0)
             trusted_list.append(signing_email)
-            # TODO sign the generated pubkey with trusted key -- need CONTEXT
-            # TODO write to pubkey_dir/email
-            # TODO add to manifest
-        # TODO create a json file with all the fingerprint + signature info
+            scriptworker.gpg.sign_key(
+                context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]
+            )
+            signed_path = os.path.join(pubkey_dir, signing_email, "{}.pub".format(fingerprint))
+            write_key(gpg, fingerprint, signed_path)
+            manifest[fingerprint]['signing_email'] = signing_email
+            manifest[fingerprint]['signing_fingerprint'] = signing_email
+            manifest[fingerprint]['signed_path'] = signed_path
+    with open(os.path.join(pubkey_dir, "manifest.json"), "w") as fh:
+        print(pprint.pformat(manifest), file=fh, end="")
     end = arrow.utcnow()
     print("Took %s seconds" % str(end.timestamp - start.timestamp))
 
@@ -79,7 +96,9 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
 def main(*args, name=None, **kwargs):
     if name not in (None, "__main__"):
         return
+    log.setLevel(logging.DEBUG)
+    log.addHandler(logging.StreamHandler())
     build_pubkeys_dir(*args, **kwargs)
 
 
-main(os.path.join(os.getcwd(), 10, "pubkeys"), TRUSTED_KEY_DIR, name=__name__)
+main(os.path.join(os.getcwd(), "pubkeys"), TRUSTED_KEY_DIR, 1000, name=__name__)
