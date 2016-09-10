@@ -9,19 +9,20 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.log as swlog
-from . import read
+from . import read, tmpdir
+
+assert tmpdir  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
+def context(tmpdir):
     context = Context()
     context.config = {
         "log_fmt": "%(message)s",
         "log_datefmt": "%H:%M:%S",
-        "log_dir": str(temp_dir),
-        "task_log_dir": os.path.join(str(temp_dir), "public", "logs"),
+        "log_dir": tmpdir,
+        "task_log_dir": os.path.join(tmpdir, "public", "logs"),
         "log_max_bytes": 100,
         "log_num_backups": 1,
         "verbose": True,

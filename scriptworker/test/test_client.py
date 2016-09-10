@@ -9,6 +9,9 @@ import pytest
 from shutil import copyfile
 from scriptworker.exceptions import ScriptWorkerTaskException
 import scriptworker.client as client
+from . import tmpdir
+
+assert tmpdir  # silence pyflakes
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
@@ -86,15 +89,14 @@ ILLEGAL_URLS = ((
 
 
 @pytest.fixture(scope='function')
-def config(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("work_dir", numbered=True)
-    work_dir = os.path.join(str(temp_dir), "work")
+def config(tmpdir):
+    work_dir = os.path.join(tmpdir, "work")
     os.makedirs(work_dir)
     return {
         'work_dir': work_dir,
-        'log_dir': os.path.join(str(temp_dir), "log"),
-        'artifact_dir': os.path.join(str(temp_dir), "artifact"),
-        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
+        'log_dir': os.path.join(tmpdir, "log"),
+        'artifact_dir': os.path.join(tmpdir, "artifact"),
+        'task_log_dir': os.path.join(tmpdir, "artifact", "public", "logs"),
         'provisioner_id': 'provisioner_id',
         'worker_type': 'worker_type',
     }

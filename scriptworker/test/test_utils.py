@@ -10,9 +10,10 @@ import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import event_loop, fake_session, fake_session_500, FakeResponse, touch
+from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
+    touch
 
-assert event_loop  # silence flake8
+assert event_loop, tmpdir  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1
@@ -65,15 +66,13 @@ async def fake_sleep(*args, **kwargs):
 
 
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
-    path = str(temp_dir)
+def context(tmpdir):
     context = Context()
     context.config = {
-        'log_dir': os.path.join(path, 'log'),
-        'task_log_dir': os.path.join(path, 'artifact', 'public', 'logs'),
-        'artifact_dir': os.path.join(path, 'artifact'),
-        'work_dir': os.path.join(path, 'work'),
+        'log_dir': os.path.join(tmpdir, 'log'),
+        'task_log_dir': os.path.join(tmpdir, 'artifact', 'public', 'logs'),
+        'artifact_dir': os.path.join(tmpdir, 'artifact'),
+        'work_dir': os.path.join(tmpdir, 'work'),
     }
     return context
 
@@ -208,19 +207,18 @@ async def test_raise_future_exceptions_noop(event_loop):
     await utils.raise_future_exceptions([])
 
 
-def test_filepaths_in_dir():
+def test_filepaths_in_dir(tmpdir):
     filepaths = sorted([
         "asdfasdf/lwekrjweoi/lsldkfjs",
         "lkdsjf/werew/sdlkfds",
         "lsdkjf/sdlkfds",
         "lkdlkf/lsldkfjs",
     ])
-    with tempfile.TemporaryDirectory() as tmp:
-        for path in filepaths:
-            parent_dir = os.path.join(tmp, os.path.dirname(path))
-            os.makedirs(parent_dir)
-            touch(os.path.join(tmp, path))
-        assert sorted(utils.filepaths_in_dir(tmp)) == filepaths
+    for path in filepaths:
+        parent_dir = os.path.join(tmpdir, os.path.dirname(path))
+        os.makedirs(parent_dir)
+        touch(os.path.join(tmpdir, path))
+    assert sorted(utils.filepaths_in_dir(tmpdir)) == filepaths
 
 
 def test_get_hash():

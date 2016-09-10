@@ -9,11 +9,12 @@ import os
 import pexpect
 import pytest
 import subprocess
-import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, tmpdir
+
+assert tmpdir  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -84,10 +85,12 @@ def versionless(ascii_key):
     return ''.join(new)
 
 
-def get_context(homedir):
+@pytest.yield_fixture(scope='function')
+def context(tmpdir, homedir=None):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
     """
+    homedir = homedir or tmpdir
     context = Context()
     context.config = {
         "gpg_home": homedir,
@@ -135,12 +138,12 @@ class FakeProc():
         return self.returncode
 
 
-@pytest.fixture(scope='function')
-def context():
+@pytest.yield_fixture(scope='function')
+def base_context():
     """Use this fixture to use the existing gpg homedir in the data/ directory
     (treat this as read-only)
     """
-    return get_context(GPG_HOME)
+    yield context(GPG_HOME)
 
 
 # gpg_default_args {{{1
@@ -156,42 +159,42 @@ def test_gpg_default_args():
 
 # guess_gpg_* {{{1
 @pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, GPG_HOME)))
-def test_guess_gpg_home(context, gpg_home, expected):
-    assert sgpg.guess_gpg_home(context, gpg_home=gpg_home) == expected
+def test_guess_gpg_home(base_context, gpg_home, expected):
+    assert sgpg.guess_gpg_home(base_context, gpg_home=gpg_home) == expected
 
 
 @pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, "bar")))
-def test_guess_gpg_home_GPG(context, gpg_home, expected):
-    gpg = sgpg.GPG(context, "bar")
+def test_guess_gpg_home_GPG(base_context, gpg_home, expected):
+    gpg = sgpg.GPG(base_context, "bar")
     assert sgpg.guess_gpg_home(gpg, gpg_home) == expected
 
 
-def test_guess_gpg_home_exception(context, mocker):
+def test_guess_gpg_home_exception(base_context, mocker):
     env = {}
-    context.config['gpg_home'] = None
+    base_context.config['gpg_home'] = None
     mocker.patch.object(os, "environ", new=env)
     with pytest.raises(ScriptWorkerGPGException):
-        sgpg.guess_gpg_home(context)
+        sgpg.guess_gpg_home(base_context)
 
 
 @pytest.mark.parametrize("gpg_path, expected", (("path/to/gpg", "path/to/gpg"), (None, "gpg")))
-def test_guess_gpg_path(context, gpg_path, expected):
-    context.config['gpg_path'] = gpg_path
-    assert sgpg.guess_gpg_path(context) == expected
+def test_guess_gpg_path(base_context, gpg_path, expected):
+    base_context.config['gpg_path'] = gpg_path
+    assert sgpg.guess_gpg_path(base_context) == expected
 
 
 # keyid / fingerprint conversion {{{1
 @pytest.mark.parametrize("keyid,fingerprint,path", KEYS_AND_FINGERPRINTS)
-def test_keyid_fingerprint_conversion(context, keyid, fingerprint, path):
-    gpg = sgpg.GPG(context)
+def test_keyid_fingerprint_conversion(base_context, keyid, fingerprint, path):
+    gpg = sgpg.GPG(base_context)
     assert path
     assert sgpg.keyid_to_fingerprint(gpg, keyid) == fingerprint
     assert sgpg.fingerprint_to_keyid(gpg, fingerprint) == keyid
 
 
 @pytest.mark.parametrize("keyid,fingerprint,path", KEYS_AND_FINGERPRINTS)
-def test_keyid_fingerprint_exception(context, keyid, fingerprint, path):
-    gpg = sgpg.GPG(context)
+def test_keyid_fingerprint_exception(base_context, keyid, fingerprint, path):
+    gpg = sgpg.GPG(base_context)
     assert path
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.keyid_to_fingerprint(gpg, keyid.replace('C', '1').replace('F', 'C'))
@@ -201,15 +204,15 @@ def test_keyid_fingerprint_exception(context, keyid, fingerprint, path):
 
 # signatures {{{1
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
-def test_verify_good_signatures(context, params):
-    gpg = sgpg.GPG(context)
+def test_verify_good_signatures(base_context, params):
+    gpg = sgpg.GPG(base_context)
     data = sgpg.sign(gpg, "foo", keyid=params[1]["fingerprint"])
     sgpg.verify_signature(gpg, data)
 
 
 @pytest.mark.parametrize("params", BAD_GPG_KEYS.items())
-def test_verify_bad_signatures(context, params):
-    gpg = sgpg.GPG(context)
+def test_verify_bad_signatures(base_context, params):
+    gpg = sgpg.GPG(base_context)
     data = sgpg.sign(gpg, "foo", keyid=params[1]["fingerprint"])
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.verify_signature(gpg, data)
@@ -217,8 +220,8 @@ def test_verify_bad_signatures(context, params):
 
 @pytest.mark.parametrize("text", [v for _, v in sorted(TEXT.items())])
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
-def test_get_body(context, text, params):
-    gpg = sgpg.GPG(context)
+def test_get_body(base_context, text, params):
+    gpg = sgpg.GPG(base_context)
     data = sgpg.sign(gpg, text, keyid=params[1]["fingerprint"])
     if not text.endswith('\n'):
         text = "{}\n".format(text)
@@ -227,75 +230,69 @@ def test_get_body(context, text, params):
 
 # create_gpg_conf {{{1
 @pytest.mark.parametrize("keyserver,fingerprint,expected", GPG_CONF_PARAMS)
-def test_create_gpg_conf(keyserver, fingerprint, expected):
-    with tempfile.TemporaryDirectory() as tmp:
-        sgpg.create_gpg_conf(tmp, keyserver=keyserver, my_fingerprint=fingerprint)
-        with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
-            assert fh.read() == expected
+def test_create_gpg_conf(keyserver, fingerprint, expected, tmpdir):
+    sgpg.create_gpg_conf(tmpdir, keyserver=keyserver, my_fingerprint=fingerprint)
+    with open(os.path.join(tmpdir, "gpg.conf"), "r") as fh:
+        assert fh.read() == expected
 
 
-def test_create_second_gpg_conf(mocker):
+def test_create_second_gpg_conf(mocker, tmpdir):
     now = arrow.utcnow()
     with mock.patch.object(arrow, 'utcnow') as p:
         p.return_value = now
-        with tempfile.TemporaryDirectory() as tmp:
-            sgpg.create_gpg_conf(
-                tmp, keyserver=GPG_CONF_PARAMS[0][0], my_fingerprint=GPG_CONF_PARAMS[0][1]
-            )
-            sgpg.create_gpg_conf(
-                tmp, keyserver=GPG_CONF_PARAMS[1][0], my_fingerprint=GPG_CONF_PARAMS[1][1]
-            )
-            with open(os.path.join(tmp, "gpg.conf"), "r") as fh:
-                assert fh.read() == GPG_CONF_PARAMS[1][2]
-            with open(os.path.join(tmp, "gpg.conf.{}".format(now.timestamp)), "r") as fh:
-                assert fh.read() == GPG_CONF_PARAMS[0][2]
+        sgpg.create_gpg_conf(
+            tmpdir, keyserver=GPG_CONF_PARAMS[0][0], my_fingerprint=GPG_CONF_PARAMS[0][1]
+        )
+        sgpg.create_gpg_conf(
+            tmpdir, keyserver=GPG_CONF_PARAMS[1][0], my_fingerprint=GPG_CONF_PARAMS[1][1]
+        )
+        with open(os.path.join(tmpdir, "gpg.conf"), "r") as fh:
+            assert fh.read() == GPG_CONF_PARAMS[1][2]
+        with open(os.path.join(tmpdir, "gpg.conf.{}".format(now.timestamp)), "r") as fh:
+            assert fh.read() == GPG_CONF_PARAMS[0][2]
 
 
 # generate_key {{{1
 @pytest.mark.parametrize("expires,expected", GENERATE_KEY_EXPIRATION)
-def test_generate_key(expires, expected):
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        gpg = sgpg.GPG(context)
-        fingerprint = sgpg.generate_key(gpg, "foo", "bar", "baz", expiration=expires)
-        for key in gpg.list_keys():
-            if key['fingerprint'] == fingerprint:
-                assert key['uids'] == ['foo (bar) <baz>']
-                assert key['expires'] == expected
-                assert key['trust'] == 'u'
-                assert key['length'] == '4096'
+def test_generate_key(context, expires, expected, tmpdir):
+    gpg = sgpg.GPG(context)
+    fingerprint = sgpg.generate_key(gpg, "foo", "bar", "baz", expiration=expires)
+    for key in gpg.list_keys():
+        if key['fingerprint'] == fingerprint:
+            assert key['uids'] == ['foo (bar) <baz>']
+            assert key['expires'] == expected
+            assert key['trust'] == 'u'
+            assert key['length'] == '4096'
 
 
 # import / export keys {{{1
 @pytest.mark.parametrize("suffix", (".pub", ".sec"))
-def test_import_single_key(suffix):
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        gpg = sgpg.GPG(context)
-        with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
-            contents = fh.read()
-        fingerprints = sgpg.import_key(gpg, contents)
-        # the .sec fingerprints are doubled; use set() for unsorted & uniq
-        assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
+def test_import_single_key(context, suffix):
+    gpg = sgpg.GPG(context)
+    with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
+        contents = fh.read()
+    fingerprints = sgpg.import_key(gpg, contents)
+    # the .sec fingerprints are doubled; use set() for unsorted & uniq
+    assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
 
 
 @pytest.mark.parametrize("fingerprint,private,expected", EXPORT_KEY_PARAMS)
-def test_export_key(context, fingerprint, private, expected):
-    gpg = sgpg.GPG(context)
+def test_export_key(base_context, fingerprint, private, expected):
+    gpg = sgpg.GPG(base_context)
     key = sgpg.export_key(gpg, fingerprint, private=private) + "\n"
     with open(expected, "r") as fh:
         contents = fh.read()
         assert contents == key + "\n" or versionless(contents) == versionless(key)
 
 
-def test_export_unknown_key(context):
-    gpg = sgpg.GPG(context)
+def test_export_unknown_key(base_context):
+    gpg = sgpg.GPG(base_context)
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.export_key(gpg, "illegal_fingerprint_lksjdflsjdkls")
 
 
 # sign_key {{{1
-def test_sign_key():
+def test_sign_key(context):
     """This test calls get_list_sigs_output in several different ways.  Each
     is valid; the main thing is more code coverage.
 
@@ -313,66 +310,62 @@ fpr:::::::::7CFAD9E699D8559F1D3A50CCBC76BF8F77D1B3F5:
 uid:u::::1472876457::91AC286E48FDA7378B86F63FA6DDC2A46B54808F::three (three) <three>:
 sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     """
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        gpg = sgpg.GPG(context)
-        # create my key, get fingerprint + keyid
-        my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
-        my_keyid = sgpg.fingerprint_to_keyid(gpg, my_fingerprint)
-        # create signed key, get fingerprint + keyid
-        signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
-        signed_keyid = sgpg.fingerprint_to_keyid(gpg, signed_fingerprint)
-        # create unsigned key, get fingerprint + keyid
-        unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
-        unsigned_keyid = sgpg.fingerprint_to_keyid(gpg, unsigned_fingerprint)
-        # update gpg configs, sign signed key
-        sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
-        sgpg.check_ownertrust(context)
-        sgpg.sign_key(context, signed_fingerprint)
-        # signed key get_list_sigs_output
-        signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
-        # unsigned key get_list_sigs_output
-        # Call get_list_sigs_output with validate=False, then parse it, for more code coverage
-        unsigned_output1 = sgpg.get_list_sigs_output(context, unsigned_fingerprint, validate=False)
-        unsigned_output = sgpg.parse_list_sigs_output(unsigned_output1, "unsigned")
-        # signed key has my signature + self-signed
-        assert sorted([signed_keyid, my_keyid]) == sorted(signed_output['sig_keyids'])
-        assert ["one (one) <one>", "two (two) <two>"] == sorted(signed_output['sig_uids'])
-        # unsigned key is only self-signed
-        assert [unsigned_keyid] == unsigned_output['sig_keyids']
-        assert ["three (three) <three>"] == unsigned_output['sig_uids']
-        # sign the unsigned key and test
-        sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
-        # Call get_list_sigs_output with expected, for more code coverage
-        new_output = sgpg.get_list_sigs_output(
-            context, unsigned_fingerprint, expected={
-                "keyid": unsigned_keyid,
-                "fingerprint": unsigned_fingerprint,
-                "uid": "three (three) <three>",
-                "sig_keyids": [signed_keyid, unsigned_keyid],
-                "sig_uids": ["three (three) <three>", "two (two) <two>"]
-            }
-        )
-        # sig_uids goes unchecked; sig_keyids only checks that it's a subset.
-        # let's do another check.
-        assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
+    gpg = sgpg.GPG(context)
+    # create my key, get fingerprint + keyid
+    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    my_keyid = sgpg.fingerprint_to_keyid(gpg, my_fingerprint)
+    # create signed key, get fingerprint + keyid
+    signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
+    signed_keyid = sgpg.fingerprint_to_keyid(gpg, signed_fingerprint)
+    # create unsigned key, get fingerprint + keyid
+    unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
+    unsigned_keyid = sgpg.fingerprint_to_keyid(gpg, unsigned_fingerprint)
+    # update gpg configs, sign signed key
+    sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
+    sgpg.check_ownertrust(context)
+    sgpg.sign_key(context, signed_fingerprint)
+    # signed key get_list_sigs_output
+    signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
+    # unsigned key get_list_sigs_output
+    # Call get_list_sigs_output with validate=False, then parse it, for more code coverage
+    unsigned_output1 = sgpg.get_list_sigs_output(context, unsigned_fingerprint, validate=False)
+    unsigned_output = sgpg.parse_list_sigs_output(unsigned_output1, "unsigned")
+    # signed key has my signature + self-signed
+    assert sorted([signed_keyid, my_keyid]) == sorted(signed_output['sig_keyids'])
+    assert ["one (one) <one>", "two (two) <two>"] == sorted(signed_output['sig_uids'])
+    # unsigned key is only self-signed
+    assert [unsigned_keyid] == unsigned_output['sig_keyids']
+    assert ["three (three) <three>"] == unsigned_output['sig_uids']
+    # sign the unsigned key and test
+    sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+    # Call get_list_sigs_output with expected, for more code coverage
+    new_output = sgpg.get_list_sigs_output(
+        context, unsigned_fingerprint, expected={
+            "keyid": unsigned_keyid,
+            "fingerprint": unsigned_fingerprint,
+            "uid": "three (three) <three>",
+            "sig_keyids": [signed_keyid, unsigned_keyid],
+            "sig_uids": ["three (three) <three>", "two (two) <two>"]
+        }
+    )
+    # sig_uids goes unchecked; sig_keyids only checks that it's a subset.
+    # let's do another check.
+    assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
 @pytest.mark.parametrize("expect_status", (0, 1))
-def test_sign_key_failure(mocker, expect_status):
+def test_sign_key_failure(context, mocker, expect_status):
 
     def child(*_):
         return PexpectChild(expect_status=expect_status)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        with pytest.raises(ScriptWorkerGPGException):
-            sgpg.sign_key(context, "foo")
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.sign_key(context, "foo")
 
 
 # list sigs and parsing {{{1
-def test_get_list_sigs_output_failure(context, mocker):
+def test_get_list_sigs_output_failure(base_context, mocker):
 
     # check_call needs popen to be a decorator
     @contextmanager
@@ -381,7 +374,7 @@ def test_get_list_sigs_output_failure(context, mocker):
 
     mocker.patch.object(subprocess, "Popen", new=popen)
     with pytest.raises(ScriptWorkerGPGException):
-        sgpg.get_list_sigs_output(context, "nonexistent_fingerprint")
+        sgpg.get_list_sigs_output(base_context, "nonexistent_fingerprint")
 
 
 def test_parse_trust_line_failure():
@@ -396,7 +389,7 @@ def test_parse_pub_line_failure():
         sgpg._parse_pub_line(line, "foo")
 
 
-def test_parse_list_sigs_failure(context):
+def test_parse_list_sigs_failure():
     output = """tru::1:1472242430:0:3:1:5
 pub:f:2048:1:CD3C13EFBEAB7ED4:1472242430:::-:::escaESCA:
 fpr:::::::::F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4:
@@ -418,7 +411,7 @@ rvk:
 
 # ownertrust {{{1
 @pytest.mark.parametrize("trusted_names", ((), ("two", "three")))
-def test_ownertrust(trusted_names):
+def test_ownertrust(context, trusted_names):
     """This is a fairly complex test.
 
     Create a new gnupg_home, update ownertrust with just my fingerprint.
@@ -426,37 +419,31 @@ def test_ownertrust(trusted_names):
     code coverage by testing that extra and missing fingerprints raise a
     ScriptWorkerGPGException.
     """
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        gpg = sgpg.GPG(context)
-        my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
-        sgpg.create_gpg_conf(tmp, my_fingerprint=my_fingerprint)
-        trusted_fingerprints = []
-        for name in trusted_names:
-            trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
-        unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
-        sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
+    gpg = sgpg.GPG(context)
+    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
+    trusted_fingerprints = []
+    for name in trusted_names:
+        trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
+    unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
+    sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.verify_ownertrust(context, my_fingerprint, trusted_fingerprints + [unsigned_fingerprint])
+    if trusted_fingerprints:
         with pytest.raises(ScriptWorkerGPGException):
-            sgpg.verify_ownertrust(context, my_fingerprint, trusted_fingerprints + [unsigned_fingerprint])
-        if trusted_fingerprints:
-            with pytest.raises(ScriptWorkerGPGException):
-                sgpg.verify_ownertrust(context, my_fingerprint, [trusted_fingerprints[0]])
+            sgpg.verify_ownertrust(context, my_fingerprint, [trusted_fingerprints[0]])
 
 
-def test_update_ownertrust_failure(mocker):
+def test_update_ownertrust_failure(context, mocker):
 
     def popen(*args, **kwargs):
         return FakeProc(returncode=1)
 
     mocker.patch.object(subprocess, 'Popen', new=popen)
-    with tempfile.TemporaryDirectory() as tmp:
-        context = get_context(tmp)
-        with pytest.raises(ScriptWorkerGPGException):
-            sgpg.update_ownertrust(context, "foo")
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.update_ownertrust(context, "foo")
+
 
 # consume {{{1
-def test_consume_valid_keys():
-    with tempfile.TemporaryDirectory() as tmp1:
-        with tempfile.TemporaryDirectory() as tmp2:
-            context = get_context(tmp)
-            # TODO
+def test_consume_valid_keys(context, tmpdir):
+    pass

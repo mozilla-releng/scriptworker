@@ -7,7 +7,6 @@ import glob
 import gnupg
 import logging
 import os
-import pprint
 import tempfile
 
 import scriptworker.gpg

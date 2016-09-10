@@ -6,18 +6,19 @@ import json
 import os
 import pytest
 from scriptworker.context import Context
+from . import tmpdir
+
+assert tmpdir  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
-@pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
-    print(temp_dir)
+@pytest.yield_fixture(scope='function')
+def context(tmpdir):
     context = Context()
     context.config = {
-        "work_dir": str(temp_dir),
+        "work_dir": tmpdir,
     }
-    return context
+    yield context
 
 
 @pytest.fixture(scope='function')

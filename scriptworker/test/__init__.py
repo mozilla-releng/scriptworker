@@ -8,6 +8,7 @@ import asyncio
 import json
 import mock
 import pytest
+import tempfile
 import taskcluster.exceptions
 
 
@@ -223,3 +224,25 @@ def event_loop():
     yield res
 
     res._close()
+
+
+@pytest.yield_fixture(scope='function')
+def tmpdir():
+    """Yield a tmpdir that gets cleaned up afterwards.
+
+    This is because various pytest tmpdir implementations either don't return
+    a string, or don't clean up properly.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        yield tmp
+
+
+@pytest.yield_fixture(scope='function')
+def tmpdir2():
+    """Yield a tmpdir that gets cleaned up afterwards.
+
+    Sometimes I need 2 tmpdirs in a test.
+    a string, or don't clean up properly.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        yield tmp

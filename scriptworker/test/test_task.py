@@ -17,9 +17,9 @@ import taskcluster.exceptions
 import taskcluster.async
 import time
 from . import event_loop, fake_session, fake_session_500, successful_queue, \
-    touch, unsuccessful_queue, read
+    tmpdir, touch, unsuccessful_queue, read
 
-assert event_loop  # silence flake8
+assert event_loop, tmpdir  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
@@ -28,14 +28,13 @@ TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.p
 
 
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
+def context(tmpdir):
     context = Context()
     context.config = {
-        'log_dir': os.path.join(str(temp_dir), "log"),
-        'artifact_dir': os.path.join(str(temp_dir), "artifact"),
-        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
-        'work_dir': os.path.join(str(temp_dir), "work"),
+        'log_dir': os.path.join(tmpdir, "log"),
+        'artifact_dir': os.path.join(tmpdir, "artifact"),
+        'task_log_dir': os.path.join(tmpdir, "artifact", "public", "logs"),
+        'work_dir': os.path.join(tmpdir, "work"),
         'artifact_upload_timeout': 200,
         'artifact_expiration_hours': 1,
         'reclaim_interval': 0.001,
