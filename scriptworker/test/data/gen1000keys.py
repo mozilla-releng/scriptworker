@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 """Create N keys, and export the pubkeys + signed files to a directory for testing.
 
+Usage:
+    $0 [pubkey_dir] [num_keys]
 """
 import arrow
 import glob
 import gnupg
+import json
 import logging
 import os
-import pprint
+import sys
 import tempfile
 
 from scriptworker.context import Context
@@ -69,7 +72,7 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
             manifest[fingerprint] = {
                 "message": str_i,
                 "uid": "{} ({}) <{}>".format(str_i, str_i, str_i),
-                "unsigned_path": unsigned_path,
+                "unsigned_path": unsigned_path.replace("{}/".format(pubkey_dir), ''),
             }
             write_key(
                 gpg, fingerprint, unsigned_path
@@ -86,19 +89,30 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
             write_key(gpg, fingerprint, signed_path)
             manifest[fingerprint]['signing_email'] = signing_email
             manifest[fingerprint]['signing_fingerprint'] = signing_email
-            manifest[fingerprint]['signed_path'] = signed_path
+            manifest[fingerprint]['signed_path'] = signed_path.replace("{}/".format(pubkey_dir), '')
     with open(os.path.join(pubkey_dir, "manifest.json"), "w") as fh:
-        print(pprint.pformat(manifest), file=fh, end="")
+        print(json.dumps(manifest, sort_keys=True, indent=2), file=fh, end="")
     end = arrow.utcnow()
     print("Took %s seconds" % str(end.timestamp - start.timestamp))
 
 
-def main(*args, name=None, **kwargs):
+def main(trusted_key_dir, args, name=None):
     if name not in (None, "__main__"):
         return
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler())
-    build_pubkeys_dir(*args, **kwargs)
+    if len(args) > 0:
+        pubkey_dir = args[0]
+        if len(args) > 1:
+            num_keys = int(args[1])
+            if len(args) > 2:
+                print("Usage: {} [PUBKEY_DIR] [NUM_KEYS]".format(sys.argv[0]))
+                sys.exit(1)
+        else:
+            num_keys = 1000
+    else:
+        pubkey_dir = os.path.join(os.getcwd(), "1000pubkeys")
+    build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys)
 
 
-main(os.path.join(os.getcwd(), "pubkeys"), TRUSTED_KEY_DIR, 1000, name=__name__)
+main(TRUSTED_KEY_DIR, sys.argv[1:], name=__name__)
