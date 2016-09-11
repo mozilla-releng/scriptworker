@@ -202,7 +202,7 @@ def GPG(context, gpg_home=None):
     kwargs = {}
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     for config_key, gnupg_key in GPG_CONFIG_MAPPING.items():
-        if context.config[config_key] is not None:
+        if isinstance(context.config[config_key], str):
             # allow for the keyring paths to contain %(gpg_home)s (recommended)
             kwargs[gnupg_key] = context.config[config_key] % {'gpg_home': gpg_home}
     kwargs['gnupghome'] = gpg_home
@@ -900,12 +900,12 @@ def has_suffix(path, suffixes):
     return False
 
 
-def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
-    """Given a path, traverse the path, and import all gpg public keys.
+def consume_valid_keys(context, keydir, ignore_suffixes=(), gpg_home=None):
+    """Given a keydir, traverse the keydir, and import all gpg public keys.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        path (str): the path of the directory to traverse.
+        keydir (str): the path of the directory to traverse.
         ignore_suffixes (list, optional): file suffixes to ignore.  Default is ().
         gpg_home (str, optional): override the gpg_home dir.  Default is None.
 
@@ -918,15 +918,16 @@ def consume_valid_keys(context, path, ignore_suffixes=(), gpg_home=None):
     gpg = GPG(context, gpg_home=gpg_home)
     fingerprints = []
     messages = []
-    if not os.path.isdir(os.path.realpath(path)):
-        raise ScriptWorkerGPGException("consume_valid_keys: {} is not a dir!".format(path))
-    filepaths = filepaths_in_dir(path)
+    if not os.path.isdir(os.path.realpath(keydir)):
+        raise ScriptWorkerGPGException("consume_valid_keys: {} is not a dir!".format(keydir))
+    filepaths = filepaths_in_dir(keydir)
     for filepath in filepaths:
         if has_suffix(filepath, ignore_suffixes):
             continue
-        with open(filepath, "r") as fh:
+        path = os.path.join(keydir, filepath)
+        with open(path, "r") as fh:
             result = import_key(gpg, fh.read(), return_type='result')
-            for fp in result.results:
+            for fp in result:
                 if fp['fingerprint'] is not None:
                     fingerprints.append(fp['fingerprint'])
                 else:
@@ -948,6 +949,7 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_sec_key_path):
         my_seckey_path (str): the ascii seckey file we want to import as the
             primary key
     """
+    os.chmod(tmp_gpg_home, 0o700)
     gpg = GPG(context, gpg_home=tmp_gpg_home)
     for path in (my_pub_key_path, my_sec_key_path):
         with open(path, "r") as fh:
@@ -974,6 +976,7 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
             real_gpg_home, str(arrow.utcnow().timestamp)
         ))
     makedirs(real_gpg_home)
+    os.chmod(real_gpg_home, 0o700)
     for filepath in filepaths_in_dir(tmp_gpg_home):
         os.rename(
             os.path.join(tmp_gpg_home, filepath),
@@ -1015,6 +1018,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
         )
         # sign all the keys
         for fingerprint in fingerprints:
+            log.info("signing {} with {}".format(fingerprint, my_fingerprint))
             sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home

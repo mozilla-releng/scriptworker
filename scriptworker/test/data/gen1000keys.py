@@ -25,7 +25,7 @@ def import_priv_keys(gpg, trusted_key_dir):
     file_list = glob.glob("{}/*.sec".format(trusted_key_dir))
     trusted_fingerprint_dict = {}
     for path in file_list:
-        if 'unknown@' in path:  # treat unknown@example.com as a real unknown key
+        if 'docker' not in path:
             continue
         email = os.path.basename(path).replace('.sec', '')
         with open(path, "r") as fh:
@@ -68,14 +68,14 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
                 )
             )
             fingerprint = key.fingerprint
-            unsigned_path = os.path.join(pubkey_dir, "unsigned", "{}.unsigned.pub".format(fingerprint))
+            unsigned_path = os.path.join("unsigned", "{}.unsigned.pub".format(fingerprint))
             manifest[fingerprint] = {
                 "message": str_i,
                 "uid": "{} ({}) <{}>".format(str_i, str_i, str_i),
-                "unsigned_path": unsigned_path.replace("{}/".format(pubkey_dir), ''),
+                "unsigned_path": unsigned_path,
             }
             write_key(
-                gpg, fingerprint, unsigned_path
+                gpg, fingerprint, os.path.join(pubkey_dir, unsigned_path)
             )
             signed_data = gpg.sign(str_i, keyid=fingerprint)
             with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint)), "w") as fh:
@@ -85,11 +85,11 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
             scriptworker.gpg.sign_key(
                 context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]
             )
-            signed_path = os.path.join(pubkey_dir, signing_email, "{}.pub".format(fingerprint))
-            write_key(gpg, fingerprint, signed_path)
+            signed_path = os.path.join(signing_email, "{}.pub".format(fingerprint))
+            write_key(gpg, fingerprint, os.path.join(pubkey_dir, signed_path))
             manifest[fingerprint]['signing_email'] = signing_email
             manifest[fingerprint]['signing_fingerprint'] = signing_email
-            manifest[fingerprint]['signed_path'] = signed_path.replace("{}/".format(pubkey_dir), '')
+            manifest[fingerprint]['signed_path'] = signed_path
     with open(os.path.join(pubkey_dir, "manifest.json"), "w") as fh:
         print(json.dumps(manifest, sort_keys=True, indent=2), file=fh, end="")
     end = arrow.utcnow()
