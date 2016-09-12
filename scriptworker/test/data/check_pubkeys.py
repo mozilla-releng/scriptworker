@@ -3,22 +3,67 @@
 scriptworker.gpg.consume_* functions.
 """
 import arrow
+import glob
 import json
 import logging
 import os
+import shutil
 import tempfile
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.context import Context
+from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg
 
-log = logging.getLogger()
+log = logging.getLogger(__name__)
 TRUSTED_KEY_DIR = os.path.join(os.path.dirname(__file__), "gpg", "keys")
 PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "pubkeys")
 MY_EMAIL = "scriptworker@example.com"
 
 
-def print_times(start, end):
-    log.info("Took {} seconds.".format(str(end.timestamp - start.timestamp)))
+def get_trusted_emails(trusted_key_dir):
+    filepaths = glob.glob(os.path.join(trusted_key_dir, "*.sec"))
+    emails = []
+    for filepath in filepaths:
+        if 'unknown@' in filepath or 'scriptworker@' in filepath:
+            continue
+        emails.append(os.path.basename(filepath)[:-4])
+    return emails
+
+
+def print_times(start, end, msg=""):
+    log.info("{} took {} seconds.".format(msg, str(end.timestamp - start.timestamp)))
+
+
+def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
+    messages = []
+    for fingerprint, info in manifest.items():
+        log.info("fingerprint {} uid {}".format(fingerprint, info['uid']))
+        try:
+            with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint))) as fh:
+                message = scriptworker.gpg.get_body(
+                    scriptworker.gpg.GPG(context),
+                    fh.read()
+                )
+            if message != info['message'] + '\n':
+                messages.append(
+                    "Unexpected message '{}', expected '{}'".format(message, info['message'])
+                )
+        except ScriptWorkerGPGException as exc:
+            if trusted_emails and info['signing_email'] in trusted_emails:
+                pass
+            else:
+                messages.append("{} error: {}".format(fingerprint, str(exc)))
+    return messages
+
+
+def get_context(gpg_home):
+    context = Context()
+    context.config = {}
+    for k, v in DEFAULT_CONFIG.items():
+        if k.startswith("gpg_"):
+            context.config[k] = v
+    context.config["gpg_home"] = gpg_home
+    return context
 
 
 def main(trusted_key_dir, name=None):
@@ -26,7 +71,10 @@ def main(trusted_key_dir, name=None):
         return
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler())
-    context = Context()
+    slog = logging.getLogger("scriptworker")
+#    slog.setLevel(logging.INFO)
+    slog.setLevel(logging.DEBUG)
+    slog.addHandler(logging.StreamHandler())
     dirs = {}
     messages = []
     pubkey_dir = PUBKEY_DIR
@@ -34,20 +82,10 @@ def main(trusted_key_dir, name=None):
     times = {'start': arrow.utcnow()}
     with open(os.path.join(pubkey_dir, "manifest.json"), "r") as fh:
         manifest = json.load(fh)
-    # time it!
-    #  consume unsigned - gpg_home 1
-    #   - check data sigs -- all valid
-    # read manifest.json
-    #  consume signed 1-2 - gpg_home 2-3
-    #   - check data sigs -- only locally signed are valid
     try:
         dirs['gpg_home1'] = tempfile.mkdtemp()
         # consume unsigned and verify sigs
-        context.config = {}
-        for k, v in DEFAULT_CONFIG.items():
-            if k.startswith("gpg_"):
-                context.config[k] = v
-        context.config["gpg_home"] = dirs['gpg_home1']
+        context = get_context(dirs['gpg_home1'])
         log.info("rebuild_gpg_home_flat")
         scriptworker.gpg.rebuild_gpg_home_flat(
             context,
@@ -57,18 +95,45 @@ def main(trusted_key_dir, name=None):
             os.path.join(pubkey_dir, "unsigned"),
         )
         times['checkpoint1'] = arrow.utcnow()
-        print_times(times['start'], times['checkpoint1'])
-        for fingerprint, info in manifest.items():
-            log.info("uid {}".format(info['uid']))
-            with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint))) as fh:
-                message = scriptworker.gpg.get_body(
-                    scriptworker.gpg.GPG(context),
-                    fh.read()
-                )
-            if message != info['message'] + '\n':
-                messages.append("Unexpected message '{}', expected '{}'".format(message, info['message']))
+        print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
+        messages = check_sigs(
+            context, manifest, pubkey_dir,
+        )
+        times['checkpoint2'] = arrow.utcnow()
+        print_times(times['checkpoint1'], times['checkpoint2'], "verifying flat sigs")
         if messages:
             raise Exception('\n'.join(messages))
+        for email in get_trusted_emails(trusted_key_dir):
+            times["{}.1".format(email)] = arrow.utcnow()
+            dirs[email] = tempfile.mkdtemp()
+            context = get_context(dirs[email])
+            log.info("rebuild_gpg_home_signed {}".format(email))
+            my_trusted_dir = os.path.join(dirs[email], "trusted")
+            scriptworker.utils.makedirs(my_trusted_dir)
+            for f in glob.glob(os.path.join(trusted_key_dir, "{}*".format(email))):
+                shutil.copyfile(f, os.path.join(my_trusted_dir, os.path.basename(f)))
+            scriptworker.gpg.rebuild_gpg_home_signed(
+                context,
+                dirs[email],
+                os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
+                os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
+                my_trusted_dir,
+                os.path.join(pubkey_dir, email),
+            )
+            times["{}.2".format(email)] = arrow.utcnow()
+            print_times(
+                times['{}.1'.format(email)], times['{}.2'.format(email)],
+                msg="{} rebuild_home_signed".format(email)
+            )
+            messages = check_sigs(
+                context, manifest, pubkey_dir, trusted_emails=[email]
+            )
+            times["{}.3".format(email)] = arrow.utcnow()
+            print_times(
+                times['{}.2'.format(email)], times['{}.3'.format(email)],
+                msg="{} check_sigs".format(email)
+            )
+            #   - try 1000pubkeys instead of pubkeys
     finally:
         for path in dirs.values():
             scriptworker.utils.rm(path)
