@@ -378,7 +378,7 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     log.info("Updating ownertrust in {}...".format(gpg_home))
     ownertrust = []
-    trusted_fingerprints = trusted_fingerprints or []
+    trusted_fingerprints = list(set(trusted_fingerprints or []))
     gpg_path = guess_gpg_path(context)
     trustdb = os.path.join(gpg_home, "trustdb.gpg")
     rm(trustdb)
@@ -388,7 +388,8 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     # key they sign will be valid.  Only do this for root/intermediate keys
     # that are intended to sign other keys.
     for fingerprint in trusted_fingerprints:
-        ownertrust.append("{}:5\n".format(fingerprint))
+        if fingerprint != my_fingerprint:
+            ownertrust.append("{}:5\n".format(fingerprint))
     log.debug(pprint.pformat(ownertrust))
     ownertrust = ''.join(ownertrust).encode('utf-8')
     cmd = [gpg_path] + gpg_default_args(gpg_home) + ["--import-ownertrust"]
@@ -422,7 +423,8 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     gpg_path = guess_gpg_path(context)
     expected = ['{}:6:'.format(my_fingerprint)]
     for fp in trusted_fingerprints:
-        expected.append('{}:5:'.format(fp))
+        if fp != my_fingerprint:
+            expected.append('{}:5:'.format(fp))
     expected = set(expected)
     real = []
     output = subprocess.check_output(
@@ -441,7 +443,9 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     if missing:
         messages.append("Missing trust lines!\n{}".format(missing))
     if messages:
-        raise ScriptWorkerGPGException('\n'.join(messages))
+        raise ScriptWorkerGPGException(
+            "{}\n{}".format('\n'.join(messages), output)
+        )
 
 
 # data signatures and verification {{{1
