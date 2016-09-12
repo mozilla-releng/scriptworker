@@ -223,6 +223,8 @@ def event_loop():
 
     yield res
 
+    res._close()
+
 
 @pytest.yield_fixture(scope='function')
 def tmpdir():
