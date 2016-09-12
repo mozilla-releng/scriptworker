@@ -81,15 +81,16 @@ def test_main(mocker, event_loop):
             worker.main()
 
 
-@pytest.mark.asyncio()
-async def test_async_main(context):
+def test_async_main(context, event_loop):
 
     async def exit(*args, **kwargs):
         sys.exit()
 
     with mock.patch('scriptworker.worker.run_loop', new=exit):
         with pytest.raises(SystemExit):
-            await worker.async_main(context)
+            event_loop.run_until_complete(
+                worker.async_main(context)
+            )
 
 
 def test_run_loop_exception(context, successful_queue, event_loop):

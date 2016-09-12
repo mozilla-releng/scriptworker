@@ -18,7 +18,7 @@ import scriptworker.worker as worker
 import scriptworker.utils as utils
 from . import event_loop, integration_create_task_payload
 
-assert event_loop  # silence flake8
+assert event_loop  # silence pyflakes
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
@@ -138,19 +138,24 @@ def remember_cwd():
 
 # tests {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-@pytest.mark.asyncio
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-async def test_run_successful_task(event_loop, context_function):
+def test_run_successful_task(event_loop, context_function):
     task_id = slugid.nice().decode('utf-8')
     task_group_id = slugid.nice().decode('utf-8')
     with context_function(None) as context:
-        result = await create_task(context, task_id, task_group_id)
+        result = event_loop.run_until_complete(
+            create_task(context, task_id, task_group_id)
+        )
         assert result['status']['state'] == 'pending'
         with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_loop(context, creds_key="integration_credentials")
+            status = event_loop.run_until_complete(
+                worker.run_loop(context, creds_key="integration_credentials")
+            )
         assert status == 1
-        result = await task_status(context, task_id)
+        result = event_loop.run_until_complete(
+            task_status(context, task_id)
+        )
         assert result['status']['state'] == 'failed'
 
 
@@ -181,13 +186,14 @@ def test_run_maxtimeout(event_loop, context_function):
 
 
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-@pytest.mark.asyncio
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-async def test_empty_queue(event_loop, context_function):
+def test_empty_queue(event_loop, context_function):
     with context_function(None) as context:
         with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_loop(context, creds_key="integration_credentials")
+            status = event_loop.run_until_complete(
+                worker.run_loop(context, creds_key="integration_credentials")
+            )
         assert status is None
 
 

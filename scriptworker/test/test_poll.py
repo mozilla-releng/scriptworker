@@ -8,17 +8,17 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.poll as poll
-from . import successful_queue, unsuccessful_queue
+from . import event_loop, successful_queue, unsuccessful_queue
+
+assert event_loop  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 
 # constants helpers and fixtures {{{1
-@pytest.mark.asyncio
 async def fake_response(*args, **kwargs):
     return (args, kwargs)
 
 
-@pytest.mark.asyncio
 async def fake_request(*args, **kwargs):
     with open(os.path.join(os.path.dirname(__file__), "data", "azure.xml"), "r") as fh:
         return fh.read()
@@ -75,40 +75,45 @@ def test_parse_azure_xml(azure_xml):
         assert message == results[count]
 
 
-@pytest.mark.asyncio
-async def test_successful_claim_task(context, successful_queue):
+def test_successful_claim_task(context, successful_queue, event_loop):
     context.queue = successful_queue
-    result = await poll.claim_task(context, 1, 2)
+    result = event_loop.run_until_complete(
+        poll.claim_task(context, 1, 2)
+    )
     assert result == successful_queue.result
 
 
-@pytest.mark.asyncio
-async def test_unsuccessful_claim_task(context, unsuccessful_queue):
+def test_unsuccessful_claim_task(context, unsuccessful_queue, event_loop):
     context.queue = unsuccessful_queue
-    result = await poll.claim_task(context, 1, 2)
+    result = event_loop.run_until_complete(
+        poll.claim_task(context, 1, 2)
+    )
     assert result is None
 
 
-@pytest.mark.asyncio
-async def test_update_expired_poll_task_urls(context):
+def test_update_expired_poll_task_urls(context, event_loop):
     context.poll_task_urls['expires'] = "2016-04-16T03:46:24.958Z"
-    await poll.update_poll_task_urls(context, fake_response)
+    event_loop.run_until_complete(
+        poll.update_poll_task_urls(context, fake_response)
+    )
     assert context.poll_task_urls == ((), {})
 
 
-@pytest.mark.asyncio
-async def test_update_unexpired_poll_task_urls(context):
+def test_update_unexpired_poll_task_urls(context, event_loop):
     expires = arrow.utcnow().replace(hours=10)
     context.poll_task_urls['expires'] = expires.isoformat()
     good = deepcopy(context.poll_task_urls)
-    await poll.update_poll_task_urls(context, fake_response)
+    event_loop.run_until_complete(
+        poll.update_poll_task_urls(context, fake_response)
+    )
     assert context.poll_task_urls == good
 
 
-@pytest.mark.asyncio
-async def test_update_empty_poll_task_urls(context):
+def test_update_empty_poll_task_urls(context, event_loop):
     context.poll_task_urls = None
-    await poll.update_poll_task_urls(context, fake_response)
+    event_loop.run_until_complete(
+        poll.update_poll_task_urls(context, fake_response)
+    )
     assert context.poll_task_urls == ((), {})
 
 
@@ -120,15 +125,17 @@ def test_get_azure_urls(context):
         count += 1
 
 
-@pytest.mark.asyncio
-async def test_successful_find_task(context, successful_queue):
+def test_successful_find_task(context, successful_queue, event_loop):
     context.queue = successful_queue
-    result = await poll.find_task(context, "poll", "delete", fake_request)
+    result = event_loop.run_until_complete(
+        poll.find_task(context, "poll", "delete", fake_request)
+    )
     assert result == "yay"
 
 
-@pytest.mark.asyncio
-async def test_unsuccessful_find_task(context, unsuccessful_queue):
+def test_unsuccessful_find_task(context, unsuccessful_queue, event_loop):
     context.queue = unsuccessful_queue
-    result = await poll.find_task(context, "poll", "delete", fake_request)
+    result = event_loop.run_until_complete(
+        poll.find_task(context, "poll", "delete", fake_request)
+    )
     assert result is None

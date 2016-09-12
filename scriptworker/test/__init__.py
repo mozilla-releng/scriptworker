@@ -64,28 +64,22 @@ class SuccessfulQueue(object):
         'credentials': {'a': 'b'},
     }
 
-    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         return self.result
 
-    @pytest.mark.asyncio
     async def reclaimTask(self, *args, **kwargs):
         self.info = ['reclaimTask', args, kwargs]
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
-    @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):
         self.info = ['reportCompleted', args, kwargs]
 
-    @pytest.mark.asyncio
     async def reportFailed(self, *args, **kwargs):
         self.info = ['reportFailed', args, kwargs]
 
-    @pytest.mark.asyncio
     async def reportException(self, *args, **kwargs):
         self.info = ['reportException', args, kwargs]
 
-    @pytest.mark.asyncio
     async def createArtifact(self, *args, **kwargs):
         self.info = ['createArtifact', args, kwargs]
         return {
@@ -93,7 +87,6 @@ class SuccessfulQueue(object):
             "putUrl": "url",
         }
 
-    @pytest.mark.asyncio
     async def pollTaskUrls(self, *args, **kwargs):
         return
 
@@ -101,15 +94,12 @@ class SuccessfulQueue(object):
 class UnsuccessfulQueue(object):
     status = 409
 
-    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterFailure("foo")
 
-    @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
-    @pytest.mark.asyncio
     async def reportFailed(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
@@ -222,6 +212,8 @@ def event_loop():
     res.close = lambda: None
 
     yield res
+
+    res._close()
 
 
 @pytest.yield_fixture(scope='function')
