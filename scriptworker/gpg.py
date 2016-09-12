@@ -323,19 +323,24 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
     cmd_args = gpg_default_args(gpg_home) + args
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
     child = pexpect.spawn(gpg_path, cmd_args)
-    child.expect(b".*Really sign\? \(y/N\) ")
-    child.sendline(b'y')
-    index = child.expect([pexpect.EOF, pexpect.TIMEOUT])
-    if index != 0:
-        raise ScriptWorkerGPGException("Failed signing {}! Timeout".format(target_fingerprint))
-    else:
-        child.close()
-        if child.exitstatus != 0 or child.signalstatus is not None:
+    try:
+        child.expect(b".*Really sign\? \(y/N\) ")
+        child.sendline(b'y')
+        index = child.expect([pexpect.EOF, pexpect.TIMEOUT])
+        if index != 0:
             raise ScriptWorkerGPGException(
-                "Failed signing {}! exit {} signal {}".format(
-                    target_fingerprint, child.exitstatus, child.signalstatus
-                )
+                "Failed signing {}! Timeout".format(target_fingerprint)
             )
+    except pexpect.exceptions.EOF:
+        # Possibly already signed.  We'll check exitstatus/signalstatus later.
+        pass
+    child.close()
+    if child.exitstatus != 0 or child.signalstatus is not None:
+        raise ScriptWorkerGPGException(
+            "Failed signing {}! exit {} signal {}".format(
+                target_fingerprint, child.exitstatus, child.signalstatus
+            )
+        )
 
 
 # ownertrust {{{1
@@ -1064,7 +1069,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
             ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
         )
         # sign all the keys
-        for fingerprint in trusted_fingerprints:
+        for fingerprint in set(trusted_fingerprints):
             sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
