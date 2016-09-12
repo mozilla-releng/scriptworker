@@ -22,6 +22,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 - Removed `get_temp_creds_from_file`, since we're not writing `temp_creds` to disk anymore
 - Removed `scriptworker.task.get_temp_queue`, since we already have `context.temp_queue`
+- Removed `pytest-asyncio` dependency.  It doesn't play well with `pytest-xdist`.
 
 ## [0.5.0] - 2016-08-29
 ### Added
