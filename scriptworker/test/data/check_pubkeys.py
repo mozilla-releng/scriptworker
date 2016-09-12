@@ -11,14 +11,14 @@ from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.context import Context
 import scriptworker.gpg
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 TRUSTED_KEY_DIR = os.path.join(os.path.dirname(__file__), "gpg", "keys")
 PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "pubkeys")
 MY_EMAIL = "scriptworker@example.com"
 
 
 def print_times(start, end):
-    log.info("Took {} seconds.".format(str(start.timestamp - end.timestamp)))
+    log.info("Took {} seconds.".format(str(end.timestamp - start.timestamp)))
 
 
 def main(trusted_key_dir, name=None):
@@ -71,8 +71,7 @@ def main(trusted_key_dir, name=None):
             raise Exception('\n'.join(messages))
     finally:
         for path in dirs.values():
-            # scriptworker.utils.rm(path)
-            log.info(path)
+            scriptworker.utils.rm(path)
         times['end'] = arrow.utcnow()
         log.info("Overall time:")
         print_times(times['start'], times['end'])

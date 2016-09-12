@@ -320,7 +320,8 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
     # local, non-exportable signature
     args.append("--lsign-key")
     args.append(target_fingerprint)
-    cmd_args = gpg_default_args(context.config['gpg_home']) + args
+    cmd_args = gpg_default_args(gpg_home) + args
+    log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
     child = pexpect.spawn(gpg_path, cmd_args)
     child.expect(b".*Really sign\? \(y/N\) ")
     child.sendline(b'y')
@@ -1033,7 +1034,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
                             consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
-    In this 'flat' model, import all the pubkeys in `consume_path` and sign
+    In this 'signed' model, import all the pubkeys in `consume_path` and sign
     them directly.  This makes them valid but not trusted.
 
     Args:
