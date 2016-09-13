@@ -16,7 +16,7 @@ import scriptworker.gpg
 
 log = logging.getLogger(__name__)
 TRUSTED_KEY_DIR = os.path.join(os.path.dirname(__file__), "gpg", "keys")
-PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "pubkeys")
+PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "1000pubkeys")
 MY_EMAIL = "scriptworker@example.com"
 
 
