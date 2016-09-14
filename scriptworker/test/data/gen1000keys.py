@@ -29,7 +29,12 @@ def import_priv_keys(gpg, trusted_key_dir):
             continue
         email = os.path.basename(path).replace('.sec', '')
         with open(path, "r") as fh:
-            trusted_fingerprint_dict[email] = scriptworker.gpg.import_key(gpg, fh.read())[0]
+            fingerprint = scriptworker.gpg.import_key(gpg, fh.read())[0]
+        keyid = scriptworker.gpg.fingerprint_to_keyid(gpg, fingerprint)
+        trusted_fingerprint_dict[email] = {
+            'fingerprint': fingerprint,
+            'keyid': keyid
+        }
     return trusted_fingerprint_dict
 
 
@@ -83,12 +88,13 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
             signing_email = trusted_list.pop(0)
             trusted_list.append(signing_email)
             scriptworker.gpg.sign_key(
-                context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]
+                context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]['fingerprint'], exportable=True
             )
             signed_path = os.path.join(signing_email, "{}.pub".format(fingerprint))
             write_key(gpg, fingerprint, os.path.join(pubkey_dir, signed_path))
             manifest[fingerprint]['signing_email'] = signing_email
-            manifest[fingerprint]['signing_fingerprint'] = signing_email
+            manifest[fingerprint]['signing_fingerprint'] = trusted_fingerprint_dict[signing_email]['fingerprint']
+            manifest[fingerprint]['signing_keyid'] = trusted_fingerprint_dict[signing_email]['keyid']
             manifest[fingerprint]['signed_path'] = signed_path
     with open(os.path.join(pubkey_dir, "manifest.json"), "w") as fh:
         print(json.dumps(manifest, sort_keys=True, indent=2), file=fh, end="")
@@ -101,6 +107,8 @@ def main(trusted_key_dir, args, name=None):
         return
     log.setLevel(logging.DEBUG)
     log.addHandler(logging.StreamHandler())
+    num_keys = 1000
+    pubkey_dir = os.path.join(os.getcwd(), "1000pubkeys")
     if len(args) > 0:
         pubkey_dir = args[0]
         if len(args) > 1:
@@ -108,10 +116,6 @@ def main(trusted_key_dir, args, name=None):
             if len(args) > 2:
                 print("Usage: {} [PUBKEY_DIR] [NUM_KEYS]".format(sys.argv[0]))
                 sys.exit(1)
-        else:
-            num_keys = 1000
-    else:
-        pubkey_dir = os.path.join(os.getcwd(), "1000pubkeys")
     build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys)
 
 

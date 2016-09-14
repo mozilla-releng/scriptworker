@@ -4,6 +4,7 @@
 """
 import arrow
 from contextlib import contextmanager
+import glob
 import json
 import mock
 import os
@@ -65,14 +66,14 @@ EXPORT_KEY_PARAMS = ((
 ))
 
 KEYS_AND_FINGERPRINTS = ((
+    "D9DC50F64C7D44CF", "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
+    os.path.join(GPG_HOME, "keys", "scriptworker@example.com"),
+), (
     "9DA033D5FFFABCCF", "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
     os.path.join(GPG_HOME, "keys", "docker.root@example.com"),
 ), (
     "CD3C13EFBEAB7ED4", "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
     os.path.join(GPG_HOME, "keys", "docker@example.com"),
-), (
-    "D9DC50F64C7D44CF", "FB7765CD0FC616FF7AC961A1D9DC50F64C7D44CF",
-    os.path.join(GPG_HOME, "keys", "scriptworker@example.com"),
 ), (
     "4ACA2B25224905DA", "B45FE2F4035C3786120998174ACA2B25224905DA",
     os.path.join(GPG_HOME, "keys", "unknown@example.com"),
@@ -91,37 +92,34 @@ def versionless(ascii_key):
 
 def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
     messages = []
+    gpg = sgpg.GPG(context)
     for fingerprint, info in manifest.items():
         try:
             with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint))) as fh:
-                message = sgpg.get_body(
-                    sgpg.GPG(context),
-                    fh.read()
-                )
+                message = sgpg.get_body(gpg, fh.read())
             if message != info['message'] + '\n':
                 messages.append(
                     "Unexpected message '{}', expected '{}'".format(message, info['message'])
                 )
         except ScriptWorkerGPGException as exc:
-            if trusted_emails and info['signing_email'] in trusted_emails:
+            if trusted_emails and info['signing_email'] not in trusted_emails:
                 pass
             else:
-                messages.append("{} error: {}".format(fingerprint, str(exc)))
+                messages.append("{} {} error: {}".format(fingerprint, info['signing_email'], str(exc)))
     return messages
 
 
 @pytest.yield_fixture(scope='function')
-def context(tmpdir, homedir=None):
+def context(tmpdir):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
     """
-    homedir = homedir or tmpdir
     context_ = Context()
     context_.config = {}
     for k, v in DEFAULT_CONFIG.items():
         if k.startswith("gpg_"):
             context_.config[k] = v
-    context_.config['gpg_home'] = homedir
+    context_.config['gpg_home'] = tmpdir
     yield context_
 
 
@@ -516,24 +514,30 @@ def test_rebuild_gpg_home_flat(context):
     assert messages == []
 
 
-@pytest.mark.xfail  # rebuild_gpg_home_signed is buggy
-@pytest.mark.parametrize("trusted_email,ignore_suffixes", ((
-    "docker@example.com", [".sec", "unknown@example.com.pub", "docker.root@example.com.pub"]
-), (
-    "docker.root@example.com", [".sec", "unknown@example.com.pub", "docker@example.com.pub"]
-)))
-def test_rebuild_gpg_home_signed(context, trusted_email, ignore_suffixes):
+@pytest.mark.xfail
+@pytest.mark.parametrize("trusted_email", ("docker@example.com", "docker.root@example.com"))
+def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
+    gpg = sgpg.GPG(context)
+    my_trusted_dir = os.path.join(tmpdir, "trusted")
+    os.makedirs(my_trusted_dir)
+    for path in glob.glob(os.path.join(PUBKEY_DIR, trusted_email, "{}.*".format(trusted_email))):
+        shutil.copyfile(path, os.path.join(my_trusted_dir, os.path.basename(path)))
     sgpg.rebuild_gpg_home_signed(
         context,
         context.config['gpg_home'],
-        "{}{}".format(KEYS_AND_FINGERPRINTS[2][2], ".pub"),
-        "{}{}".format(KEYS_AND_FINGERPRINTS[2][2], ".sec"),
-        os.path.join(GPG_HOME, "keys"),
-        os.path.join(PUBKEY_DIR, trusted_email),
-        ignore_suffixes=ignore_suffixes,
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+        my_trusted_dir,
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
+    for fingerprint, info in manifest.items():
+        with open(os.path.join(PUBKEY_DIR, info['signed_path'])) as fh:
+            sgpg.import_key(gpg, fh.read())
+        if info['signing_email'] == trusted_email:
+            sgpg.get_list_sigs_output(
+                context, fingerprint, expected={'sig_keyids': [info['signing_keyid']]}
+            )
     messages = check_sigs(context, manifest, PUBKEY_DIR, trusted_emails=[trusted_email])
     assert messages == []
 

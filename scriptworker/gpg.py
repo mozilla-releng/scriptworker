@@ -292,7 +292,7 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
-def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
+def sign_key(context, target_fingerprint, signing_key=None, exportable=False, gpg_home=None):
     """Sign the `target_fingerprint` key with the `signing_key` or default key
 
     This signs the target key with the signing key, which adds to the web of trust.
@@ -303,6 +303,8 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
         signing_key (str, optional): the fingerprint of the signing key to sign
             with.  If not set, this defaults to the default-key in the gpg.conf.
             Defaults to None.
+        exportable (bool, optional): whether the signature should be exportable.
+            Defaults to False.
         gpg_home (str, optional): override the gpg_home with a different
             gnupg home directory here.  Defaults to None.
 
@@ -317,8 +319,10 @@ def sign_key(context, target_fingerprint, signing_key=None, gpg_home=None):
         args.extend(['-u', signing_key])
         message += " with {}...".format(signing_key)
     log.info(message)
-    # local, non-exportable signature
-    args.append("--lsign-key")
+    if exportable:
+        args.append("--sign-key")
+    else:
+        args.append("--lsign-key")
     args.append(target_fingerprint)
     cmd_args = gpg_default_args(gpg_home) + args
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
@@ -910,12 +914,13 @@ def has_suffix(path, suffixes):
     return False
 
 
-def consume_valid_keys(context, keydir, ignore_suffixes=(), gpg_home=None):
+def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
     """Given a keydir, traverse the keydir, and import all gpg public keys.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        keydir (str): the path of the directory to traverse.
+        keydir (str, optional): the path of the directory to traverse.  If None,
+            this function is noop.  Default is None.
         ignore_suffixes (list, optional): file suffixes to ignore.  Default is ().
         gpg_home (str, optional): override the gpg_home dir.  Default is None.
 
@@ -925,6 +930,8 @@ def consume_valid_keys(context, keydir, ignore_suffixes=(), gpg_home=None):
     Raises:
         ScriptworkerGPGException: on error.
     """
+    if not keydir:
+        return
     gpg = GPG(context, gpg_home=gpg_home)
     fingerprints = []
     messages = []
@@ -1023,7 +1030,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
         )
         # import all the keys
         fingerprints = consume_function(
-            context, consume_path,
+            context, keydir=consume_path,
             ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
         )
         # sign all the keys
@@ -1038,7 +1045,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
 
 
 def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
-                            my_sec_key_path, trusted_path, untrusted_path,
+                            my_sec_key_path, trusted_path, untrusted_path=None,
                             ignore_suffixes=(),
                             consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
@@ -1055,38 +1062,50 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
             primary key
         trusted_path (str): the path to the directory tree to import trusted
             pubkeys from
-        untrusted_path (str): the path to the directory tree to import untrusted
-            but valid pubkeys from
+        untrusted_path (str, optional): the path to the directory tree to import
+            untrusted but valid pubkeys from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
         consume_function (function, optional): the function to call to consume
             the public keys.  Defaults to consume_valid_keys()
     """
     # Create a new tmp_gpg_home to import into
+    log.info("rebuilding gpg_home for {} at {}...".format(my_pub_key_path, real_gpg_home))
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
+        gpg = GPG(context, gpg_home=tmp_gpg_home)
         my_fingerprint = rebuild_gpg_home(
             context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
         )
+        my_keyid = fingerprint_to_keyid(gpg, my_fingerprint)
         # import all the trusted keys
         trusted_fingerprints = consume_function(
-            context, trusted_path,
+            context, keydir=trusted_path,
             ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
         )
+        trusted_fingerprints_to_keyid = {}
         # sign all the keys
         for fingerprint in set(trusted_fingerprints):
             sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
+            get_list_sigs_output(
+                context, fingerprint, gpg_home=tmp_gpg_home,
+                expected={
+                    'sig_keyids': [my_keyid],
+                },
+            )
+            trusted_fingerprints_to_keyid[fingerprint] = fingerprint_to_keyid(gpg, fingerprint)
         # trust trusted_fingerprints
         update_ownertrust(
             context, my_fingerprint, trusted_fingerprints=trusted_fingerprints,
             gpg_home=tmp_gpg_home
         )
+        check_ownertrust(context, gpg_home=tmp_gpg_home)
         # import valid_fingerprints; don't sign or trust (one of the trusted
         # fingerprints should have already signed them).
         consume_function(
-            context, untrusted_path,
+            context, keydir=untrusted_path,
             ignore_suffixes=ignore_suffixes, gpg_home=tmp_gpg_home
         )
         # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/

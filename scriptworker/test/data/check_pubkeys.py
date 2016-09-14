@@ -16,6 +16,7 @@ import scriptworker.gpg
 
 log = logging.getLogger(__name__)
 TRUSTED_KEY_DIR = os.path.join(os.path.dirname(__file__), "gpg", "keys")
+# TODO 1000pubkeys instead of pubkeys
 PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "pubkeys")
 MY_EMAIL = "scriptworker@example.com"
 
@@ -36,14 +37,12 @@ def print_times(start, end, msg=""):
 
 def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
     messages = []
+    gpg = scriptworker.gpg.GPG(context)
     for fingerprint, info in manifest.items():
         log.info("fingerprint {} uid {}".format(fingerprint, info['uid']))
         try:
             with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint))) as fh:
-                message = scriptworker.gpg.get_body(
-                    scriptworker.gpg.GPG(context),
-                    fh.read()
-                )
+                message = scriptworker.gpg.get_body(gpg, fh.read())
             if message != info['message'] + '\n':
                 messages.append(
                     "Unexpected message '{}', expected '{}' {}".format(message, info['message'], info['signing_email'])
@@ -83,30 +82,31 @@ def main(trusted_key_dir, name=None):
     with open(os.path.join(pubkey_dir, "manifest.json"), "r") as fh:
         manifest = json.load(fh)
     try:
-        dirs['gpg_home1'] = tempfile.mkdtemp()
-        # consume unsigned and verify sigs
-        context = get_context(dirs['gpg_home1'])
-        log.info("rebuild_gpg_home_flat")
-        scriptworker.gpg.rebuild_gpg_home_flat(
-            context,
-            context.config['gpg_home'],
-            os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
-            os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
-            os.path.join(pubkey_dir, "unsigned"),
-        )
-        times['checkpoint1'] = arrow.utcnow()
-        print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
-        messages = check_sigs(
-            context, manifest, pubkey_dir,
-        )
+#        dirs['gpg_home1'] = tempfile.mkdtemp()
+#        # consume unsigned and verify sigs
+#        context = get_context(dirs['gpg_home1'])
+#        log.info("rebuild_gpg_home_flat")
+#        scriptworker.gpg.rebuild_gpg_home_flat(
+#            context,
+#            context.config['gpg_home'],
+#            os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
+#            os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
+#            os.path.join(pubkey_dir, "unsigned"),
+#        )
+#        times['checkpoint1'] = arrow.utcnow()
+#        print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
+#        messages = check_sigs(
+#            context, manifest, pubkey_dir,
+#        )
         times['checkpoint2'] = arrow.utcnow()
-        print_times(times['checkpoint1'], times['checkpoint2'], "verifying flat sigs")
-        if messages:
-            raise Exception('\n'.join(messages))
+#        print_times(times['checkpoint1'], times['checkpoint2'], "verifying flat sigs")
+#        if messages:
+#            raise Exception('\n'.join(messages))
         for email in get_trusted_emails(trusted_key_dir):
             times["{}.1".format(email)] = arrow.utcnow()
             dirs[email] = tempfile.mkdtemp()
             context = get_context(dirs[email])
+            gpg = scriptworker.gpg.GPG(context)
             log.info("rebuild_gpg_home_signed {}".format(email))
             my_trusted_dir = os.path.join(dirs[email], "trusted")
             scriptworker.utils.makedirs(my_trusted_dir)
@@ -118,8 +118,16 @@ def main(trusted_key_dir, name=None):
                 os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
                 os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
                 my_trusted_dir,
-                os.path.join(pubkey_dir, email),
             )
+            for fingerprint, info in manifest.items():
+                with open(os.path.join(pubkey_dir, info['signed_path'])) as fh:
+                    scriptworker.gpg.import_key(gpg, fh.read())
+                if info['signing_email'] == email:
+                    # validate key
+                    scriptworker.gpg.get_list_sigs_output(
+                        context, fingerprint,
+                        expected={'sig_keyids': [info['signing_keyid']]}
+                    )
             times["{}.2".format(email)] = arrow.utcnow()
             print_times(
                 times['{}.1'.format(email)], times['{}.2'.format(email)],
@@ -128,14 +136,13 @@ def main(trusted_key_dir, name=None):
             messages = check_sigs(
                 context, manifest, pubkey_dir, trusted_emails=[email]
             )
+            if messages:
+                raise Exception("My email: {} trusted_email: {}\n".format(my_email, email) + '\n'.join(messages))
             times["{}.3".format(email)] = arrow.utcnow()
             print_times(
                 times['{}.2'.format(email)], times['{}.3'.format(email)],
                 msg="{} check_sigs".format(email)
             )
-            if messages:
-                raise Exception("My email: {} trusted_email: {}\n".format(my_email, email) + '\n'.join(messages))
-            #   - try 1000pubkeys instead of pubkeys
     finally:
         for path in dirs.values():
             scriptworker.utils.rm(path)
