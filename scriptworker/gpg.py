@@ -1091,3 +1091,26 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
         )
         # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/
         overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
+
+
+def latest_signed_git_commit(output, trusted_fingerprints):
+    """Return the latest git commit sha that's signed by a trusted fingerprint.
+
+    There are a number of ways to do this.  `git show --show-signature` will
+    show the output of `gpg --verify`, assuming we have the key already marked
+    valid in our web of trust, also assuming we're using the proper gpg_home.
+
+    This function allows for unsigned commits between signed commits.
+    We may disallow those in the future.
+
+    Args:
+        output (str): the output of `git log --format='%H:%GK'`
+        trusted_fingerprints (list): the gpg fingerprints of valid keys.
+    """
+    for line in output.splitlines():
+        sha, keyid = line.split(':')
+        try:
+            if keyid and keyid_to_fingerprint(keyid) in trusted_fingerprints:
+                return sha
+        except ScriptWorkerGPGException:
+            pass
