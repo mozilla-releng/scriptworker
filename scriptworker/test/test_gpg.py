@@ -9,6 +9,7 @@ import mock
 import os
 import pexpect
 import pytest
+import shutil
 import subprocess
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -494,7 +495,8 @@ def test_has_suffix(path, suffixes, expected):
     assert sgpg.has_suffix(path, suffixes) == expected
 
 
-def test_consume_valid_keys(context, tmpdir):
+def test_rebuild_gpg_home_flat(context):
+    shutil.rmtree(context.config['gpg_home'])  # coverage
     sgpg.rebuild_gpg_home_flat(
         context,
         context.config['gpg_home'],
@@ -505,4 +507,26 @@ def test_consume_valid_keys(context, tmpdir):
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
     messages = check_sigs(context, manifest, PUBKEY_DIR)
+    assert messages == []
+
+
+@pytest.mark.xfail  # rebuild_gpg_home_signed is buggy
+@pytest.mark.parametrize("trusted_email,ignore_suffixes", ((
+    "docker@example.com", [".sec", "unknown@example.com.pub", "docker.root@example.com.pub"]
+), (
+    "docker.root@example.com", [".sec", "unknown@example.com.pub", "docker@example.com.pub"]
+)))
+def test_rebuild_gpg_home_signed(context, trusted_email, ignore_suffixes):
+    sgpg.rebuild_gpg_home_signed(
+        context,
+        context.config['gpg_home'],
+        "{}{}".format(KEYS_AND_FINGERPRINTS[2][2], ".pub"),
+        "{}{}".format(KEYS_AND_FINGERPRINTS[2][2], ".sec"),
+        os.path.join(GPG_HOME, "keys"),
+        os.path.join(PUBKEY_DIR, trusted_email),
+        ignore_suffixes=ignore_suffixes,
+    )
+    with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
+        manifest = json.load(fh)
+    messages = check_sigs(context, manifest, PUBKEY_DIR, trusted_emails=[trusted_email])
     assert messages == []

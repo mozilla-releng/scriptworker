@@ -16,7 +16,7 @@ import scriptworker.gpg
 
 log = logging.getLogger(__name__)
 TRUSTED_KEY_DIR = os.path.join(os.path.dirname(__file__), "gpg", "keys")
-PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "1000pubkeys")
+PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "pubkeys")
 MY_EMAIL = "scriptworker@example.com"
 
 
@@ -46,13 +46,13 @@ def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
                 )
             if message != info['message'] + '\n':
                 messages.append(
-                    "Unexpected message '{}', expected '{}'".format(message, info['message'])
+                    "Unexpected message '{}', expected '{}' {}".format(message, info['message'], info['signing_email'])
                 )
         except ScriptWorkerGPGException as exc:
-            if trusted_emails and info['signing_email'] in trusted_emails:
+            if trusted_emails and info['signing_email'] not in trusted_emails:
                 pass
             else:
-                messages.append("{} error: {}".format(fingerprint, str(exc)))
+                messages.append("{} {} error: {}".format(fingerprint, info['signing_email'], str(exc)))
     return messages
 
 
@@ -133,6 +133,8 @@ def main(trusted_key_dir, name=None):
                 times['{}.2'.format(email)], times['{}.3'.format(email)],
                 msg="{} check_sigs".format(email)
             )
+            if messages:
+                raise Exception("My email: {} trusted_email: {}\n".format(my_email, email) + '\n'.join(messages))
             #   - try 1000pubkeys instead of pubkeys
     finally:
         for path in dirs.values():
