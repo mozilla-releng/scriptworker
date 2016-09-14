@@ -267,11 +267,18 @@ def test_generate_key(context, expires, expected, tmpdir):
 
 # import / export keys {{{1
 @pytest.mark.parametrize("suffix", (".pub", ".sec"))
-def test_import_single_key(context, suffix):
+@pytest.mark.parametrize("return_type", ("fingerprints", "result"))
+def test_import_single_key(context, suffix, return_type):
     gpg = sgpg.GPG(context)
     with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
         contents = fh.read()
-    fingerprints = sgpg.import_key(gpg, contents)
+    result = sgpg.import_key(gpg, contents, return_type=return_type)
+    if return_type == 'result':
+        fingerprints = []
+        for entry in result:
+            fingerprints.append(entry['fingerprint'])
+    else:
+        fingerprints = result
     # the .sec fingerprints are doubled; use set() for unsorted & uniq
     assert set(fingerprints) == set([KEYS_AND_FINGERPRINTS[0][1]])
 
@@ -351,6 +358,14 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     # sig_uids goes unchecked; sig_keyids only checks that it's a subset.
     # let's do another check.
     assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
+
+
+def test_sign_key_twice(context):
+    gpg = sgpg.GPG(context)
+    with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"), "r") as fh:
+        contents = fh.read()
+    sgpg.import_key(gpg, contents)
+    sgpg.import_key(gpg, contents)
 
 
 @pytest.mark.parametrize("expect_status", (0, 1))
