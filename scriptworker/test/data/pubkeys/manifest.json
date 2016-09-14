@@ -1,130 +1,38 @@
 {
-  "0507899759F63448041ABB2266089325F31231EB": {
-    "message": "00010",
-    "signed_path": "docker.root@example.com/0507899759F63448041ABB2266089325F31231EB.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00010 (00010) <00010>",
-    "unsigned_path": "unsigned/0507899759F63448041ABB2266089325F31231EB.unsigned.pub"
-  },
-  "366283C51557B278E885D9C47A3D8ED97AF5B614": {
-    "message": "00000",
-    "signed_path": "docker.root@example.com/366283C51557B278E885D9C47A3D8ED97AF5B614.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00000 (00000) <00000>",
-    "unsigned_path": "unsigned/366283C51557B278E885D9C47A3D8ED97AF5B614.unsigned.pub"
-  },
-  "368DBD1CAC7AC4691DCE9F9F538F06CEBDFCAD0B": {
-    "message": "00015",
-    "signed_path": "docker@example.com/368DBD1CAC7AC4691DCE9F9F538F06CEBDFCAD0B.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00015 (00015) <00015>",
-    "unsigned_path": "unsigned/368DBD1CAC7AC4691DCE9F9F538F06CEBDFCAD0B.unsigned.pub"
-  },
-  "47AF3E1382B324A0221F2F77476B2589CDE84200": {
+  "36E592251DFD8D491E6E9BE701222703321F2BA2": {
     "message": "00003",
-    "signed_path": "docker@example.com/47AF3E1382B324A0221F2F77476B2589CDE84200.pub",
+    "signed_path": "docker@example.com/36E592251DFD8D491E6E9BE701222703321F2BA2.pub",
     "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
+    "signing_fingerprint": "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
+    "signing_keyid": "CD3C13EFBEAB7ED4",
     "uid": "00003 (00003) <00003>",
-    "unsigned_path": "unsigned/47AF3E1382B324A0221F2F77476B2589CDE84200.unsigned.pub"
+    "unsigned_path": "unsigned/36E592251DFD8D491E6E9BE701222703321F2BA2.unsigned.pub"
   },
-  "486CC4338A76E20B6C17AFE669FC018550F93D00": {
-    "message": "00005",
-    "signed_path": "docker@example.com/486CC4338A76E20B6C17AFE669FC018550F93D00.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00005 (00005) <00005>",
-    "unsigned_path": "unsigned/486CC4338A76E20B6C17AFE669FC018550F93D00.unsigned.pub"
-  },
-  "4D7AFD49288BF6C4AE97983808C6C4F753C094F4": {
-    "message": "00009",
-    "signed_path": "docker@example.com/4D7AFD49288BF6C4AE97983808C6C4F753C094F4.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00009 (00009) <00009>",
-    "unsigned_path": "unsigned/4D7AFD49288BF6C4AE97983808C6C4F753C094F4.unsigned.pub"
-  },
-  "4DDDA68358FBDA36E36D0CB822192E0D85D438CE": {
-    "message": "00004",
-    "signed_path": "docker.root@example.com/4DDDA68358FBDA36E36D0CB822192E0D85D438CE.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00004 (00004) <00004>",
-    "unsigned_path": "unsigned/4DDDA68358FBDA36E36D0CB822192E0D85D438CE.unsigned.pub"
-  },
-  "747C32B4137F7CE0B2BB52FB9E81F9EA58BF7C59": {
-    "message": "00012",
-    "signed_path": "docker.root@example.com/747C32B4137F7CE0B2BB52FB9E81F9EA58BF7C59.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00012 (00012) <00012>",
-    "unsigned_path": "unsigned/747C32B4137F7CE0B2BB52FB9E81F9EA58BF7C59.unsigned.pub"
-  },
-  "82259CB8161EBE5585FAA5E1DC5F985A52646414": {
-    "message": "00008",
-    "signed_path": "docker.root@example.com/82259CB8161EBE5585FAA5E1DC5F985A52646414.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00008 (00008) <00008>",
-    "unsigned_path": "unsigned/82259CB8161EBE5585FAA5E1DC5F985A52646414.unsigned.pub"
-  },
-  "A4FBC2F33B96CD3D77950464EB5BF80D52D96A99": {
+  "3F4DF62D10F3AD93E98119180C0D5CA75269246A": {
     "message": "00001",
-    "signed_path": "docker@example.com/A4FBC2F33B96CD3D77950464EB5BF80D52D96A99.pub",
+    "signed_path": "docker@example.com/3F4DF62D10F3AD93E98119180C0D5CA75269246A.pub",
     "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
+    "signing_fingerprint": "F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4",
+    "signing_keyid": "CD3C13EFBEAB7ED4",
     "uid": "00001 (00001) <00001>",
-    "unsigned_path": "unsigned/A4FBC2F33B96CD3D77950464EB5BF80D52D96A99.unsigned.pub"
+    "unsigned_path": "unsigned/3F4DF62D10F3AD93E98119180C0D5CA75269246A.unsigned.pub"
   },
-  "A81A8F51A71CD51634057CA3A49F3B1BEBE23482": {
-    "message": "00011",
-    "signed_path": "docker@example.com/A81A8F51A71CD51634057CA3A49F3B1BEBE23482.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00011 (00011) <00011>",
-    "unsigned_path": "unsigned/A81A8F51A71CD51634057CA3A49F3B1BEBE23482.unsigned.pub"
-  },
-  "C205CAF86EE1D6A109E7544D8070C378C23CA423": {
-    "message": "00013",
-    "signed_path": "docker@example.com/C205CAF86EE1D6A109E7544D8070C378C23CA423.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00013 (00013) <00013>",
-    "unsigned_path": "unsigned/C205CAF86EE1D6A109E7544D8070C378C23CA423.unsigned.pub"
-  },
-  "C64E83F9726335E98251E4DEE489F520C85459EE": {
-    "message": "00007",
-    "signed_path": "docker@example.com/C64E83F9726335E98251E4DEE489F520C85459EE.pub",
-    "signing_email": "docker@example.com",
-    "signing_fingerprint": "docker@example.com",
-    "uid": "00007 (00007) <00007>",
-    "unsigned_path": "unsigned/C64E83F9726335E98251E4DEE489F520C85459EE.unsigned.pub"
-  },
-  "DDF3A31A6DBB6BBCBD5DC713B1F2F122F6466C14": {
-    "message": "00014",
-    "signed_path": "docker.root@example.com/DDF3A31A6DBB6BBCBD5DC713B1F2F122F6466C14.pub",
-    "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00014 (00014) <00014>",
-    "unsigned_path": "unsigned/DDF3A31A6DBB6BBCBD5DC713B1F2F122F6466C14.unsigned.pub"
-  },
-  "E4CC6F9CCA9212A20EC03EF14DA494A63634BA31": {
+  "D1B5423204A833E7A3420C803112C5A1B0BB87EA": {
     "message": "00002",
-    "signed_path": "docker.root@example.com/E4CC6F9CCA9212A20EC03EF14DA494A63634BA31.pub",
+    "signed_path": "docker.root@example.com/D1B5423204A833E7A3420C803112C5A1B0BB87EA.pub",
     "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
+    "signing_fingerprint": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
+    "signing_keyid": "9DA033D5FFFABCCF",
     "uid": "00002 (00002) <00002>",
-    "unsigned_path": "unsigned/E4CC6F9CCA9212A20EC03EF14DA494A63634BA31.unsigned.pub"
+    "unsigned_path": "unsigned/D1B5423204A833E7A3420C803112C5A1B0BB87EA.unsigned.pub"
   },
-  "E52075707BA78DC989CA9983611FE092C213B8A9": {
-    "message": "00006",
-    "signed_path": "docker.root@example.com/E52075707BA78DC989CA9983611FE092C213B8A9.pub",
+  "EB55E1CED1FF0956E2BFE6C8D0B3B9C1094A9A3F": {
+    "message": "00000",
+    "signed_path": "docker.root@example.com/EB55E1CED1FF0956E2BFE6C8D0B3B9C1094A9A3F.pub",
     "signing_email": "docker.root@example.com",
-    "signing_fingerprint": "docker.root@example.com",
-    "uid": "00006 (00006) <00006>",
-    "unsigned_path": "unsigned/E52075707BA78DC989CA9983611FE092C213B8A9.unsigned.pub"
+    "signing_fingerprint": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
+    "signing_keyid": "9DA033D5FFFABCCF",
+    "uid": "00000 (00000) <00000>",
+    "unsigned_path": "unsigned/EB55E1CED1FF0956E2BFE6C8D0B3B9C1094A9A3F.unsigned.pub"
   }
 }
