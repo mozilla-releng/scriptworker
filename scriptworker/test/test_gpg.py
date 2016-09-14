@@ -495,6 +495,12 @@ def test_has_suffix(path, suffixes, expected):
     assert sgpg.has_suffix(path, suffixes) == expected
 
 
+@pytest.mark.parametrize("keydir", (__file__, os.path.join(os.path.dirname(__file__), "data", "artifacts")))
+def test_consume_valid_keys_exception(context, keydir):
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.consume_valid_keys(context, keydir)
+
+
 def test_rebuild_gpg_home_flat(context):
     shutil.rmtree(context.config['gpg_home'])  # coverage
     sgpg.rebuild_gpg_home_flat(
@@ -530,3 +536,32 @@ def test_rebuild_gpg_home_signed(context, trusted_email, ignore_suffixes):
         manifest = json.load(fh)
     messages = check_sigs(context, manifest, PUBKEY_DIR, trusted_emails=[trusted_email])
     assert messages == []
+
+
+# git {{{1
+def test_latest_signed_git_commit(context, mocker):
+
+    def fake_keyid_to_fingerprint(_, fingerprint):
+        return fingerprint
+
+    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
+        output = "".join([
+            "unsigned_sha:\n",
+            "bad-signed_sha:fprint2\n",
+            "latest_sha:fingerprint\n",
+            "oldest_sha:fprint3\n",
+        ])
+        sha = sgpg.latest_signed_git_commit(None, output, ['fingerprint', 'fprint3'])
+        assert sha == 'latest_sha'
+
+
+def test_latest_signed_git_commit_exception(context):
+    gpg = sgpg.GPG(context)
+    output = "".join([
+        "latest_sha:fingerprint\n",
+        "bad-signed_sha:fprint2\n",
+        "unsigned_sha:\n",
+        "oldest_sha:fprint3\n",
+    ])
+    sha = sgpg.latest_signed_git_commit(gpg, output, ['fingerprint', 'fprint3'])
+    assert sha is None
