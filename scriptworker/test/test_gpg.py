@@ -4,11 +4,13 @@
 """
 import arrow
 from contextlib import contextmanager
+import json
 import mock
 import os
 import pexpect
 import pytest
 import subprocess
+from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
@@ -19,6 +21,7 @@ assert tmpdir  # silence pyflakes
 
 # constants helpers and fixtures {{{1
 GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
+PUBKEY_DIR = os.path.join(os.path.dirname(__file__), "data", "pubkeys")
 
 TEXT = {
     # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
@@ -85,23 +88,40 @@ def versionless(ascii_key):
     return ''.join(new)
 
 
+def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
+    messages = []
+    for fingerprint, info in manifest.items():
+        try:
+            with open(os.path.join(pubkey_dir, "data", "{}.asc".format(fingerprint))) as fh:
+                message = sgpg.get_body(
+                    sgpg.GPG(context),
+                    fh.read()
+                )
+            if message != info['message'] + '\n':
+                messages.append(
+                    "Unexpected message '{}', expected '{}'".format(message, info['message'])
+                )
+        except ScriptWorkerGPGException as exc:
+            if trusted_emails and info['signing_email'] in trusted_emails:
+                pass
+            else:
+                messages.append("{} error: {}".format(fingerprint, str(exc)))
+    return messages
+
+
 @pytest.yield_fixture(scope='function')
 def context(tmpdir, homedir=None):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
     """
     homedir = homedir or tmpdir
-    context = Context()
-    context.config = {
-        "gpg_home": homedir,
-        "gpg_encoding": None,
-        "gpg_options": None,
-        "gpg_path": os.environ.get("GPG_PATH", None),
-        "gpg_public_keyring": os.path.join(homedir, "pubring.gpg"),
-        "gpg_secret_keyring": os.path.join(homedir, "secring.gpg"),
-        "gpg_use_agent": None,
-    }
-    return context
+    context_ = Context()
+    context_.config = {}
+    for k, v in DEFAULT_CONFIG.items():
+        if k.startswith("gpg_"):
+            context_.config[k] = v
+    context_.config['gpg_home'] = homedir
+    yield context_
 
 
 class PexpectChild():
@@ -139,11 +159,12 @@ class FakeProc():
 
 
 @pytest.yield_fixture(scope='function')
-def base_context():
+def base_context(context):
     """Use this fixture to use the existing gpg homedir in the data/ directory
     (treat this as read-only)
     """
-    yield context(GPG_HOME)
+    context.config['gpg_home'] = GPG_HOME
+    yield context
 
 
 # gpg_default_args {{{1
@@ -474,4 +495,14 @@ def test_has_suffix(path, suffixes, expected):
 
 
 def test_consume_valid_keys(context, tmpdir):
-    pass
+    sgpg.rebuild_gpg_home_flat(
+        context,
+        context.config['gpg_home'],
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+        os.path.join(PUBKEY_DIR, "unsigned")
+    )
+    with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
+        manifest = json.load(fh)
+    messages = check_sigs(context, manifest, PUBKEY_DIR)
+    assert messages == []
