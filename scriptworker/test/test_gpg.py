@@ -362,10 +362,11 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
 
 def test_sign_key_twice(context):
     gpg = sgpg.GPG(context)
-    with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"), "r") as fh:
-        contents = fh.read()
-    sgpg.import_key(gpg, contents)
-    sgpg.import_key(gpg, contents)
+    for suffix in (".sec", ".pub"):
+        with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
+            contents = fh.read()
+        fingerprint = sgpg.import_key(gpg, contents)[0]
+    sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
 
 
 @pytest.mark.parametrize("expect_status", (0, 1))
@@ -440,6 +441,9 @@ def test_ownertrust(context, trusted_names):
     trusted_fingerprints = []
     for name in trusted_names:
         trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
+    # append my fingerprint to get more coverage
+    if trusted_fingerprints:
+        trusted_fingerprints.append(my_fingerprint)
     unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
     sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
     with pytest.raises(ScriptWorkerGPGException):
@@ -460,5 +464,14 @@ def test_update_ownertrust_failure(context, mocker):
 
 
 # consume {{{1
+@pytest.mark.parametrize("path,suffixes,expected", ((
+    "foo/bar/baz.blah", [".zip", ".bz2"], False
+), (
+    "/foo/bar/baz.blah", [".blah", ".bz2"], True
+)))
+def test_has_suffix(path, suffixes, expected):
+    assert sgpg.has_suffix(path, suffixes) == expected
+
+
 def test_consume_valid_keys(context, tmpdir):
     pass
