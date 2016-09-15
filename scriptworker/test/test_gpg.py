@@ -514,20 +514,18 @@ def test_rebuild_gpg_home_flat(context):
     assert messages == []
 
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("trusted_email", ("docker@example.com", "docker.root@example.com"))
 def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
+
     gpg = sgpg.GPG(context)
-    my_trusted_dir = os.path.join(tmpdir, "trusted")
-    os.makedirs(my_trusted_dir)
-    for path in glob.glob(os.path.join(PUBKEY_DIR, trusted_email, "{}.*".format(trusted_email))):
-        shutil.copyfile(path, os.path.join(my_trusted_dir, os.path.basename(path)))
+    for path in glob.glob(os.path.join(GPG_HOME, "keys", "{}.*".format(trusted_email))):
+        shutil.copyfile(path, os.path.join(tmpdir, os.path.basename(path)))
     sgpg.rebuild_gpg_home_signed(
         context,
         context.config['gpg_home'],
         "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
         "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-        my_trusted_dir,
+        tmpdir,
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)

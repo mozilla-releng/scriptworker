@@ -82,34 +82,34 @@ def main(trusted_key_dir, name=None):
     with open(os.path.join(pubkey_dir, "manifest.json"), "r") as fh:
         manifest = json.load(fh)
     try:
-#        dirs['gpg_home1'] = tempfile.mkdtemp()
-#        # consume unsigned and verify sigs
-#        context = get_context(dirs['gpg_home1'])
-#        log.info("rebuild_gpg_home_flat")
-#        scriptworker.gpg.rebuild_gpg_home_flat(
-#            context,
-#            context.config['gpg_home'],
-#            os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
-#            os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
-#            os.path.join(pubkey_dir, "unsigned"),
-#        )
-#        times['checkpoint1'] = arrow.utcnow()
-#        print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
-#        messages = check_sigs(
-#            context, manifest, pubkey_dir,
-#        )
+        dirs['gpg_home1'] = tempfile.mkdtemp()
+        # consume unsigned and verify sigs
+        context = get_context(dirs['gpg_home1'])
+        log.info("rebuild_gpg_home_flat")
+        scriptworker.gpg.rebuild_gpg_home_flat(
+            context,
+            context.config['gpg_home'],
+            os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
+            os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
+            os.path.join(pubkey_dir, "unsigned"),
+        )
+        times['checkpoint1'] = arrow.utcnow()
+        print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
+        messages = check_sigs(
+            context, manifest, pubkey_dir,
+        )
         times['checkpoint2'] = arrow.utcnow()
-#        print_times(times['checkpoint1'], times['checkpoint2'], "verifying flat sigs")
-#        if messages:
-#            raise Exception('\n'.join(messages))
+        print_times(times['checkpoint1'], times['checkpoint2'], "verifying flat sigs")
+        if messages:
+            raise Exception('\n'.join(messages))
         for email in get_trusted_emails(trusted_key_dir):
             times["{}.1".format(email)] = arrow.utcnow()
             dirs[email] = tempfile.mkdtemp()
+            my_trusted_dir = tempfile.mkdtemp()
+            dirs["{}-trusted".format(email)] = my_trusted_dir
             context = get_context(dirs[email])
             gpg = scriptworker.gpg.GPG(context)
             log.info("rebuild_gpg_home_signed {}".format(email))
-            my_trusted_dir = os.path.join(dirs[email], "trusted")
-            scriptworker.utils.makedirs(my_trusted_dir)
             for f in glob.glob(os.path.join(trusted_key_dir, "{}*".format(email))):
                 shutil.copyfile(f, os.path.join(my_trusted_dir, os.path.basename(f)))
             scriptworker.gpg.rebuild_gpg_home_signed(
