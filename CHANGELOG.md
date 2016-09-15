@@ -3,10 +3,15 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## [0.6.0] - 2016-09-15
 ### Added
+- significant gpg support
 - ability to create new gpg homedirs
 - scriptworker now requires `pexpect` for gpg key signing
 - docstrings!
+- helper scripts to generate 1000 pubkeys and time importing them.
+- added `scriptworker.utils.rm` as an `rm -rf` function
 
 ### Changed
 - `utils.makedirs` now throws `ScriptWorkerException` if the path exists and is not a directory or a softlink pointing to a directory.
@@ -14,15 +19,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - moved `scriptworker.client.integration_create_task_payload` into `scriptworker.test`
 - renamed `scriptworker.util.get-_hash` kwarg `hash_type` to `hash_alg`
 - renamed `firefox_cot_schema.json` to `cot_v1_schema.json`; also, the schema has changed.
-- reenabled parallelized tests via pytest-xdist.
+- the chain of trust schema has changed to version 1.
 
 ### Fixed
 - pass a `task` to `scriptworker.task.reclaimTask` and exit the loop if it doesn't match `context.task`
+- we now verify that `context.task` is the same task we scheduled `reclaim_task` for.
 
 ### Removed
 - Removed `get_temp_creds_from_file`, since we're not writing `temp_creds` to disk anymore
 - Removed `scriptworker.task.get_temp_queue`, since we already have `context.temp_queue`
 - Removed `pytest-asyncio` dependency.  It doesn't play well with `pytest-xdist`.
+- Removed `scriptworker.task.get_temp_queue`; we can use `context.temp_queue`
+- Removed `pytest-asyncio` usage to try to use `pytest-xdist`, then turned that back off when it conflicted with the event loop
 
 ## [0.5.0] - 2016-08-29
 ### Added
