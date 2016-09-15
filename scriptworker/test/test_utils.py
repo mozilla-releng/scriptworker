@@ -10,8 +10,10 @@ import tempfile
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import fake_session, fake_session_500, FakeResponse, touch
+from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
+    touch
 
+assert event_loop, tmpdir  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1
@@ -64,15 +66,13 @@ async def fake_sleep(*args, **kwargs):
 
 
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
-    path = str(temp_dir)
+def context(tmpdir):
     context = Context()
     context.config = {
-        'log_dir': os.path.join(path, 'log'),
-        'task_log_dir': os.path.join(path, 'artifact', 'public', 'logs'),
-        'artifact_dir': os.path.join(path, 'artifact'),
-        'work_dir': os.path.join(path, 'work'),
+        'log_dir': os.path.join(tmpdir, 'log'),
+        'task_log_dir': os.path.join(tmpdir, 'artifact', 'public', 'logs'),
+        'artifact_dir': os.path.join(tmpdir, 'artifact'),
+        'work_dir': os.path.join(tmpdir, 'work'),
     }
     return context
 
@@ -106,70 +106,78 @@ def test_cleanup(context):
         assert not os.path.exists(os.path.join(path, "tempfile"))
 
 
-@pytest.mark.asyncio
-async def test_request(context, fake_session):
+def test_request(context, fake_session, event_loop):
     context.session = fake_session
-    result = await utils.request(context, "url")
+    result = event_loop.run_until_complete(
+        utils.request(context, "url")
+    )
     assert result == '{}'
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_request_json(context, fake_session):
+def test_request_json(context, fake_session, event_loop):
     context.session = fake_session
-    result = await utils.request(context, "url", return_type="json")
+    result = event_loop.run_until_complete(
+        utils.request(context, "url", return_type="json")
+    )
     assert result == {}
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_request_response(context, fake_session):
+def test_request_response(context, fake_session, event_loop):
     context.session = fake_session
-    result = await utils.request(context, "url", return_type="response")
+    result = event_loop.run_until_complete(
+        utils.request(context, "url", return_type="response")
+    )
     assert isinstance(result, FakeResponse)
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_request_retry(context, fake_session_500):
+def test_request_retry(context, fake_session_500, event_loop):
     context.session = fake_session_500
     with pytest.raises(ScriptWorkerRetryException):
-        await utils.request(context, "url")
+        event_loop.run_until_complete(
+            utils.request(context, "url")
+        )
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_request_exception(context, fake_session_500):
+def test_request_exception(context, fake_session_500, event_loop):
     context.session = fake_session_500
     with pytest.raises(ScriptWorkerException):
-        await utils.request(context, "url", retry=())
+        event_loop.run_until_complete(
+            utils.request(context, "url", retry=())
+        )
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_retry_request(context, fake_session):
+def test_retry_request(context, fake_session, event_loop):
     context.session = fake_session
-    result = await utils.retry_request(context, "url")
+    result = event_loop.run_until_complete(
+        utils.retry_request(context, "url")
+    )
     assert result == '{}'
     context.session.close()
 
 
-@pytest.mark.asyncio
-async def test_retry_async_fail_first():
+def test_retry_async_fail_first(event_loop):
     global retry_count
     retry_count['fail_first'] = 0
-    status = await utils.retry_async(fail_first)
+    status = event_loop.run_until_complete(
+        utils.retry_async(fail_first)
+    )
     assert status == "yay"
     assert retry_count['fail_first'] == 2
 
 
-@pytest.mark.asyncio
-async def test_retry_async_always_fail():
+def test_retry_async_always_fail(event_loop):
     global retry_count
     retry_count['always_fail'] = 0
     with mock.patch('asyncio.sleep', new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
-            status = await utils.retry_async(always_fail)
+            status = event_loop.run_until_complete(
+                utils.retry_async(always_fail)
+            )
             assert status is None
     assert retry_count['always_fail'] == 5
 
@@ -188,8 +196,7 @@ def test_temp_creds():
         assert creds == {"one": "one", "two": "two"}
 
 
-@pytest.mark.asyncio
-async def test_raise_future_exceptions(event_loop):
+def test_raise_future_exceptions(event_loop):
 
     async def one():
         raise IOError("foo")
@@ -199,30 +206,65 @@ async def test_raise_future_exceptions(event_loop):
 
     tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
     with pytest.raises(IOError):
-        await utils.raise_future_exceptions(tasks)
+        event_loop.run_until_complete(
+            utils.raise_future_exceptions(tasks)
+        )
 
 
-@pytest.mark.asyncio
-async def test_raise_future_exceptions_noop(event_loop):
-    await utils.raise_future_exceptions([])
+def test_raise_future_exceptions_noop(event_loop):
+    event_loop.run_until_complete(
+        utils.raise_future_exceptions([])
+    )
 
 
-def test_filepaths_in_dir():
+def test_filepaths_in_dir(tmpdir):
     filepaths = sorted([
         "asdfasdf/lwekrjweoi/lsldkfjs",
         "lkdsjf/werew/sdlkfds",
         "lsdkjf/sdlkfds",
         "lkdlkf/lsldkfjs",
     ])
-    with tempfile.TemporaryDirectory() as tmp:
-        for path in filepaths:
-            parent_dir = os.path.join(tmp, os.path.dirname(path))
-            os.makedirs(parent_dir)
-            touch(os.path.join(tmp, path))
-        assert sorted(utils.filepaths_in_dir(tmp)) == filepaths
+    for path in filepaths:
+        parent_dir = os.path.join(tmpdir, os.path.dirname(path))
+        os.makedirs(parent_dir)
+        touch(os.path.join(tmpdir, path))
+    assert sorted(utils.filepaths_in_dir(tmpdir)) == filepaths
 
 
 def test_get_hash():
     path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
-    sha = utils.get_hash(path, hash_type="sha256")
+    sha = utils.get_hash(path, hash_alg="sha256")
     assert sha == "584818280d7908da33c810a25ffb838b1e7cec1547abd50c859521229942c5a5"
+
+
+def test_makedirs_empty():
+    utils.makedirs(None)
+
+
+def test_makedirs_existing_file():
+    path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
+    with pytest.raises(ScriptWorkerException):
+        utils.makedirs(path)
+
+
+def test_makedirs_existing_dir():
+    path = os.path.join(os.path.dirname(__file__))
+    utils.makedirs(path)
+
+
+def test_rm_empty():
+    utils.rm(None)
+
+
+def test_rm_file():
+    _, tmp = tempfile.mkstemp()
+    assert os.path.exists(tmp)
+    utils.rm(tmp)
+    assert not os.path.exists(tmp)
+
+
+def test_rm_dir():
+    tmp = tempfile.mkdtemp()
+    assert os.path.exists(tmp)
+    utils.rm(tmp)
+    assert not os.path.exists(tmp)

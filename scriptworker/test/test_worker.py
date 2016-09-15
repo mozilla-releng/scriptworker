@@ -13,20 +13,20 @@ from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
 import sys
-from . import successful_queue
+from . import event_loop, successful_queue, tmpdir
 
-assert successful_queue  # silence flake8
+assert tmpdir  # silence flake8
+assert successful_queue, event_loop  # silence flake8
 
 
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
+def context(tmpdir):
     context = Context()
     context.config = deepcopy(DEFAULT_CONFIG)
-    context.config['log_dir'] = os.path.join(str(temp_dir), "log")
-    context.config['work_dir'] = os.path.join(str(temp_dir), "work")
-    context.config['artifact_dir'] = os.path.join(str(temp_dir), "artifact")
+    context.config['log_dir'] = os.path.join(tmpdir, "log")
+    context.config['work_dir'] = os.path.join(tmpdir, "work")
+    context.config['artifact_dir'] = os.path.join(tmpdir, "artifact")
     context.config['poll_interval'] = .1
     context.config['credential_update_interval'] = .1
     context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
@@ -81,15 +81,16 @@ def test_main(mocker, event_loop):
             worker.main()
 
 
-@pytest.mark.asyncio
-async def test_async_main(context):
+def test_async_main(context, event_loop):
 
     async def exit(*args, **kwargs):
         sys.exit()
 
     with mock.patch('scriptworker.worker.run_loop', new=exit):
         with pytest.raises(SystemExit):
-            await worker.async_main(context)
+            event_loop.run_until_complete(
+                worker.async_main(context)
+            )
 
 
 def test_run_loop_exception(context, successful_queue, event_loop):

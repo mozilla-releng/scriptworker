@@ -1,5 +1,12 @@
 #!/usr/bin/env python
 """Config for scriptworker
+
+Attributes:
+    log (logging.Logger): the log object for the module.
+    DEFAULT_CONFIG (dict): the default config for scriptworker.  Running configs
+        are validated against this.
+    CREDS_FILES (tuple): an ordered list of files to look for taskcluster
+        credentials, if they aren't in the config file or environment.
 """
 from copy import deepcopy
 import json
@@ -42,16 +49,17 @@ DEFAULT_CONFIG = {
     "verify_chain_of_trust": False,  # TODO True
     "sign_chain_of_trust": False,  # TODO True
     "chain_of_trust_hash_algorithm": "sha256",
-    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_schema.json"),
-    # Specify to override $HOME/.gnupg
+    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
+    # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
+
     # A list of additional gpg cmdline options
     "gpg_options": None,
     # The path to the gpg executable.
     "gpg_path": None,
     # The path to the public/secret keyrings, if we're not using the default
-    "gpg_public_keyring": None,
-    "gpg_secret_keyring": None,
+    "gpg_public_keyring": '%(gpg_home)s/pubring.gpg',
+    "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
     # Encoding to use.  Defaults to latin-1
@@ -82,13 +90,29 @@ CREDS_FILES = (
 
 
 def list_to_tuple(dictionary):
+    """Convert a dictionary's list values into tuples.
+
+    This won't recurse; it's best for relatively flat data structures.
+
+    Args:
+        dictionary (dict): the dictionary to modify in-place.
+    """
     for key, value in dictionary.items():
         if isinstance(value, list):
             dictionary[key] = tuple(value)
 
 
 def read_worker_creds(key="credentials"):
-    """Get credentials from special files.
+    """Get credentials from CREDS_FILES or the environment.
+
+    This looks at the CREDS_FILES in order, and falls back to the environment.
+
+    Args:
+        key (str, optional): each CREDS_FILE is a json dict.  This key's value
+            contains the credentials.  Defaults to 'credentials'.
+
+    Returns:
+        dict: the credentials found. None if no credentials found.
     """
     for path in CREDS_FILES:
         if not os.path.exists(path):
@@ -112,6 +136,17 @@ def read_worker_creds(key="credentials"):
 
 
 def check_config(config, path):
+    """Validate the config against DEFAULT_CONFIG.
+
+    Any unknown keys or wrong types will add error messages.
+
+    Args:
+        config (dict): the running config.
+        path (str): the path to the config file, used in error messages.
+
+    Returns:
+        list: the error messages found when validating the config.
+    """
     messages = []
     for key, value in config.items():
         if key not in DEFAULT_CONFIG:
@@ -126,11 +161,21 @@ def check_config(config, path):
                 )
         if value in ("...", b"..."):
             messages.append("{} {} needs to be defined!".format(path, key))
+        if key in ("gpg_public_keyring", "gpg_secret_keyring") and not value.startswith('%(gpg_home)s/'):
+            messages.append("{} needs to start with %(gpg_home)s/ to be portable!")
     return messages
 
 
 def create_config(path="config.json"):
     """Create a config from DEFAULT_CONFIG, arguments, and config file.
+
+    Then validate it and freeze it.
+
+    Args:
+        path (str, optional): the path to the config file.  Defaults to "config.json"
+
+    Returns:
+        tuple: (config dict, credentials dict)
     """
     if not os.path.exists(path):
         print("{} doesn't exist! Exiting create_config()...".format(path),

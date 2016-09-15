@@ -1,9 +1,6 @@
 #!/usr/bin/env python
-"""Jobs running in scriptworker will use functions in this file.
+"""Scripts running in scriptworker will use functions in this file.
 """
-import arrow
-import asyncio
-import glob
 import json
 import jsonschema
 import os
@@ -13,12 +10,19 @@ from urllib.parse import urlparse, unquote
 from scriptworker.config import DEFAULT_CONFIG
 from scriptworker.exceptions import ScriptWorkerTaskException
 from scriptworker.task import STATUSES
-from scriptworker.utils import retry_async
 
 
 def get_task(config):
-    """The worker writes a task.json to the work_dir; the task needs to be
-    able to retrieve it.
+    """Read the task.json from work_dir.
+
+    Args:
+        config (dict): the running config, to find work_dir.
+
+    Returns:
+        dict: the contents of task.json
+
+    Raises:
+        ScriptWorkerTaskException: on error.
     """
     try:
         path = os.path.join(config['work_dir'], "task.json")
@@ -32,51 +36,19 @@ def get_task(config):
         )
 
 
-async def _get_temp_creds_from_file(config, num_files=2):
-    """The worker writes a credentials.TIMESTAMP.json with temp creds to
-    the work_dir every time claimTask or reclaimTask is run.
-
-    We should get our temp creds from the latest credentials file, but let's
-    look at the latest 2 files just in case we try to read the credentials file
-    while the next one is being written to.
-
-    There isn't a strong reason for this function to be async, other than
-    the existence of scriptworker.utils.retry_async.
-    """
-    match = os.path.join(config['work_dir'], "credentials.*.json")
-    all_files = sorted(glob.glob(match), reverse=True)  # start with the latest file
-    if len(all_files) > num_files:
-        all_files = all_files[:num_files]
-    while all_files:
-        path = all_files.pop(0)
-        try:
-            with open(path, "r") as fh:
-                return json.load(fh)
-        except (OSError, ValueError) as exc:
-            if not all_files:
-                raise ScriptWorkerTaskException(
-                    "Can't load credentials from latest {} {}!\n{}".format(num_files, match, str(exc)),
-                    exit_code=STATUSES['internal-error']
-                )
-    raise ScriptWorkerTaskException(
-        "No credentials files found that match {}!".format(match),
-        exit_code=STATUSES['internal-error']
-    )
-
-
-def get_temp_creds_from_file(config):
-    """Retry _get_temp_creds_from_file
-    """
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(retry_async(
-        _get_temp_creds_from_file, retry_exceptions=(ScriptWorkerTaskException,),
-        args=(config, ),
-    ))
-
-
 def validate_json_schema(data, schema, name="task"):
     """Given data and a jsonschema, let's validate it.
+
     This happens for tasks and chain of trust artifacts.
+
+    Args:
+        data (dict): the json to validate.
+        schema (dict): the jsonschema to validate against.
+        name (str, optional): the name of the json, for exception messages.
+            Defaults to "task".
+
+    Raises:
+        ScriptWorkerTaskException: on failure
     """
     try:
         jsonschema.validate(data, schema)
@@ -105,6 +77,16 @@ def validate_artifact_url(config, url):
 
     If we fail any checks, raise a ScriptWorkerTaskException with
     `malformed-payload`.
+
+    Args:
+        config (dict): the running config.
+        url (str): the url of the artifact.
+
+    Returns:
+        str: the `filepath` of the path regex.
+
+    Raises:
+        ScriptWorkerTaskException: on failure to validate.
     """
     messages = []
     validate_config = {}
@@ -153,41 +135,3 @@ def validate_artifact_url(config, url):
             exit_code=STATUSES['malformed-payload']
         )
     return return_value.lstrip('/')
-
-
-def integration_create_task_payload(config, task_group_id, scopes=None,
-                                    task_payload=None, task_extra=None):
-    """For various integration tests, we need to call createTask for test tasks.
-
-    This function creates a dummy payload for those createTask calls.
-    """
-    now = arrow.utcnow()
-    deadline = now.replace(hours=1)
-    expires = now.replace(days=3)
-    scopes = scopes or []
-    task_payload = task_payload or {}
-    task_extra = task_extra or {}
-    return {
-        'provisionerId': config['provisioner_id'],
-        'schedulerId': 'test-dummy-scheduler',
-        'workerType': config['worker_type'],
-        'taskGroupId': task_group_id,
-        'dependencies': [],
-        'requires': 'all-completed',
-        'routes': [],
-        'priority': 'normal',
-        'retries': 5,
-        'created': now.isoformat(),
-        'deadline': deadline.isoformat(),
-        'expires': expires.isoformat(),
-        'scopes': scopes,
-        'payload': task_payload,
-        'metadata': {
-            'name': 'ScriptWorker Integration Test',
-            'description': 'ScriptWorker Integration Test',
-            'owner': 'release+python@mozilla.com',
-            'source': 'https://github.com/mozilla-releng/scriptworker/'
-        },
-        'tags': {},
-        'extra': task_extra,
-    }

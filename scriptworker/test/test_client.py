@@ -4,13 +4,14 @@
 """
 import arrow
 import json
-import mock
 import os
 import pytest
 from shutil import copyfile
 from scriptworker.exceptions import ScriptWorkerTaskException
 import scriptworker.client as client
-import scriptworker.utils as utils
+from . import tmpdir
+
+assert tmpdir  # silence pyflakes
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
@@ -88,15 +89,14 @@ ILLEGAL_URLS = ((
 
 
 @pytest.fixture(scope='function')
-def config(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("work_dir", numbered=True)
-    work_dir = os.path.join(str(temp_dir), "work")
+def config(tmpdir):
+    work_dir = os.path.join(tmpdir, "work")
     os.makedirs(work_dir)
     return {
         'work_dir': work_dir,
-        'log_dir': os.path.join(str(temp_dir), "log"),
-        'artifact_dir': os.path.join(str(temp_dir), "artifact"),
-        'task_log_dir': os.path.join(str(temp_dir), "artifact", "public", "logs"),
+        'log_dir': os.path.join(tmpdir, "log"),
+        'artifact_dir': os.path.join(tmpdir, "artifact"),
+        'task_log_dir': os.path.join(tmpdir, "artifact", "public", "logs"),
         'provisioner_id': 'provisioner_id',
         'worker_type': 'worker_type',
     }
@@ -130,18 +130,6 @@ def test_get_task(config):
     assert client.get_task(config)["this_is_a_task"] is True
 
 
-def test_retry_fail_creds(config):
-    populate_credentials(config, [CLIENT_CREDS, PARTIAL_CREDS, PARTIAL_CREDS])
-    with mock.patch.object(utils, "calculateSleepTime", new=no_sleep):
-        with pytest.raises(ScriptWorkerTaskException):
-            client.get_temp_creds_from_file(config)
-
-
-def test_get_missing_creds(config, event_loop):
-    with pytest.raises(ScriptWorkerTaskException):
-        event_loop.run_until_complete(client._get_temp_creds_from_file(config))
-
-
 def test_validate_task(schema):
     with open(BASIC_TASK, "r") as fh:
         task = json.load(fh)
@@ -153,11 +141,6 @@ def test_invalid_task(schema):
         task = json.load(fh)
     with pytest.raises(ScriptWorkerTaskException):
         client.validate_json_schema({'foo': task}, schema)
-
-
-def test_payload(config):
-    payload = client.integration_create_task_payload(config, 'a1234')
-    assert payload['scopes'] == []
 
 
 @pytest.mark.parametrize("params", LEGAL_URLS)

@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 """Scriptworker task execution
+
+Attributes:
+    log (logging.Logger): the log object for the module
+    STATUSES (dict): maps taskcluster status (string) to exit code (int).
+    REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
+        (int) to the taskcluster status (string).
 """
 import aiohttp.hdrs
 import arrow
@@ -13,7 +19,6 @@ from asyncio.subprocess import PIPE
 
 import taskcluster
 import taskcluster.exceptions
-from taskcluster.async import Queue
 
 from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, log_errors, read_stdout
@@ -35,6 +40,15 @@ REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
 
 
 def worst_level(level1, level2):
+    """Given two int levels, return the larger.
+
+    Args:
+        level1 (int): exit code 1.
+        level2 (int): exit code 2.
+
+    Returns:
+        int: the larger of the two levels.
+    """
     return level1 if level1 > level2 else level2
 
 
@@ -42,6 +56,12 @@ async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        int: exit code
     """
     loop = asyncio.get_event_loop()
     kwargs = {  # pragma: no branch
@@ -68,33 +88,32 @@ async def run_task(context):
     return exitcode
 
 
-def get_temp_queue(context):
-    """Create an async taskcluster client Queue from the latest temp
-    credentials.
-    """
-    temp_queue = Queue({
-        'credentials': context.temp_credentials,
-    }, session=context.session)
-    return temp_queue
-
-
-async def reclaim_task(context):
+async def reclaim_task(context, task):
     """Try to reclaim a task from the queue.
+
     This is a keepalive / heartbeat.  Without it the job will expire and
     potentially be re-queued.  Since this is run async from the task, the
     task may complete before we run, in which case we'll get a 409 the next
     time we reclaim.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Raises:
+        taskcluster.exceptions.TaskclusterRestFailure: on non-409 status_code
+            from taskcluster.async.Queue.reclaimTask()
     """
     while True:
         log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
         await asyncio.sleep(context.config['reclaim_interval'])
+        if task != context.task:
+            return
         log.debug("Reclaiming task...")
-        temp_queue = get_temp_queue(context)
-        taskId = context.claim_task['status']['taskId']
-        runId = context.claim_task['runId']
         try:
-            result = await temp_queue.reclaimTask(taskId, runId)
-            context.reclaim_task = result
+            context.reclaim_task = await context.temp_queue.reclaimTask(
+                context.claim_task['status']['taskId'],
+                context.claim_task['runId']
+            )
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
@@ -105,6 +124,12 @@ async def reclaim_task(context):
 
 def get_expiration_arrow(context):
     """Return an arrow, `artifact_expiration_hours` in the future from now.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Returns:
+        arrow: now + artifact_expiration_hours
     """
     now = arrow.utcnow()
     return now.replace(hours=context.config['artifact_expiration_hours'])
@@ -112,6 +137,12 @@ def get_expiration_arrow(context):
 
 def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
+
+    Args:
+        path (str): the path to guess the mimetype of
+
+    Returns:
+        str: the content type of the file
     """
     content_type, _ = mimetypes.guess_type(path)
     if path.endswith('.log'):
@@ -122,11 +153,25 @@ def guess_content_type(path):
 
 async def create_artifact(context, path, target_path, storage_type='s3',
                           expires=None, content_type=None):
-    """Create an artifact and upload it.  This should support s3 and azure
-    out of the box; we'll need some tweaking if we want to support
-    redirect/error artifacts.
+    """Create an artifact and upload it.
+
+    This should support s3 and azure out of the box; we'll need some tweaking
+    if we want to support redirect/error artifacts.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        path (str): the path of the file to upload.
+        target_path (str):
+        storage_type (str, optional): the taskcluster storage type to use.
+            Defaults to 's3'
+        expires (str, optional): datestring of when the artifact expires.
+            Defaults to None.
+        content_type (str, optional): Specify the content type of the artifact.
+            If None, use guess_content_type().  Defaults to None.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
     """
-    temp_queue = get_temp_queue(context)
     payload = {
         "storageType": storage_type,
         "expires": expires or get_expiration_arrow(context).isoformat(),
@@ -134,7 +179,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
     }
     args = [context.claim_task['status']['taskId'], context.claim_task['runId'],
             target_path, payload]
-    tc_response = await temp_queue.createArtifact(*args)
+    tc_response = await context.temp_queue.createArtifact(*args)
     headers = {
         aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
     }
@@ -156,7 +201,13 @@ async def create_artifact(context, path, target_path, storage_type='s3',
 
 
 async def retry_create_artifact(*args, **kwargs):
-    return await retry_async(
+    """Retry create_artifact() calls.
+
+    Args:
+        *args: the args to pass on to create_artifact
+        **kwargs: the args to pass on to create_artifact
+    """
+    await retry_async(
         create_artifact,
         retry_exceptions=(ScriptWorkerRetryException, ),
         args=args,
@@ -170,6 +221,12 @@ async def upload_artifacts(context):
     This function expects the directory structure in `artifact_dir` to remain
     the same.  So if we want the files in `public/...`, create an
     `artifact_dir/public` and put the files in there.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        Exception: any exceptions the tasks raise.
     """
     file_list = {}
     for target_path in filepaths_in_dir(context.config['artifact_dir']):
@@ -201,21 +258,26 @@ async def complete_task(context, result):
     based on the exit status of the script.
 
     If the task has expired or been cancelled, we'll get a 409 status.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
     """
-    temp_queue = get_temp_queue(context)
     args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
     try:
         if result == 0:
             log.info("Reporting task complete...")
-            await temp_queue.reportCompleted(*args)
+            await context.temp_queue.reportCompleted(*args)
         elif result in list(range(2, 7)):
             reason = REVERSED_STATUSES[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
-            await temp_queue.reportException(*args, payload)
+            await context.temp_queue.reportException(*args, payload)
         else:
             log.info("Reporting task failed...")
-            await temp_queue.reportFailed(*args)
+            await context.temp_queue.reportFailed(*args)
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.info("409: not reporting complete/failed.")
@@ -224,7 +286,12 @@ async def complete_task(context, result):
 
 
 async def kill(pid, sleep_time=1):
-    """Kill `pid`.
+    """Kill `pid` with various signals.
+
+    Args:
+        pid (int): the process id to kill.
+        sleep_time (int, optional): how long to sleep between killing the pid
+            and checking if the pid is still running.
     """
     siglist = [signal.SIGINT, signal.SIGTERM]
     while True:
@@ -241,6 +308,14 @@ async def kill(pid, sleep_time=1):
 
 def max_timeout(context, proc, timeout):
     """Make sure the proc pid's process and process group are killed.
+
+    First, kill the process group (-pid) and then the pid.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        proc (subprocess.Process): the subprocess proc.  This is compared against context.proc
+            to make sure we're killing the right pid.
+        timeout (int): Used for the log message.
     """
     # We may be called with proc1.  proc1 may finish, and proc2 may start
     # before this function is called.  Make sure we're still running the

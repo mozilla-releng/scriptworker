@@ -66,6 +66,12 @@ def test_check_config_invalid_type(t_config):
     assert "log_dir: type" in "\n".join(messages)
 
 
+def test_check_config_bad_keyring(t_config):
+    t_config['gpg_secret_keyring'] = 'foo{}'.format(t_config['gpg_secret_keyring'])
+    messages = config.check_config(t_config, "test_path")
+    assert "needs to start with %(gpg_home)s/" in "\n".join(messages)
+
+
 def test_check_config_good(t_config):
     for key, value in t_config.items():
         if value == "...":

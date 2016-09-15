@@ -36,6 +36,14 @@ scriptworker.exceptions module
     :undoc-members:
     :show-inheritance:
 
+scriptworker.gpg module
+------------------------------
+
+.. automodule:: scriptworker.gpg
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 scriptworker.log module
 -----------------------
 

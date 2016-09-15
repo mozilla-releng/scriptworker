@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 """Deal with the multi-step queue polling.  At some point we may be able to
 just claimTask through Taskcluster; until that point we have these functions.
+
+Attributes:
+    log (logging.Logger): the log object for the module.
 """
 import base64
 import defusedxml.ElementTree
@@ -16,7 +19,13 @@ log = logging.getLogger(__name__)
 
 
 def parse_azure_message(message):
-    """The Azure xml may have multiple messages; this deals with one.
+    """Parse a single Azure message from the xml.
+
+    Args:
+        message (Element): xml element containing a single Azure message
+
+    Returns:
+        dict: the relevant message info
     """
     message_info = {}
     interesting_keys = {
@@ -36,6 +45,12 @@ def parse_azure_message(message):
 
 def parse_azure_xml(xml):
     """Generator: parse the Azure xml and pass through parse_azure_message()
+
+    Args:
+        xml (str): the contents of the xml document
+
+    Yields:
+        dict: yields the relevant message info for each message, in order.
     """
     et = defusedxml.ElementTree.fromstring(xml)
     for message in et:
@@ -44,6 +59,14 @@ def parse_azure_xml(xml):
 
 async def claim_task(context, taskId, runId):
     """Attempt to claim a task that we found in the Azure queue.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        taskId (str): the taskcluster taskId to claim
+        runId (int): the taskcluster runId to claim
+
+    Returns:
+        dict: claimTask definition, if successful.  If unsuccessful, return None.
     """
     payload = {
         'workerGroup': context.config['worker_group'],
@@ -59,8 +82,16 @@ async def claim_task(context, taskId, runId):
 
 
 def get_azure_urls(context):
-    """Generator: yield the poll_url and delete_url from the poll_task_urls,
-    in order.
+    """Yield the poll_url and delete_url from the poll_task_urls, in order.
+
+    These URLs are for finding the task breadcrumbs in Azure, and for deleting
+    them from Azure, respectively.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Yields:
+        tuple: poll_url, delete_url
     """
     for queue_defn in context.poll_task_urls['queues']:
         yield queue_defn['signedPollUrl'], queue_defn['signedDeleteUrl']
@@ -75,6 +106,16 @@ async def find_task(context, poll_url, delete_url, request_function):
     or not (error 409 on claim means the task was cancelled/expired/claimed).
 
     If the claim was successful, return the task json.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        poll_url (str): The Azure URL to poll for tasks
+        delete_url (str): The Azure URL to delete claimed tasks
+        request_function (function): the function to call to poll the URLs.
+            This should scriptworker.utils.retry_request outside of testing.
+
+    Returns:
+        dict: the claimTask json
     """
     xml = await request_function(context, poll_url)
     for message_info in parse_azure_xml(xml):
@@ -88,13 +129,25 @@ async def find_task(context, poll_url, delete_url, request_function):
 
 
 async def update_poll_task_urls(context, callback, min_seconds_left=300, args=(), kwargs=None):
-    """Queue.pollTaskUrls() returns an ordered list of Azure url pairs to
+    """Update the Azure urls to poll.
+
+    Queue.pollTaskUrls() returns an ordered list of Azure url pairs to
     poll for task "hints".  This list is valid until expiration.
 
     This function checks for an up-to-date poll_task_urls; if non-existent
     or near expiration, get new poll_task_urls.
 
     http://docs.taskcluster.net/queue/worker-interaction/
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        callback (function): This should be context.queue.pollTaskUrls outside
+            of testing.
+        min_seconds_left (int, optional):  We have an expiry datestring;
+            if we have less than min_seconds_left seconds left, then update
+            the urls.  Defaults to 300.
+        args (list, optional): the args to pass to the callback.  Defaults to ()
+        kwargs (dict, optional): the kwargs to pass to the callback.  Defaults to None.
     """
     urls = context.poll_task_urls
     if urls is not None:

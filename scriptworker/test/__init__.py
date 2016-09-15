@@ -3,10 +3,12 @@
 """Test base files
 """
 import aiohttp
+import arrow
 import asyncio
 import json
 import mock
 import pytest
+import tempfile
 import taskcluster.exceptions
 
 
@@ -62,31 +64,22 @@ class SuccessfulQueue(object):
         'credentials': {'a': 'b'},
     }
 
-    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         return self.result
 
-    @pytest.mark.asyncio
     async def reclaimTask(self, *args, **kwargs):
-        if self.info is None:
-            self.info = ['reclaimTask', args, kwargs]
-            return self.reclaim_task
-        else:
-            raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
+        self.info = ['reclaimTask', args, kwargs]
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
-    @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):
         self.info = ['reportCompleted', args, kwargs]
 
-    @pytest.mark.asyncio
     async def reportFailed(self, *args, **kwargs):
         self.info = ['reportFailed', args, kwargs]
 
-    @pytest.mark.asyncio
     async def reportException(self, *args, **kwargs):
         self.info = ['reportException', args, kwargs]
 
-    @pytest.mark.asyncio
     async def createArtifact(self, *args, **kwargs):
         self.info = ['createArtifact', args, kwargs]
         return {
@@ -94,7 +87,6 @@ class SuccessfulQueue(object):
             "putUrl": "url",
         }
 
-    @pytest.mark.asyncio
     async def pollTaskUrls(self, *args, **kwargs):
         return
 
@@ -102,15 +94,12 @@ class SuccessfulQueue(object):
 class UnsuccessfulQueue(object):
     status = 409
 
-    @pytest.mark.asyncio
     async def claimTask(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterFailure("foo")
 
-    @pytest.mark.asyncio
     async def reportCompleted(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
-    @pytest.mark.asyncio
     async def reportFailed(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
@@ -171,3 +160,79 @@ def fake_session_500():
     session = aiohttp.ClientSession()
     session._request = _fake_request
     return session
+
+
+def integration_create_task_payload(config, task_group_id, scopes=None,
+                                    task_payload=None, task_extra=None):
+    """For various integration tests, we need to call createTask for test tasks.
+
+    This function creates a dummy payload for those createTask calls.
+    """
+    now = arrow.utcnow()
+    deadline = now.replace(hours=1)
+    expires = now.replace(days=3)
+    scopes = scopes or []
+    task_payload = task_payload or {}
+    task_extra = task_extra or {}
+    return {
+        'provisionerId': config['provisioner_id'],
+        'schedulerId': 'test-dummy-scheduler',
+        'workerType': config['worker_type'],
+        'taskGroupId': task_group_id,
+        'dependencies': [],
+        'requires': 'all-completed',
+        'routes': [],
+        'priority': 'normal',
+        'retries': 5,
+        'created': now.isoformat(),
+        'deadline': deadline.isoformat(),
+        'expires': expires.isoformat(),
+        'scopes': scopes,
+        'payload': task_payload,
+        'metadata': {
+            'name': 'ScriptWorker Integration Test',
+            'description': 'ScriptWorker Integration Test',
+            'owner': 'release+python@mozilla.com',
+            'source': 'https://github.com/mozilla-releng/scriptworker/'
+        },
+        'tags': {},
+        'extra': task_extra,
+    }
+
+
+@pytest.yield_fixture(scope='function')
+def event_loop():
+    """Create an instance of the default event loop for each test case.
+    From https://github.com/pytest-dev/pytest-asyncio/issues/29#issuecomment-226947296
+    """
+    policy = asyncio.get_event_loop_policy()
+    res = policy.new_event_loop()
+    asyncio.set_event_loop(res)
+    res._close = res.close
+    res.close = lambda: None
+
+    yield res
+
+    res._close()
+
+
+@pytest.yield_fixture(scope='function')
+def tmpdir():
+    """Yield a tmpdir that gets cleaned up afterwards.
+
+    This is because various pytest tmpdir implementations either don't return
+    a string, or don't clean up properly.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        yield tmp
+
+
+@pytest.yield_fixture(scope='function')
+def tmpdir2():
+    """Yield a tmpdir that gets cleaned up afterwards.
+
+    Sometimes I need 2 tmpdirs in a test.
+    a string, or don't clean up properly.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        yield tmp

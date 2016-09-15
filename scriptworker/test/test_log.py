@@ -9,19 +9,20 @@ import os
 import pytest
 from scriptworker.context import Context
 import scriptworker.log as swlog
-from . import read
+from . import event_loop, read, tmpdir
+
+assert event_loop, tmpdir  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope='function')
-def context(tmpdir_factory):
-    temp_dir = tmpdir_factory.mktemp("context", numbered=True)
+def context(tmpdir):
     context = Context()
     context.config = {
         "log_fmt": "%(message)s",
         "log_datefmt": "%H:%M:%S",
-        "log_dir": str(temp_dir),
-        "task_log_dir": os.path.join(str(temp_dir), "public", "logs"),
+        "log_dir": tmpdir,
+        "task_log_dir": os.path.join(tmpdir, "public", "logs"),
         "log_max_bytes": 100,
         "log_num_backups": 1,
         "verbose": True,
@@ -55,19 +56,20 @@ def test_get_log_fhs(context, text):
     assert read(error_file) == text + text
 
 
-@pytest.mark.asyncio
-async def test_read_stdout(context):
+def test_read_stdout(context, event_loop):
     cmd = r""">&2 echo "foo" && echo "bar" && exit 0"""
-    proc = await asyncio.create_subprocess_exec(
-        "bash", "-c", cmd,
-        stdout=PIPE, stderr=PIPE, stdin=None
+    proc = event_loop.run_until_complete(
+        asyncio.create_subprocess_exec(
+            "bash", "-c", cmd,
+            stdout=PIPE, stderr=PIPE, stdin=None
+        )
     )
     tasks = []
     with swlog.get_log_fhs(context) as (log_fh, error_fh):
         tasks.append(swlog.log_errors(proc.stderr, log_fh, error_fh))
         tasks.append(swlog.read_stdout(proc.stdout, log_fh))
-        await asyncio.wait(tasks)
-        await proc.wait()
+        event_loop.run_until_complete(asyncio.wait(tasks))
+        event_loop.run_until_complete(proc.wait())
     log_file, error_file = swlog.get_log_filenames(context)
     assert read(log_file) in ("foo\nbar\n", "bar\nfoo\n")
     assert read(error_file) == "foo\n"
