@@ -386,7 +386,48 @@ def test_sign_key_twice(context):
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
             contents = fh.read()
         fingerprint = sgpg.import_key(gpg, contents)[0]
+    # keys already sign themselves, so this is a second signature that should
+    # be noop.
     sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
+
+
+@pytest.mark.parametrize("exportable", (True, False))
+def test_sign_key_exportable(context, exportable):
+    gpg_home2 = os.path.join(context.config['gpg_home'], "two")
+    context.config['gpg_home'] = os.path.join(context.config['gpg_home'], "one")
+    gpg = sgpg.GPG(context)
+    gpg2 = sgpg.GPG(context, gpg_home=gpg_home2)
+    my_fingerprint = KEYS_AND_FINGERPRINTS[0][1]
+    my_keyid = KEYS_AND_FINGERPRINTS[0][0]
+    # import my keys
+    for suffix in (".sec", ".pub"):
+        with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
+            contents = fh.read()
+            sgpg.import_key(gpg, contents)
+    # create gpg.conf's
+    sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
+    sgpg.create_gpg_conf(gpg_home2, my_fingerprint=my_fingerprint)
+    sgpg.check_ownertrust(context)
+    sgpg.check_ownertrust(context, gpg_home=gpg_home2)
+    # generate a new key
+    fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    # sign it, exportable signature is `exportable`
+    sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
+    # export my privkey and import it in gpg_home2
+    priv_key = sgpg.export_key(gpg, my_fingerprint, private=True)
+    sgpg.import_key(gpg2, priv_key)
+    # export both pubkeys and import in gpg_home2
+    for fp in (my_fingerprint, fingerprint):
+        pub_key = sgpg.export_key(gpg, fp)
+        sgpg.import_key(gpg2, pub_key)
+    # check sigs on `fingerprint` key.  If exportable, we're good.  If not exportable,
+    # it'll throw
+    expected = {'sig_keyids': [my_keyid]}
+    if exportable:
+        sgpg.get_list_sigs_output(context, fingerprint, gpg_home=gpg_home2, expected=expected)
+    else:
+        with pytest.raises(ScriptWorkerGPGException):
+            sgpg.get_list_sigs_output(context, fingerprint, gpg_home=gpg_home2, expected=expected)
 
 
 @pytest.mark.parametrize("expect_status", (0, 1))
