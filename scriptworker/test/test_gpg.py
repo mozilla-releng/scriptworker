@@ -540,6 +540,11 @@ def test_consume_valid_keys_exception(context, keydir):
         sgpg.consume_valid_keys(context, keydir)
 
 
+def test_consume_valid_keys_suffixes(context):
+    # this shouldn't raise if ignore_suffixes works properly
+    sgpg.consume_valid_keys(context, PUBKEY_DIR, ignore_suffixes=('.json', '.asc', '.unsigned.pub'))
+
+
 def test_rebuild_gpg_home_flat(context):
     shutil.rmtree(context.config['gpg_home'])  # coverage
     sgpg.rebuild_gpg_home_flat(
