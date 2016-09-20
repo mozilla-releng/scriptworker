@@ -587,29 +587,40 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
 
 
 # git {{{1
-def test_latest_signed_git_commit(context, mocker):
+def test_verify_signed_git_commit(context, mocker):
 
     def fake_keyid_to_fingerprint(_, fingerprint):
         return fingerprint
 
-    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
-        output = "".join([
-            "unsigned_sha:\n",
-            "bad-signed_sha:fprint2\n",
-            "latest_sha:fingerprint\n",
-            "oldest_sha:fprint3\n",
-        ])
-        sha = sgpg.latest_signed_git_commit(None, output, ['fingerprint', 'fprint3'])
-        assert sha == 'latest_sha'
-
-
-def test_latest_signed_git_commit_exception(context):
-    gpg = sgpg.GPG(context)
     output = "".join([
-        "latest_sha:fingerprint\n",
-        "bad-signed_sha:fprint2\n",
-        "unsigned_sha:\n",
-        "oldest_sha:fprint3\n",
+        "'5ed7ae362d38eec0185037cac1bc5781b0e74067:gpg: ",
+        "Signature made Tue 20 Sep 2016 04:14:20 AM UTC\n",
+        "gpg:                using RSA key 0xFC829B7FFAA9AC38\n",
+        "gpg: Can't check signature: public key not found\n",
     ])
-    sha = sgpg.latest_signed_git_commit(gpg, output, ['fingerprint', 'fprint3'])
-    assert sha is None
+    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
+        sha = sgpg.verify_signed_git_commit(None, output, ['fingerprint', 'FC829B7FFAA9AC38'])
+        assert sha == '5ed7ae362d38eec0185037cac1bc5781b0e74067'
+
+
+@pytest.mark.parametrize("output", (
+    "latest_sha:\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
+    "latest_sha:gpg\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
+    "latest_sha:gpg using RSA key 0xBAD\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
+    "latest_sha:gpg\ngpg:\ngpg:lkjsdlfjsd\ngpg:lksjdflsdkj\n",
+    "".join([
+        "'5ed7ae362d38eec0185037cac1bc5781b0e74067:gpg: ",
+        "Signature made Tue 20 Sep 2016 04:14:20 AM UTC\n",
+        "gpg:                using RSA key 0xFC829B7FFAA9AC38\n",
+        "gpg: Can't check signature: public key not found\n",
+    ]),
+))
+def test_verify_signed_git_commit_exception(context, output):
+
+    def fake_keyid_to_fingerprint(_, fingerprint):
+        return fingerprint
+
+    gpg = sgpg.GPG(context)
+    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
+        with pytest.raises(ScriptWorkerGPGException):
+            sgpg.verify_signed_git_commit(gpg, output, ["good"])

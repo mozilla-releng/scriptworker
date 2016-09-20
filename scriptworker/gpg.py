@@ -17,6 +17,7 @@ import logging
 import os
 import pexpect
 import pprint
+import re
 import subprocess
 import tempfile
 
@@ -34,6 +35,7 @@ GPG_CONFIG_MAPPING = {
     'gpg_secret_keyring': 'secret_keyring',
     'gpg_use_agent': 'use_agent',
 }
+GIT_COMMIT_SIGNATURE_REGEX = re.compile(' using [A-Z]+ key( ID)? (0x)?(?P<keyid>[A-F0-9]*)$')
 
 
 # helper functions {{{1
@@ -1113,7 +1115,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def latest_signed_git_commit(gpg, output, trusted_fingerprints):
+def verify_signed_git_commit(gpg, output, trusted_fingerprints):
     """Return the latest git commit sha that's signed by a trusted fingerprint.
 
     There are a number of ways to do this.  `git show --show-signature` will
@@ -1125,13 +1127,28 @@ def latest_signed_git_commit(gpg, output, trusted_fingerprints):
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
-        output (str): the output of `git log --format='%H:%GK'`
+        output (str): the output of `git log --no-merges --format='%H:%GG'`
         trusted_fingerprints (list): the gpg fingerprints of valid keys.
+
+    Raises:
+        ScriptWorkerGPGException: on bad or missing signature
     """
-    for line in output.splitlines():
-        sha, keyid = line.split(':')
-        try:
-            if keyid and keyid_to_fingerprint(gpg, keyid) in trusted_fingerprints:
-                return sha
-        except ScriptWorkerGPGException:
-            pass
+    lines = output.splitlines()
+    parts = lines[0].replace("'", "").split(":")
+    sha = parts[0]
+    message = "{} is not signed!".format(sha)
+    if parts[1] == "gpg":
+        for line in lines:
+            line = line.replace("'", "")
+            if not line.startswith(sha) and not line.startswith("gpg:"):
+                break
+            m = GIT_COMMIT_SIGNATURE_REGEX.search(line)
+            if m:
+                keyid = m.groupdict()['keyid']
+                fingerprint = keyid_to_fingerprint(gpg, keyid)
+                if fingerprint in trusted_fingerprints:
+                    return sha
+                else:
+                    message = "{} is signed with invalid key! keyid {} fingerprint {}".format(sha, keyid, fingerprint)
+                    break
+    raise ScriptWorkerGPGException(message)
