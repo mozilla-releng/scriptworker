@@ -48,10 +48,6 @@ DEFAULT_CONFIG = frozendict({
     "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_config_schema.json"),
     "cot_config_path": os.path.join(os.getcwd(), "cot_config.json"),
 
-    # The git_key_repo contains the gpg public keys for cot signature validation.
-    "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
-    "git_key_repo_fingerprints": (),
-
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
     # A list of additional gpg cmdline options

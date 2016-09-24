@@ -2,7 +2,14 @@
   "title": "Chain of Trust Schema v1",
   "type": "object",
   "properties": {
-      "foo": {"type": "string"}
+    "git_key_repo_url": {"type": "string"},
+    "git_key_repo_fingerprints": {
+      "type": "array",
+      "items": {
+         "type": "string"
+       },
+       "uniqueItems": true
+    }
   },
-  "required": ["foo"]
+  "required": ["git_key_repo_url", "git_key_repo_fingerprints"]
 }

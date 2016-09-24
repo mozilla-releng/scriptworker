@@ -24,10 +24,6 @@
     "verify_chain_of_trust": false,
     "sign_chain_of_trust": false,
     "gpg_path": null,
-    "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
-    "git_key_repo_fingerprints": [
-        "these_are_valid_fingerprints_for_commit_signing"
-    ],
 
     "credentials": {
         "clientId": "...",

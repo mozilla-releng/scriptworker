@@ -1175,7 +1175,7 @@ async def update_signed_git_repo(context, revision='master',
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on `git pull` failure.
     """
-    path = context.config['git_key_repo_dir']
+    path = context.cot_config['git_key_repo_dir']
     proc = await exec_function(
         "git", ["pull", revision], cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
@@ -1199,7 +1199,9 @@ async def update_signed_git_repo(context, revision='master',
             output += line.decode('utf-8')
         else:
             break
-    verify_signed_git_commit(GPG(context), output, context.config['git_key_repo_fingerprints'])
+    verify_signed_git_commit(
+        GPG(context), output, context.cot_config['git_key_repo_fingerprints']
+    )
 
 
 async def build_gpg_homedirs_from_repo(context, basedir=None):
