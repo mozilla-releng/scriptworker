@@ -8,7 +8,8 @@ from copy import deepcopy
 import mock
 import os
 import pytest
-from scriptworker.config import DEFAULT_CONFIG, create_config
+from scriptworker.config import create_config
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
@@ -23,7 +24,7 @@ assert successful_queue, event_loop  # silence flake8
 @pytest.fixture(scope='function')
 def context(tmpdir):
     context = Context()
-    context.config = deepcopy(DEFAULT_CONFIG)
+    context.config = dict(deepcopy(DEFAULT_CONFIG))
     context.config['log_dir'] = os.path.join(tmpdir, "log")
     context.config['work_dir'] = os.path.join(tmpdir, "work")
     context.config['artifact_dir'] = os.path.join(tmpdir, "artifact")

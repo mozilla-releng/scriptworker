@@ -7,9 +7,8 @@ import os
 import re
 from urllib.parse import urlparse, unquote
 
-from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG, STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
-from scriptworker.task import STATUSES
 
 
 def get_task(config):

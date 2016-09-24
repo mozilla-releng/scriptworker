@@ -44,7 +44,7 @@ def context(tmpdir):
     context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
-        'task': {'task_defn': True},
+        'task': {'dependencies': ['dependency1', 'dependency2'], },
         'runId': 'runId',
     }
     return context
@@ -58,16 +58,13 @@ mimetypes = {
 }
 
 
-# tests {{{1
-def test_temp_queue(context, mocker):
-    mocker.patch('taskcluster.async.Queue')
-    context.session = {'c': 'd'}
-    context.temp_credentials = {'a': 'b'}
-    assert taskcluster.async.Queue.called_once_with({
-        'credentials': context.temp_credentials,
-    }, session=context.session)
+# worst_level {{{1
+@pytest.mark.parametrize("one,two,expected", ((1, 2, 2), (4, 2, 4)))
+def test_worst_level(one, two, expected):
+    assert task.worst_level(one, two) == expected
 
 
+# get_expiration_arrow {{{1
 def test_expiration_arrow(context):
     now = arrow.utcnow()
 
@@ -79,12 +76,14 @@ def test_expiration_arrow(context):
         assert diff == 3600
 
 
+# guess_content_type {{{1
 @pytest.mark.parametrize("mimetypes", [(k, v) for k, v in sorted(mimetypes.items())])
 def test_guess_content_type(mimetypes):
     path, mimetype = mimetypes
     assert task.guess_content_type(path) == mimetype
 
 
+# run_task {{{1
 def test_run_task(context, event_loop):
     status = event_loop.run_until_complete(
         task.run_task(context)
@@ -95,6 +94,7 @@ def test_run_task(context, event_loop):
     assert status == 1
 
 
+# report* {{{1
 def test_reportCompleted(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
@@ -119,6 +119,7 @@ def test_reportException(context, successful_queue, event_loop):
     assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
 
+# complete_task {{{1
 def test_complete_task_409(context, unsuccessful_queue, event_loop):
     context.temp_queue = unsuccessful_queue
     event_loop.run_until_complete(
@@ -135,6 +136,7 @@ def test_complete_task_non_409(context, unsuccessful_queue, event_loop):
         )
 
 
+# reclaim_task {{{1
 def test_reclaim_task(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
@@ -158,6 +160,7 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
         )
 
 
+# upload_artifacts {{{1
 def test_upload_artifacts(context, event_loop):
     args = []
     os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
@@ -179,6 +182,7 @@ def test_upload_artifacts(context, event_loop):
     assert sorted(args) == sorted(paths)
 
 
+# create_artifact {{{1
 def test_create_artifact(context, fake_session, successful_queue, event_loop):
     path = os.path.join(context.config['artifact_dir'], "one.txt")
     os.makedirs(context.config['artifact_dir'])
@@ -214,6 +218,7 @@ def test_create_artifact_retry(context, fake_session_500, successful_queue,
     context.session.close()
 
 
+# max_timeout {{{1
 def test_max_timeout_noop(context):
     with mock.patch.object(task.log, 'debug') as p:
         task.max_timeout(context, "invalid_proc", 0)
@@ -239,3 +244,33 @@ def test_max_timeout(context, event_loop):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(files.keys()) == 6
+
+
+# download_artifacts {{{1
+def test_download_artifacts(context, event_loop):
+    urls = []
+    paths = []
+
+    expected_urls = [
+        "https://queue.taskcluster.net/v1/task/dependency1/artifacts/foo/bar",
+        "https://queue.taskcluster.net/v1/task/dependency2/artifacts/baz",
+    ]
+    expected_paths = [
+        os.path.join(context.config['work_dir'], "foo", "bar"),
+        os.path.join(context.config['work_dir'], "baz"),
+    ]
+    expected_result = [
+        "foo/bar", "baz"
+    ]
+
+    async def foo(_, url, path, **kwargs):
+        urls.append(url)
+        paths.append(path)
+
+    result = event_loop.run_until_complete(
+        task.download_artifacts(context, expected_urls, download_func=foo)
+    )
+
+    assert sorted(result) == sorted(expected_result)
+    assert sorted(paths) == sorted(expected_paths)
+    assert sorted(urls) == sorted(expected_urls)

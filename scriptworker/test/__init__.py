@@ -116,6 +116,8 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self.status = status
         self.headers = {'content-type': 'application/json'}
         self._loop = mock.MagicMock()
+        self.content = self
+        self.resp = [b"asdf", b"asdf"]
 
     @asyncio.coroutine
     def text(self, *args, **kwargs):
@@ -128,6 +130,10 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
     @asyncio.coroutine
     def release(self):
         return
+
+    async def read(self, *args):
+        if self.resp:
+            return self.resp.pop(0)
 
 
 @pytest.fixture(scope='function')

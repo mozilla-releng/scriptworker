@@ -5,7 +5,7 @@
 import logging
 import os
 import pytest
-from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.cot as cot

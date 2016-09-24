@@ -9,6 +9,7 @@ import mock
 import os
 import pytest
 import scriptworker.config as config
+from scriptworker.constants import DEFAULT_CONFIG
 
 
 # constants helpers and fixtures {{{1
@@ -35,7 +36,7 @@ ENV_CREDS_PARAMS = ((
 
 @pytest.fixture(scope='function')
 def t_config():
-    return deepcopy(config.DEFAULT_CONFIG)
+    return dict(deepcopy(DEFAULT_CONFIG))
 
 
 @pytest.fixture(scope='function')
@@ -49,9 +50,9 @@ def t_env():
 
 # tests {{{1
 def test_nontext_to_unicode():
-    d = {'a': [1, 2, 3]}
-    config.list_to_tuple(d)
-    assert d == {'a': (1, 2, 3)}
+    d = {'a': [1, 2, 3], 'b': {'c': 'd'}}
+    config.freeze_values(d)
+    assert d == {'a': (1, 2, 3), 'b': frozendict({'c': 'd'})}
 
 
 def test_check_config_invalid_key(t_config):
