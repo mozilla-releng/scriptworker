@@ -28,6 +28,7 @@ def context(tmpdir):
     context.config['log_dir'] = os.path.join(tmpdir, "log")
     context.config['work_dir'] = os.path.join(tmpdir, "work")
     context.config['artifact_dir'] = os.path.join(tmpdir, "artifact")
+    context.config['git_key_repo_dir'] = os.path.join(tmpdir, "gpg_keys")
     context.config['poll_interval'] = .1
     context.config['credential_update_interval'] = .1
     context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp

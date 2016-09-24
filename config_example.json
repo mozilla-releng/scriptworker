@@ -8,6 +8,8 @@
     "log_dir": "/tmp/log",
     "artifact_dir": "/tmp/artifact",
     "task_log_dir": "/tmp/artifact/public/logs",
+    "git_key_repo_dir": "/tmp/key_repo",
+
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 1200,
     "task_script": ["bash", "-c", "echo foo && sleep 19 && exit 1"],
@@ -15,8 +17,14 @@
     "valid_artifact_schemes": ["https"],
     "valid_artifact_netlocs": ["queue.taskcluster.net"],
     "valid_artifact_path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"],
+
     "verify_chain_of_trust": false,
     "sign_chain_of_trust": false,
+    "gpg_path": null,
+    "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
+    "git_key_repo_fingerprints": [
+        "these_are_valid_fingerprints_for_commit_signing"
+    ],
 
     "credentials": {
         "clientId": "...",

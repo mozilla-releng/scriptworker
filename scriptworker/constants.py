@@ -43,6 +43,11 @@ DEFAULT_CONFIG = frozendict({
     "sign_chain_of_trust": False,  # TODO True
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
+
+    # The git_key_repo contains the gpg public keys for cot signature validation.
+    "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
+    "git_key_repo_fingerprints": [],
+
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
 
@@ -55,7 +60,7 @@ DEFAULT_CONFIG = frozendict({
     "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
-    # Encoding to use.  Defaults to latin-1
+    # Encoding to use.  Defaults to utf-8
     "gpg_encoding": None,
 
     # Worker log settings
@@ -69,6 +74,7 @@ DEFAULT_CONFIG = frozendict({
     "log_dir": "...",
     "artifact_dir": "...",
     "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
+    "git_key_repo_dir": "...",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
