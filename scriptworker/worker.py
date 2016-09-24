@@ -11,9 +11,8 @@ from scriptworker.context import Context
 from scriptworker.cot import generate_cot
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.log import update_logging_config
-from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts
+from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
-from scriptworker.client import worst_level
 
 log = logging.getLogger(__name__)
 

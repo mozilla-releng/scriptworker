@@ -11,19 +11,6 @@ from scriptworker.constants import DEFAULT_CONFIG, STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
 
 
-def worst_level(level1, level2):
-    """Given two int levels, return the larger.
-
-    Args:
-        level1 (int): exit code 1.
-        level2 (int): exit code 2.
-
-    Returns:
-        int: the larger of the two levels.
-    """
-    return level1 if level1 > level2 else level2
-
-
 def get_task(config):
     """Read the task.json from work_dir.
 
