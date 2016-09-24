@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Added
+- added `DownloadError` exception for `download_file`
+- added `scriptworker.task.download_artifacts`
+- added `scriptworker.util.download_file`
+
+### Changed
+- `DEFAULT_CONFIG`, `STATUSES`, and `REVERSED_STATUSES` have moved to `scriptworker.constants`.
+- `list_to_tuple` has been renamed `freeze_values`, and also converts dict values to frozendicts.
 
 ## [0.6.0] - 2016-09-15
 ### Added
