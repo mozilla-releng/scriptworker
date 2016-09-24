@@ -9,7 +9,7 @@
     "artifact_dir": "/tmp/artifact",
     "task_log_dir": "/tmp/artifact/public/logs",
     "git_key_repo_dir": "/tmp/key_repo",
-    "base_ggp_home_dir": "/tmp/gpg",
+    "base_gpg_home_dir": "/tmp/gpg",
 
     "my_email": "scriptworker@example.com",
 

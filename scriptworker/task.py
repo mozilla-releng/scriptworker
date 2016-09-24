@@ -20,7 +20,7 @@ import taskcluster.exceptions
 from scriptworker.client import validate_artifact_url
 from scriptworker.constants import REVERSED_STATUSES
 from scriptworker.exceptions import ScriptWorkerRetryException
-from scriptworker.log import get_log_fhs, log_errors, read_stdout
+from scriptworker.log import get_log_fhs, pipe_to_log
 from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async, download_file
 
 log = logging.getLogger(__name__)
@@ -63,8 +63,8 @@ async def run_task(context):
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):
-        tasks.append(log_errors(context.proc.stderr, log_fh, error_fh))
-        tasks.append(read_stdout(context.proc.stdout, log_fh))
+        tasks.append(pipe_to_log(context.proc.stderr, filehandles=[log_fh, error_fh]))
+        tasks.append(pipe_to_log(context.proc.stdout, filehandles=[log_fh]))
         await asyncio.wait(tasks)
         exitcode = await context.proc.wait()
         status_line = "exit code: {}".format(exitcode)

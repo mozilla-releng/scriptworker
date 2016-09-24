@@ -56,7 +56,7 @@ def test_get_log_fhs(context, text):
     assert read(error_file) == text + text
 
 
-def test_read_stdout(context, event_loop):
+def test_pipe_to_log(context, event_loop):
     cmd = r""">&2 echo "foo" && echo "bar" && exit 0"""
     proc = event_loop.run_until_complete(
         asyncio.create_subprocess_exec(
@@ -66,8 +66,8 @@ def test_read_stdout(context, event_loop):
     )
     tasks = []
     with swlog.get_log_fhs(context) as (log_fh, error_fh):
-        tasks.append(swlog.log_errors(proc.stderr, log_fh, error_fh))
-        tasks.append(swlog.read_stdout(proc.stdout, log_fh))
+        tasks.append(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh, error_fh]))
+        tasks.append(swlog.pipe_to_log(proc.stdout, filehandles=[log_fh]))
         event_loop.run_until_complete(asyncio.wait(tasks))
         event_loop.run_until_complete(proc.wait())
     log_file, error_file = swlog.get_log_filenames(context)

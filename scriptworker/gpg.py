@@ -12,6 +12,8 @@ Attributes:
         the python-gnupg names.
 """
 import arrow
+import asyncio
+from asyncio.subprocess import DEVNULL, PIPE, STDOUT
 import gnupg
 import logging
 import os
@@ -21,7 +23,8 @@ import re
 import subprocess
 import tempfile
 
-from scriptworker.exceptions import ScriptWorkerGPGException
+from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
+from scriptworker.log import pipe_to_log
 from scriptworker.utils import filepaths_in_dir, makedirs, rm
 
 log = logging.getLogger(__name__)
@@ -1115,8 +1118,8 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def verify_signed_git_commit(gpg, output, trusted_fingerprints):
-    """Return the latest git commit sha that's signed by a trusted fingerprint.
+def verify_signed_git_commit(gpg, output, valid_fingerprints):
+    """Return the latest git commit sha that's signed by a valid fingerprint.
 
     There are a number of ways to do this.  `git show --show-signature` will
     show the output of `gpg --verify`, assuming we have the key already marked
@@ -1128,7 +1131,7 @@ def verify_signed_git_commit(gpg, output, trusted_fingerprints):
     Args:
         gpg (gnupg.GPG): the GPG instance.
         output (str): the output of `git log --no-merges --format='%H:%GG'`
-        trusted_fingerprints (list): the gpg fingerprints of valid keys.
+        valid_fingerprints (list): the gpg fingerprints of valid keys.
 
     Raises:
         ScriptWorkerGPGException: on bad or missing signature
@@ -1146,9 +1149,58 @@ def verify_signed_git_commit(gpg, output, trusted_fingerprints):
             if m:
                 keyid = m.groupdict()['keyid']
                 fingerprint = keyid_to_fingerprint(gpg, keyid)
-                if fingerprint in trusted_fingerprints:
+                if fingerprint in valid_fingerprints:
                     return sha
                 else:
                     message = "{} is signed with invalid key! keyid {} fingerprint {}".format(sha, keyid, fingerprint)
                     break
     raise ScriptWorkerGPGException(message)
+
+
+async def update_signed_git_repo(context, valid_fingerprints, path=None,
+                                 repo=None, revision='master'):
+    """Update a git repo with signed git commits, and verify the signature.
+
+    This function updates the repo, then calls `verify_signed_git_commit` to
+    make sure the latest commit is signed with a valid key.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        valid_fingerprints (list): the gpg fingerprints of keys that are
+            valid for signing this git repo's commits.
+        path (str, optional): the path to the local clone.  If None, look at
+            `context.config['git_key_repo_dir']`.  Defaults to None.
+        repo (str, optional): the url to the git repo.  If None, look at
+            `context.config['git_key_repo_url']`.  Defaults to None.
+        revision (str, optional): the revision to update to.  Defaults to 'master'.
+
+    Raises:
+        ScriptWorkerGPGException: on signature validation failure.
+        ScriptWorkerRetryException: on `git pull` failure.
+    """
+    path = path or context.config['git_key_repo_dir']
+    repo = repo or context.config['git_key_repo_url']
+    proc = await asyncio.create_subprocess_exec(
+        "git", ["pull", revision], cwd=path,
+        stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
+        preexec_fn=lambda: os.setsid()
+    )
+    await pipe_to_log(proc.stdout)
+    exitcode = await proc.wait()
+    if exitcode:
+        raise ScriptWorkerRetryException(
+            "Can't update repo at {}!".format(path)
+        )
+    proc = await asyncio.create_subprocess_exec(
+        "git", ["log", "--no-merges", "--format='%H:%GG'"], cwd=path,
+        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
+        preexec_fn=lambda: os.setsid()
+    )
+    output = ""
+    while True:
+        line = await proc.stdout.readline()
+        if line:
+            output += line.decode('utf-8')
+        else:
+            break
+    verify_signed_git_commit(GPG(context), output, valid_fingerprints)
