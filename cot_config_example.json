@@ -2,6 +2,19 @@
     "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
     "git_key_repo_fingerprints": [
         "these_are_valid_fingerprints_for_commit_signing"
-    ]
-
+    ],
+    "gpg_homedirs": {
+        "docker-worker": {
+            "type": "flat",
+            "ignore_suffixes": [".md"],
+        },
+        "generic-worker": {
+            "type": "flat",
+            "ignore_suffixes": [".md"],
+        },
+        "scriptworker": {
+            "type": "signed",
+            "ignore_suffixes": [".md"],
+        }
+    }
 }
