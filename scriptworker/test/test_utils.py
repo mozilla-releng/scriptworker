@@ -8,7 +8,7 @@ import os
 import pytest
 import tempfile
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
+from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
 from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
     touch
@@ -77,7 +77,7 @@ def context(tmpdir):
     return context
 
 
-# tests {{{1
+# to_unicode {{{1
 @pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
 def test_text_to_unicode(text):
     assert text == utils.to_unicode(text)
@@ -89,10 +89,12 @@ def test_nontext_to_unicode(non_text):
     assert non_text == utils.to_unicode(non_text)
 
 
+# datestring_to_timestamp {{{1
 def test_datestring_to_timestamp(datestring):
     assert utils.datestring_to_timestamp(datestring) == 1460778384
 
 
+# cleanup {{{1
 def test_cleanup(context):
     for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
@@ -106,6 +108,7 @@ def test_cleanup(context):
         assert not os.path.exists(os.path.join(path, "tempfile"))
 
 
+# request and retry_request {{{1
 def test_request(context, fake_session, event_loop):
     context.session = fake_session
     result = event_loop.run_until_complete(
@@ -160,6 +163,7 @@ def test_retry_request(context, fake_session, event_loop):
     context.session.close()
 
 
+# retry_async {{{1
 def test_retry_async_fail_first(event_loop):
     global retry_count
     retry_count['fail_first'] = 0
@@ -182,7 +186,8 @@ def test_retry_async_always_fail(event_loop):
     assert retry_count['always_fail'] == 5
 
 
-def test_temp_creds():
+# create_temp_creds {{{1
+def test_create_temp_creds():
     with mock.patch.object(utils, 'createTemporaryCredentials') as p:
         p.return_value = {
             "one": b"one",
@@ -196,6 +201,7 @@ def test_temp_creds():
         assert creds == {"one": "one", "two": "two"}
 
 
+# raise_future_exceptions {{{1
 def test_raise_future_exceptions(event_loop):
 
     async def one():
@@ -217,6 +223,7 @@ def test_raise_future_exceptions_noop(event_loop):
     )
 
 
+# filepaths_in_dir {{{1
 def test_filepaths_in_dir(tmpdir):
     filepaths = sorted([
         "asdfasdf/lwekrjweoi/lsldkfjs",
@@ -231,12 +238,14 @@ def test_filepaths_in_dir(tmpdir):
     assert sorted(utils.filepaths_in_dir(tmpdir)) == filepaths
 
 
+# get_hash {{{1
 def test_get_hash():
     path = os.path.join(os.path.dirname(__file__), "data", "azure.xml")
     sha = utils.get_hash(path, hash_alg="sha256")
     assert sha == "584818280d7908da33c810a25ffb838b1e7cec1547abd50c859521229942c5a5"
 
 
+# makedirs {{{1
 def test_makedirs_empty():
     utils.makedirs(None)
 
@@ -252,6 +261,7 @@ def test_makedirs_existing_dir():
     utils.makedirs(path)
 
 
+# rm {{{1
 def test_rm_empty():
     utils.rm(None)
 
@@ -268,3 +278,22 @@ def test_rm_dir():
     assert os.path.exists(tmp)
     utils.rm(tmp)
     assert not os.path.exists(tmp)
+
+
+# download_file {{{1
+def test_download_file(context, fake_session, tmpdir, event_loop):
+    path = os.path.join(tmpdir, "foo")
+    event_loop.run_until_complete(
+        utils.download_file(context, "url", path, session=fake_session)
+    )
+    with open(path, "r") as fh:
+        contents = fh.read()
+    assert contents == "asdfasdf"
+
+
+def test_download_file_exception(context, fake_session_500, tmpdir, event_loop):
+    path = os.path.join(tmpdir, "foo")
+    with pytest.raises(DownloadError):
+        event_loop.run_until_complete(
+            utils.download_file(context, "url", path, session=fake_session_500)
+        )
