@@ -318,8 +318,9 @@ def max_timeout(context, proc, timeout):
     ]))
 
 
-async def download_artifacts(context, file_urls, session=None, download_func=download_file):
-    work_dir = context.config['work_dir']
+async def download_artifacts(context, file_urls, parent_dir=None, session=None,
+                             download_func=download_file):
+    parent_dir = parent_dir or context.config['work_dir']
     session = session or context.session
 
     tasks = []
@@ -328,7 +329,7 @@ async def download_artifacts(context, file_urls, session=None, download_func=dow
     download_config.setdefault('valid_artifact_task_ids', context.task['dependencies'])
     for file_url in file_urls:
         rel_path = validate_artifact_url(download_config, file_url)
-        abs_file_path = os.path.join(work_dir, rel_path)
+        abs_file_path = os.path.join(parent_dir, rel_path)
         files.append(rel_path)
         tasks.append(
             asyncio.ensure_future(
