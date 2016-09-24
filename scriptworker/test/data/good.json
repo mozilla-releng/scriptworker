@@ -7,5 +7,6 @@
     "log_dir": ".test/log",
     "artifact_dir": ".test/artifact",
     "task_log_dir": ".test/artifact/public/logs",
-    "git_key_repo_dir": ".test/gpg_keys"
+    "git_key_repo_dir": ".test/gpg_keys",
+    "base_gpg_home_dir": ".test/gpg"
 }
