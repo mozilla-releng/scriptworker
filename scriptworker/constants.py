@@ -11,6 +11,7 @@ Attributes:
 from frozendict import frozendict
 import os
 
+# DEFAULT_CONFIG {{{1
 DEFAULT_CONFIG = frozendict({
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
@@ -40,10 +41,12 @@ DEFAULT_CONFIG = frozendict({
 
     # chain of trust settings
     "verify_chain_of_trust": False,  # TODO True
-    "sign_chain_of_trust": False,  # TODO True
+    "sign_chain_of_trust": True,
     "my_email": "scriptworker@example.com",
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
+    "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_config_schema.json"),
+    "cot_config_path": os.path.join(os.getcwd(), "cot_config.json"),
 
     # The git_key_repo contains the gpg public keys for cot signature validation.
     "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
@@ -51,7 +54,6 @@ DEFAULT_CONFIG = frozendict({
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
-
     # A list of additional gpg cmdline options
     "gpg_options": None,
     # The path to the gpg executable.
@@ -84,6 +86,7 @@ DEFAULT_CONFIG = frozendict({
     "verbose": True,
 })
 
+# STATUSES and REVERSED_STATUSES {{{1
 STATUSES = {
     'success': 0,
     'failure': 1,

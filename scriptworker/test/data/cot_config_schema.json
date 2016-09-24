@@ -1,0 +1,8 @@
+{
+  "title": "Chain of Trust Schema v1",
+  "type": "object",
+  "properties": {
+      "foo": {"type": "string"}
+  },
+  "required": ["foo"]
+}

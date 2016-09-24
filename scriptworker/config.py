@@ -14,6 +14,7 @@ import os
 import sys
 
 from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.client import validate_json_schema
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ CREDS_FILES = (
 )
 
 
+# freeze_values {{{1
 def freeze_values(dictionary):
     """Convert a dictionary's list values into tuples, and dicts into frozendicts.
 
@@ -38,6 +40,7 @@ def freeze_values(dictionary):
             dictionary[key] = frozendict(value)
 
 
+# read_worker_creds {{{1
 def read_worker_creds(key="credentials"):
     """Get credentials from CREDS_FILES or the environment.
 
@@ -71,6 +74,7 @@ def read_worker_creds(key="credentials"):
             return credentials
 
 
+# check_config {{{1
 def check_config(config, path):
     """Validate the config against DEFAULT_CONFIG.
 
@@ -102,30 +106,32 @@ def check_config(config, path):
     return messages
 
 
-def create_config(path="config.json"):
+# create_config {{{1
+def create_config(config_path="scriptworker.json"):
     """Create a config from DEFAULT_CONFIG, arguments, and config file.
 
     Then validate it and freeze it.
 
     Args:
-        path (str, optional): the path to the config file.  Defaults to "config.json"
+        config_path (str, optional): the path to the config file.  Defaults to
+            "config.json"
 
     Returns:
-        tuple: (config dict, credentials dict)
+        tuple: (config frozendict, credentials dict)
     """
-    if not os.path.exists(path):
-        print("{} doesn't exist! Exiting create_config()...".format(path),
+    if not os.path.exists(config_path):
+        print("{} doesn't exist! Exiting create_config()...".format(config_path),
               file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(config_path, "r", encoding="utf-8") as fh:
         secrets = json.load(fh)
     config = dict(deepcopy(DEFAULT_CONFIG))
     if not secrets.get("credentials"):
         secrets['credentials'] = read_worker_creds()
     freeze_values(secrets)
     config.update(secrets)
-    messages = check_config(config, path)
+    messages = check_config(config, config_path)
     if messages:
         print('\n'.join(messages), file=sys.stderr)
         print("Exiting...", file=sys.stderr)
@@ -134,3 +140,31 @@ def create_config(path="config.json"):
     del(config['credentials'])
     config = frozendict(config)
     return config, credentials
+
+
+# create_cot_config {{{1
+def create_cot_config(context):
+    """Create a Chain of Trust config from context.config['cot_config'] file.
+
+    Then validate it via the schema file, and freeze it.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        frozendict: the Chain of Trust config.
+    """
+    cot_config_path = context.config['cot_config_path']
+    if not os.path.exists(cot_config_path):
+        print("{} doesn't exist! Exiting create_cot_config()...".format(cot_config_path),
+              file=sys.stderr)
+        print("Exiting...", file=sys.stderr)
+        sys.exit(1)
+    with open(cot_config_path, "r", encoding="utf-8") as fh:
+        cot_config = json.load(fh)
+    freeze_values(cot_config)
+    with open(context.config['cot_config_schema_path'], "r") as fh:
+        schema = json.load(fh)
+    cot_config = frozendict(cot_config)
+    validate_json_schema(cot_config, schema, name="cot_config")
+    return cot_config

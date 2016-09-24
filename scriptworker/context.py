@@ -42,6 +42,7 @@ class Context(object):
             containing the task-specific temporary credentials.
     """
     config = None
+    cot_config = None
     credentials_timestamp = None
     poll_task_urls = None
     proc = None

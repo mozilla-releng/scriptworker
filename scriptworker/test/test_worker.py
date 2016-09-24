@@ -5,15 +5,17 @@
 import arrow
 import asyncio
 from copy import deepcopy
+import json
 import mock
 import os
 import pytest
+import tempfile
+import sys
 from scriptworker.config import create_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-import sys
 from . import event_loop, successful_queue, tmpdir
 
 assert tmpdir  # silence flake8
@@ -61,7 +63,12 @@ def test_main_bad_json(event_loop):
 
 def test_main(mocker, event_loop):
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
+    cot_path = os.path.join(os.path.dirname(__file__), "data", "cot_config.json")
+    cot_schema_path = os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json")
     config, creds = create_config(path)
+    config = dict(config)
+    config['cot_config_path'] = cot_path
+    config['cot_config_schema_path'] = cot_schema_path
     loop = mock.MagicMock()
     exceptions = [RuntimeError, ScriptWorkerException]
 
@@ -75,12 +82,18 @@ def test_main(mocker, event_loop):
 
     loop.run_forever = run_forever
 
-    mocker.patch.object(sys, 'argv', new=[__file__, path])
-    mocker.patch.object(worker, 'async_main', new=foo)
-    with mock.patch.object(asyncio, 'get_event_loop') as p:
-        p.return_value = loop
-        with pytest.raises(ScriptWorkerException):
-            worker.main()
+    _, tmp = tempfile.mkstemp()
+    with open(tmp, "w") as fh:
+        json.dump(config, fh)
+    try:
+        mocker.patch.object(sys, 'argv', new=[__file__, tmp])
+        mocker.patch.object(worker, 'async_main', new=foo)
+        with mock.patch.object(asyncio, 'get_event_loop') as p:
+            p.return_value = loop
+            with pytest.raises(ScriptWorkerException):
+                worker.main()
+    finally:
+        os.remove(tmp)
 
 
 def test_async_main(context, event_loop):

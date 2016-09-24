@@ -23,9 +23,10 @@ import re
 import subprocess
 import tempfile
 
-from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
+    ScriptWorkerRetryException
 from scriptworker.log import pipe_to_log
-from scriptworker.utils import filepaths_in_dir, makedirs, rm
+from scriptworker.utils import filepaths_in_dir, makedirs, retry_async, rm
 
 log = logging.getLogger(__name__)
 
@@ -1157,8 +1158,8 @@ def verify_signed_git_commit(gpg, output, valid_fingerprints):
     raise ScriptWorkerGPGException(message)
 
 
-async def update_signed_git_repo(context, valid_fingerprints, path=None,
-                                 repo=None, revision='master'):
+async def update_signed_git_repo(context, revision='master',
+                                 exec_function=asyncio.create_subprocess_exec):
     """Update a git repo with signed git commits, and verify the signature.
 
     This function updates the repo, then calls `verify_signed_git_commit` to
@@ -1166,21 +1167,16 @@ async def update_signed_git_repo(context, valid_fingerprints, path=None,
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        valid_fingerprints (list): the gpg fingerprints of keys that are
-            valid for signing this git repo's commits.
-        path (str, optional): the path to the local clone.  If None, look at
-            `context.config['git_key_repo_dir']`.  Defaults to None.
-        repo (str, optional): the url to the git repo.  If None, look at
-            `context.config['git_key_repo_url']`.  Defaults to None.
         revision (str, optional): the revision to update to.  Defaults to 'master'.
+        exec_function (function, optional): the function to call git with.
+            defaults to `asyncio.create_subprocess_exec`
 
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on `git pull` failure.
     """
-    path = path or context.config['git_key_repo_dir']
-    repo = repo or context.config['git_key_repo_url']
-    proc = await asyncio.create_subprocess_exec(
+    path = context.config['git_key_repo_dir']
+    proc = await exec_function(
         "git", ["pull", revision], cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
         preexec_fn=lambda: os.setsid()
@@ -1191,7 +1187,7 @@ async def update_signed_git_repo(context, valid_fingerprints, path=None,
         raise ScriptWorkerRetryException(
             "Can't update repo at {}!".format(path)
         )
-    proc = await asyncio.create_subprocess_exec(
+    proc = await exec_function(
         "git", ["log", "--no-merges", "--format='%H:%GG'"], cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
         preexec_fn=lambda: os.setsid()
@@ -1203,4 +1199,39 @@ async def update_signed_git_repo(context, valid_fingerprints, path=None,
             output += line.decode('utf-8')
         else:
             break
-    verify_signed_git_commit(GPG(context), output, valid_fingerprints)
+    verify_signed_git_commit(GPG(context), output, context.config['git_key_repo_fingerprints'])
+
+
+async def build_gpg_homedirs_from_repo(context, basedir=None):
+    """Build gpg homedirs in `basedir`, from the context-defined git repo.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        basedir (str, optional): the path to the base directory to create the
+            gpg homedirs in.  This directory will be wiped if it exists.
+            If None, use `context.config['base_gpg_home_dir']`.  Defaults to None.
+
+    Returns:
+        str: on success.
+        None: on failure.
+    """
+    if not context.cot_config:
+        log.info("Skipping build_gpg_homedirs_from_repo because context.cot_config isn't set!")
+        return
+    basedir = basedir or context.config['base_gpg_home_dir']
+    repo_path = context.config['git_key_repo_dir']
+    try:
+        await retry_async(
+            update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+            args=(context, )
+        )
+    except ScriptWorkerException as exc:
+        # We don't want these exceptions to be fatal; this will happen in the background
+        # of scriptworker tasks
+        log.error("build_gpg_homedirs_from_repo error updating git repo!\n{}".format(str(exc)))
+        return
+    rm(basedir)
+    makedirs(basedir)
+    # TODO populate context.cot_config
+    assert(repo_path)
+    return basedir

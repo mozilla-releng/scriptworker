@@ -6,7 +6,7 @@ import logging
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import create_config, read_worker_creds
+from scriptworker.config import create_config, create_cot_config, read_worker_creds
 from scriptworker.context import Context
 from scriptworker.cot import generate_cot
 from scriptworker.exceptions import ScriptWorkerException
@@ -95,9 +95,10 @@ def main():
         if len(sys.argv) > 2:
             print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
             sys.exit(1)
-        kwargs['path'] = sys.argv[1]
+        kwargs['config_path'] = sys.argv[1]
     context.config, credentials = create_config(**kwargs)
     update_logging_config(context)
+    context.cot_config, create_cot_config(context)
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()

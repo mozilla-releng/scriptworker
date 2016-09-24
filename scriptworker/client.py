@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 """Scripts running in scriptworker will use functions in this file.
+
+This module should be largely standalone.  This should only depend on
+scriptworker.exceptions and scriptworker.constants, or other standalone
+modules, to avoid circular imports.
 """
 import json
 import jsonschema
