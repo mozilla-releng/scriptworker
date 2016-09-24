@@ -9,7 +9,7 @@ import logging
 import os
 import shutil
 import tempfile
-from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg

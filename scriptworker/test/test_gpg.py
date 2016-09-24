@@ -12,7 +12,7 @@ import pexpect
 import pytest
 import shutil
 import subprocess
-from scriptworker.config import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg

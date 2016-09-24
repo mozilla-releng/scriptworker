@@ -3,85 +3,19 @@
 
 Attributes:
     log (logging.Logger): the log object for the module.
-    DEFAULT_CONFIG (dict): the default config for scriptworker.  Running configs
-        are validated against this.
     CREDS_FILES (tuple): an ordered list of files to look for taskcluster
         credentials, if they aren't in the config file or environment.
 """
 from copy import deepcopy
+from frozendict import frozendict
 import json
 import logging
 import os
 import sys
 
-from frozendict import frozendict
+from scriptworker.constants import DEFAULT_CONFIG
 
 log = logging.getLogger(__name__)
-
-DEFAULT_CONFIG = {
-    # Worker identification
-    "provisioner_id": "test-dummy-provisioner",
-    "worker_group": "test-dummy-workers",
-    "worker_type": "dummy-worker-myname",
-    "worker_id": os.environ.get("SCRIPTWORKER_WORKER_ID", "dummy-worker-myname1"),
-
-    "credentials": {
-        "clientId": "...",
-        "accessToken": "...",
-        "certificate": "...",
-    },
-
-    # for download url validation.  The regexes need to define a 'filepath'.
-    'valid_artifact_schemes': ('https', ),
-    'valid_artifact_netlocs': ('queue.taskcluster.net', ),
-    'valid_artifact_path_regexes': (
-        r'''^/v1/task/(?P<taskId>[^/]+)(/runs/\d+)?/artifacts/(?P<filepath>.*)$''',
-    ),
-    'valid_artifact_task_ids': (),
-
-    # Worker settings; these probably don't need tweaking
-    "max_connections": 30,
-    "credential_update_interval": 300,
-    "reclaim_interval": 300,
-    "poll_interval": 5,
-
-    # chain of trust settings
-    "verify_chain_of_trust": False,  # TODO True
-    "sign_chain_of_trust": False,  # TODO True
-    "chain_of_trust_hash_algorithm": "sha256",
-    "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
-    # Specify a default gpg home other than ~/.gnupg
-    "gpg_home": None,
-
-    # A list of additional gpg cmdline options
-    "gpg_options": None,
-    # The path to the gpg executable.
-    "gpg_path": None,
-    # The path to the public/secret keyrings, if we're not using the default
-    "gpg_public_keyring": '%(gpg_home)s/pubring.gpg',
-    "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
-    # Boolean to use the gpg agent
-    "gpg_use_agent": False,
-    # Encoding to use.  Defaults to latin-1
-    "gpg_encoding": None,
-
-    # Worker log settings
-    "log_datefmt": "%Y-%m-%dT%H:%M:%S",
-    "log_fmt": "%(asctime)s %(levelname)8s - %(message)s",
-    "log_max_bytes": 1024 * 1024 * 512,
-    "log_num_backups": 10,
-
-    # Task settings
-    "work_dir": "...",
-    "log_dir": "...",
-    "artifact_dir": "...",
-    "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
-    "artifact_expiration_hours": 24,
-    "artifact_upload_timeout": 60 * 20,
-    "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
-    "task_max_timeout": 60 * 20,
-    "verbose": True,
-}
 
 CREDS_FILES = (
     os.path.join(os.getcwd(), 'secrets.json'),
@@ -89,8 +23,8 @@ CREDS_FILES = (
 )
 
 
-def list_to_tuple(dictionary):
-    """Convert a dictionary's list values into tuples.
+def freeze_values(dictionary):
+    """Convert a dictionary's list values into tuples, and dicts into frozendicts.
 
     This won't recurse; it's best for relatively flat data structures.
 
@@ -100,6 +34,8 @@ def list_to_tuple(dictionary):
     for key, value in dictionary.items():
         if isinstance(value, list):
             dictionary[key] = tuple(value)
+        elif isinstance(value, dict):
+            dictionary[key] = frozendict(value)
 
 
 def read_worker_creds(key="credentials"):
@@ -184,10 +120,10 @@ def create_config(path="config.json"):
         sys.exit(1)
     with open(path, "r", encoding="utf-8") as fh:
         secrets = json.load(fh)
-    config = deepcopy(DEFAULT_CONFIG)
+    config = dict(deepcopy(DEFAULT_CONFIG))
     if not secrets.get("credentials"):
         secrets['credentials'] = read_worker_creds()
-    list_to_tuple(secrets)
+    freeze_values(secrets)
     config.update(secrets)
     messages = check_config(config, path)
     if messages:

@@ -17,7 +17,8 @@ import signal
 import taskcluster
 import taskcluster.exceptions
 
-from scriptworker.client import validate_artifact_url, REVERSED_STATUSES
+from scriptworker.client import validate_artifact_url
+from scriptworker.constants import REVERSED_STATUSES
 from scriptworker.exceptions import ScriptWorkerRetryException
 from scriptworker.log import get_log_fhs, log_errors, read_stdout
 from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async, download_file
