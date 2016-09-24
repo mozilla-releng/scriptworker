@@ -60,5 +60,5 @@ class ScriptWorkerTaskException(ScriptWorkerException):
 class DownloadError(ScriptWorkerTaskException):
     def __init__(self, msg):
         super(DownloadError, self).__init__(
-            msg, exit_code=3
+            msg, exit_code=4
         )

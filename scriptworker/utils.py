@@ -15,17 +15,9 @@ import os
 import shutil
 from taskcluster.utils import calculateSleepTime
 from taskcluster.client import createTemporaryCredentials
-from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException, DownloadError
+from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerException
 
 log = logging.getLogger(__name__)
-
-
-def mkdir(path):
-    try:
-        os.makedirs(path)
-        log.info("mkdir {}".format(path))
-    except OSError:
-        pass
 
 
 async def request(context, url, timeout=60, method='get', good=(200, ),
@@ -322,7 +314,7 @@ async def download_file(context, url, abs_filename, chunk_size=128):
     async with context.session.get(url) as resp:
         if resp.status != 200:
             raise DownloadError("{} status {} is not 200!".format(url, resp.status))
-        mkdir(parent_dir)
+        makedirs(parent_dir)
         with open(abs_filename, 'wb') as fd:
             while True:
                 chunk = await resp.content.read(chunk_size)
