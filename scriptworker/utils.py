@@ -308,10 +308,11 @@ def format_json(data):
     return json.dumps(data, indent=2, sort_keys=True)
 
 
-async def download_file(context, url, abs_filename, chunk_size=128):
+async def download_file(context, url, abs_filename, session=None, chunk_size=128):
+    session = session or context.session
     log.info("Downloading %s", url)
     parent_dir = os.path.dirname(abs_filename)
-    async with context.session.get(url) as resp:
+    async with session.get(url) as resp:
         if resp.status != 200:
             raise DownloadError("{} status {} is not 200!".format(url, resp.status))
         makedirs(parent_dir)
