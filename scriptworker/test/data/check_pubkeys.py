@@ -75,6 +75,7 @@ def main(trusted_key_dir, name=None):
 #    slog.setLevel(logging.INFO)
     slog.setLevel(logging.DEBUG)
     slog.addHandler(logging.StreamHandler())
+    event_loop = asyncio.get_event_loop()
     dirs = {}
     messages = []
     pubkey_dir = PUBKEY_DIR

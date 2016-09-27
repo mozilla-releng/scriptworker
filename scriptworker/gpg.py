@@ -1255,7 +1255,7 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
             tasks.append(asyncio.ensure_future(
                 rebuild_gpg_home_signed(
                     context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                    trusted_path, untrusted_path=None,
+                    trusted_path, untrusted_path=untrusted_path,
                     ignore_suffixes=worker_config['ignore_suffixes']
                 )
             ))
