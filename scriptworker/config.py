@@ -15,6 +15,8 @@ import sys
 
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.client import validate_json_schema
+from scriptworker.context import Context
+from scriptworker.log import update_logging_config
 
 log = logging.getLogger(__name__)
 
@@ -168,3 +170,30 @@ def create_cot_config(context):
     cot_config = frozendict(cot_config)
     validate_json_schema(cot_config, schema, name="cot_config")
     return cot_config
+
+
+# get_context_from_cmdln {{{1
+def get_context_from_cmdln(args):
+    """Create a Context object from args.
+
+    This was originally part of main(), but we use it in
+    `scriptworker.gpg.create_initial_gpg_homedirs` too.
+
+    Args:
+        args (list): the commandline args.  Generally sys.argv
+
+    Returns:
+        tuple: `scriptworker.context.Context` with populated config, and
+            credentials frozendict
+    """
+    context = Context()
+    kwargs = {}
+    if len(args) > 1:  # pragma: no branch
+        if len(args) > 2:
+            print("Usage: {} [configfile]".format(args[0]), file=sys.stderr)
+            sys.exit(1)
+        kwargs['config_path'] = args[1]
+    context.config, credentials = create_config(**kwargs)
+    update_logging_config(context)
+    context.cot_config, create_cot_config(context)
+    return context, credentials

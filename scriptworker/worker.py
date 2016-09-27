@@ -6,11 +6,9 @@ import logging
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import create_config, create_cot_config, read_worker_creds
-from scriptworker.context import Context
+from scriptworker.config import get_context_from_cmdln, read_worker_creds
 from scriptworker.cot import generate_cot
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.log import update_logging_config
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
 
@@ -89,16 +87,7 @@ async def async_main(context):
 def main():
     """Scriptworker entry point: get everything set up, then enter the main loop
     """
-    context = Context()
-    kwargs = {}
-    if len(sys.argv) > 1:  # pragma: no branch
-        if len(sys.argv) > 2:
-            print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
-            sys.exit(1)
-        kwargs['config_path'] = sys.argv[1]
-    context.config, credentials = create_config(**kwargs)
-    update_logging_config(context)
-    context.cot_config, create_cot_config(context)
+    context, credentials = get_context_from_cmdln(sys.argv)
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()

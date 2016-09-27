@@ -21,9 +21,11 @@ import pexpect
 import pprint
 import re
 import subprocess
+import sys
 import tempfile
 import traceback
 
+from scriptworker.config import get_context_from_cmdln
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
     ScriptWorkerRetryException
 from scriptworker.log import pipe_to_log
@@ -1274,25 +1276,24 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
     return basedir
 
 
-def create_initial_gpg_homedirs(context):
+def create_initial_gpg_homedirs():
     """Create the initial gpg homedirs.
 
     This should be called before scriptworker is run.
 
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
+    Raises:
+        SystemExit: on failure.
     """
-    my_pub_key_path = context.cot_config['pubkey_path']
-    my_priv_key_path = context.cot_config['privkey_path']
-    with tempdir.TemporaryDirectory() as tmp_gpg_home:
-        rebuild_gpg_home(
-            context, tmp_gpg_home,
-            context.cot_config['pubkey_path'],
-            context.cot_config['privkey_path']
-        )
-        overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
-    event_loop = asyncio.get_event_loop()
+    context, _ = get_context_from_cmdln(sys.argv)
     try:
+        with tempfile.TemporaryDirectory() as tmp_gpg_home:
+            rebuild_gpg_home(
+                context, tmp_gpg_home,
+                context.cot_config['pubkey_path'],
+                context.cot_config['privkey_path']
+            )
+            overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
+        event_loop = asyncio.get_event_loop()
         event_loop.run_until_complete(
             build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
         )

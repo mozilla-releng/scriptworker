@@ -64,6 +64,7 @@ setup(
     entry_points={
         "console_scripts": [
             "scriptworker = scriptworker.worker:main",
+            "create_initial_gpg_homedirs = scriptworker.gpg:create_initial_gpg_homedirs",
         ],
     },
     zip_safe=False,
