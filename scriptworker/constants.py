@@ -37,6 +37,7 @@ DEFAULT_CONFIG = frozendict({
     "max_connections": 30,
     "credential_update_interval": 300,
     "reclaim_interval": 300,
+    "poll_git_interval": 300,
     "poll_interval": 5,
 
     # chain of trust settings

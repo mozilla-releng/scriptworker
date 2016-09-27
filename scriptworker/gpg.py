@@ -22,6 +22,7 @@ import pprint
 import re
 import subprocess
 import tempfile
+import traceback
 
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
     ScriptWorkerRetryException
@@ -1219,45 +1220,82 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
         str: on success.
         None: on failure.
     """
-    if not context.cot_config:
-        log.info("Skipping build_gpg_homedirs_from_repo because context.cot_config isn't set!")
-        return
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
-    try:
-        await retry_async(
-            update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
-            args=(context, )
-        )
-    except ScriptWorkerException as exc:
-        # We don't want these exceptions to be fatal; this will happen in the background
-        # of scriptworker tasks
-        log.error("build_gpg_homedirs_from_repo error updating git repo!\n{}".format(str(exc)))
+    lockfile = os.path.join(basedir, "build_gpg_homedirs.lock")
+    if os.path.exists(lockfile):
+        log.warning("Skipping build_gpg_homedirs_from_repo: lockfile {} exists!".format(lockfile))
         return
     rm(basedir)
     makedirs(basedir)
-    tasks = []
-    for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
-        source_path = os.path.join(repo_path, worker_class)
-        real_gpg_home = os.path_join(basedir, worker_class)
-        my_pub_key_path = context.cot_config['pubkey_path']
-        my_priv_key_path = context.cot_config['privkey_path']
-        if worker_config['type'] == 'flat':
-            tasks.append(asyncio.ensure_future(
-                rebuild_gpg_home_flat(
-                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                    source_path, ignore_suffixes=worker_config['ignore_suffixes']
-                )
-            ))
-        else:
-            trusted_path = os.path.join(source_path, "trusted")
-            untrusted_path = os.path.join(source_path, "valid")
-            tasks.append(asyncio.ensure_future(
-                rebuild_gpg_home_signed(
-                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                    trusted_path, untrusted_path=untrusted_path,
-                    ignore_suffixes=worker_config['ignore_suffixes']
-                )
-            ))
-    raise_future_exceptions(tasks)
+    try:
+        # create lockfile
+        with open(lockfile, "w") as fh:
+            print(str(arrow.utcnow().timestamp), file=fh, end="")
+        # update git repo
+        try:
+            await retry_async(
+                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(context, )
+            )
+        except ScriptWorkerException as exc:
+            # We don't want these exceptions to be fatal; this will happen in the background
+            # of scriptworker tasks
+            log.error("build_gpg_homedirs_from_repo error updating git repo!\n{}".format(str(exc)))
+            return
+        # create gpg homedirs
+        tasks = []
+        for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
+            source_path = os.path.join(repo_path, worker_class)
+            real_gpg_home = os.path_join(basedir, worker_class)
+            my_pub_key_path = context.cot_config['pubkey_path']
+            my_priv_key_path = context.cot_config['privkey_path']
+            if worker_config['type'] == 'flat':
+                tasks.append(asyncio.ensure_future(
+                    rebuild_gpg_home_flat(
+                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                        source_path, ignore_suffixes=worker_config['ignore_suffixes']
+                    )
+                ))
+            else:
+                trusted_path = os.path.join(source_path, "trusted")
+                untrusted_path = os.path.join(source_path, "valid")
+                tasks.append(asyncio.ensure_future(
+                    rebuild_gpg_home_signed(
+                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                        trusted_path, untrusted_path=untrusted_path,
+                        ignore_suffixes=worker_config['ignore_suffixes']
+                    )
+                ))
+            raise_future_exceptions(tasks)
+    finally:
+        # rm lockfile
+        rm(lockfile)
     return basedir
+
+
+def create_initial_gpg_homedirs(context):
+    """Create the initial gpg homedirs.
+
+    This should be called before scriptworker is run.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+    """
+    my_pub_key_path = context.cot_config['pubkey_path']
+    my_priv_key_path = context.cot_config['privkey_path']
+    with tempdir.TemporaryDirectory() as tmp_gpg_home:
+        rebuild_gpg_home(
+            context, tmp_gpg_home,
+            context.cot_config['pubkey_path'],
+            context.cot_config['privkey_path']
+        )
+        overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
+    event_loop = asyncio.get_event_loop()
+    try:
+        event_loop.run_until_complete(
+            build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
+        )
+    except ScriptWorkerException as exc:
+        traceback.print_exc()
+        sys.exit(exc.exit_code)
