@@ -1234,6 +1234,8 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
         return
     rm(basedir)
     makedirs(basedir)
-    # TODO populate context.cot_config
-    assert(repo_path)
+    for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
+        source_path = os.path.join(repo_path, worker_class)
+        assert source_path
+        # TODO
     return basedir

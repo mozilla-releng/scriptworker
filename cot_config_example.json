@@ -3,6 +3,8 @@
     "git_key_repo_fingerprints": [
         "these_are_valid_fingerprints_for_commit_signing"
     ],
+    "pubkey_path": "",
+    "privkey_path": "",
     "gpg_homedirs": {
         "docker-worker": {
             "type": "flat",

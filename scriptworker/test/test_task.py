@@ -44,7 +44,7 @@ def context(tmpdir):
     context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
-        'task': {'dependencies': ['dependency1', 'dependency2'], },
+        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
         'runId': 'runId',
     }
     return context

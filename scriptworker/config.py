@@ -114,7 +114,7 @@ def create_config(config_path="scriptworker.json"):
 
     Args:
         config_path (str, optional): the path to the config file.  Defaults to
-            "config.json"
+            "scriptworker.json"
 
     Returns:
         tuple: (config frozendict, credentials dict)

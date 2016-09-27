@@ -1,15 +1,58 @@
 {
-  "title": "Chain of Trust Schema v1",
+  "title": "Chain of Trust config schema",
   "type": "object",
   "properties": {
     "git_key_repo_url": {"type": "string"},
     "git_key_repo_fingerprints": {
-      "type": "array",
+    "type": "array",
       "items": {
-         "type": "string"
-       },
-       "uniqueItems": true
-    }
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "gpg_homedirs": {
+      "type": "object",
+      "properties": {
+        "docker-worker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        },
+        "generic-worker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        },
+        "scriptworker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        }
+      }
+    },
+    "pubkey_path": {"type": "string"},
+    "privkey_path": {"type": "string"}
   },
-  "required": ["git_key_repo_url", "git_key_repo_fingerprints"]
+  "required": ["git_key_repo_url", "git_key_repo_fingerprints", "gpg_homedirs", "pubkey_path", "privkey_path"]
 }

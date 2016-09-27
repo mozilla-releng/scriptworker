@@ -65,10 +65,11 @@ def test_main(mocker, event_loop):
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     cot_path = os.path.join(os.path.dirname(__file__), "data", "cot_config.json")
     cot_schema_path = os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json")
-    config, creds = create_config(path)
+    config, creds = create_config(config_path=path)
     config = dict(config)
     config['cot_config_path'] = cot_path
     config['cot_config_schema_path'] = cot_schema_path
+    config['credentials'] = dict(creds)
     loop = mock.MagicMock()
     exceptions = [RuntimeError, ScriptWorkerException]
 
