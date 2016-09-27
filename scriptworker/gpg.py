@@ -26,7 +26,7 @@ import tempfile
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
     ScriptWorkerRetryException
 from scriptworker.log import pipe_to_log
-from scriptworker.utils import filepaths_in_dir, makedirs, retry_async, rm
+from scriptworker.utils import filepaths_in_dir, makedirs, raise_future_exceptions, retry_async, rm
 
 log = logging.getLogger(__name__)
 
@@ -960,21 +960,21 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
     return fingerprints
 
 
-def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_sec_key_path):
+def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
     """import my key and create gpg.conf and trustdb.gpg
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
         tmp_gpg_home (str): the path to the tmp gpg_home.  This should already
             exist.
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
-            primary key
+        my_priv_key_path (str): the ascii private key file we want to import as
+            the primary key
     """
     os.chmod(tmp_gpg_home, 0o700)
     gpg = GPG(context, gpg_home=tmp_gpg_home)
-    for path in (my_pub_key_path, my_sec_key_path):
+    for path in (my_pub_key_path, my_priv_key_path):
         with open(path, "r") as fh:
             my_fingerprint = import_key(gpg, fh.read())[0]
     create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
@@ -1007,9 +1007,9 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
         )
 
 
-def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_path,
-                          consume_path, ignore_suffixes=(),
-                          consume_function=consume_valid_keys):
+async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
+                                my_priv_key_path, consume_path, ignore_suffixes=(),
+                                consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
     In this 'flat' model, import all the pubkeys in `consume_path` and sign
@@ -1018,9 +1018,9 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         real_gpg_home (str): the gpg_home path we want to rebuild
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
+        my_priv_key_path (str): the ascii private key file we want to import as the
             primary key
         consume_path (str): the path to the directory tree to import pubkeys
             from
@@ -1032,7 +1032,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
     # Create a new tmp_gpg_home to import into
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         my_fingerprint = rebuild_gpg_home(
-            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+            context, tmp_gpg_home, my_pub_key_path, my_priv_key_path
         )
         # import all the keys
         fingerprints = consume_function(
@@ -1046,14 +1046,15 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
+            asyncio.sleep(.001)
         # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/
         overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
 
 
-def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
-                            my_sec_key_path, trusted_path, untrusted_path=None,
-                            ignore_suffixes=(),
-                            consume_function=consume_valid_keys):
+async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
+                                  my_priv_key_path, trusted_path,
+                                  untrusted_path=None, ignore_suffixes=(),
+                                  consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
     In this 'signed' model, import all the pubkeys in `consume_path` and sign
@@ -1062,9 +1063,9 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         real_gpg_home (str): the gpg_home path we want to rebuild
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
+        my_priv_key_path (str): the ascii private key file we want to import as the
             primary key
         trusted_path (str): the path to the directory tree to import trusted
             pubkeys from
@@ -1080,7 +1081,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         gpg = GPG(context, gpg_home=tmp_gpg_home)
         my_fingerprint = rebuild_gpg_home(
-            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+            context, tmp_gpg_home, my_pub_key_path, my_priv_key_path
         )
         my_keyid = fingerprint_to_keyid(gpg, my_fingerprint)
         # import all the trusted keys
@@ -1095,6 +1096,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
+            asyncio.sleep(.001)
             get_list_sigs_output(
                 context, fingerprint, gpg_home=tmp_gpg_home,
                 expected={
@@ -1234,8 +1236,28 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
         return
     rm(basedir)
     makedirs(basedir)
+    tasks = []
     for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
         source_path = os.path.join(repo_path, worker_class)
-        assert source_path
-        # TODO
+        real_gpg_home = os.path_join(basedir, worker_class)
+        my_pub_key_path = context.cot_config['pubkey_path']
+        my_priv_key_path = context.cot_config['privkey_path']
+        if worker_config['type'] == 'flat':
+            tasks.append(asyncio.ensure_future(
+                rebuild_gpg_home_flat(
+                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                    source_path, ignore_suffixes=worker_config['ignore_suffixes']
+                )
+            ))
+        else:
+            trusted_path = os.path.join(source_path, "trusted")
+            untrusted_path = os.path.join(source_path, "valid")
+            tasks.append(asyncio.ensure_future(
+                rebuild_gpg_home_signed(
+                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                    trusted_path, untrusted_path=None,
+                    ignore_suffixes=worker_config['ignore_suffixes']
+                )
+            ))
+    raise_future_exceptions(tasks)
     return basedir

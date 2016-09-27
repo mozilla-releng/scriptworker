@@ -16,9 +16,9 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, tmpdir
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, tmpdir
 
-assert tmpdir  # silence pyflakes
+assert event_loop, tmpdir  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -545,14 +545,16 @@ def test_consume_valid_keys_suffixes(context):
     sgpg.consume_valid_keys(context, PUBKEY_DIR, ignore_suffixes=('.json', '.asc', '.unsigned.pub'))
 
 
-def test_rebuild_gpg_home_flat(context):
+def test_rebuild_gpg_home_flat(context, event_loop):
     shutil.rmtree(context.config['gpg_home'])  # coverage
-    sgpg.rebuild_gpg_home_flat(
-        context,
-        context.config['gpg_home'],
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-        os.path.join(PUBKEY_DIR, "unsigned")
+    event_loop.run_until_complete(
+        sgpg.rebuild_gpg_home_flat(
+            context,
+            context.config['gpg_home'],
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+            os.path.join(PUBKEY_DIR, "unsigned")
+        )
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
@@ -561,17 +563,19 @@ def test_rebuild_gpg_home_flat(context):
 
 
 @pytest.mark.parametrize("trusted_email", ("docker@example.com", "docker.root@example.com"))
-def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
+def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
 
     gpg = sgpg.GPG(context)
     for path in glob.glob(os.path.join(GPG_HOME, "keys", "{}.*".format(trusted_email))):
         shutil.copyfile(path, os.path.join(tmpdir, os.path.basename(path)))
-    sgpg.rebuild_gpg_home_signed(
-        context,
-        context.config['gpg_home'],
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-        tmpdir,
+    event_loop.run_until_complete(
+        sgpg.rebuild_gpg_home_signed(
+            context,
+            context.config['gpg_home'],
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+            tmpdir,
+        )
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
