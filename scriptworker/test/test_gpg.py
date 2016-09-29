@@ -3,6 +3,7 @@
 """Test scriptworker.gpg
 """
 import arrow
+import asyncio
 from contextlib import contextmanager
 import glob
 import json
@@ -132,7 +133,8 @@ class PexpectChild():
         self.expect_status = expect_status
         self.signalstatus = signalstatus
 
-    def expect(self, _):
+    @asyncio.coroutine
+    def expect(self, _, **kwargs):
         return self.expect_status
 
     def sendline(*_):
@@ -319,7 +321,8 @@ def test_export_unknown_key(base_context):
 
 
 # sign_key {{{1
-def test_sign_key(context):
+@pytest.mark.asyncio
+async def test_sign_key(context):
     """This test calls get_list_sigs_output in several different ways.  Each
     is valid; the main thing is more code coverage.
 
@@ -350,7 +353,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     # update gpg configs, sign signed key
     sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
     sgpg.check_ownertrust(context)
-    sgpg.sign_key(context, signed_fingerprint)
+    await sgpg.sign_key(context, signed_fingerprint)
     # signed key get_list_sigs_output
     signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
     # unsigned key get_list_sigs_output
@@ -364,7 +367,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert [unsigned_keyid] == unsigned_output['sig_keyids']
     assert ["three (three) <three>"] == unsigned_output['sig_uids']
     # sign the unsigned key and test
-    sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+    await sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
     # Call get_list_sigs_output with expected, for more code coverage
     new_output = sgpg.get_list_sigs_output(
         context, unsigned_fingerprint, expected={
@@ -380,7 +383,8 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
-def test_sign_key_twice(context):
+@pytest.mark.asyncio
+async def test_sign_key_twice(context):
     gpg = sgpg.GPG(context)
     for suffix in (".sec", ".pub"):
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
@@ -388,11 +392,12 @@ def test_sign_key_twice(context):
         fingerprint = sgpg.import_key(gpg, contents)[0]
     # keys already sign themselves, so this is a second signature that should
     # be noop.
-    sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
+    await sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("exportable", (True, False))
-def test_sign_key_exportable(context, exportable):
+async def test_sign_key_exportable(context, exportable):
     gpg_home2 = os.path.join(context.config['gpg_home'], "two")
     context.config['gpg_home'] = os.path.join(context.config['gpg_home'], "one")
     gpg = sgpg.GPG(context)
@@ -412,7 +417,7 @@ def test_sign_key_exportable(context, exportable):
     # generate a new key
     fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
     # sign it, exportable signature is `exportable`
-    sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
+    await sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
     # export my privkey and import it in gpg_home2
     priv_key = sgpg.export_key(gpg, my_fingerprint, private=True)
     sgpg.import_key(gpg2, priv_key)
@@ -430,15 +435,16 @@ def test_sign_key_exportable(context, exportable):
             sgpg.get_list_sigs_output(context, fingerprint, gpg_home=gpg_home2, expected=expected)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("expect_status", (0, 1))
-def test_sign_key_failure(context, mocker, expect_status):
+async def test_sign_key_failure(context, mocker, expect_status):
 
     def child(*_):
         return PexpectChild(expect_status=expect_status)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
     with pytest.raises(ScriptWorkerGPGException):
-        sgpg.sign_key(context, "foo")
+        await sgpg.sign_key(context, "foo")
 
 
 # list sigs and parsing {{{1

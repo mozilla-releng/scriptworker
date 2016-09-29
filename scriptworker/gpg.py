@@ -301,10 +301,18 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
-def sign_key(context, target_fingerprint, signing_key=None, exportable=False, gpg_home=None):
+@asyncio.coroutine
+def sign_key(context, target_fingerprint, signing_key=None,
+             exportable=False, gpg_home=None):
     """Sign the `target_fingerprint` key with the `signing_key` or default key
 
     This signs the target key with the signing key, which adds to the web of trust.
+
+    This function is async, but should not be used in parallel in the same
+    gpg homedir.  GPG keysigning requires a lock on the keyring, so any
+    parallelization in the same homedir will result in failures and unhappiness.
+    This function is meant to be used async to parallelize multiple GPG
+    homedir operations.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -337,9 +345,9 @@ def sign_key(context, target_fingerprint, signing_key=None, exportable=False, gp
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
     child = pexpect.spawn(gpg_path, cmd_args)
     try:
-        child.expect(b".*Really sign\? \(y/N\) ")
+        yield from child.expect(b".*Really sign\? \(y/N\) ", async=True)
         child.sendline(b'y')
-        index = child.expect([pexpect.EOF, pexpect.TIMEOUT])
+        index = yield from child.expect([pexpect.EOF, pexpect.TIMEOUT], async=True)
         if index != 0:
             raise ScriptWorkerGPGException(
                 "Failed signing {}! Timeout".format(target_fingerprint)
@@ -1045,11 +1053,10 @@ async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
         # sign all the keys
         for fingerprint in fingerprints:
             log.info("signing {} with {}".format(fingerprint, my_fingerprint))
-            sign_key(
+            await sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
-            asyncio.sleep(.001)
         # Copy tmp_gpg_home/* to real_gpg_home/* before nuking tmp_gpg_home/
         overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
 
@@ -1095,11 +1102,10 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
         trusted_fingerprints_to_keyid = {}
         # sign all the keys
         for fingerprint in set(trusted_fingerprints):
-            sign_key(
+            await sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
-            asyncio.sleep(.001)
             get_list_sigs_output(
                 context, fingerprint, gpg_home=tmp_gpg_home,
                 expected={
