@@ -11,29 +11,32 @@ import mock
 import os
 import pytest
 import tempfile
+import shutil
 import sys
-from scriptworker.config import create_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-from . import event_loop, successful_queue, tmpdir
+from . import event_loop, successful_queue, tmpdir, tmpdir2
 
-assert tmpdir  # silence flake8
+assert tmpdir, tmpdir2  # silence flake8
 assert successful_queue, event_loop  # silence flake8
 
 
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope='function')
-def context(tmpdir):
+def context(tmpdir2):
     context = Context()
     context.config = dict(deepcopy(DEFAULT_CONFIG))
-    context.config['log_dir'] = os.path.join(tmpdir, "log")
-    context.config['work_dir'] = os.path.join(tmpdir, "work")
-    context.config['artifact_dir'] = os.path.join(tmpdir, "artifact")
-    context.config['git_key_repo_dir'] = os.path.join(tmpdir, "gpg_keys")
+    context.config['log_dir'] = os.path.join(tmpdir2, "log")
+    context.config['task_log_dir'] = os.path.join(tmpdir2, "task_log")
+    context.config['work_dir'] = os.path.join(tmpdir2, "work")
+    context.config['artifact_dir'] = os.path.join(tmpdir2, "artifact")
+    context.config['git_key_repo_dir'] = os.path.join(tmpdir2, "gpg_keys")
+    context.config['base_gpg_home_dir'] = os.path.join(tmpdir2, "base_gpg_home")
     context.config['poll_interval'] = .1
     context.config['credential_update_interval'] = .1
+    context.cot_config = {}
     context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
     context.poll_task_urls = {
         'queues': [{
@@ -56,17 +59,18 @@ async def noop(*args, **kwargs):
     return
 
 
-# tests {{{1
-def test_main(mocker, event_loop):
+# main {{{1
+def test_main(mocker, context, event_loop):
 
-    path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     cot_path = os.path.join(os.path.dirname(__file__), "data", "cot_config.json")
     cot_schema_path = os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json")
-    config, creds = create_config(config_path=path)
-    config = dict(config)
+    config = dict(context.config)
+    config['poll_interval'] = 1
+    config['credential_update_interval'] = 1
     config['cot_config_path'] = cot_path
     config['cot_config_schema_path'] = cot_schema_path
-    config['credentials'] = dict(creds)
+    creds = {'fake_creds': True}
+    config['credentials'] = deepcopy(creds)
     loop = mock.MagicMock()
     exceptions = [RuntimeError, ScriptWorkerException]
 
@@ -97,18 +101,41 @@ def test_main(mocker, event_loop):
         os.remove(tmp)
 
 
-def test_async_main(context, event_loop):
+# async_main {{{1
+def test_async_main(context, event_loop, mocker, tmpdir):
+    path = "{}.tmp".format(context.config['base_gpg_home_dir'])
 
-    async def exit(*args, **kwargs):
+    async def tweak_lockfile(_):
+        path = "{}.tmp".format(context.config['base_gpg_home_dir'])
+        try:
+            os.makedirs(path)
+        except FileExistsError:
+            pass
+        lockfile = os.path.join(path, "build_gpg_homedirs.lock")
+        if os.path.exists(lockfile):
+            os.remove(lockfile)
+        else:
+            with open(lockfile, "w") as fh:
+                print(" ", file=fh)
+
+    def exit(*args, **kwargs):
         sys.exit()
 
-    with mock.patch('scriptworker.worker.run_loop', new=exit):
+    try:
+        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop)
+        mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
+        mocker.patch.object(asyncio, 'sleep', new=noop)
+        mocker.patch.object(worker, 'overwrite_gpg_home', new=exit)
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
                 worker.async_main(context)
             )
+    finally:
+        if os.path.exists(path):
+            shutil.rmtree(path)
 
 
+# run_loop {{{1
 def test_run_loop_exception(context, successful_queue, event_loop):
     context.queue = successful_queue
 

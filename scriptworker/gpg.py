@@ -1222,7 +1222,7 @@ async def update_signed_git_repo(context, revision='master',
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on `git pull` failure.
     """
-    path = context.cot_config['git_key_repo_dir']
+    path = context.config['git_key_repo_dir']
     old_revision = await get_git_revision(path)
     proc = await exec_function(
         "git", ["pull", "--ff-only", revision], cwd=path,
@@ -1339,6 +1339,9 @@ async def rebuild_gpg_homedirs_loop(context, basedir):
             with the contents of this tmp dir.
     """
     rm(basedir)
+    if not context.config['sign_chain_of_trust'] and not context.config['verify_chain_of_trust']:
+        log.warning("sign_chain_of_trust and verify_chain_of_trust are False; exiting rebuild_gpg_homedirs_loop!")
+        return
     while True:
         asyncio.sleep(context.config['poll_git_interval'])
         if os.path.exists(basedir):
