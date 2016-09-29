@@ -17,9 +17,10 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, tmpdir
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, tmpdir, tmpdir2
 
 assert event_loop, tmpdir  # silence pyflakes
+assert tmpdir2  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -111,7 +112,7 @@ def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
 
 
 @pytest.yield_fixture(scope='function')
-def context(tmpdir):
+def context(tmpdir2):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
     """
@@ -120,7 +121,7 @@ def context(tmpdir):
     for k, v in DEFAULT_CONFIG.items():
         if k.startswith("gpg_"):
             context_.config[k] = v
-    context_.config['gpg_home'] = tmpdir
+    context_.config['gpg_home'] = tmpdir2
     yield context_
 
 
@@ -597,7 +598,7 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
 
 
 # git {{{1
-def test_verify_signed_git_commit(context, mocker):
+def test_verify_signed_git_commit_output(context, mocker):
 
     def fake_keyid_to_fingerprint(_, fingerprint):
         return fingerprint
@@ -609,7 +610,7 @@ def test_verify_signed_git_commit(context, mocker):
         "gpg: Can't check signature: public key not found\n",
     ])
     with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
-        sha = sgpg.verify_signed_git_commit(None, output, ['fingerprint', 'FC829B7FFAA9AC38'])
+        sha = sgpg.verify_signed_git_commit_output(None, output, ['fingerprint', 'FC829B7FFAA9AC38'])
         assert sha == '5ed7ae362d38eec0185037cac1bc5781b0e74067'
 
 
@@ -625,7 +626,7 @@ def test_verify_signed_git_commit(context, mocker):
         "gpg: Can't check signature: public key not found\n",
     ]),
 ))
-def test_verify_signed_git_commit_exception(context, output):
+def test_verify_signed_git_commit_output_exception(context, output):
 
     def fake_keyid_to_fingerprint(_, fingerprint):
         return fingerprint
@@ -633,4 +634,4 @@ def test_verify_signed_git_commit_exception(context, output):
     gpg = sgpg.GPG(context)
     with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
         with pytest.raises(ScriptWorkerGPGException):
-            sgpg.verify_signed_git_commit(gpg, output, ["good"])
+            sgpg.verify_signed_git_commit_output(gpg, output, ["good"])

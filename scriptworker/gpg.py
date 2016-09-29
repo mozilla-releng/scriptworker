@@ -971,7 +971,8 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
     return fingerprints
 
 
-def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
+def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path,
+                     gpg_keyserver=None):
     """import my key and create gpg.conf and trustdb.gpg
 
     Args:
@@ -982,13 +983,15 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
             primary key
         my_priv_key_path (str): the ascii private key file we want to import as
             the primary key
+        gpg_keyserver (str, optional): the keyserver to use.  For everything
+            but ~/.gnupg this should be empty.  Defaults to None.
     """
     os.chmod(tmp_gpg_home, 0o700)
     gpg = GPG(context, gpg_home=tmp_gpg_home)
     for path in (my_pub_key_path, my_priv_key_path):
         with open(path, "r") as fh:
             my_fingerprint = import_key(gpg, fh.read())[0]
-    create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
+    create_gpg_conf(tmp_gpg_home, keyserver=gpg_keyserver, my_fingerprint=my_fingerprint)
     update_ownertrust(context, my_fingerprint, gpg_home=tmp_gpg_home)
     return my_fingerprint
 
@@ -1004,11 +1007,12 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
             trust models
         real_gpg_home (str): path to the old gpg_home to overwrite
     """
+    log.info("overwrite_gpg_home: {} to {}".format(tmp_gpg_home, real_gpg_home))
     # Back up real_gpg_home until we have more confidence in blowing this away
     if os.path.exists(real_gpg_home):
-        os.rename(real_gpg_home, "{}.{}".format(
-            real_gpg_home, str(arrow.utcnow().timestamp)
-        ))
+        backup = "{}.{}".format(real_gpg_home, str(arrow.utcnow().timestamp))
+        log.info("Backing up {} to {}".format(real_gpg_home, backup))
+        os.rename(real_gpg_home, backup)
     makedirs(real_gpg_home)
     os.chmod(real_gpg_home, 0o700)
     for filepath in filepaths_in_dir(tmp_gpg_home):
@@ -1016,6 +1020,8 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
             os.path.join(tmp_gpg_home, filepath),
             os.path.join(real_gpg_home, filepath)
         )
+    # for now, don't clean up tmp_gpg_home, because we call this with tempfile
+    # contexts that expect to clean up tmp_gpg_home on exiting the block.
 
 
 async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
@@ -1130,7 +1136,7 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def verify_signed_git_commit(gpg, output, valid_fingerprints):
+def verify_signed_git_commit_output(gpg, output, valid_fingerprints):
     """Return the latest git commit sha that's signed by a valid fingerprint.
 
     There are a number of ways to do this.  `git show --show-signature` will
@@ -1169,12 +1175,39 @@ def verify_signed_git_commit(gpg, output, valid_fingerprints):
     raise ScriptWorkerGPGException(message)
 
 
+async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
+    """Get the git revision of path.
+
+    Args:
+        path (str): the path to run `git rev-parse HEAD` in.
+        exec_function (function, optional): the function to call to run git.
+            Default is `asyncio.create_subprocess_exec`.
+
+    Returns:
+        str: the revision.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
+    """
+    proc = await exec_function(
+        "git", ["rev-parse", "HEAD"], cwd=path,
+        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
+        preexec_fn=lambda: os.setsid()
+    )
+    revision, err = await proc.communicate()
+    exitcode = await proc.wait()
+    if exitcode:
+        raise ScriptWorkerRetryException(
+            "Can't get repo revision at {}: {}!".format(path, err)
+        )
+    return revision.decode('utf-8').rstrip()
+
+
 async def update_signed_git_repo(context, revision='master',
                                  exec_function=asyncio.create_subprocess_exec):
     """Update a git repo with signed git commits, and verify the signature.
 
-    This function updates the repo, then calls `verify_signed_git_commit` to
-    make sure the latest commit is signed with a valid key.
+    This function updates the repo.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1182,13 +1215,17 @@ async def update_signed_git_repo(context, revision='master',
         exec_function (function, optional): the function to call git with.
             defaults to `asyncio.create_subprocess_exec`
 
+    Returns:
+        bool: True if there has been a change; False otherwise.
+
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on `git pull` failure.
     """
     path = context.cot_config['git_key_repo_dir']
+    old_revision = await get_git_revision(path)
     proc = await exec_function(
-        "git", ["pull", revision], cwd=path,
+        "git", ["pull", "--ff-only", revision], cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
         preexec_fn=lambda: os.setsid()
     )
@@ -1198,6 +1235,18 @@ async def update_signed_git_repo(context, revision='master',
         raise ScriptWorkerRetryException(
             "Can't update repo at {}!".format(path)
         )
+    revision = await get_git_revision(path)
+    return old_revision != revision
+
+
+async def verify_signed_git_commit(context, exec_function=asyncio.create_subprocess_exec):
+    """Verify `context.cot_config['git_key_repo_dir']` is on a valid signed commit.
+
+    This function calls `verify_signed_git_commit_output` to make sure the
+    latest commit is signed with a key whose fingerprint is in
+    `context.cot_config['git_key_repo_fingerprints']`.
+    """
+    path = context.cot_config['git_key_repo_dir']
     proc = await exec_function(
         "git", ["log", "--no-merges", "--format='%H:%GG'"], cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
@@ -1210,11 +1259,13 @@ async def update_signed_git_repo(context, revision='master',
             output += line.decode('utf-8')
         else:
             break
-    verify_signed_git_commit(
+    # TODO we're going to have to import the valid keys into the main gpg_home
+    verify_signed_git_commit_output(
         GPG(context), output, context.cot_config['git_key_repo_fingerprints']
     )
 
 
+# build gpg homedirs from repo {{{1
 async def build_gpg_homedirs_from_repo(context, basedir=None):
     """Build gpg homedirs in `basedir`, from the context-defined git repo.
 
@@ -1240,17 +1291,9 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
         # create lockfile
         with open(lockfile, "w") as fh:
             print(str(arrow.utcnow().timestamp), file=fh, end="")
-        # update git repo
-        try:
-            await retry_async(
-                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
-                args=(context, )
-            )
-        except ScriptWorkerException as exc:
-            # We don't want these exceptions to be fatal; this will happen in the background
-            # of scriptworker tasks
-            log.error("build_gpg_homedirs_from_repo error updating git repo!\n{}".format(str(exc)))
-            return
+        # verify our input.  Hardcoding the check before importing, as opposed
+        # to expecting something else to run the check for us.
+        await verify_signed_git_commit(context)
         # create gpg homedirs
         tasks = []
         for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
@@ -1282,6 +1325,42 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
     return basedir
 
 
+async def rebuild_gpg_homedirs_loop(context, basedir):
+    """Run a loop to update the git repo and rebuild the homedirs.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        basedir (str): the base directory path, to create the gpg homedirs under.
+            This should be a temporary directory, so we can create the gpg
+            homedirs in the background without affecting anything.
+            The presence of this directory with a lockfile means something is
+            still generating the gpg homedirs.  The presence of this directory
+            without the lockfile means we're waiting to overwrite our gpg homedirs
+            with the contents of this tmp dir.
+    """
+    rm(basedir)
+    while True:
+        asyncio.sleep(context.config['poll_git_interval'])
+        if os.path.exists(basedir):
+            log.warning("rebuild_gpg_homedirs_loop: {} exists; sleeping another {}!".format(basedir, str(context.config['poll_git_interval'])))
+            continue
+        try:
+            message = "build_gpg_homedirs_from_repo error updating git repo!\n{}"
+            result = await retry_async(
+                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(context, )
+            )
+            if not result:  # no updates
+                continue
+            message = "build_gpg_homedirs_from_repo error in build_gpg_homedirs_from_repo!\n{}"
+            build_gpg_homedirs_from_repo(context, basedir=basedir)
+        except ScriptWorkerException as exc:
+            # We don't want these exceptions to be fatal; this will happen in the background
+            # of scriptworker tasks
+            log.error(message.format(str(exc)))
+            continue
+
+
 def create_initial_gpg_homedirs():
     """Create the initial gpg homedirs.
 
@@ -1296,10 +1375,17 @@ def create_initial_gpg_homedirs():
             rebuild_gpg_home(
                 context, tmp_gpg_home,
                 context.cot_config['pubkey_path'],
-                context.cot_config['privkey_path']
+                context.cot_config['privkey_path'],
+                gpg_keyserver=context.cot_config['gpg_keyserver']
             )
             overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
         event_loop = asyncio.get_event_loop()
+        event_loop.run_until_complete(
+            retry_async(
+                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(context, )
+            )
+        )
         event_loop.run_until_complete(
             build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
         )

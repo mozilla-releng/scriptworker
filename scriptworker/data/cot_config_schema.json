@@ -10,6 +10,7 @@
       },
       "uniqueItems": true
     },
+    "gpg_keyserver": {"type": "string"},
     "gpg_homedirs": {
       "type": "object",
       "properties": {
@@ -54,5 +55,5 @@
     "pubkey_path": {"type": "string"},
     "privkey_path": {"type": "string"}
   },
-  "required": ["git_key_repo_url", "git_key_repo_fingerprints", "gpg_homedirs", "pubkey_path", "privkey_path"]
+  "required": ["git_key_repo_url", "git_key_repo_fingerprints", "gpg_homedirs", "gpg_keyserver", "pubkey_path", "privkey_path"]
 }
