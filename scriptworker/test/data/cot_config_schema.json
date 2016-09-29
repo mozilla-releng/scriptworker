@@ -1,5 +1,5 @@
 {
-  "title": "Chain of Trust Schema v1",
+  "title": "cot config schema",
   "type": "object",
   "properties": {
       "foo": {"type": "string"}

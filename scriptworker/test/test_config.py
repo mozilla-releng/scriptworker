@@ -48,13 +48,14 @@ def t_env():
     return env
 
 
-# tests {{{1
-def test_nontext_to_unicode():
+# freeze_values {{{1
+def test_freeze_values():
     d = {'a': [1, 2, 3], 'b': {'c': 'd'}}
     config.freeze_values(d)
     assert d == {'a': (1, 2, 3), 'b': frozendict({'c': 'd'})}
 
 
+# check_config {{{1
 def test_check_config_invalid_key(t_config):
     t_config['invalid_key_for_testing'] = 1
     messages = config.check_config(t_config, "test_path")
@@ -81,6 +82,7 @@ def test_check_config_good(t_config):
     assert messages == []
 
 
+# create_config {{{1
 def test_create_config_missing_file():
     with pytest.raises(SystemExit):
         config.create_config(config_path="this_file_does_not_exist.json")
@@ -106,6 +108,27 @@ def test_create_config_good(t_config):
     assert isinstance(generated_creds, frozendict)
 
 
+# create_cot_config {{{1
+def test_create_cot_config(t_config):
+    context = mock.MagicMock()
+    context.config = t_config
+    context.config['cot_config_path'] = os.path.join(
+        os.path.dirname(__file__), "data", "cot_config.json"
+    )
+    context.config['cot_config_schema_path'] = os.path.join(
+        os.path.dirname(__file__), "data", "cot_config_schema.json"
+    )
+    assert config.create_cot_config(context) == frozendict({"foo": "bar"})
+
+
+def test_create_cot_config_exception(t_config):
+    context = mock.MagicMock()
+    context.config = t_config
+    with pytest.raises(SystemExit):
+        config.create_cot_config(context)
+
+
+# credentials {{{1
 def test_bad_worker_creds():
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     with mock.patch.object(config, 'CREDS_FILES', new=(path, )):
@@ -136,3 +159,32 @@ def test_environ_creds(params, t_env):
     with mock.patch.object(config, 'CREDS_FILES', new=['this_file_does_not_exist']):
         with mock.patch.object(os, 'environ', new=t_env):
             assert config.read_worker_creds() == params[1]
+
+
+# get_context_from_cmdln {{{1
+def test_get_context_from_cmdln(t_config):
+    path = os.path.join(os.path.dirname(__file__), "data", "good.json")
+    c = deepcopy(dict(DEFAULT_CONFIG))
+    with open(path) as fh:
+        c.update(json.load(fh))
+    expected_creds = frozendict(c['credentials'])
+    del(c['credentials'])
+    expected_config = frozendict(c)
+
+    def noop(*args, **kwargs):
+        pass
+
+    with mock.patch.object(config, "create_cot_config", new=noop):
+        context, credentials = config.get_context_from_cmdln(["x", path])
+        assert credentials == expected_creds
+        assert context.config == expected_config
+
+
+@pytest.mark.parametrize("args", ([
+    "1", "2", "3", "4"
+], [
+    "x", os.path.join(os.path.dirname(__file__), "data", "bad.json")
+], []))
+def test_get_context_from_cmdln_exception(args):
+    with pytest.raises(SystemExit):
+        config.get_context_from_cmdln(args)

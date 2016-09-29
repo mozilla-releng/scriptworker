@@ -120,6 +120,9 @@ def create_config(config_path="scriptworker.json"):
 
     Returns:
         tuple: (config frozendict, credentials dict)
+
+    Raises:
+        SystemExit: on failure
     """
     if not os.path.exists(config_path):
         print("{} doesn't exist! Exiting create_config()...".format(config_path),
@@ -155,6 +158,9 @@ def create_cot_config(context):
 
     Returns:
         frozendict: the Chain of Trust config.
+
+    Raises:
+        SystemExit: on failure
     """
     cot_config_path = context.config['cot_config_path']
     if not os.path.exists(cot_config_path):
@@ -164,11 +170,11 @@ def create_cot_config(context):
         sys.exit(1)
     with open(cot_config_path, "r", encoding="utf-8") as fh:
         cot_config = json.load(fh)
-    freeze_values(cot_config)
     with open(context.config['cot_config_schema_path'], "r") as fh:
         schema = json.load(fh)
-    cot_config = frozendict(cot_config)
     validate_json_schema(cot_config, schema, name="cot_config")
+    freeze_values(cot_config)
+    cot_config = frozendict(cot_config)
     return cot_config
 
 
@@ -195,5 +201,5 @@ def get_context_from_cmdln(args):
         kwargs['config_path'] = args[1]
     context.config, credentials = create_config(**kwargs)
     update_logging_config(context)
-    context.cot_config, create_cot_config(context)
+    context.cot_config = create_cot_config(context)
     return context, credentials

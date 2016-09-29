@@ -5,6 +5,7 @@
 import arrow
 import asyncio
 from copy import deepcopy
+from frozendict import frozendict
 import json
 import mock
 import os
@@ -47,21 +48,17 @@ def context(tmpdir):
     return context
 
 
+def noop_sync(*args, **kwargs):
+    return
+
+
+async def noop(*args, **kwargs):
+    return
+
+
 # tests {{{1
-def test_main_too_many_args(event_loop):
-    with pytest.raises(SystemExit):
-        with mock.patch('sys.argv', new=[1, 2, 3, 4]):
-            worker.main()
-
-
-def test_main_bad_json(event_loop):
-    path = os.path.join(os.path.dirname(__file__), "data", "bad.json")
-    with pytest.raises(SystemExit):
-        with mock.patch('sys.argv', new=[__file__, path]):
-            worker.main()
-
-
 def test_main(mocker, event_loop):
+
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     cot_path = os.path.join(os.path.dirname(__file__), "data", "cot_config.json")
     cot_schema_path = os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json")
@@ -78,17 +75,20 @@ def test_main(mocker, event_loop):
         raise exc("foo")
 
     def foo(arg):
-        assert arg.config == config
-        assert arg.credentials == creds
+        # arg.config will be a frozendict.
+        assert arg.config == frozendict(config)
+        # arg.credentials will be a dict copy of a frozendict.
+        assert arg.credentials == dict(creds)
 
     loop.run_forever = run_forever
 
-    _, tmp = tempfile.mkstemp()
-    with open(tmp, "w") as fh:
-        json.dump(config, fh)
     try:
-        mocker.patch.object(sys, 'argv', new=[__file__, tmp])
+        _, tmp = tempfile.mkstemp()
+        with open(tmp, "w") as fh:
+            json.dump(config, fh)
+        del(config['credentials'])
         mocker.patch.object(worker, 'async_main', new=foo)
+        mocker.patch.object(sys, 'argv', new=[__file__, tmp])
         with mock.patch.object(asyncio, 'get_event_loop') as p:
             p.return_value = loop
             with pytest.raises(ScriptWorkerException):
@@ -127,9 +127,6 @@ def test_mocker_run_loop(context, successful_queue, event_loop, mocker):
     async def find_task(*args, **kwargs):
         return deepcopy(task)
 
-    async def noop(*args, **kwargs):
-        return
-
     context.queue = successful_queue
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop)
@@ -142,19 +139,10 @@ def test_mocker_run_loop(context, successful_queue, event_loop, mocker):
 
 
 def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
-    async def find_task(*args, **kwargs):
-        return None
-
-    async def noop(*args, **kwargs):
-        return
-
-    def noop_sync(*args, **kwargs):
-        return
-
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "find_task", new=noop)
     mocker.patch.object(worker, "reclaim_task", new=noop)
-    mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "run_task", new=noop)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop)
     mocker.patch.object(worker, "complete_task", new=noop)
@@ -168,26 +156,17 @@ def test_mocker_run_loop_noop_update_creds(context, successful_queue,
                                            event_loop, mocker):
     new_creds = {"new_creds": "true"}
 
-    async def find_task(*args, **kwargs):
-        return None
-
-    async def noop(*args, **kwargs):
-        return
-
-    def noop_sync(*args, **kwargs):
-        return
-
     def get_creds(*args, **kwargs):
         return deepcopy(new_creds)
 
-    context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "find_task", new=noop)
     mocker.patch.object(worker, "reclaim_task", new=noop)
-    mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "run_task", new=noop)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop)
     mocker.patch.object(worker, "complete_task", new=noop)
     mocker.patch.object(worker, "read_worker_creds", new=get_creds)
+    context.queue = successful_queue
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert context.credentials == new_creds
     assert status is None
@@ -204,14 +183,11 @@ def test_mocker_run_loop_exception(context, successful_queue,
     async def find_task(*args, **kwargs):
         return task
 
-    async def noop(*args, **kwargs):
-        return 0
-
-    def noop_sync(*args, **kwargs):
-        return 0
-
     async def exc(*args, **kwargs):
         raise ScriptWorkerException("foo")
+
+    async def run_task(*args, **kwargs):
+        return 0
 
     context.queue = successful_queue
     mocker.patch.object(worker, "find_task", new=find_task)
@@ -219,7 +195,7 @@ def test_mocker_run_loop_exception(context, successful_queue,
     if func_to_raise == "run_task":
         mocker.patch.object(worker, "run_task", new=exc)
     else:
-        mocker.patch.object(worker, "run_task", new=noop)
+        mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     if func_to_raise == "upload_artifacts":
         mocker.patch.object(worker, "upload_artifacts", new=exc)
