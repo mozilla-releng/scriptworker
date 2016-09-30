@@ -78,6 +78,7 @@ DEFAULT_CONFIG = frozendict({
     "base_gpg_home_dir": "...",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
+    "sign_key_timeout": 60 * 5,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
     "task_max_timeout": 60 * 20,
     "verbose": True,

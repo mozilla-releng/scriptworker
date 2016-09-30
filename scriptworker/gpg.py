@@ -343,7 +343,7 @@ def sign_key(context, target_fingerprint, signing_key=None,
     args.append(target_fingerprint)
     cmd_args = gpg_default_args(gpg_home) + args
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
-    child = pexpect.spawn(gpg_path, cmd_args)
+    child = pexpect.spawn(gpg_path, cmd_args, timeout=context.config['sign_key_timeout'])
     try:
         yield from child.expect(b".*Really sign\? \(y/N\) ", async=True)
         child.sendline(b'y')

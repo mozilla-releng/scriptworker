@@ -446,7 +446,7 @@ async def test_sign_key_exportable(context, exportable):
 @pytest.mark.parametrize("expect_status", (0, 1))
 async def test_sign_key_failure(context, mocker, expect_status):
 
-    def child(*_):
+    def child(*args, **kwargs):
         return PexpectChild(expect_status=expect_status)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
