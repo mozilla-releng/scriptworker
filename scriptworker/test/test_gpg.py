@@ -764,21 +764,21 @@ async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
 
 
 # create_initial_gpg_homedirs {{{1
-def test_create_initial_gpg_homedirs(context, event_loop):
+def test_create_initial_gpg_homedirs(context, mocker, event_loop):
 
     def fake_context(*args):
         return (context, None)
 
-    sgpg.create_initial_gpg_homedirs(
-        context_function=fake_context,
-        rebuild_function=noop_sync,
-        overwrite_function=noop_sync,
-        update_function=noop_async,
-        build_function=noop_async,
-    )
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "rebuild_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+
+    sgpg.create_initial_gpg_homedirs()
 
 
-def test_create_initial_gpg_homedirs_exception(context):
+def test_create_initial_gpg_homedirs_exception(context, mocker):
 
     def fake_context(*args):
         return (context, None)
@@ -786,11 +786,11 @@ def test_create_initial_gpg_homedirs_exception(context):
     def die(*args, **kwargs):
         raise ScriptWorkerGPGException("foo")
 
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "rebuild_gpg_home", new=die)
+    mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+
     with pytest.raises(SystemExit):
-        sgpg.create_initial_gpg_homedirs(
-            context_function=fake_context,
-            rebuild_function=die,
-            overwrite_function=noop_sync,
-            update_function=noop_async,
-            build_function=noop_async,
-        )
+        sgpg.create_initial_gpg_homedirs()
