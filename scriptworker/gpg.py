@@ -1358,7 +1358,11 @@ async def rebuild_gpg_homedirs_loop(context, basedir):
             continue
 
 
-def create_initial_gpg_homedirs():
+def create_initial_gpg_homedirs(context_function=get_context_from_cmdln,
+                                rebuild_function=rebuild_gpg_home,
+                                overwrite_function=overwrite_gpg_home,
+                                update_function=update_signed_git_repo,
+                                build_function=build_gpg_homedirs_from_repo):
     """Create the initial gpg homedirs.
 
     This should be called before scriptworker is run.
@@ -1366,25 +1370,25 @@ def create_initial_gpg_homedirs():
     Raises:
         SystemExit: on failure.
     """
-    context, _ = get_context_from_cmdln(sys.argv)
+    context, _ = context_function(sys.argv)
     try:
         with tempfile.TemporaryDirectory() as tmp_gpg_home:
-            rebuild_gpg_home(
+            rebuild_function(
                 context, tmp_gpg_home,
                 context.cot_config['pubkey_path'],
                 context.cot_config['privkey_path'],
                 gpg_keyserver=context.cot_config['gpg_keyserver']
             )
-            overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
+            overwrite_function(tmp_gpg_home, guess_gpg_home(context))
         event_loop = asyncio.get_event_loop()
         event_loop.run_until_complete(
             retry_async(
-                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                update_function, retry_exceptions=(ScriptWorkerRetryException, ),
                 args=(context, )
             )
         )
         event_loop.run_until_complete(
-            build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
+            build_function(context, basedir=context.config['base_gpg_home_dir'])
         )
     except ScriptWorkerException as exc:
         traceback.print_exc()

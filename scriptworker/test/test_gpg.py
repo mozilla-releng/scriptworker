@@ -761,3 +761,36 @@ async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
     await sgpg.build_gpg_homedirs_from_repo(
         context, verify_function=die, flat_function=die, signed_function=die
     )
+
+
+# create_initial_gpg_homedirs {{{1
+def test_create_initial_gpg_homedirs(context, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    sgpg.create_initial_gpg_homedirs(
+        context_function=fake_context,
+        rebuild_function=noop_sync,
+        overwrite_function=noop_sync,
+        update_function=noop_async,
+        build_function=noop_sync,
+    )
+
+
+def test_create_initial_gpg_homedirs_exception(context):
+
+    def fake_context(*args):
+        return (context, None)
+
+    def die(*args, **kwargs):
+        raise ScriptWorkerGPGException("foo")
+
+    with pytest.raises(SystemExit):
+        sgpg.create_initial_gpg_homedirs(
+            context_function=fake_context,
+            rebuild_function=die,
+            overwrite_function=noop_sync,
+            update_function=noop_async,
+            build_function=noop_sync,
+        )
