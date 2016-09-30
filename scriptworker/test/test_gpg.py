@@ -93,6 +93,14 @@ def versionless(ascii_key):
     return ''.join(new)
 
 
+def die_sync(*args, **kwargs):
+    raise ScriptWorkerGPGException("foo")
+
+
+async def die_async(*args, **kwargs):
+    raise ScriptWorkerGPGException("foo")
+
+
 def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
     messages = []
     gpg = sgpg.GPG(context)
@@ -126,6 +134,7 @@ def context(tmpdir2):
     for key, value in context_.config.items():
         if key.endswith("_dir") or key in ("gpg_home", ):
             context_.config[key] = os.path.join(tmpdir2, key)
+    context.config['sign_key_timeout'] = 5 * 60
     with open(cot_config_path) as fh:
         context_.cot_config = json.load(fh)
     yield context_
@@ -753,13 +762,10 @@ async def test_build_gpg_homedirs_from_repo(context, mocker):
 @pytest.mark.asyncio
 async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
 
-    async def die(*args):
-        raise Exception("We shouldn't hit this.")
-
     os.makedirs(context.config['base_gpg_home_dir'])
     touch(os.path.join(context.config['base_gpg_home_dir'], '.lock'))
     await sgpg.build_gpg_homedirs_from_repo(
-        context, verify_function=die, flat_function=die, signed_function=die
+        context, verify_function=die_async, flat_function=die_async, signed_function=die_async
     )
 
 
@@ -783,14 +789,62 @@ def test_create_initial_gpg_homedirs_exception(context, mocker):
     def fake_context(*args):
         return (context, None)
 
-    def die(*args, **kwargs):
-        raise ScriptWorkerGPGException("foo")
-
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "rebuild_gpg_home", new=die)
+    mocker.patch.object(sgpg, "rebuild_gpg_home", new=die_sync)
     mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
     mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
 
     with pytest.raises(SystemExit):
         sgpg.create_initial_gpg_homedirs()
+
+
+# rebuild_gpg_homedirs_loop {{{1
+@pytest.mark.asyncio
+async def test_rebuild_gpg_homedirs_loop(context, mocker):
+    """Try to hit all the parts of the actual loop
+    """
+    counts = {
+        "rm_basedir": 0,
+        "return_none": 0,
+        "raise": 0
+    }
+    basedir = context.config['base_gpg_home_dir']
+
+    def rm_basedir_2nd_pass(*args, **kwargs):
+        counts['rm_basedir'] += 1
+        if counts['rm_basedir'] > 1 and os.path.exists(basedir):
+            shutil.rmtree(basedir)
+
+    async def return_none_1st_pass(*args, **kwargs):
+        counts['return_none'] += 1
+        if counts['return_none'] > 1:
+            return True
+
+    def raise_1st_die_2nd(*args, **kwargs):
+        counts['raise'] += 1
+        if counts['raise'] == 1:
+            raise ScriptWorkerGPGException("foo")
+        else:
+            raise SystemExit()
+
+    context.config['sign_chain_of_trust'] = True
+    context.config['verify_chain_of_trust'] = True
+    os.makedirs(basedir)
+    mocker.patch.object(sgpg, "rm", new=noop_sync)
+    mocker.patch.object(asyncio, "sleep", new=rm_basedir_2nd_pass)
+    mocker.patch.object(sgpg, "retry_async", new=return_none_1st_pass)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=raise_1st_die_2nd)
+
+    with pytest.raises(SystemExit):
+        await sgpg.rebuild_gpg_homedirs_loop(context, basedir)
+
+
+@pytest.mark.asyncio
+async def test_rebuild_gpg_homedirs_loop_skip(context, tmpdir, mocker):
+    path = os.path.join(tmpdir, "foo")
+    context.config['sign_chain_of_trust'] = False
+    context.config['verify_chain_of_trust'] = False
+    mocker.patch.object(asyncio, "sleep", new=die_sync)
+    mocker.patch.object(sgpg, "retry_async", new=die_async)
+    await sgpg.rebuild_gpg_homedirs_loop(context, path)
