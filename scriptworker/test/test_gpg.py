@@ -559,7 +559,7 @@ def test_consume_valid_keys_suffixes(context):
 
 
 def test_rebuild_gpg_home_flat(context, event_loop):
-    shutil.rmtree(context.config['gpg_home'])  # coverage
+    os.makedirs(context.config['gpg_home'])  # coverage
     event_loop.run_until_complete(
         sgpg.rebuild_gpg_home_flat(
             context,
