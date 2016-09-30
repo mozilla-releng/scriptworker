@@ -1258,7 +1258,6 @@ async def verify_signed_git_commit(context, exec_function=asyncio.create_subproc
 async def build_gpg_homedirs_from_repo(
     context, basedir=None, verify_function=verify_signed_git_commit,
     flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
-    parallelize_function=raise_future_exceptions
 ):
     """Build gpg homedirs in `basedir`, from the context-defined git repo.
 
@@ -1293,7 +1292,7 @@ async def build_gpg_homedirs_from_repo(
         tasks = []
         for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
             source_path = os.path.join(repo_path, worker_class)
-            real_gpg_home = os.path_join(basedir, worker_class)
+            real_gpg_home = os.path.join(basedir, worker_class)
             my_pub_key_path = context.cot_config['pubkey_path']
             my_priv_key_path = context.cot_config['privkey_path']
             if worker_config['type'] == 'flat':
@@ -1313,7 +1312,7 @@ async def build_gpg_homedirs_from_repo(
                         ignore_suffixes=worker_config['ignore_suffixes']
                     )
                 ))
-            parallelize_function(tasks)
+            await raise_future_exceptions(tasks)
     finally:
         # rm lockfile
         rm(lockfile)

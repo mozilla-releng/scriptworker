@@ -559,7 +559,6 @@ def test_consume_valid_keys_suffixes(context):
 
 
 def test_rebuild_gpg_home_flat(context, event_loop):
-    os.makedirs(context.config['gpg_home'])  # coverage
     event_loop.run_until_complete(
         sgpg.rebuild_gpg_home_flat(
             context,
@@ -730,6 +729,28 @@ async def test_verify_signed_git_commit(context, mocker):
 
 # build_gpg_homedirs_from_repo {{{1
 @pytest.mark.asyncio
+async def test_build_gpg_homedirs_from_repo(context, mocker):
+    homedirs = {'flat': [], 'signed': []}
+    expected = {
+        'flat': ['docker-worker', 'generic-worker'],
+        'signed': ['scriptworker'],
+    }
+
+    async def counter(_, path, *args, **kwargs):
+        worker_dir = os.path.basename(path)
+        key = 'flat'
+        if 'untrusted_path' in kwargs:
+            key = 'signed'
+        homedirs[key].append(worker_dir)
+        homedirs[key] = sorted(homedirs[key])
+
+    await sgpg.build_gpg_homedirs_from_repo(
+        context, verify_function=noop_async, flat_function=counter, signed_function=counter
+    )
+    assert homedirs == expected
+
+
+@pytest.mark.asyncio
 async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
 
     async def die(*args):
@@ -738,6 +759,5 @@ async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
     os.makedirs(context.config['base_gpg_home_dir'])
     touch(os.path.join(context.config['base_gpg_home_dir'], '.lock'))
     await sgpg.build_gpg_homedirs_from_repo(
-        context, verify_function=die, flat_function=die, signed_function=die,
-        parallelize_function=die
+        context, verify_function=die, flat_function=die, signed_function=die
     )
