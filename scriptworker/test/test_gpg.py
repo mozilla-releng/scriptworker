@@ -18,7 +18,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2, touch
 
 assert event_loop, tmpdir  # silence pyflakes
 assert tmpdir2  # silence pyflakes
@@ -728,6 +728,16 @@ async def test_verify_signed_git_commit(context, mocker):
     await sgpg.verify_signed_git_commit(context, exec_function=fake_exec)
 
 
+# build_gpg_homedirs_from_repo {{{1
 @pytest.mark.asyncio
-async def test_build_gpg_homedirs_from_repo():
-    pass
+async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
+
+    async def die(*args):
+        raise Exception("We shouldn't hit this.")
+
+    os.makedirs(context.config['base_gpg_home_dir'])
+    touch(os.path.join(context.config['base_gpg_home_dir'], '.lock'))
+    await sgpg.build_gpg_homedirs_from_repo(
+        context, verify_function=die, flat_function=die, signed_function=die,
+        parallelize_function=die
+    )
