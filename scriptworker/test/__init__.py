@@ -242,3 +242,11 @@ def tmpdir2():
     """
     with tempfile.TemporaryDirectory() as tmp:
         yield tmp
+
+
+async def noop_async(*args, **kwargs):
+    pass
+
+
+def noop_sync(*args, **kwargs):
+    pass

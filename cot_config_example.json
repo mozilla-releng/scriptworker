@@ -9,15 +9,15 @@
     "gpg_homedirs": {
         "docker-worker": {
             "type": "flat",
-            "ignore_suffixes": [".md"],
+            "ignore_suffixes": [".md"]
         },
         "generic-worker": {
             "type": "flat",
-            "ignore_suffixes": [".md"],
+            "ignore_suffixes": [".md"]
         },
         "scriptworker": {
             "type": "signed",
-            "ignore_suffixes": [".md"],
+            "ignore_suffixes": [".md"]
         }
     }
 }

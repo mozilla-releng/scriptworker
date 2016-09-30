@@ -1190,9 +1190,8 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
         ScriptWorkerRetryException: on failure.
     """
     proc = await exec_function(
-        "git", ["rev-parse", "HEAD"], cwd=path,
+        'git', "rev-parse", "HEAD", cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
-        preexec_fn=lambda: os.setsid()
     )
     revision, err = await proc.communicate()
     exitcode = await proc.wait()
@@ -1204,7 +1203,8 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
 
 
 async def update_signed_git_repo(context, revision='master',
-                                 exec_function=asyncio.create_subprocess_exec):
+                                 exec_function=asyncio.create_subprocess_exec,
+                                 log_function=pipe_to_log):
     """Update a git repo with signed git commits, and verify the signature.
 
     This function updates the repo.
@@ -1214,6 +1214,8 @@ async def update_signed_git_repo(context, revision='master',
         revision (str, optional): the revision to update to.  Defaults to 'master'.
         exec_function (function, optional): the function to call git with.
             defaults to `asyncio.create_subprocess_exec`
+        log_function (function, optional): the function to log stdout with.
+            defaults to `pipe_to_log`.
 
     Returns:
         bool: True if there has been a change; False otherwise.
@@ -1225,11 +1227,10 @@ async def update_signed_git_repo(context, revision='master',
     path = context.config['git_key_repo_dir']
     old_revision = await get_git_revision(path)
     proc = await exec_function(
-        "git", ["pull", "--ff-only", revision], cwd=path,
+        "git", "pull", "--ff-only", revision, cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
-        preexec_fn=lambda: os.setsid()
     )
-    await pipe_to_log(proc.stdout)
+    await log_function(proc.stdout)
     exitcode = await proc.wait()
     if exitcode:
         raise ScriptWorkerRetryException(
@@ -1240,17 +1241,16 @@ async def update_signed_git_repo(context, revision='master',
 
 
 async def verify_signed_git_commit(context, exec_function=asyncio.create_subprocess_exec):
-    """Verify `context.cot_config['git_key_repo_dir']` is on a valid signed commit.
+    """Verify `context.config['git_key_repo_dir']` is on a valid signed commit.
 
     This function calls `verify_signed_git_commit_output` to make sure the
     latest commit is signed with a key whose fingerprint is in
-    `context.cot_config['git_key_repo_fingerprints']`.
+    `context.config['git_key_repo_fingerprints']`.
     """
-    path = context.cot_config['git_key_repo_dir']
+    path = context.config['git_key_repo_dir']
     proc = await exec_function(
-        "git", ["log", "--no-merges", "--format='%H:%GG'"], cwd=path,
+        "git", "log", "--no-merges", "--format='%H:%GG'", cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
-        preexec_fn=lambda: os.setsid()
     )
     output = ""
     while True:
@@ -1259,7 +1259,6 @@ async def verify_signed_git_commit(context, exec_function=asyncio.create_subproc
             output += line.decode('utf-8')
         else:
             break
-    # TODO we're going to have to import the valid keys into the main gpg_home
     verify_signed_git_commit_output(
         GPG(context), output, context.cot_config['git_key_repo_fingerprints']
     )

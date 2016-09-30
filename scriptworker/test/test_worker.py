@@ -17,7 +17,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-from . import event_loop, successful_queue, tmpdir, tmpdir2
+from . import event_loop, noop_async, noop_sync, successful_queue, tmpdir, tmpdir2
 
 assert tmpdir, tmpdir2  # silence flake8
 assert successful_queue, event_loop  # silence flake8
@@ -49,14 +49,6 @@ def context(tmpdir2):
         'expires': arrow.utcnow().replace(hours=10).isoformat(),
     }
     return context
-
-
-def noop_sync(*args, **kwargs):
-    return
-
-
-async def noop(*args, **kwargs):
-    return
 
 
 # main {{{1
@@ -122,9 +114,9 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         sys.exit()
 
     try:
-        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop)
+        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop_async)
         mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
-        mocker.patch.object(asyncio, 'sleep', new=noop)
+        mocker.patch.object(asyncio, 'sleep', new=noop_async)
         mocker.patch.object(worker, 'overwrite_gpg_home', new=exit)
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
@@ -156,23 +148,23 @@ def test_mocker_run_loop(context, successful_queue, event_loop, mocker):
 
     context.queue = successful_queue
     mocker.patch.object(worker, "find_task", new=find_task)
-    mocker.patch.object(worker, "reclaim_task", new=noop)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "run_task", new=find_task)
-    mocker.patch.object(worker, "generate_cot", new=noop)
-    mocker.patch.object(worker, "upload_artifacts", new=noop)
-    mocker.patch.object(worker, "complete_task", new=noop)
+    mocker.patch.object(worker, "generate_cot", new=noop_async)
+    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert status == task
 
 
 def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=noop)
-    mocker.patch.object(worker, "reclaim_task", new=noop)
-    mocker.patch.object(worker, "run_task", new=noop)
+    mocker.patch.object(worker, "find_task", new=noop_async)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "run_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
-    mocker.patch.object(worker, "upload_artifacts", new=noop)
-    mocker.patch.object(worker, "complete_task", new=noop)
+    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
     mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert context.credentials is None
@@ -186,12 +178,12 @@ def test_mocker_run_loop_noop_update_creds(context, successful_queue,
     def get_creds(*args, **kwargs):
         return deepcopy(new_creds)
 
-    mocker.patch.object(worker, "find_task", new=noop)
-    mocker.patch.object(worker, "reclaim_task", new=noop)
-    mocker.patch.object(worker, "run_task", new=noop)
+    mocker.patch.object(worker, "find_task", new=noop_async)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "run_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
-    mocker.patch.object(worker, "upload_artifacts", new=noop)
-    mocker.patch.object(worker, "complete_task", new=noop)
+    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
     mocker.patch.object(worker, "read_worker_creds", new=get_creds)
     context.queue = successful_queue
     status = event_loop.run_until_complete(worker.run_loop(context))
@@ -218,7 +210,7 @@ def test_mocker_run_loop_exception(context, successful_queue,
 
     context.queue = successful_queue
     mocker.patch.object(worker, "find_task", new=find_task)
-    mocker.patch.object(worker, "reclaim_task", new=noop)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
     if func_to_raise == "run_task":
         mocker.patch.object(worker, "run_task", new=exc)
     else:
@@ -227,8 +219,8 @@ def test_mocker_run_loop_exception(context, successful_queue,
     if func_to_raise == "upload_artifacts":
         mocker.patch.object(worker, "upload_artifacts", new=exc)
     else:
-        mocker.patch.object(worker, "upload_artifacts", new=noop)
-    mocker.patch.object(worker, "complete_task", new=noop)
+        mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
     mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert status == ScriptWorkerException.exit_code

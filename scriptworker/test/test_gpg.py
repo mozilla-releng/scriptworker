@@ -5,6 +5,7 @@
 import arrow
 import asyncio
 from contextlib import contextmanager
+from copy import deepcopy
 import glob
 import json
 import mock
@@ -15,9 +16,9 @@ import shutil
 import subprocess
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerGPGException
+from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, tmpdir, tmpdir2
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2
 
 assert event_loop, tmpdir  # silence pyflakes
 assert tmpdir2  # silence pyflakes
@@ -117,11 +118,16 @@ def context(tmpdir2):
     gnupghome.
     """
     context_ = Context()
-    context_.config = {}
-    for k, v in DEFAULT_CONFIG.items():
-        if k.startswith("gpg_"):
-            context_.config[k] = v
-    context_.config['gpg_home'] = tmpdir2
+    context_.config = dict(deepcopy(DEFAULT_CONFIG))
+    cot_config_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "cot_config_example.json"
+    )
+    for key, value in context_.config.items():
+        if key.endswith("_dir") or key in ("gpg_home", ):
+            context_.config[key] = os.path.join(tmpdir2, key)
+    with open(cot_config_path) as fh:
+        context_.cot_config = json.load(fh)
     yield context_
 
 
@@ -597,7 +603,7 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
     assert messages == []
 
 
-# git {{{1
+# verify_signed_git_commit_output {{{1
 def test_verify_signed_git_commit_output(context, mocker):
 
     def fake_keyid_to_fingerprint(_, fingerprint):
@@ -635,3 +641,88 @@ def test_verify_signed_git_commit_output_exception(context, output):
     with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
         with pytest.raises(ScriptWorkerGPGException):
             sgpg.verify_signed_git_commit_output(gpg, output, ["good"])
+
+
+# get_git_revision {{{1
+@pytest.mark.asyncio
+async def test_get_git_revision():
+    parent_dir = os.path.dirname(__file__)
+    expected = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=parent_dir)
+    assert await sgpg.get_git_revision(parent_dir) == expected.decode('utf-8').rstrip()
+
+
+@pytest.mark.asyncio
+async def test_get_git_revision_exception(mocker):
+    x = mock.MagicMock()
+
+    async def fake(*args, **kwargs):
+        return x
+
+    async def return_1(*args, **kwargs):
+        return 1
+
+    async def fake_communicate(*args, **kwargs):
+        return ("x", "y")
+
+    x.communicate = fake_communicate
+    x.wait = return_1
+
+    parent_dir = os.path.dirname(__file__)
+    with pytest.raises(ScriptWorkerRetryException):
+        await sgpg.get_git_revision(parent_dir, exec_function=fake)
+
+
+# update_signed_git_repo {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("result1,result2,expected,return_value", ((
+    "one", "one", False, 0
+), (
+    "one", "two", True, 0
+), (
+    "one", "two", True, 1
+)))
+async def test_update_signed_git_repo(context, mocker, result1, result2, expected,
+                                      return_value):
+    results = [result1, result2]
+
+    async def fake_revision(*args, **kwargs):
+        return results.pop(0)
+
+    async def wait(*args, **kwargs):
+        return return_value
+
+    async def fake_exec(*args, **kwargs):
+        value = mock.MagicMock()
+        value.wait = wait
+        return value
+
+    mocker.patch.object(sgpg, "get_git_revision", new=fake_revision)
+    if return_value:
+        with pytest.raises(ScriptWorkerRetryException):
+            await sgpg.update_signed_git_repo(
+                context, exec_function=fake_exec, log_function=noop_async)
+    else:
+        result = await sgpg.update_signed_git_repo(
+            context, exec_function=fake_exec, log_function=noop_async)
+        assert result == expected
+
+
+# verify_signed_git_commit {{{1
+@pytest.mark.asyncio
+async def test_verify_signed_git_commit(context, mocker):
+    output = [b'asdf', b'asdf']
+
+    async def fake_readline():
+        if output:
+            return output.pop(0)
+
+    stdout = mock.MagicMock()
+    stdout.readline = fake_readline
+
+    async def fake_exec(*args, **kwargs):
+        m = mock.MagicMock()
+        m.stdout = stdout
+        return m
+
+    mocker.patch.object(sgpg, "verify_signed_git_commit_output", new=noop_sync)
+    await sgpg.verify_signed_git_commit(context, exec_function=fake_exec)
