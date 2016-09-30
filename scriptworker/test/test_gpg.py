@@ -774,7 +774,7 @@ def test_create_initial_gpg_homedirs(context, event_loop):
         rebuild_function=noop_sync,
         overwrite_function=noop_sync,
         update_function=noop_async,
-        build_function=noop_sync,
+        build_function=noop_async,
     )
 
 
@@ -792,5 +792,5 @@ def test_create_initial_gpg_homedirs_exception(context):
             rebuild_function=die,
             overwrite_function=noop_sync,
             update_function=noop_async,
-            build_function=noop_sync,
+            build_function=noop_async,
         )
