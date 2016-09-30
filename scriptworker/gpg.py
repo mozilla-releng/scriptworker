@@ -352,7 +352,7 @@ def sign_key(context, target_fingerprint, signing_key=None,
             raise ScriptWorkerGPGException(
                 "Failed signing {}! Timeout".format(target_fingerprint)
             )
-    except pexpect.exceptions.EOF:
+    except (pexpect.exceptions.EOF, OSError):
         # Possibly already signed.  We'll check exitstatus/signalstatus later.
         pass
     child.close()
