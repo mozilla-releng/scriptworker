@@ -25,14 +25,16 @@ Free software: MPL2 license
 -----
 Usage
 -----
-* Create a config file.  By default scriptworker will look in ``./config.json``, but this config path can be specified as the first and only commandline argument.  There is an `example config file`_, and all config items are specified in `scriptworker.config.DEFAULT_CONFIG`_.
+* Create a config file.  By default scriptworker will look in ``./scriptworker.json``, but this config path can be specified as the first and only commandline argument.  There is an `example config file`_, and all config items are specified in `scriptworker.constants.DEFAULT_CONFIG`_.
 
 .. _example config file: https://github.com/mozilla-releng/scriptworker/blob/master/config_example.json
-.. _scriptworker.config.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/config.py#L14-L49)
+.. _scriptworker.constants.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/constants.py)
 
-Credentials can live in ``./config.json``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
+Credentials can live in ``./scriptworker.json``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
 
-* Launch: ``scriptworker [config_path]``
+* If using either ``verify_chain_of_trust`` or ``sign_chain_of_trust``, you will also need a ``cot_config.json``, which is either specified as the 2nd argument in the commandline, or in ``./cot_config.json``.
+
+* Launch: ``scriptworker [config_path] [cot_config_path]``
 
 -------
 Testing
