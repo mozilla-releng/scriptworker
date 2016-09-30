@@ -134,7 +134,7 @@ def context(tmpdir2):
     for key, value in context_.config.items():
         if key.endswith("_dir") or key in ("gpg_home", ):
             context_.config[key] = os.path.join(tmpdir2, key)
-    context.config['sign_key_timeout'] = 5 * 60
+    context_.config['sign_key_timeout'] = 5 * 60
     with open(cot_config_path) as fh:
         context_.cot_config = json.load(fh)
     yield context_
