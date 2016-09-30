@@ -84,7 +84,7 @@ async def async_main(context):
     """
     loop = asyncio.get_event_loop()
     tmp_gpg_home = "{}.tmp".format(context.config['base_gpg_home_dir'])
-    lockfile = os.path.join(tmp_gpg_home, "build_gpg_homedirs.lock")
+    lockfile = os.path.join(tmp_gpg_home, ".lock")
     loop.create_task(
         rebuild_gpg_homedirs_loop(
             context, tmp_gpg_home

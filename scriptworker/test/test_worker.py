@@ -103,7 +103,7 @@ def test_async_main(context, event_loop, mocker, tmpdir):
             os.makedirs(path)
         except FileExistsError:
             pass
-        lockfile = os.path.join(path, "build_gpg_homedirs.lock")
+        lockfile = os.path.join(path, ".lock")
         if os.path.exists(lockfile):
             os.remove(lockfile)
         else:

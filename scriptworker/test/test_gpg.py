@@ -726,3 +726,8 @@ async def test_verify_signed_git_commit(context, mocker):
 
     mocker.patch.object(sgpg, "verify_signed_git_commit_output", new=noop_sync)
     await sgpg.verify_signed_git_commit(context, exec_function=fake_exec)
+
+
+@pytest.mark.asyncio
+async def test_build_gpg_homedirs_from_repo():
+    pass

@@ -1043,8 +1043,6 @@ async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
             from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
-        consume_function (function, optional): the function to call to consume
-            the public keys.  Defaults to consume_valid_keys()
     """
     # Create a new tmp_gpg_home to import into
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
@@ -1089,8 +1087,6 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
             untrusted but valid pubkeys from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
-        consume_function (function, optional): the function to call to consume
-            the public keys.  Defaults to consume_valid_keys()
     """
     # Create a new tmp_gpg_home to import into
     log.info("rebuilding gpg_home for {} at {}...".format(my_pub_key_path, real_gpg_home))
@@ -1180,8 +1176,6 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
 
     Args:
         path (str): the path to run `git rev-parse HEAD` in.
-        exec_function (function, optional): the function to call to run git.
-            Default is `asyncio.create_subprocess_exec`.
 
     Returns:
         str: the revision.
@@ -1212,10 +1206,6 @@ async def update_signed_git_repo(context, revision='master',
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         revision (str, optional): the revision to update to.  Defaults to 'master'.
-        exec_function (function, optional): the function to call git with.
-            defaults to `asyncio.create_subprocess_exec`
-        log_function (function, optional): the function to log stdout with.
-            defaults to `pipe_to_log`.
 
     Returns:
         bool: True if there has been a change; False otherwise.
@@ -1265,7 +1255,11 @@ async def verify_signed_git_commit(context, exec_function=asyncio.create_subproc
 
 
 # build gpg homedirs from repo {{{1
-async def build_gpg_homedirs_from_repo(context, basedir=None):
+async def build_gpg_homedirs_from_repo(
+    context, basedir=None, verify_function=verify_signed_git_commit,
+    flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
+    parallelize_function=raise_future_exceptions
+):
     """Build gpg homedirs in `basedir`, from the context-defined git repo.
 
     Args:
@@ -1276,11 +1270,13 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
 
     Returns:
         str: on success.
-        None: on failure.
+
+    Raises:
+        ScriptWorkerGPGException: on rebuild exception.
     """
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
-    lockfile = os.path.join(basedir, "build_gpg_homedirs.lock")
+    lockfile = os.path.join(basedir, ".lock")
     if os.path.exists(lockfile):
         log.warning("Skipping build_gpg_homedirs_from_repo: lockfile {} exists!".format(lockfile))
         return
@@ -1292,7 +1288,7 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
             print(str(arrow.utcnow().timestamp), file=fh, end="")
         # verify our input.  Hardcoding the check before importing, as opposed
         # to expecting something else to run the check for us.
-        await verify_signed_git_commit(context)
+        await verify_function(context)
         # create gpg homedirs
         tasks = []
         for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
@@ -1302,7 +1298,7 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
             my_priv_key_path = context.cot_config['privkey_path']
             if worker_config['type'] == 'flat':
                 tasks.append(asyncio.ensure_future(
-                    rebuild_gpg_home_flat(
+                    flat_function(
                         context, real_gpg_home, my_pub_key_path, my_priv_key_path,
                         source_path, ignore_suffixes=worker_config['ignore_suffixes']
                     )
@@ -1311,13 +1307,13 @@ async def build_gpg_homedirs_from_repo(context, basedir=None):
                 trusted_path = os.path.join(source_path, "trusted")
                 untrusted_path = os.path.join(source_path, "valid")
                 tasks.append(asyncio.ensure_future(
-                    rebuild_gpg_home_signed(
+                    signed_function(
                         context, real_gpg_home, my_pub_key_path, my_priv_key_path,
                         trusted_path, untrusted_path=untrusted_path,
                         ignore_suffixes=worker_config['ignore_suffixes']
                     )
                 ))
-            raise_future_exceptions(tasks)
+            parallelize_function(tasks)
     finally:
         # rm lockfile
         rm(lockfile)
