@@ -18,7 +18,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `rebuild_gpg_home` now allows for a `gpg_keyserver` kwarg
 - renamed `scriptworker.gpg.latest_signed_git_commit` to `scriptworker.gpg.verify_signed_git_commit_output`
 - combined `scriptworker.log.log_errors` and `scriptworker.log.read_stdout` into `scriptworker.log.pipe_to_log`
-- added `taskGroupId` to the list of default valid `taskId`s to download from
+- added `taskGroupId` to the list of default valid `taskId`s to download from.  This logic will need to change in version 0.9.0 due to the new [chain of trust dependency traversal logic](https://gist.github.com/escapewindow/a6a6944f51d4219d08284ededc65aa30)
 
 ### Fixed
 - added missing docstrings to the `download_artifacts` and `download_file` functions
