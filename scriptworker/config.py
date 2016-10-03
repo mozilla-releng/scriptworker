@@ -194,7 +194,6 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
             credentials frozendict
     """
     context = Context()
-    kwargs = {}
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
         "config_path", type=str, nargs="?", default="scriptworker.json",
