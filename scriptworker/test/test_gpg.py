@@ -413,7 +413,7 @@ async def test_sign_key_twice(context):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exportable", (True, False))
-async def test_sign_key_exportable(context, exportable):
+async def test_sign_key_exportable(context, exportable, event_loop):
     gpg_home2 = os.path.join(context.config['gpg_home'], "two")
     context.config['gpg_home'] = os.path.join(context.config['gpg_home'], "one")
     gpg = sgpg.GPG(context)
