@@ -1366,7 +1366,7 @@ def create_initial_gpg_homedirs():
     Raises:
         SystemExit: on failure.
     """
-    context, _ = get_context_from_cmdln(sys.argv)
+    context, _ = get_context_from_cmdln(sys.argv[1:])
     try:
         with tempfile.TemporaryDirectory() as tmp_gpg_home:
             rebuild_gpg_home(
