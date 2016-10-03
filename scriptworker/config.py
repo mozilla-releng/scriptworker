@@ -6,6 +6,7 @@ Attributes:
     CREDS_FILES (tuple): an ordered list of files to look for taskcluster
         credentials, if they aren't in the config file or environment.
 """
+import argparse
 from copy import deepcopy
 from frozendict import frozendict
 import json
@@ -148,7 +149,7 @@ def create_config(config_path="scriptworker.json"):
 
 
 # create_cot_config {{{1
-def create_cot_config(context):
+def create_cot_config(context, cot_config_path=None):
     """Create a Chain of Trust config from context.config['cot_config'] file.
 
     Then validate it via the schema file, and freeze it.
@@ -162,7 +163,7 @@ def create_cot_config(context):
     Raises:
         SystemExit: on failure
     """
-    cot_config_path = context.config['cot_config_path']
+    cot_config_path = cot_config_path or context.config['cot_config_path']
     if not os.path.exists(cot_config_path):
         print("{} doesn't exist! Exiting create_cot_config()...".format(cot_config_path),
               file=sys.stderr)
@@ -179,7 +180,7 @@ def create_cot_config(context):
 
 
 # get_context_from_cmdln {{{1
-def get_context_from_cmdln(args):
+def get_context_from_cmdln(args, desc="Run scriptworker"):
     """Create a Context object from args.
 
     This was originally part of main(), but we use it in
@@ -194,12 +195,17 @@ def get_context_from_cmdln(args):
     """
     context = Context()
     kwargs = {}
-    if len(args) > 1:  # pragma: no branch
-        if len(args) > 2:
-            print("Usage: {} [configfile]".format(args[0]), file=sys.stderr)
-            sys.exit(1)
-        kwargs['config_path'] = args[1]
-    context.config, credentials = create_config(**kwargs)
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument(
+        "config_path", type=str, nargs="?", default="scriptworker.json",
+        help="the path to the config file"
+    )
+    parser.add_argument(
+        "cot_config_path", type=str, nargs="?",
+        help="the path to the chain of trust config file"
+    )
+    parsed_args = parser.parse_args(args)
+    context.config, credentials = create_config(config_path=parsed_args.config_path)
     update_logging_config(context)
-    context.cot_config = create_cot_config(context)
+    context.cot_config = create_cot_config(context, cot_config_path=parsed_args.cot_config_path)
     return context, credentials

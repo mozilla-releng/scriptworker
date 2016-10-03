@@ -46,7 +46,7 @@ DEFAULT_CONFIG = frozendict({
     "my_email": "scriptworker@example.com",
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
-    "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "firefox_cot_config_schema.json"),
+    "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json"),
     "cot_config_path": os.path.join(os.getcwd(), "cot_config.json"),
 
     # Specify a default gpg home other than ~/.gnupg

@@ -175,7 +175,7 @@ def test_get_context_from_cmdln(t_config):
         pass
 
     with mock.patch.object(config, "create_cot_config", new=noop):
-        context, credentials = config.get_context_from_cmdln(["x", path])
+        context, credentials = config.get_context_from_cmdln([path])
         assert credentials == expected_creds
         assert context.config == expected_config
 
