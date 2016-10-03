@@ -84,7 +84,7 @@ def test_main(mocker, context, event_loop):
             json.dump(config, fh)
         del(config['credentials'])
         mocker.patch.object(worker, 'async_main', new=foo)
-        mocker.patch.object(sys, 'argv', new=[tmp])
+        mocker.patch.object(sys, 'argv', new=['x', tmp])
         with mock.patch.object(asyncio, 'get_event_loop') as p:
             p.return_value = loop
             with pytest.raises(ScriptWorkerException):
