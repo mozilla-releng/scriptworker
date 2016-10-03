@@ -49,7 +49,7 @@ def get_version_string(version):
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (0, 8, 0, "alpha1")
+__version__ = (0, 8, 0, "alpha2")
 __version_string__ = get_version_string(__version__)
 
 
@@ -69,7 +69,7 @@ def write_version(name=None, path=None):
     # Written like this for coverage purposes.
     # http://stackoverflow.com/questions/5850268/how-to-test-or-mock-if-name-main-contents/27084447#27084447
     if name in (None, '__main__'):
-        path = path or os.path.join(os.path.dirname(os.path.dirname(__file__)),
+        path = path or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                     "version.json")
         contents = {
             'version': __version__,
