@@ -1196,7 +1196,7 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
     return revision.decode('utf-8').rstrip()
 
 
-async def update_signed_git_repo(context, revision='master',
+async def update_signed_git_repo(context, repo="origin", revision="master",
                                  exec_function=asyncio.create_subprocess_exec,
                                  log_function=pipe_to_log):
     """Update a git repo with signed git commits, and verify the signature.
@@ -1205,6 +1205,7 @@ async def update_signed_git_repo(context, revision='master',
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+        repo (str, optional): the repo to update from.  Defaults to 'origin'.
         revision (str, optional): the revision to update to.  Defaults to 'master'.
 
     Returns:
@@ -1217,7 +1218,7 @@ async def update_signed_git_repo(context, revision='master',
     path = context.config['git_key_repo_dir']
     old_revision = await get_git_revision(path)
     proc = await exec_function(
-        "git", "pull", "--ff-only", revision, cwd=path,
+        "git", "pull", "--ff-only", repo, revision, cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
     )
     await log_function(proc.stdout)
