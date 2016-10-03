@@ -100,7 +100,7 @@ async def async_main(context):
 def main():
     """Scriptworker entry point: get everything set up, then enter the main loop
     """
-    context, credentials = get_context_from_cmdln(sys.argv)
+    context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()
