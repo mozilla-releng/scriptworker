@@ -1367,6 +1367,7 @@ def create_initial_gpg_homedirs():
         SystemExit: on failure.
     """
     context, _ = get_context_from_cmdln(sys.argv[1:])
+    makedirs(context.config['git_key_repo_dir'])
     try:
         with tempfile.TemporaryDirectory() as tmp_gpg_home:
             rebuild_gpg_home(
