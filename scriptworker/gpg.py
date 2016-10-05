@@ -1338,7 +1338,7 @@ async def rebuild_gpg_homedirs_loop(context, basedir):
         log.warning("sign_chain_of_trust and verify_chain_of_trust are False; exiting rebuild_gpg_homedirs_loop!")
         return
     while True:
-        asyncio.sleep(context.config['poll_git_interval'])
+        await asyncio.sleep(context.config['poll_git_interval'])
         if os.path.exists(basedir):
             log.warning("rebuild_gpg_homedirs_loop: {} exists; sleeping another {}!".format(basedir, str(context.config['poll_git_interval'])))
             continue

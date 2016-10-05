@@ -338,7 +338,7 @@ def test_export_unknown_key(base_context):
 
 # sign_key {{{1
 @pytest.mark.asyncio
-async def test_sign_key(context):
+async def test_sign_key(context, event_loop):
     """This test calls get_list_sigs_output in several different ways.  Each
     is valid; the main thing is more code coverage.
 
