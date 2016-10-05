@@ -811,7 +811,7 @@ async def test_rebuild_gpg_homedirs_loop(context, mocker):
     }
     basedir = context.config['base_gpg_home_dir']
 
-    def rm_basedir_2nd_pass(*args, **kwargs):
+    async def rm_basedir_2nd_pass(*args, **kwargs):
         counts['rm_basedir'] += 1
         if counts['rm_basedir'] > 1 and os.path.exists(basedir):
             shutil.rmtree(basedir)
