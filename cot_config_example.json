@@ -1,7 +1,7 @@
 {
     "git_key_repo_url": "https://github.com/escapewindow/cot-gpg-keys.git",
     "git_key_repo_fingerprints": [
-        "these_are_valid_fingerprints_for_commit_signing"
+        "83A4B550BC682F0B060157B04654904BB484B6B2"
     ],
     "gpg_keyserver": "hkp://gpg.mozilla.org",
     "pubkey_path": "...",

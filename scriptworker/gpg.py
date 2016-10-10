@@ -301,6 +301,24 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
+async def recv_keys(gpg, keyserver, fingerprints):
+    """Receive keys from keyserver.
+
+    Currently only async to allow for retry_async.
+
+    Args:
+        gpg (gnupg.GPG): the GPG instance.
+        keyserver (str): the gpg keyserver to receive keys from.
+        fingerprints (list): the list of fingerprints to download.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
+    """
+    result = gpg.recv_keys(keyserver, *fingerprints)
+    if sorted(result.fingerprints) != sorted(fingerprints):
+        raise ScriptWorkerRetryException("Only received these fingerprints: {}\nexpected {}".format(result.fingerprints, fingerprints))
+
+
 @asyncio.coroutine
 def sign_key(context, target_fingerprint, signing_key=None,
              exportable=False, gpg_home=None):
@@ -1132,43 +1150,92 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def verify_signed_git_commit_output(gpg, output, valid_fingerprints):
-    """Return the latest git commit sha that's signed by a valid fingerprint.
+def verify_signed_git_commit_output(gpg, output):
+    """Verify the latest non-merge-commit is signed by a valid fingerprint.
 
-    There are a number of ways to do this.  `git show --show-signature` will
-    show the output of `gpg --verify`, assuming we have the key already marked
-    valid in our web of trust, also assuming we're using the proper gpg_home.
+    If the key is missing, output looks like::
 
-    This function allows for unsigned commits between signed commits.
-    We may disallow those in the future.
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: directory `/Users/asasaki/.gnupg' created
+        gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
+        gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
+        gpg: keyring `/Users/asasaki/.gnupg/pubring.gpg' created
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: Can't check signature: No public key
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
+
+    If the key is in the keyring but not trusted, the output looks like::
+
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [unknown]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [unknown]
+        gpg:                 aka "[jpeg image of size 5283]" [unknown]
+        gpg: WARNING: This key is not certified with a trusted signature!
+        gpg:          There is no indication that the signature belongs to the owner.
+        Primary key fingerprint: 83A4 B550 BC68 2F0B 0601  57B0 4654 904B B484 B6B2
+             Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
+
+    If the key is in the keyring and trusted, the output looks like::
+
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: checking the trustdb
+        gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+        gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+        gpg: next trustdb check due at 2018-09-17
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]
+        gpg:                 aka "[jpeg image of size 5283]" [ultimate]
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
 
     Args:
-        gpg (gnupg.GPG): the GPG instance.
-        output (str): the output of `git log --no-merges --format='%H:%GG'`
-        valid_fingerprints (list): the gpg fingerprints of valid keys.
+        gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
+        output (str): the output from `git log --no-merges -n 1 --show-signature`
+
+    Returns:
+        str: 'ultimate', 'trusted', or 'valid'
 
     Raises:
-        ScriptWorkerGPGException: on bad or missing signature
+        ScriptWorkerGPGException: on error.
     """
+    BAD = {
+        "gpg: Can't check signature:": "",
+        "gpg: WARNING: This key is not certified with a trusted signature!": "",
+    }
+    GOOD = re.compile(r"""^gpg: Good signature from ".*" \[(ultimate|trusted|valid)\]$""")
+    messages = []
     lines = output.splitlines()
-    parts = lines[0].replace("'", "").split(":")
-    sha = parts[0]
-    message = "{} is not signed!".format(sha)
-    if parts[1] == "gpg":
-        for line in lines:
-            line = line.replace("'", "")
-            if not line.startswith(sha) and not line.startswith("gpg:"):
-                break
-            m = GIT_COMMIT_SIGNATURE_REGEX.search(line)
-            if m:
-                keyid = m.groupdict()['keyid']
-                fingerprint = keyid_to_fingerprint(gpg, keyid)
-                if fingerprint in valid_fingerprints:
-                    return sha
-                else:
-                    message = "{} is signed with invalid key! keyid {} fingerprint {}".format(sha, keyid, fingerprint)
-                    break
-    raise ScriptWorkerGPGException(message)
+    status = None
+    for line in lines:
+        m = GOOD.match(line)
+        if m is not None:
+            status = m.group(1)
+            continue
+        for k, v in BAD.items():
+            if line.startswith(k):
+                messages.append(v)
+                continue
+    if not status:
+        messages.append("No trusted signature!")
+    if messages:
+        raise ScriptWorkerGPGException("\n".join(messages))
+    return status
 
 
 async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
@@ -1235,12 +1302,15 @@ async def verify_signed_git_commit(context, exec_function=asyncio.create_subproc
     """Verify `context.config['git_key_repo_dir']` is on a valid signed commit.
 
     This function calls `verify_signed_git_commit_output` to make sure the
-    latest commit is signed with a key whose fingerprint is in
+    latest non-merge-commit commit is signed with a key whose fingerprint is in
     `context.config['git_key_repo_fingerprints']`.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
     """
     path = context.config['git_key_repo_dir']
     proc = await exec_function(
-        "git", "log", "--no-merges", "--format='%H:%GG'", cwd=path,
+        "git", "log", "--no-merges", "-n", "1", "--show-signature", cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     output = ""
@@ -1250,9 +1320,7 @@ async def verify_signed_git_commit(context, exec_function=asyncio.create_subproc
             output += line.decode('utf-8')
         else:
             break
-    verify_signed_git_commit_output(
-        GPG(context), output, context.cot_config['git_key_repo_fingerprints']
-    )
+    verify_signed_git_commit_output(GPG(context), output)
 
 
 # build gpg homedirs from repo {{{1
@@ -1377,14 +1445,18 @@ def create_initial_gpg_homedirs():
                 context.cot_config['privkey_path'],
                 gpg_keyserver=context.cot_config['gpg_keyserver']
             )
+            gpg = GPG(context, gpg_home=tmp_gpg_home)
+# TODO
             overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
         event_loop = asyncio.get_event_loop()
+        log.info("Updating git repo")
         event_loop.run_until_complete(
             retry_async(
                 update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
                 args=(context, )
             )
         )
+        log.info("Updating gpg homedirs")
         event_loop.run_until_complete(
             build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
         )

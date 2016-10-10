@@ -82,6 +82,41 @@ KEYS_AND_FINGERPRINTS = ((
     os.path.join(GPG_HOME, "keys", "unknown@example.com"),
 ))
 
+VERIFY_GIT_OUTPUT_PARAMS = (
+    "Author: Aki Sasaki <aki@escapewindow.com>\nDate:   Mon Sep 19 21:50:35 2016 -0700\n\n    add another check + small fixes + comments",
+
+"""commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [unknown]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [unknown]
+gpg:                 aka "[jpeg image of size 5283]" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 83A4 B550 BC68 2F0B 0601  57B0 4654 904B B484 B6B2
+     Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+
+"""commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: directory `/Users/asasaki/.gnupg' created
+gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
+gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
+gpg: keyring `/Users/asasaki/.gnupg/pubring.gpg' created
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: Can't check signature: No public key
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+)
+
 
 def versionless(ascii_key):
     """Strip the gpg version out of a key, to aid in comparison
@@ -614,41 +649,33 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
 # verify_signed_git_commit_output {{{1
 def test_verify_signed_git_commit_output(context, mocker):
 
-    def fake_keyid_to_fingerprint(_, fingerprint):
-        return fingerprint
-
-    output = "".join([
-        "'5ed7ae362d38eec0185037cac1bc5781b0e74067:gpg: ",
-        "Signature made Tue 20 Sep 2016 04:14:20 AM UTC\n",
-        "gpg:                using RSA key 0xFC829B7FFAA9AC38\n",
-        "gpg: Can't check signature: public key not found\n",
+    output = "\n".join([
+        """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a""",
+        """gpg: Signature made Mon Sep 19 21:50:53 2016 PDT""",
+        """gpg:                using RSA key FC829B7FFAA9AC38""",
+        """gpg: checking the trustdb""",
+        """gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model""",
+        """gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u""",
+        """gpg: next trustdb check due at 2018-09-17""",
+        """gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]""",
+        """gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]""",
+        """gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]""",
+        """gpg:                 aka "[jpeg image of size 5283]" [ultimate]""",
+        """Author: Aki Sasaki <aki@escapewindow.com>""",
+        """Date:   Mon Sep 19 21:50:35 2016 -0700""",
+        """""",
+        """    add another check + small fixes + comments""",
     ])
-    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
-        sha = sgpg.verify_signed_git_commit_output(None, output, ['fingerprint', 'FC829B7FFAA9AC38'])
-        assert sha == '5ed7ae362d38eec0185037cac1bc5781b0e74067'
+    value = sgpg.verify_signed_git_commit_output(None, output)
+    assert value == 'ultimate'
 
 
-@pytest.mark.parametrize("output", (
-    "latest_sha:\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
-    "latest_sha:gpg\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
-    "latest_sha:gpg using RSA key 0xBAD\nbad-signed_sha:gpg: using RSA key ABCD\nunsigned_sha:\noldest_sha:fprint3\n",
-    "latest_sha:gpg\ngpg:\ngpg:lkjsdlfjsd\ngpg:lksjdflsdkj\n",
-    "".join([
-        "'5ed7ae362d38eec0185037cac1bc5781b0e74067:gpg: ",
-        "Signature made Tue 20 Sep 2016 04:14:20 AM UTC\n",
-        "gpg:                using RSA key 0xFC829B7FFAA9AC38\n",
-        "gpg: Can't check signature: public key not found\n",
-    ]),
-))
+@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_PARAMS)
 def test_verify_signed_git_commit_output_exception(context, output):
 
-    def fake_keyid_to_fingerprint(_, fingerprint):
-        return fingerprint
-
     gpg = sgpg.GPG(context)
-    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
-        with pytest.raises(ScriptWorkerGPGException):
-            sgpg.verify_signed_git_commit_output(gpg, output, ["good"])
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.verify_signed_git_commit_output(gpg, output)
 
 
 # get_git_revision {{{1
@@ -718,7 +745,7 @@ async def test_update_signed_git_repo(context, mocker, result1, result2, expecte
 # verify_signed_git_commit {{{1
 @pytest.mark.asyncio
 async def test_verify_signed_git_commit(context, mocker):
-    output = [b'asdf', b'asdf']
+    output = [b'onetwothree', b'onetwothree']
 
     async def fake_readline():
         if output:
