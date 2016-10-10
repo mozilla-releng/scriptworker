@@ -343,9 +343,7 @@ def sign_key(context, target_fingerprint, signing_key=None,
     args.append(target_fingerprint)
     cmd_args = gpg_default_args(gpg_home) + args
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
-    fh = open("sign_key.log", "wb")
     child = pexpect.spawn(gpg_path, cmd_args, timeout=context.config['sign_key_timeout'])
-    child.logfile = fh
     try:
         while True:
             index = yield from child.expect([pexpect.EOF, b".*Really sign\? \(y/N\) ", b".*Really sign all user IDs\? \(y/N\) "], async=True)
@@ -1151,7 +1149,7 @@ def verify_signed_git_commit_output(output):
         gpg: Can't check signature: No public key
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-        
+
             add another check + small fixes + comments
 
     If the key is in the keyring but not trusted, the output looks like::
@@ -1169,7 +1167,7 @@ def verify_signed_git_commit_output(output):
              Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-        
+
             add another check + small fixes + comments
 
     If the key is in the keyring and trusted, the output looks like::
@@ -1187,7 +1185,7 @@ def verify_signed_git_commit_output(output):
         gpg:                 aka "[jpeg image of size 5283]" [ultimate]
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-        
+
             add another check + small fixes + comments
 
     or::
@@ -1201,7 +1199,7 @@ def verify_signed_git_commit_output(output):
         gpg:                 aka "[jpeg image of size 5283]"
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:22:40 2016 -0700
-        
+
             add travis tests for commit signatures.
 
 
