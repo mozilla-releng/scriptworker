@@ -815,7 +815,7 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop):
     sgpg.create_initial_gpg_homedirs()
 
 
-def test_create_initial_gpg_homedirs_exception(context, mocker):
+def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
 
     def fake_context(*args):
         return (context, None)
