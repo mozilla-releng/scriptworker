@@ -1423,6 +1423,7 @@ def create_initial_gpg_homedirs():
     Raises:
         SystemExit: on failure.
     """
+    logging.basicConfig()
     context, _ = get_context_from_cmdln(sys.argv[1:])
     log.info("create_initial_gpg_homedirs()...")
     trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
@@ -1430,11 +1431,13 @@ def create_initial_gpg_homedirs():
     event_loop = asyncio.get_event_loop()
     try:
         with tempfile.TemporaryDirectory() as tmp_gpg_home:
-            rebuild_gpg_home_signed(
-                context, tmp_gpg_home,
-                context.cot_config['pubkey_path'],
-                context.cot_config['privkey_path'],
-                trusted_path
+            event_loop.run_until_complete(
+                rebuild_gpg_home_signed(
+                    context, tmp_gpg_home,
+                    context.cot_config['pubkey_path'],
+                    context.cot_config['privkey_path'],
+                    trusted_path
+                )
             )
             overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
         log.info("Updating git repo")
