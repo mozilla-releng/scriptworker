@@ -301,24 +301,6 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
-async def recv_keys(gpg, keyserver, fingerprints):
-    """Receive keys from keyserver.
-
-    Currently only async to allow for retry_async.
-
-    Args:
-        gpg (gnupg.GPG): the GPG instance.
-        keyserver (str): the gpg keyserver to receive keys from.
-        fingerprints (list): the list of fingerprints to download.
-
-    Raises:
-        ScriptWorkerRetryException: on failure.
-    """
-    result = gpg.recv_keys(keyserver, *fingerprints)
-    if sorted(result.fingerprints) != sorted(fingerprints):
-        raise ScriptWorkerRetryException("Only received these fingerprints: {}\nexpected {}".format(result.fingerprints, fingerprints))
-
-
 @asyncio.coroutine
 def sign_key(context, target_fingerprint, signing_key=None,
              exportable=False, gpg_home=None):
@@ -1444,6 +1426,8 @@ def create_initial_gpg_homedirs():
     Raises:
         SystemExit: on failure.
     """
+    logging.basicConfig()
+    log.info("create_initial_gpg_homedirs()...")
     context, _ = get_context_from_cmdln(sys.argv[1:])
     trusted_fingerprints = context.cot_config['git_key_repo_fingerprints']
     makedirs(context.config['git_key_repo_dir'])
