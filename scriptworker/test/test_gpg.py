@@ -225,14 +225,16 @@ def context(tmpdir2):
 class PexpectChild():
     """Pretend to be a pexpect child proc for sign_key failures
     """
-    def __init__(self, exitstatus=1, expect_status=1, signalstatus=None):
-        pass
+    def __init__(self, exitstatus=1, expect_status=1, signalstatus=None, exc=False):
         self.exitstatus = exitstatus
         self.expect_status = expect_status
         self.signalstatus = signalstatus
+        self.exc = exc
 
     @asyncio.coroutine
     def expect(self, _, **kwargs):
+        if self.exc:
+            raise pexpect.exceptions.TIMEOUT("")
         return 0
 
     def sendline(*_):
@@ -535,10 +537,11 @@ async def test_sign_key_exportable(context, exportable, event_loop):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("expect_status", (0, 1))
-async def test_sign_key_failure(context, mocker, expect_status):
+@pytest.mark.parametrize("exc_bool", (False, True))
+async def test_sign_key_failure(context, mocker, expect_status, exc_bool):
 
     def child(*args, **kwargs):
-        return PexpectChild(expect_status=expect_status)
+        return PexpectChild(expect_status=expect_status, exc=exc_bool)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
     mocker.patch.object(pexpect, 'spawn', new=child)

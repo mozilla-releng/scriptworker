@@ -350,9 +350,6 @@ def sign_key(context, target_fingerprint, signing_key=None,
             if index == 0:
                 break
             child.sendline(b'y')
-    except (pexpect.exceptions.EOF, OSError):
-        # Possibly already signed.  We'll check exitstatus/signalstatus later.
-        pass
     except (pexpect.exceptions.TIMEOUT):
         raise ScriptWorkerGPGException(
             "Failed signing {}! Timeout".format(target_fingerprint)
@@ -1464,6 +1461,7 @@ def create_initial_gpg_homedirs():
         event_loop.run_until_complete(
             build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
         )
+        event_loop.close()
     except ScriptWorkerException as exc:
         traceback.print_exc()
         sys.exit(exc.exit_code)
