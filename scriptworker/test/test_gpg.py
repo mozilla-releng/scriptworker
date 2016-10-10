@@ -85,7 +85,7 @@ KEYS_AND_FINGERPRINTS = ((
 VERIFY_GIT_OUTPUT_PARAMS = (
     "Author: Aki Sasaki <aki@escapewindow.com>\nDate:   Mon Sep 19 21:50:35 2016 -0700\n\n    add another check + small fixes + comments",
 
-"""commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
 gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
 gpg:                using RSA key FC829B7FFAA9AC38
 gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
@@ -102,7 +102,7 @@ Date:   Mon Sep 19 21:50:35 2016 -0700
     add another check + small fixes + comments
 """,
 
-"""commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
 gpg: directory `/Users/asasaki/.gnupg' created
 gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
 gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
@@ -804,6 +804,10 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop):
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
     mocker.patch.object(sgpg, "rebuild_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "retry_async", new=noop_async)
+    mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "check_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
     mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
     mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
@@ -818,6 +822,9 @@ def test_create_initial_gpg_homedirs_exception(context, mocker):
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
     mocker.patch.object(sgpg, "rebuild_gpg_home", new=die_sync)
+    mocker.patch.object(sgpg, "retry_async", new=noop_async)
+    mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
     mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
     mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
