@@ -803,7 +803,7 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop):
         return (context, None)
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "rebuild_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=noop_sync)
     mocker.patch.object(sgpg, "retry_async", new=noop_async)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
     mocker.patch.object(sgpg, "check_ownertrust", new=noop_sync)
@@ -821,7 +821,7 @@ def test_create_initial_gpg_homedirs_exception(context, mocker):
         return (context, None)
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "rebuild_gpg_home", new=die_sync)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=die_sync)
     mocker.patch.object(sgpg, "retry_async", new=noop_async)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
     mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)

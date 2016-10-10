@@ -3,13 +3,7 @@
   "type": "object",
   "properties": {
     "git_key_repo_url": {"type": "string"},
-    "git_key_repo_fingerprints": {
-    "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "uniqueItems": true
-    },
+    "git_commit_signing_pubkey_dir": {"type": "string"},
     "gpg_keyserver": {"type": "string"},
     "gpg_homedirs": {
       "type": "object",
@@ -55,5 +49,5 @@
     "pubkey_path": {"type": "string"},
     "privkey_path": {"type": "string"}
   },
-  "required": ["git_key_repo_url", "git_key_repo_fingerprints", "gpg_homedirs", "gpg_keyserver", "pubkey_path", "privkey_path"]
+  "required": ["git_key_repo_url", "git_commit_signing_pubkey_dir", "gpg_homedirs", "gpg_keyserver", "pubkey_path", "privkey_path"]
 }

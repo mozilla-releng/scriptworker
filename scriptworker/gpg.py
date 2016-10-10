@@ -971,8 +971,7 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
     return fingerprints
 
 
-def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path,
-                     gpg_keyserver=None):
+def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
     """import my key and create gpg.conf and trustdb.gpg
 
     Args:
@@ -983,8 +982,6 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path,
             primary key
         my_priv_key_path (str): the ascii private key file we want to import as
             the primary key
-        gpg_keyserver (str, optional): the keyserver to use.  For everything
-            but ~/.gnupg this should be empty.  Defaults to None.
 
     Returns:
         str: my fingerprint
@@ -994,7 +991,7 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path,
     for path in (my_pub_key_path, my_priv_key_path):
         with open(path, "r") as fh:
             my_fingerprint = import_key(gpg, fh.read())[0]
-    create_gpg_conf(tmp_gpg_home, keyserver=gpg_keyserver, my_fingerprint=my_fingerprint)
+    create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
     update_ownertrust(context, my_fingerprint, gpg_home=tmp_gpg_home)
     return my_fingerprint
 
@@ -1136,7 +1133,7 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 # git {{{1
 def verify_signed_git_commit_output(gpg, output):
-    """Verify the latest non-merge-commit is signed by a valid fingerprint.
+    """Verify the latest non-merge-commit is signed by a trusted fingerprint.
 
     If the key is missing, output looks like::
 
@@ -1194,7 +1191,7 @@ def verify_signed_git_commit_output(gpg, output):
         output (str): the output from `git log --no-merges -n 1 --show-signature`
 
     Returns:
-        str: 'ultimate', 'trusted', or 'valid'
+        str: 'ultimate' or 'trusted'
 
     Raises:
         ScriptWorkerGPGException: on error.
@@ -1203,7 +1200,7 @@ def verify_signed_git_commit_output(gpg, output):
         "gpg: Can't check signature:": "",
         "gpg: WARNING: This key is not certified with a trusted signature!": "",
     }
-    GOOD = re.compile(r"""^gpg: Good signature from ".*" \[(ultimate|trusted|valid)\]$""")
+    GOOD = re.compile(r"""^gpg: Good signature from ".*" \[(ultimate|trusted)\]$""")
     messages = []
     lines = output.splitlines()
     status = None
@@ -1219,7 +1216,7 @@ def verify_signed_git_commit_output(gpg, output):
     if not status:
         messages.append("No trusted signature!")
     if messages:
-        raise ScriptWorkerGPGException("\n".join(messages))
+        raise ScriptWorkerGPGException("\n".join(messages + ["output:", output]))
     return status
 
 
@@ -1288,8 +1285,8 @@ async def verify_signed_git_commit(context, path=None,
     """Verify `context.config['git_key_repo_dir']` is on a valid signed commit.
 
     This function calls `verify_signed_git_commit_output` to make sure the
-    latest non-merge-commit commit is signed with a key whose fingerprint is in
-    `context.config['git_key_repo_fingerprints']`.
+    latest non-merge-commit commit is signed with a key that lives in
+    `context.cot_config['git_commit_signing_pubkey_dir']`.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1426,32 +1423,19 @@ def create_initial_gpg_homedirs():
     Raises:
         SystemExit: on failure.
     """
-    logging.basicConfig()
-    log.info("create_initial_gpg_homedirs()...")
     context, _ = get_context_from_cmdln(sys.argv[1:])
-    trusted_fingerprints = context.cot_config['git_key_repo_fingerprints']
+    log.info("create_initial_gpg_homedirs()...")
+    trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
     makedirs(context.config['git_key_repo_dir'])
     event_loop = asyncio.get_event_loop()
     try:
         with tempfile.TemporaryDirectory() as tmp_gpg_home:
-            my_fingerprint = rebuild_gpg_home(
+            rebuild_gpg_home_signed(
                 context, tmp_gpg_home,
                 context.cot_config['pubkey_path'],
                 context.cot_config['privkey_path'],
-                gpg_keyserver=context.cot_config['gpg_keyserver']
+                trusted_path
             )
-            gpg = GPG(context, gpg_home=tmp_gpg_home)
-            event_loop.run_until_complete(
-                retry_async(
-                    recv_keys, retry_exceptions=(ScriptWorkerRetryException, ),
-                    args=(gpg, context.cot_config['gpg_keyserver'], trusted_fingerprints)
-                )
-            )
-            update_ownertrust(
-                context, my_fingerprint, trusted_fingerprints=trusted_fingerprints,
-                gpg_home=tmp_gpg_home
-            )
-            check_ownertrust(context, gpg_home=tmp_gpg_home)
             overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
         log.info("Updating git repo")
         event_loop.run_until_complete(
