@@ -347,16 +347,18 @@ def sign_key(context, target_fingerprint, signing_key=None,
     child = pexpect.spawn(gpg_path, cmd_args, timeout=context.config['sign_key_timeout'])
     child.logfile = fh
     try:
-        yield from child.expect([b"Really sign\? \(y/N\) " [b"Really sign all user IDs\? \(y/N\) "], async=True)
-        child.sendline(b'y')
-        index = yield from child.expect([pexpect.EOF, pexpect.TIMEOUT], async=True)
-        if index != 0:
-            raise ScriptWorkerGPGException(
-                "Failed signing {}! Timeout".format(target_fingerprint)
-            )
+        while True:
+            index = yield from child.expect([pexpect.EOF, b".*Really sign\? \(y/N\) ", b".*Really sign all user IDs\? \(y/N\) "], async=True)
+            if index == 0:
+                break
+            child.sendline(b'y')
     except (pexpect.exceptions.EOF, OSError):
         # Possibly already signed.  We'll check exitstatus/signalstatus later.
         pass
+    except (pexpect.exceptions.TIMEOUT):
+        raise ScriptWorkerGPGException(
+            "Failed signing {}! Timeout".format(target_fingerprint)
+        )
     child.close()
     if child.exitstatus != 0 or child.signalstatus is not None:
         raise ScriptWorkerGPGException(
@@ -1134,7 +1136,7 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def verify_signed_git_commit_output(gpg, output):
+def verify_signed_git_commit_output(output):
     """Verify the latest non-merge-commit is signed by a trusted fingerprint.
 
     If the key is missing, output looks like::
@@ -1149,7 +1151,7 @@ def verify_signed_git_commit_output(gpg, output):
         gpg: Can't check signature: No public key
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-
+        
             add another check + small fixes + comments
 
     If the key is in the keyring but not trusted, the output looks like::
@@ -1167,7 +1169,7 @@ def verify_signed_git_commit_output(gpg, output):
              Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-
+        
             add another check + small fixes + comments
 
     If the key is in the keyring and trusted, the output looks like::
@@ -1185,15 +1187,26 @@ def verify_signed_git_commit_output(gpg, output):
         gpg:                 aka "[jpeg image of size 5283]" [ultimate]
         Author: Aki Sasaki <aki@escapewindow.com>
         Date:   Mon Sep 19 21:50:35 2016 -0700
-
+        
             add another check + small fixes + comments
 
-    Args:
-        gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
-        output (str): the output from `git log --no-merges -n 1 --show-signature`
+    or::
 
-    Returns:
-        str: 'ultimate' or 'trusted'
+        commit 02dc29251021519ebac4508545477a7b23efea49
+        gpg: Signature made Tue Sep 20 04:22:57 2016 UTC
+        gpg:                using RSA key 0xFC829B7FFAA9AC38
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>"
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>"
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>"
+        gpg:                 aka "[jpeg image of size 5283]"
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:22:40 2016 -0700
+        
+            add travis tests for commit signatures.
+
+
+    Args:
+        output (str): the output from `git log --no-merges -n 1 --show-signature`
 
     Raises:
         ScriptWorkerGPGException: on error.
@@ -1202,14 +1215,14 @@ def verify_signed_git_commit_output(gpg, output):
         "gpg: Can't check signature:": "",
         "gpg: WARNING: This key is not certified with a trusted signature!": "",
     }
-    GOOD = re.compile(r"""^gpg: Good signature from ".*" \[(ultimate|trusted)\]$""")
+    GOOD = re.compile(r"""^gpg: Good signature from ".*"( \[(ultimate|trusted)\])?$""")
     messages = []
     lines = output.splitlines()
-    status = None
+    status = False
     for line in lines:
         m = GOOD.match(line)
         if m is not None:
-            status = m.group(1)
+            status = True
             continue
         for k, v in BAD.items():
             if line.startswith(k):
@@ -1219,7 +1232,6 @@ def verify_signed_git_commit_output(gpg, output):
         messages.append("No trusted signature!")
     if messages:
         raise ScriptWorkerGPGException("\n".join(messages + ["output:", output]))
-    return status
 
 
 async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
@@ -1310,7 +1322,7 @@ async def verify_signed_git_commit(context, path=None,
             output += line.decode('utf-8')
         else:
             break
-    verify_signed_git_commit_output(GPG(context), output)
+    verify_signed_git_commit_output(output)
 
 
 # build gpg homedirs from repo {{{1

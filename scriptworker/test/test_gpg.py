@@ -82,7 +82,7 @@ KEYS_AND_FINGERPRINTS = ((
     os.path.join(GPG_HOME, "keys", "unknown@example.com"),
 ))
 
-VERIFY_GIT_OUTPUT_PARAMS = (
+VERIFY_GIT_OUTPUT_BAD_PARAMS = (
     "Author: Aki Sasaki <aki@escapewindow.com>\nDate:   Mon Sep 19 21:50:35 2016 -0700\n\n    add another check + small fixes + comments",
 
     """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
@@ -114,6 +114,53 @@ Author: Aki Sasaki <aki@escapewindow.com>
 Date:   Mon Sep 19 21:50:35 2016 -0700
 
     add another check + small fixes + comments
+""",
+)
+
+VERIFY_GIT_OUTPUT_GOOD_PARAMS = (
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+gpg: next trustdb check due at 2018-09-17
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]
+gpg:                 aka "[jpeg image of size 5283]" [ultimate]
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+gpg: next trustdb check due at 2018-09-17
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [trusted]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [trusted]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [trusted]
+gpg:                 aka "[jpeg image of size 5283]" [trusted]
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+    """commit 02dc29251021519ebac4508545477a7b23efea49
+gpg: Signature made Tue Sep 20 04:22:57 2016 UTC
+gpg:                using RSA key 0xFC829B7FFAA9AC38
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>"
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>"
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>"
+gpg:                 aka "[jpeg image of size 5283]"
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:22:40 2016 -0700
+
+    add travis tests for commit signatures.
 """,
 )
 
@@ -186,7 +233,7 @@ class PexpectChild():
 
     @asyncio.coroutine
     def expect(self, _, **kwargs):
-        return self.expect_status
+        return 0
 
     def sendline(*_):
         pass
@@ -494,6 +541,7 @@ async def test_sign_key_failure(context, mocker, expect_status):
         return PexpectChild(expect_status=expect_status)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
+    mocker.patch.object(pexpect, 'spawn', new=child)
     with pytest.raises(ScriptWorkerGPGException):
         await sgpg.sign_key(context, "foo")
 
@@ -647,35 +695,15 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
 
 
 # verify_signed_git_commit_output {{{1
-def test_verify_signed_git_commit_output(context, mocker):
-
-    output = "\n".join([
-        """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a""",
-        """gpg: Signature made Mon Sep 19 21:50:53 2016 PDT""",
-        """gpg:                using RSA key FC829B7FFAA9AC38""",
-        """gpg: checking the trustdb""",
-        """gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model""",
-        """gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u""",
-        """gpg: next trustdb check due at 2018-09-17""",
-        """gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]""",
-        """gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]""",
-        """gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]""",
-        """gpg:                 aka "[jpeg image of size 5283]" [ultimate]""",
-        """Author: Aki Sasaki <aki@escapewindow.com>""",
-        """Date:   Mon Sep 19 21:50:35 2016 -0700""",
-        """""",
-        """    add another check + small fixes + comments""",
-    ])
-    value = sgpg.verify_signed_git_commit_output(None, output)
-    assert value == 'ultimate'
+@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_GOOD_PARAMS)
+def test_verify_signed_git_commit_output(output):
+    sgpg.verify_signed_git_commit_output(output)
 
 
-@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_PARAMS)
-def test_verify_signed_git_commit_output_exception(context, output):
-
-    gpg = sgpg.GPG(context)
+@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_BAD_PARAMS)
+def test_verify_signed_git_commit_output_exception(output):
     with pytest.raises(ScriptWorkerGPGException):
-        sgpg.verify_signed_git_commit_output(gpg, output)
+        sgpg.verify_signed_git_commit_output(output)
 
 
 # get_git_revision {{{1
