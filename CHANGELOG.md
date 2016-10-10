@@ -12,7 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - default config filename is now `scriptworker.json` instead of `config.json`
-- moved `scriptworker.config.get_context_from_cmdln` out of `scriptworker.worker.main`
+- moved `scriptworker.config.get_context_from_cmdln` out of `scriptworker.worker.main`; now using argparse
 - changed default `sign_chain_of_trust` to True
 - `scriptworker.gpg.sign_key`, `scriptworker.gpg.rebuild_gpg_home_flat`, and `scriptworker.gpg.rebuild_gpg_home_signed` are now async, so they can happen in parallel in the background
 - `rebuild_gpg_home` now allows for a `gpg_keyserver` kwarg
@@ -23,6 +23,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - added missing docstrings to the `download_artifacts` and `download_file` functions
 - fixed coverage version in `tox.ini py35-coveralls`
+- `sign_key` now supports signing keys with multiple subkeys
 
 ## [0.7.0] - 2016-09-23
 ### Added
