@@ -35,6 +35,7 @@ DEFAULT_CONFIG = frozendict({
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
+    # intervals are expressed in seconds
     "credential_update_interval": 300,
     "reclaim_interval": 300,
     "poll_git_interval": 300,
@@ -60,8 +61,7 @@ DEFAULT_CONFIG = frozendict({
     "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
-    # Encoding to use.  Defaults to utf-8
-    "gpg_encoding": None,
+    "gpg_encoding": 'utf-8',
 
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",

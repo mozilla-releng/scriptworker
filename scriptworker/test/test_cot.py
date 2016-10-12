@@ -33,7 +33,7 @@ def context(tmpdir):
         "chain_of_trust_hash_algorithm": "sha256",
         "cot_schema_path": DEFAULT_CONFIG['cot_schema_path'],
         "gpg_home": GPG_HOME,
-        "gpg_encoding": None,
+        "gpg_encoding": 'utf-8',
         "gpg_options": None,
         "gpg_path": os.environ.get("GPG_PATH", None),
         "gpg_public_keyring": "%(gpg_home)s/pubring.gpg",

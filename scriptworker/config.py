@@ -109,6 +109,17 @@ def check_config(config, path):
     return messages
 
 
+# _get_json_from_mandatory_file {{{1
+def _get_json_from_mandatory_file(path, function_name):
+    if not os.path.exists(path):
+        print("{} doesn't exist! Exiting {}()...".format(path, function_name),
+              file=sys.stderr)
+        print("Exiting...", file=sys.stderr)
+        sys.exit(1)
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 # create_config {{{1
 def create_config(config_path="scriptworker.json"):
     """Create a config from DEFAULT_CONFIG, arguments, and config file.
@@ -125,13 +136,7 @@ def create_config(config_path="scriptworker.json"):
     Raises:
         SystemExit: on failure
     """
-    if not os.path.exists(config_path):
-        print("{} doesn't exist! Exiting create_config()...".format(config_path),
-              file=sys.stderr)
-        print("Exiting...", file=sys.stderr)
-        sys.exit(1)
-    with open(config_path, "r", encoding="utf-8") as fh:
-        secrets = json.load(fh)
+    secrets = _get_json_from_mandatory_file(config_path, "create_config")
     config = dict(deepcopy(DEFAULT_CONFIG))
     if not secrets.get("credentials"):
         secrets['credentials'] = read_worker_creds()
@@ -164,13 +169,7 @@ def create_cot_config(context, cot_config_path=None):
         SystemExit: on failure
     """
     cot_config_path = cot_config_path or context.config['cot_config_path']
-    if not os.path.exists(cot_config_path):
-        print("{} doesn't exist! Exiting create_cot_config()...".format(cot_config_path),
-              file=sys.stderr)
-        print("Exiting...", file=sys.stderr)
-        sys.exit(1)
-    with open(cot_config_path, "r", encoding="utf-8") as fh:
-        cot_config = json.load(fh)
+    cot_config = _get_json_from_mandatory_file(cot_config_path, "create_cot_config")
     with open(context.config['cot_config_schema_path'], "r") as fh:
         schema = json.load(fh)
     validate_json_schema(cot_config, schema, name="cot_config")

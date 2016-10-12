@@ -1,9 +1,9 @@
 {
     "git_key_repo_url": "https://github.com/mozilla-releng/cot-gpg-keys.git",
-    "git_commit_signing_pubkey_dir": "...",
+    "git_commit_signing_pubkey_dir": "/tmp/valid_git_fingerprints/",
     "gpg_keyserver": "hkp://gpg.mozilla.org",
-    "pubkey_path": "...",
-    "privkey_path": "...",
+    "pubkey_path": "/tmp/my_pubkey.asc",
+    "privkey_path": "/tmp/my_privkey.asc",
     "gpg_homedirs": {
         "docker-worker": {
             "type": "flat",

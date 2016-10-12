@@ -42,7 +42,6 @@ GPG_CONFIG_MAPPING = {
     'gpg_secret_keyring': 'secret_keyring',
     'gpg_use_agent': 'use_agent',
 }
-GIT_COMMIT_SIGNATURE_REGEX = re.compile(' using [A-Z]+ key( ID)? (0x)?(?P<keyid>[A-F0-9]*)$')
 
 
 # helper functions {{{1
@@ -218,7 +217,7 @@ def GPG(context, gpg_home=None):
     gpg = gnupg.GPG(**kwargs)
     # gpg.encoding defaults to latin-1, but python3 defaults to utf-8 for
     # everything else
-    gpg.encoding = context.config['gpg_encoding'] or 'utf-8'
+    gpg.encoding = context.config['gpg_encoding']
     return gpg
 
 
@@ -1380,7 +1379,6 @@ async def build_gpg_homedirs_from_repo(
                 ))
             await raise_future_exceptions(tasks)
     finally:
-        # rm lockfile
         rm(lockfile)
     return basedir
 
