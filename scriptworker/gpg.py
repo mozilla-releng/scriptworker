@@ -12,16 +12,24 @@ Attributes:
         the python-gnupg names.
 """
 import arrow
+import asyncio
+from asyncio.subprocess import DEVNULL, PIPE, STDOUT
 import gnupg
 import logging
 import os
 import pexpect
 import pprint
+import re
 import subprocess
+import sys
 import tempfile
+import traceback
 
-from scriptworker.exceptions import ScriptWorkerGPGException
-from scriptworker.utils import filepaths_in_dir, makedirs, rm
+from scriptworker.config import get_context_from_cmdln
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
+    ScriptWorkerRetryException
+from scriptworker.log import pipe_to_log
+from scriptworker.utils import filepaths_in_dir, makedirs, raise_future_exceptions, retry_async, rm
 
 log = logging.getLogger(__name__)
 
@@ -209,7 +217,7 @@ def GPG(context, gpg_home=None):
     gpg = gnupg.GPG(**kwargs)
     # gpg.encoding defaults to latin-1, but python3 defaults to utf-8 for
     # everything else
-    gpg.encoding = context.config['gpg_encoding'] or 'utf-8'
+    gpg.encoding = context.config['gpg_encoding']
     return gpg
 
 
@@ -292,10 +300,18 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
-def sign_key(context, target_fingerprint, signing_key=None, exportable=False, gpg_home=None):
+@asyncio.coroutine
+def sign_key(context, target_fingerprint, signing_key=None,
+             exportable=False, gpg_home=None):
     """Sign the `target_fingerprint` key with the `signing_key` or default key
 
     This signs the target key with the signing key, which adds to the web of trust.
+
+    This function is async, but should not be used in parallel in the same
+    gpg homedir.  GPG keysigning requires a lock on the keyring, so any
+    parallelization in the same homedir will result in failures and unhappiness.
+    This function is meant to be used async to parallelize multiple GPG
+    homedir operations.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -326,18 +342,17 @@ def sign_key(context, target_fingerprint, signing_key=None, exportable=False, gp
     args.append(target_fingerprint)
     cmd_args = gpg_default_args(gpg_home) + args
     log.debug(subprocess.list2cmdline([gpg_path] + cmd_args))
-    child = pexpect.spawn(gpg_path, cmd_args)
+    child = pexpect.spawn(gpg_path, cmd_args, timeout=context.config['sign_key_timeout'])
     try:
-        child.expect(b".*Really sign\? \(y/N\) ")
-        child.sendline(b'y')
-        index = child.expect([pexpect.EOF, pexpect.TIMEOUT])
-        if index != 0:
-            raise ScriptWorkerGPGException(
-                "Failed signing {}! Timeout".format(target_fingerprint)
-            )
-    except pexpect.exceptions.EOF:
-        # Possibly already signed.  We'll check exitstatus/signalstatus later.
-        pass
+        while True:
+            index = yield from child.expect([pexpect.EOF, b".*Really sign\? \(y/N\) ", b".*Really sign all user IDs\? \(y/N\) "], async=True)
+            if index == 0:
+                break
+            child.sendline(b'y')
+    except (pexpect.exceptions.TIMEOUT):
+        raise ScriptWorkerGPGException(
+            "Failed signing {}! Timeout".format(target_fingerprint)
+        )
     child.close()
     if child.exitstatus != 0 or child.signalstatus is not None:
         raise ScriptWorkerGPGException(
@@ -954,21 +969,24 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
     return fingerprints
 
 
-def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_sec_key_path):
+def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
     """import my key and create gpg.conf and trustdb.gpg
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
         tmp_gpg_home (str): the path to the tmp gpg_home.  This should already
             exist.
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
-            primary key
+        my_priv_key_path (str): the ascii private key file we want to import as
+            the primary key
+
+    Returns:
+        str: my fingerprint
     """
     os.chmod(tmp_gpg_home, 0o700)
     gpg = GPG(context, gpg_home=tmp_gpg_home)
-    for path in (my_pub_key_path, my_sec_key_path):
+    for path in (my_pub_key_path, my_priv_key_path):
         with open(path, "r") as fh:
             my_fingerprint = import_key(gpg, fh.read())[0]
     create_gpg_conf(tmp_gpg_home, my_fingerprint=my_fingerprint)
@@ -987,11 +1005,12 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
             trust models
         real_gpg_home (str): path to the old gpg_home to overwrite
     """
+    log.info("overwrite_gpg_home: {} to {}".format(tmp_gpg_home, real_gpg_home))
     # Back up real_gpg_home until we have more confidence in blowing this away
     if os.path.exists(real_gpg_home):
-        os.rename(real_gpg_home, "{}.{}".format(
-            real_gpg_home, str(arrow.utcnow().timestamp)
-        ))
+        backup = "{}.{}".format(real_gpg_home, str(arrow.utcnow().timestamp))
+        log.info("Backing up {} to {}".format(real_gpg_home, backup))
+        os.rename(real_gpg_home, backup)
     makedirs(real_gpg_home)
     os.chmod(real_gpg_home, 0o700)
     for filepath in filepaths_in_dir(tmp_gpg_home):
@@ -999,11 +1018,13 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
             os.path.join(tmp_gpg_home, filepath),
             os.path.join(real_gpg_home, filepath)
         )
+    # for now, don't clean up tmp_gpg_home, because we call this with tempfile
+    # contexts that expect to clean up tmp_gpg_home on exiting the block.
 
 
-def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_path,
-                          consume_path, ignore_suffixes=(),
-                          consume_function=consume_valid_keys):
+async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
+                                my_priv_key_path, consume_path, ignore_suffixes=(),
+                                consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
     In this 'flat' model, import all the pubkeys in `consume_path` and sign
@@ -1012,21 +1033,19 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         real_gpg_home (str): the gpg_home path we want to rebuild
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
+        my_priv_key_path (str): the ascii private key file we want to import as the
             primary key
         consume_path (str): the path to the directory tree to import pubkeys
             from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
-        consume_function (function, optional): the function to call to consume
-            the public keys.  Defaults to consume_valid_keys()
     """
     # Create a new tmp_gpg_home to import into
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         my_fingerprint = rebuild_gpg_home(
-            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+            context, tmp_gpg_home, my_pub_key_path, my_priv_key_path
         )
         # import all the keys
         fingerprints = consume_function(
@@ -1036,7 +1055,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
         # sign all the keys
         for fingerprint in fingerprints:
             log.info("signing {} with {}".format(fingerprint, my_fingerprint))
-            sign_key(
+            await sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
@@ -1044,21 +1063,24 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path, my_sec_key_pa
         overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
 
 
-def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
-                            my_sec_key_path, trusted_path, untrusted_path=None,
-                            ignore_suffixes=(),
-                            consume_function=consume_valid_keys):
+async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
+                                  my_priv_key_path, trusted_path,
+                                  untrusted_path=None, ignore_suffixes=(),
+                                  consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
-    In this 'signed' model, import all the pubkeys in `consume_path` and sign
-    them directly.  This makes them valid but not trusted.
+    In this 'signed' model, import all the pubkeys in `trusted_path`, sign
+    them directly, and trust them.  Then import all the pubkeys in
+    `untrusted_path` with no signing.  The intention is that one of the keys
+    in `trusted_path` has already signed the keys in `untrusted_path`, making
+    them valid.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         real_gpg_home (str): the gpg_home path we want to rebuild
-        my_pubkey_path (str): the ascii pubkey file we want to import as the
+        my_pub_key_path (str): the ascii public key file we want to import as the
             primary key
-        my_seckey_path (str): the ascii seckey file we want to import as the
+        my_priv_key_path (str): the ascii private key file we want to import as the
             primary key
         trusted_path (str): the path to the directory tree to import trusted
             pubkeys from
@@ -1066,15 +1088,13 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
             untrusted but valid pubkeys from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
-        consume_function (function, optional): the function to call to consume
-            the public keys.  Defaults to consume_valid_keys()
     """
     # Create a new tmp_gpg_home to import into
     log.info("rebuilding gpg_home for {} at {}...".format(my_pub_key_path, real_gpg_home))
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         gpg = GPG(context, gpg_home=tmp_gpg_home)
         my_fingerprint = rebuild_gpg_home(
-            context, tmp_gpg_home, my_pub_key_path, my_sec_key_path
+            context, tmp_gpg_home, my_pub_key_path, my_priv_key_path
         )
         my_keyid = fingerprint_to_keyid(gpg, my_fingerprint)
         # import all the trusted keys
@@ -1085,7 +1105,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
         trusted_fingerprints_to_keyid = {}
         # sign all the keys
         for fingerprint in set(trusted_fingerprints):
-            sign_key(
+            await sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
@@ -1113,25 +1133,336 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def latest_signed_git_commit(gpg, output, trusted_fingerprints):
-    """Return the latest git commit sha that's signed by a trusted fingerprint.
+def verify_signed_git_commit_output(output):
+    """Verify the latest non-merge-commit is signed by a trusted fingerprint.
 
-    There are a number of ways to do this.  `git show --show-signature` will
-    show the output of `gpg --verify`, assuming we have the key already marked
-    valid in our web of trust, also assuming we're using the proper gpg_home.
+    If the key is missing, output looks like::
 
-    This function allows for unsigned commits between signed commits.
-    We may disallow those in the future.
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: directory `/Users/asasaki/.gnupg' created
+        gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
+        gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
+        gpg: keyring `/Users/asasaki/.gnupg/pubring.gpg' created
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: Can't check signature: No public key
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
+
+    If the key is in the keyring but not trusted, the output looks like::
+
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [unknown]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [unknown]
+        gpg:                 aka "[jpeg image of size 5283]" [unknown]
+        gpg: WARNING: This key is not certified with a trusted signature!
+        gpg:          There is no indication that the signature belongs to the owner.
+        Primary key fingerprint: 83A4 B550 BC68 2F0B 0601  57B0 4654 904B B484 B6B2
+             Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
+
+    If the key is in the keyring and trusted, the output looks like::
+
+        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+        gpg:                using RSA key FC829B7FFAA9AC38
+        gpg: checking the trustdb
+        gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+        gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+        gpg: next trustdb check due at 2018-09-17
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]
+        gpg:                 aka "[jpeg image of size 5283]" [ultimate]
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:50:35 2016 -0700
+
+            add another check + small fixes + comments
+
+    or::
+
+        commit 02dc29251021519ebac4508545477a7b23efea49
+        gpg: Signature made Tue Sep 20 04:22:57 2016 UTC
+        gpg:                using RSA key 0xFC829B7FFAA9AC38
+        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>"
+        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>"
+        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>"
+        gpg:                 aka "[jpeg image of size 5283]"
+        Author: Aki Sasaki <aki@escapewindow.com>
+        Date:   Mon Sep 19 21:22:40 2016 -0700
+
+            add travis tests for commit signatures.
+
 
     Args:
-        gpg (gnupg.GPG): the GPG instance.
-        output (str): the output of `git log --format='%H:%GK'`
-        trusted_fingerprints (list): the gpg fingerprints of valid keys.
+        output (str): the output from `git log --no-merges -n 1 --show-signature`
+
+    Raises:
+        ScriptWorkerGPGException: on error.
     """
-    for line in output.splitlines():
-        sha, keyid = line.split(':')
+    BAD = {
+        "gpg: Can't check signature:": "",
+        "gpg: WARNING: This key is not certified with a trusted signature!": "",
+    }
+    GOOD = re.compile(r"""^gpg: Good signature from ".*"( \[(ultimate|trusted)\])?$""")
+    messages = []
+    lines = output.splitlines()
+    status = False
+    for line in lines:
+        m = GOOD.match(line)
+        if m is not None:
+            status = True
+            continue
+        for k, v in BAD.items():
+            if line.startswith(k):
+                messages.append(v)
+                continue
+    if not status:
+        messages.append("No trusted signature!")
+    if messages:
+        raise ScriptWorkerGPGException("\n".join(messages + ["output:", output]))
+
+
+async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
+    """Get the git revision of path.
+
+    Args:
+        path (str): the path to run `git rev-parse HEAD` in.
+
+    Returns:
+        str: the revision.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
+    """
+    proc = await exec_function(
+        'git', "rev-parse", "HEAD", cwd=path,
+        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
+    )
+    revision, err = await proc.communicate()
+    exitcode = await proc.wait()
+    if exitcode:
+        raise ScriptWorkerRetryException(
+            "Can't get repo revision at {}: {}!".format(path, err)
+        )
+    return revision.decode('utf-8').rstrip()
+
+
+async def update_signed_git_repo(context, repo="origin", revision="master",
+                                 exec_function=asyncio.create_subprocess_exec,
+                                 log_function=pipe_to_log):
+    """Update a git repo with signed git commits, and verify the signature.
+
+    This function updates the repo.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        repo (str, optional): the repo to update from.  Defaults to 'origin'.
+        revision (str, optional): the revision to update to.  Defaults to 'master'.
+
+    Returns:
+        bool: True if there has been a change; False otherwise.
+
+    Raises:
+        ScriptWorkerGPGException: on signature validation failure.
+        ScriptWorkerRetryException: on `git pull` failure.
+    """
+    path = context.config['git_key_repo_dir']
+    old_revision = await get_git_revision(path)
+    proc = await exec_function(
+        "git", "pull", "--ff-only", repo, revision, cwd=path,
+        stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
+    )
+    await log_function(proc.stdout)
+    exitcode = await proc.wait()
+    if exitcode:
+        raise ScriptWorkerRetryException(
+            "Can't update repo at {}!".format(path)
+        )
+    revision = await get_git_revision(path)
+    return old_revision != revision
+
+
+async def verify_signed_git_commit(context, path=None,
+                                   exec_function=asyncio.create_subprocess_exec):
+    """Verify `context.config['git_key_repo_dir']` is on a valid signed commit.
+
+    This function calls `verify_signed_git_commit_output` to make sure the
+    latest non-merge-commit commit is signed with a key that lives in
+    `context.cot_config['git_commit_signing_pubkey_dir']`.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        path (str, optional): the path to the git repo to verify.  If None,
+            use context.config['git_key_repo_dir'].  Defaults to None.
+
+    Raises:
+        ScriptWorkerGPGException: on bad verification.
+    """
+    path = path or context.config['git_key_repo_dir']
+    proc = await exec_function(
+        "git", "log", "--no-merges", "-n", "1", "--show-signature", cwd=path,
+        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
+    )
+    output = ""
+    while True:
+        line = await proc.stdout.readline()
+        if line:
+            output += line.decode('utf-8')
+        else:
+            break
+    verify_signed_git_commit_output(output)
+
+
+# build gpg homedirs from repo {{{1
+async def build_gpg_homedirs_from_repo(
+    context, basedir=None, verify_function=verify_signed_git_commit,
+    flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
+):
+    """Build gpg homedirs in `basedir`, from the context-defined git repo.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        basedir (str, optional): the path to the base directory to create the
+            gpg homedirs in.  This directory will be wiped if it exists.
+            If None, use `context.config['base_gpg_home_dir']`.  Defaults to None.
+
+    Returns:
+        str: on success.
+
+    Raises:
+        ScriptWorkerGPGException: on rebuild exception.
+    """
+    basedir = basedir or context.config['base_gpg_home_dir']
+    repo_path = context.config['git_key_repo_dir']
+    lockfile = os.path.join(basedir, ".lock")
+    if os.path.exists(lockfile):
+        log.warning("Skipping build_gpg_homedirs_from_repo: lockfile {} exists!".format(lockfile))
+        return
+    rm(basedir)
+    makedirs(basedir)
+    try:
+        # create lockfile
+        with open(lockfile, "w") as fh:
+            print(str(arrow.utcnow().timestamp), file=fh, end="")
+        # verify our input.  Hardcoding the check before importing, as opposed
+        # to expecting something else to run the check for us.
+        await verify_function(context)
+        # create gpg homedirs
+        tasks = []
+        for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
+            source_path = os.path.join(repo_path, worker_class)
+            real_gpg_home = os.path.join(basedir, worker_class)
+            my_pub_key_path = context.cot_config['pubkey_path']
+            my_priv_key_path = context.cot_config['privkey_path']
+            if worker_config['type'] == 'flat':
+                tasks.append(asyncio.ensure_future(
+                    flat_function(
+                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                        source_path, ignore_suffixes=worker_config['ignore_suffixes']
+                    )
+                ))
+            else:
+                trusted_path = os.path.join(source_path, "trusted")
+                untrusted_path = os.path.join(source_path, "valid")
+                tasks.append(asyncio.ensure_future(
+                    signed_function(
+                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                        trusted_path, untrusted_path=untrusted_path,
+                        ignore_suffixes=worker_config['ignore_suffixes']
+                    )
+                ))
+            await raise_future_exceptions(tasks)
+    finally:
+        rm(lockfile)
+    return basedir
+
+
+async def rebuild_gpg_homedirs_loop(context, basedir):
+    """Run a loop to update the git repo and rebuild the homedirs.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        basedir (str): the base directory path, to create the gpg homedirs under.
+            This should be a temporary directory, so we can create the gpg
+            homedirs in the background without affecting anything.
+            The presence of this directory with a lockfile means something is
+            still generating the gpg homedirs.  The presence of this directory
+            without the lockfile means we're waiting to overwrite our gpg homedirs
+            with the contents of this tmp dir.
+    """
+    rm(basedir)
+    if not context.config['sign_chain_of_trust'] and not context.config['verify_chain_of_trust']:
+        log.warning("sign_chain_of_trust and verify_chain_of_trust are False; exiting rebuild_gpg_homedirs_loop!")
+        return
+    while True:
+        await asyncio.sleep(context.config['poll_git_interval'])
+        if os.path.exists(basedir):
+            log.warning("rebuild_gpg_homedirs_loop: {} exists; sleeping another {}!".format(basedir, str(context.config['poll_git_interval'])))
+            continue
         try:
-            if keyid and keyid_to_fingerprint(gpg, keyid) in trusted_fingerprints:
-                return sha
-        except ScriptWorkerGPGException:
-            pass
+            message = "build_gpg_homedirs_from_repo error updating git repo!\n{}"
+            result = await retry_async(
+                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(context, )
+            )
+            if not result:  # no updates
+                continue
+            message = "build_gpg_homedirs_from_repo error in build_gpg_homedirs_from_repo!\n{}"
+            build_gpg_homedirs_from_repo(context, basedir=basedir)
+        except ScriptWorkerException as exc:
+            # We don't want these exceptions to be fatal; this will happen in the background
+            # of scriptworker tasks
+            log.error(message.format(str(exc)))
+            continue
+
+
+def create_initial_gpg_homedirs():
+    """Create the initial gpg homedirs.
+
+    This should be called before scriptworker is run.
+
+    Raises:
+        SystemExit: on failure.
+    """
+    logging.basicConfig()
+    context, _ = get_context_from_cmdln(sys.argv[1:])
+    log.info("create_initial_gpg_homedirs()...")
+    trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
+    makedirs(context.config['git_key_repo_dir'])
+    event_loop = asyncio.get_event_loop()
+    try:
+        with tempfile.TemporaryDirectory() as tmp_gpg_home:
+            event_loop.run_until_complete(
+                rebuild_gpg_home_signed(
+                    context, tmp_gpg_home,
+                    context.cot_config['pubkey_path'],
+                    context.cot_config['privkey_path'],
+                    trusted_path
+                )
+            )
+            overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
+        log.info("Updating git repo")
+        event_loop.run_until_complete(
+            retry_async(
+                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(context, )
+            )
+        )
+        event_loop.run_until_complete(verify_signed_git_commit(context))
+        log.info("Updating gpg homedirs")
+        event_loop.run_until_complete(
+            build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
+        )
+        event_loop.close()
+    except ScriptWorkerException as exc:
+        traceback.print_exc()
+        sys.exit(exc.exit_code)

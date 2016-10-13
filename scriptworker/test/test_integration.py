@@ -62,7 +62,7 @@ def build_config(override, basedir):
         'artifact_upload_timeout': 60 * 2,
         'artifact_expiration_hours': 1,
         'gpg_home': GPG_HOME,
-        "gpg_encoding": None,
+        "gpg_encoding": 'utf-8',
         "gpg_options": None,
         "gpg_path": os.environ.get("GPG_PATH", None),
         "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),

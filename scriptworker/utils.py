@@ -309,6 +309,17 @@ def format_json(data):
 
 
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):
+    """Download a file, async.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        url (str): the url to download
+        abs_filename (str): the path to download to
+        session (aiohttp.ClientSession, optional): the session to use.  If
+            None, use context.session.  Defaults to None.
+        chunk_size (int, optional): the chunk size to read from the response
+            at a time.  Default is 128.
+    """
     session = session or context.session
     log.info("Downloading %s", url)
     parent_dir = os.path.dirname(abs_filename)

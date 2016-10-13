@@ -3,6 +3,7 @@
 scriptworker.gpg.consume_* functions.
 """
 import arrow
+import asyncio
 import glob
 import json
 import logging
@@ -74,6 +75,7 @@ def main(trusted_key_dir, name=None):
 #    slog.setLevel(logging.INFO)
     slog.setLevel(logging.DEBUG)
     slog.addHandler(logging.StreamHandler())
+    event_loop = asyncio.get_event_loop()
     dirs = {}
     messages = []
     pubkey_dir = PUBKEY_DIR
@@ -86,12 +88,14 @@ def main(trusted_key_dir, name=None):
         # consume unsigned and verify sigs
         context = get_context(dirs['gpg_home1'])
         log.info("rebuild_gpg_home_flat")
-        scriptworker.gpg.rebuild_gpg_home_flat(
-            context,
-            context.config['gpg_home'],
-            os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
-            os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
-            os.path.join(pubkey_dir, "unsigned"),
+        event_loop.run_until_complete(
+            scriptworker.gpg.rebuild_gpg_home_flat(
+                context,
+                context.config['gpg_home'],
+                os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
+                os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
+                os.path.join(pubkey_dir, "unsigned"),
+            )
         )
         times['checkpoint1'] = arrow.utcnow()
         print_times(times['start'], times['checkpoint1'], msg="rebuild_home_flat")
@@ -112,12 +116,14 @@ def main(trusted_key_dir, name=None):
             log.info("rebuild_gpg_home_signed {}".format(email))
             for f in glob.glob(os.path.join(trusted_key_dir, "{}*".format(email))):
                 shutil.copyfile(f, os.path.join(my_trusted_dir, os.path.basename(f)))
-            scriptworker.gpg.rebuild_gpg_home_signed(
-                context,
-                dirs[email],
-                os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
-                os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
-                my_trusted_dir,
+            event_loop.run_until_complete(
+                scriptworker.gpg.rebuild_gpg_home_signed(
+                    context,
+                    dirs[email],
+                    os.path.join(trusted_key_dir, "{}.pub".format(my_email)),
+                    os.path.join(trusted_key_dir, "{}.sec".format(my_email)),
+                    my_trusted_dir,
+                )
             )
             for fingerprint, info in manifest.items():
                 with open(os.path.join(pubkey_dir, info['signed_path'])) as fh:

@@ -1,0 +1,8 @@
+{
+  "title": "cot config schema",
+  "type": "object",
+  "properties": {
+      "foo": {"type": "string"}
+  },
+  "required": ["foo"]
+}

@@ -59,40 +59,22 @@ def update_logging_config(context, log_name=None):
     top_level_logger.addHandler(logging.NullHandler())
 
 
-async def log_errors(reader, log_fh, error_fh):
-    """Log STDERR from the task subprocess to the log and error filehandles.
-
-    These may not actually be errors; python logging uses
-    STDERR for output.  The running process should be able to detect its own
-    status, rather than relying on scriptworker to do so.
+async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
+    """Log from a subprocess PIPE.
 
     Args:
-        reader (filehandle): subprocess process stderr
-        log_fh (filehandle): the stdout log filehandle
-        error_fh (filehandle): the stderr log filehandle
+        pipe (filehandle): subprocess process STDOUT or STDERR
+        filehandles (list of filehandles, optional): the filehandle(s) to write
+            to.  If empty, don't write to a separate file.  Defaults to ().
+        level (int, optional): the level to log to.  Defaults to `logging.INFO`.
     """
     while True:
-        line = await reader.readline()
-        if not line:
-            break
-        line = to_unicode(line)
-        log.info(line.rstrip())
-        print(line, file=log_fh, end="")
-        print(line, file=error_fh, end="")
-
-
-async def read_stdout(stdout, log_fh):
-    """Log STDOUT from the task subprocess to the log filehandle.
-
-    Args:
-        stdout (filehandle): subprocess process stdout
-        log_fh (filehandle): the stdout log filehandle
-    """
-    while True:
-        line = await stdout.readline()
+        line = await pipe.readline()
         if line:
-            log.info(to_unicode(line.rstrip()))
-            print(to_unicode(line), file=log_fh, end="")
+            line = to_unicode(line)
+            log.log(level, line.rstrip())
+            for filehandle in filehandles:
+                print(line, file=filehandle, end="")
         else:
             break
 

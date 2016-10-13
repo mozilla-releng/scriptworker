@@ -3,14 +3,14 @@ import aiohttp
 import arrow
 import asyncio
 import logging
+import os
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import create_config, read_worker_creds
-from scriptworker.context import Context
+from scriptworker.config import get_context_from_cmdln, read_worker_creds
 from scriptworker.cot import generate_cot
+from scriptworker.gpg import overwrite_gpg_home, rebuild_gpg_homedirs_loop
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.log import update_logging_config
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request
 
@@ -82,22 +82,25 @@ async def async_main(context):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
     """
+    loop = asyncio.get_event_loop()
+    tmp_gpg_home = "{}.tmp".format(context.config['base_gpg_home_dir'])
+    lockfile = os.path.join(tmp_gpg_home, ".lock")
+    loop.create_task(
+        rebuild_gpg_homedirs_loop(
+            context, tmp_gpg_home
+        )
+    )
     while True:
         await run_loop(context)
+        await asyncio.sleep(context.config['poll_interval'])
+        if os.path.exists(tmp_gpg_home) and not os.path.exists(lockfile):
+            overwrite_gpg_home(tmp_gpg_home, context.config['base_gpg_home_dir'])
 
 
 def main():
     """Scriptworker entry point: get everything set up, then enter the main loop
     """
-    context = Context()
-    kwargs = {}
-    if len(sys.argv) > 1:  # pragma: no branch
-        if len(sys.argv) > 2:
-            print("Usage: {} [configfile]".format(sys.argv[0]), file=sys.stderr)
-            sys.exit(1)
-        kwargs['path'] = sys.argv[1]
-    context.config, credentials = create_config(**kwargs)
-    update_logging_config(context)
+    context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
     loop = asyncio.get_event_loop()

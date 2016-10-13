@@ -3,7 +3,9 @@
 """Test scriptworker.gpg
 """
 import arrow
+import asyncio
 from contextlib import contextmanager
+from copy import deepcopy
 import glob
 import json
 import mock
@@ -14,11 +16,12 @@ import shutil
 import subprocess
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerGPGException
+from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, tmpdir
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2, touch
 
-assert tmpdir  # silence pyflakes
+assert event_loop, tmpdir  # silence pyflakes
+assert tmpdir2  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -79,6 +82,88 @@ KEYS_AND_FINGERPRINTS = ((
     os.path.join(GPG_HOME, "keys", "unknown@example.com"),
 ))
 
+VERIFY_GIT_OUTPUT_BAD_PARAMS = (
+    "Author: Aki Sasaki <aki@escapewindow.com>\nDate:   Mon Sep 19 21:50:35 2016 -0700\n\n    add another check + small fixes + comments",
+
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [unknown]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [unknown]
+gpg:                 aka "[jpeg image of size 5283]" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 83A4 B550 BC68 2F0B 0601  57B0 4654 904B B484 B6B2
+     Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: directory `/Users/asasaki/.gnupg' created
+gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
+gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
+gpg: keyring `/Users/asasaki/.gnupg/pubring.gpg' created
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: Can't check signature: No public key
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+)
+
+VERIFY_GIT_OUTPUT_GOOD_PARAMS = (
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+gpg: next trustdb check due at 2018-09-17
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]
+gpg:                 aka "[jpeg image of size 5283]" [ultimate]
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+    """commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
+gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
+gpg:                using RSA key FC829B7FFAA9AC38
+gpg: checking the trustdb
+gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
+gpg: next trustdb check due at 2018-09-17
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [trusted]
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [trusted]
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [trusted]
+gpg:                 aka "[jpeg image of size 5283]" [trusted]
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:50:35 2016 -0700
+
+    add another check + small fixes + comments
+""",
+    """commit 02dc29251021519ebac4508545477a7b23efea49
+gpg: Signature made Tue Sep 20 04:22:57 2016 UTC
+gpg:                using RSA key 0xFC829B7FFAA9AC38
+gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>"
+gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>"
+gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>"
+gpg:                 aka "[jpeg image of size 5283]"
+Author: Aki Sasaki <aki@escapewindow.com>
+Date:   Mon Sep 19 21:22:40 2016 -0700
+
+    add travis tests for commit signatures.
+""",
+)
+
 
 def versionless(ascii_key):
     """Strip the gpg version out of a key, to aid in comparison
@@ -88,6 +173,14 @@ def versionless(ascii_key):
         if line and not line.startswith("Version: "):
             new.append("{}\n".format(line))
     return ''.join(new)
+
+
+def die_sync(*args, **kwargs):
+    raise ScriptWorkerGPGException("foo")
+
+
+async def die_async(*args, **kwargs):
+    raise ScriptWorkerGPGException("foo")
 
 
 def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
@@ -110,30 +203,39 @@ def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
 
 
 @pytest.yield_fixture(scope='function')
-def context(tmpdir):
+def context(tmpdir2):
     """Use this function to get a context obj pointing at any directory as
     gnupghome.
     """
     context_ = Context()
-    context_.config = {}
-    for k, v in DEFAULT_CONFIG.items():
-        if k.startswith("gpg_"):
-            context_.config[k] = v
-    context_.config['gpg_home'] = tmpdir
+    context_.config = dict(deepcopy(DEFAULT_CONFIG))
+    cot_config_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "cot_config_example.json"
+    )
+    for key, value in context_.config.items():
+        if key.endswith("_dir") or key in ("gpg_home", ):
+            context_.config[key] = os.path.join(tmpdir2, key)
+    context_.config['sign_key_timeout'] = 5 * 60
+    with open(cot_config_path) as fh:
+        context_.cot_config = json.load(fh)
     yield context_
 
 
 class PexpectChild():
     """Pretend to be a pexpect child proc for sign_key failures
     """
-    def __init__(self, exitstatus=1, expect_status=1, signalstatus=None):
-        pass
+    def __init__(self, exitstatus=1, expect_status=1, signalstatus=None, exc=False):
         self.exitstatus = exitstatus
         self.expect_status = expect_status
         self.signalstatus = signalstatus
+        self.exc = exc
 
-    def expect(self, _):
-        return self.expect_status
+    @asyncio.coroutine
+    def expect(self, _, **kwargs):
+        if self.exc:
+            raise pexpect.exceptions.TIMEOUT("")
+        return 0
 
     def sendline(*_):
         pass
@@ -319,7 +421,8 @@ def test_export_unknown_key(base_context):
 
 
 # sign_key {{{1
-def test_sign_key(context):
+@pytest.mark.asyncio
+async def test_sign_key(context, event_loop):
     """This test calls get_list_sigs_output in several different ways.  Each
     is valid; the main thing is more code coverage.
 
@@ -350,7 +453,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     # update gpg configs, sign signed key
     sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
     sgpg.check_ownertrust(context)
-    sgpg.sign_key(context, signed_fingerprint)
+    await sgpg.sign_key(context, signed_fingerprint)
     # signed key get_list_sigs_output
     signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
     # unsigned key get_list_sigs_output
@@ -364,7 +467,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert [unsigned_keyid] == unsigned_output['sig_keyids']
     assert ["three (three) <three>"] == unsigned_output['sig_uids']
     # sign the unsigned key and test
-    sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+    await sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
     # Call get_list_sigs_output with expected, for more code coverage
     new_output = sgpg.get_list_sigs_output(
         context, unsigned_fingerprint, expected={
@@ -380,7 +483,8 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
-def test_sign_key_twice(context):
+@pytest.mark.asyncio
+async def test_sign_key_twice(context):
     gpg = sgpg.GPG(context)
     for suffix in (".sec", ".pub"):
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
@@ -388,11 +492,12 @@ def test_sign_key_twice(context):
         fingerprint = sgpg.import_key(gpg, contents)[0]
     # keys already sign themselves, so this is a second signature that should
     # be noop.
-    sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
+    await sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("exportable", (True, False))
-def test_sign_key_exportable(context, exportable):
+async def test_sign_key_exportable(context, exportable, event_loop):
     gpg_home2 = os.path.join(context.config['gpg_home'], "two")
     context.config['gpg_home'] = os.path.join(context.config['gpg_home'], "one")
     gpg = sgpg.GPG(context)
@@ -412,7 +517,7 @@ def test_sign_key_exportable(context, exportable):
     # generate a new key
     fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
     # sign it, exportable signature is `exportable`
-    sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
+    await sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
     # export my privkey and import it in gpg_home2
     priv_key = sgpg.export_key(gpg, my_fingerprint, private=True)
     sgpg.import_key(gpg2, priv_key)
@@ -430,15 +535,18 @@ def test_sign_key_exportable(context, exportable):
             sgpg.get_list_sigs_output(context, fingerprint, gpg_home=gpg_home2, expected=expected)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("expect_status", (0, 1))
-def test_sign_key_failure(context, mocker, expect_status):
+@pytest.mark.parametrize("exc_bool", (False, True))
+async def test_sign_key_failure(context, mocker, expect_status, exc_bool):
 
-    def child(*_):
-        return PexpectChild(expect_status=expect_status)
+    def child(*args, **kwargs):
+        return PexpectChild(expect_status=expect_status, exc=exc_bool)
 
     mocker.patch.object(pexpect, 'spawn', new=child)
+    mocker.patch.object(pexpect, 'spawn', new=child)
     with pytest.raises(ScriptWorkerGPGException):
-        sgpg.sign_key(context, "foo")
+        await sgpg.sign_key(context, "foo")
 
 
 # list sigs and parsing {{{1
@@ -545,14 +653,15 @@ def test_consume_valid_keys_suffixes(context):
     sgpg.consume_valid_keys(context, PUBKEY_DIR, ignore_suffixes=('.json', '.asc', '.unsigned.pub'))
 
 
-def test_rebuild_gpg_home_flat(context):
-    shutil.rmtree(context.config['gpg_home'])  # coverage
-    sgpg.rebuild_gpg_home_flat(
-        context,
-        context.config['gpg_home'],
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-        os.path.join(PUBKEY_DIR, "unsigned")
+def test_rebuild_gpg_home_flat(context, event_loop):
+    event_loop.run_until_complete(
+        sgpg.rebuild_gpg_home_flat(
+            context,
+            context.config['gpg_home'],
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+            os.path.join(PUBKEY_DIR, "unsigned")
+        )
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
@@ -561,17 +670,19 @@ def test_rebuild_gpg_home_flat(context):
 
 
 @pytest.mark.parametrize("trusted_email", ("docker@example.com", "docker.root@example.com"))
-def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
+def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
 
     gpg = sgpg.GPG(context)
     for path in glob.glob(os.path.join(GPG_HOME, "keys", "{}.*".format(trusted_email))):
         shutil.copyfile(path, os.path.join(tmpdir, os.path.basename(path)))
-    sgpg.rebuild_gpg_home_signed(
-        context,
-        context.config['gpg_home'],
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-        tmpdir,
+    event_loop.run_until_complete(
+        sgpg.rebuild_gpg_home_signed(
+            context,
+            context.config['gpg_home'],
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+            tmpdir,
+        )
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
@@ -586,30 +697,219 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
     assert messages == []
 
 
-# git {{{1
-def test_latest_signed_git_commit(context, mocker):
-
-    def fake_keyid_to_fingerprint(_, fingerprint):
-        return fingerprint
-
-    with mock.patch.object(sgpg, 'keyid_to_fingerprint', new=fake_keyid_to_fingerprint):
-        output = "".join([
-            "unsigned_sha:\n",
-            "bad-signed_sha:fprint2\n",
-            "latest_sha:fingerprint\n",
-            "oldest_sha:fprint3\n",
-        ])
-        sha = sgpg.latest_signed_git_commit(None, output, ['fingerprint', 'fprint3'])
-        assert sha == 'latest_sha'
+# verify_signed_git_commit_output {{{1
+@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_GOOD_PARAMS)
+def test_verify_signed_git_commit_output(output):
+    sgpg.verify_signed_git_commit_output(output)
 
 
-def test_latest_signed_git_commit_exception(context):
-    gpg = sgpg.GPG(context)
-    output = "".join([
-        "latest_sha:fingerprint\n",
-        "bad-signed_sha:fprint2\n",
-        "unsigned_sha:\n",
-        "oldest_sha:fprint3\n",
-    ])
-    sha = sgpg.latest_signed_git_commit(gpg, output, ['fingerprint', 'fprint3'])
-    assert sha is None
+@pytest.mark.parametrize("output", VERIFY_GIT_OUTPUT_BAD_PARAMS)
+def test_verify_signed_git_commit_output_exception(output):
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.verify_signed_git_commit_output(output)
+
+
+# get_git_revision {{{1
+@pytest.mark.asyncio
+async def test_get_git_revision():
+    parent_dir = os.path.dirname(__file__)
+    expected = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=parent_dir)
+    assert await sgpg.get_git_revision(parent_dir) == expected.decode('utf-8').rstrip()
+
+
+@pytest.mark.asyncio
+async def test_get_git_revision_exception(mocker):
+    x = mock.MagicMock()
+
+    async def fake(*args, **kwargs):
+        return x
+
+    async def return_1(*args, **kwargs):
+        return 1
+
+    async def fake_communicate(*args, **kwargs):
+        return ("x", "y")
+
+    x.communicate = fake_communicate
+    x.wait = return_1
+
+    parent_dir = os.path.dirname(__file__)
+    with pytest.raises(ScriptWorkerRetryException):
+        await sgpg.get_git_revision(parent_dir, exec_function=fake)
+
+
+# update_signed_git_repo {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("result1,result2,expected,return_value", ((
+    "one", "one", False, 0
+), (
+    "one", "two", True, 0
+), (
+    "one", "two", True, 1
+)))
+async def test_update_signed_git_repo(context, mocker, result1, result2, expected,
+                                      return_value):
+    results = [result1, result2]
+
+    async def fake_revision(*args, **kwargs):
+        return results.pop(0)
+
+    async def wait(*args, **kwargs):
+        return return_value
+
+    async def fake_exec(*args, **kwargs):
+        value = mock.MagicMock()
+        value.wait = wait
+        return value
+
+    mocker.patch.object(sgpg, "get_git_revision", new=fake_revision)
+    if return_value:
+        with pytest.raises(ScriptWorkerRetryException):
+            await sgpg.update_signed_git_repo(
+                context, exec_function=fake_exec, log_function=noop_async)
+    else:
+        result = await sgpg.update_signed_git_repo(
+            context, exec_function=fake_exec, log_function=noop_async)
+        assert result == expected
+
+
+# verify_signed_git_commit {{{1
+@pytest.mark.asyncio
+async def test_verify_signed_git_commit(context, mocker):
+    output = [b'onetwothree', b'onetwothree']
+
+    async def fake_readline():
+        if output:
+            return output.pop(0)
+
+    stdout = mock.MagicMock()
+    stdout.readline = fake_readline
+
+    async def fake_exec(*args, **kwargs):
+        m = mock.MagicMock()
+        m.stdout = stdout
+        return m
+
+    mocker.patch.object(sgpg, "verify_signed_git_commit_output", new=noop_sync)
+    await sgpg.verify_signed_git_commit(context, exec_function=fake_exec)
+
+
+# build_gpg_homedirs_from_repo {{{1
+@pytest.mark.asyncio
+async def test_build_gpg_homedirs_from_repo(context, mocker):
+    homedirs = {'flat': [], 'signed': []}
+    expected = {
+        'flat': ['docker-worker', 'generic-worker'],
+        'signed': ['scriptworker'],
+    }
+
+    async def counter(_, path, *args, **kwargs):
+        worker_dir = os.path.basename(path)
+        key = 'flat'
+        if 'untrusted_path' in kwargs:
+            key = 'signed'
+        homedirs[key].append(worker_dir)
+        homedirs[key] = sorted(homedirs[key])
+
+    await sgpg.build_gpg_homedirs_from_repo(
+        context, verify_function=noop_async, flat_function=counter, signed_function=counter
+    )
+    assert homedirs == expected
+
+
+@pytest.mark.asyncio
+async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
+
+    os.makedirs(context.config['base_gpg_home_dir'])
+    touch(os.path.join(context.config['base_gpg_home_dir'], '.lock'))
+    await sgpg.build_gpg_homedirs_from_repo(
+        context, verify_function=die_async, flat_function=die_async, signed_function=die_async
+    )
+
+
+# create_initial_gpg_homedirs {{{1
+def test_create_initial_gpg_homedirs(context, mocker, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=noop_async)
+    mocker.patch.object(sgpg, "retry_async", new=noop_async)
+    mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "check_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
+    mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+
+    sgpg.create_initial_gpg_homedirs()
+
+
+def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=die_async)
+    mocker.patch.object(sgpg, "retry_async", new=noop_async)
+    mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
+    mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
+    mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
+    mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+
+    with pytest.raises(SystemExit):
+        sgpg.create_initial_gpg_homedirs()
+
+
+# rebuild_gpg_homedirs_loop {{{1
+@pytest.mark.asyncio
+async def test_rebuild_gpg_homedirs_loop(context, mocker):
+    """Try to hit all the parts of the actual loop
+    """
+    counts = {
+        "rm_basedir": 0,
+        "return_none": 0,
+        "raise": 0
+    }
+    basedir = context.config['base_gpg_home_dir']
+
+    async def rm_basedir_2nd_pass(*args, **kwargs):
+        counts['rm_basedir'] += 1
+        if counts['rm_basedir'] > 1 and os.path.exists(basedir):
+            shutil.rmtree(basedir)
+
+    async def return_none_1st_pass(*args, **kwargs):
+        counts['return_none'] += 1
+        if counts['return_none'] > 1:
+            return True
+
+    def raise_1st_die_2nd(*args, **kwargs):
+        counts['raise'] += 1
+        if counts['raise'] == 1:
+            raise ScriptWorkerGPGException("foo")
+        else:
+            raise SystemExit()
+
+    context.config['sign_chain_of_trust'] = True
+    context.config['verify_chain_of_trust'] = True
+    os.makedirs(basedir)
+    mocker.patch.object(sgpg, "rm", new=noop_sync)
+    mocker.patch.object(asyncio, "sleep", new=rm_basedir_2nd_pass)
+    mocker.patch.object(sgpg, "retry_async", new=return_none_1st_pass)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=raise_1st_die_2nd)
+
+    with pytest.raises(SystemExit):
+        await sgpg.rebuild_gpg_homedirs_loop(context, basedir)
+
+
+@pytest.mark.asyncio
+async def test_rebuild_gpg_homedirs_loop_skip(context, tmpdir, mocker):
+    path = os.path.join(tmpdir, "foo")
+    context.config['sign_chain_of_trust'] = False
+    context.config['verify_chain_of_trust'] = False
+    mocker.patch.object(asyncio, "sleep", new=die_sync)
+    mocker.patch.object(sgpg, "retry_async", new=die_async)
+    await sgpg.rebuild_gpg_homedirs_loop(context, path)

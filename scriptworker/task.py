@@ -20,7 +20,7 @@ import taskcluster.exceptions
 from scriptworker.client import validate_artifact_url
 from scriptworker.constants import REVERSED_STATUSES
 from scriptworker.exceptions import ScriptWorkerRetryException
-from scriptworker.log import get_log_fhs, log_errors, read_stdout
+from scriptworker.log import get_log_fhs, pipe_to_log
 from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_async, download_file
 
 log = logging.getLogger(__name__)
@@ -63,8 +63,8 @@ async def run_task(context):
 
     tasks = []
     with get_log_fhs(context) as (log_fh, error_fh):
-        tasks.append(log_errors(context.proc.stderr, log_fh, error_fh))
-        tasks.append(read_stdout(context.proc.stdout, log_fh))
+        tasks.append(pipe_to_log(context.proc.stderr, filehandles=[log_fh, error_fh]))
+        tasks.append(pipe_to_log(context.proc.stdout, filehandles=[log_fh]))
         await asyncio.wait(tasks)
         exitcode = await context.proc.wait()
         status_line = "exit code: {}".format(exitcode)
@@ -320,13 +320,39 @@ def max_timeout(context, proc, timeout):
 
 async def download_artifacts(context, file_urls, parent_dir=None, session=None,
                              download_func=download_file):
+    """Download artifacts in parallel after validating their URLs.
+
+    Valid `taskId`s for download include the task's dependencies and the
+    `taskGroupId`, which by convention is the `taskId` of the decision task.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        file_urls (list): the list of artifact urls to download.
+        parent_dir (str, optional): the path of the directory to download the
+            artifacts into.  If None, defaults to `work_dir`.  Default is None.
+        session (aiohttp.ClientSession, optional): the session to use to download.
+            If None, defaults to context.session.  Default is None.
+        download_func (function, optional): the function to call to download the files.
+            default is `download_file`.
+
+    Returns:
+        list: the relative paths to the files downloaded, relative to
+            `parent_dir`.
+
+    Raises:
+        scriptworker.exceptions.DownloadError: on download failure after
+            max retries.
+    """
     parent_dir = parent_dir or context.config['work_dir']
     session = session or context.session
 
     tasks = []
     files = []
     download_config = deepcopy(context.config)
-    download_config.setdefault('valid_artifact_task_ids', context.task['dependencies'])
+    download_config.setdefault(
+        'valid_artifact_task_ids',
+        context.task['dependencies'] + [context.task['taskGroupId']]
+    )
     for file_url in file_urls:
         rel_path = validate_artifact_url(download_config, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)

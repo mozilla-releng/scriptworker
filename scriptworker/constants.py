@@ -11,6 +11,7 @@ Attributes:
 from frozendict import frozendict
 import os
 
+# DEFAULT_CONFIG {{{1
 DEFAULT_CONFIG = frozendict({
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
@@ -34,18 +35,23 @@ DEFAULT_CONFIG = frozendict({
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
+    # intervals are expressed in seconds
     "credential_update_interval": 300,
     "reclaim_interval": 300,
+    "poll_git_interval": 300,
     "poll_interval": 5,
 
     # chain of trust settings
     "verify_chain_of_trust": False,  # TODO True
-    "sign_chain_of_trust": False,  # TODO True
+    "sign_chain_of_trust": True,
+    "my_email": "scriptworker@example.com",
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
+    "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json"),
+    "cot_config_path": os.path.join(os.getcwd(), "cot_config.json"),
+
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
-
     # A list of additional gpg cmdline options
     "gpg_options": None,
     # The path to the gpg executable.
@@ -55,8 +61,7 @@ DEFAULT_CONFIG = frozendict({
     "gpg_secret_keyring": '%(gpg_home)s/secring.gpg',
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
-    # Encoding to use.  Defaults to latin-1
-    "gpg_encoding": None,
+    "gpg_encoding": 'utf-8',
 
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",
@@ -69,13 +74,17 @@ DEFAULT_CONFIG = frozendict({
     "log_dir": "...",
     "artifact_dir": "...",
     "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
+    "git_key_repo_dir": "...",
+    "base_gpg_home_dir": "...",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
+    "sign_key_timeout": 60 * 2,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
     "task_max_timeout": 60 * 20,
     "verbose": True,
 })
 
+# STATUSES and REVERSED_STATUSES {{{1
 STATUSES = {
     'success': 0,
     'failure': 1,

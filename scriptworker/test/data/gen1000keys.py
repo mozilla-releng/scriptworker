@@ -5,6 +5,7 @@ Usage:
     $0 [pubkey_dir] [num_keys]
 """
 import arrow
+import asyncio
 import glob
 import gnupg
 import json
@@ -51,6 +52,7 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
     context = Context()
     scriptworker.utils.rm(pubkey_dir)
     scriptworker.utils.makedirs(os.path.join(pubkey_dir, "data"))
+    event_loop = asyncio.get_event_loop()
 
     with tempfile.TemporaryDirectory() as tmp:
         context.config = {
@@ -87,8 +89,10 @@ def build_pubkeys_dir(pubkey_dir, trusted_key_dir, num_keys, key_length=2048):
                 print(signed_data, file=fh, end="")
             signing_email = trusted_list.pop(0)
             trusted_list.append(signing_email)
-            scriptworker.gpg.sign_key(
-                context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]['fingerprint'], exportable=True
+            event_loop.run_until_complete(
+                scriptworker.gpg.sign_key(
+                    context, fingerprint, signing_key=trusted_fingerprint_dict[signing_email]['fingerprint'], exportable=True
+                )
             )
             signed_path = os.path.join(signing_email, "{}.pub".format(fingerprint))
             write_key(gpg, fingerprint, os.path.join(pubkey_dir, signed_path))

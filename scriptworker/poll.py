@@ -111,8 +111,6 @@ async def find_task(context, poll_url, delete_url, request_function):
         context (scriptworker.context.Context): the scriptworker context.
         poll_url (str): The Azure URL to poll for tasks
         delete_url (str): The Azure URL to delete claimed tasks
-        request_function (function): the function to call to poll the URLs.
-            This should scriptworker.utils.retry_request outside of testing.
 
     Returns:
         dict: the claimTask json

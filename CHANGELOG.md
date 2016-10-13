@@ -4,6 +4,29 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.0] - 2016-10-13
+### Added
+- added `git_key_repo_dir`, `base_gpg_home_dir`, `my_email`, and `gpg_path` to `config_example.json`
+- added `cot_config_example.json`, `cot_config_schema.json`, and `scriptworker.config.get_cot_config` for ChainOfTrust config
+- added `update_signed_git_repo`, `verify_signed_git_commit`, `build_gpg_homedirs_from_repo`, `rebuild_gpg_homedirs_loop`, and `create_initial_gpg_homedirs` for gpg homedir creation and updates in the background.
+- added a background call to update the gpg homedirs in `scriptworker.worker.async_main`
+- added another entry point, `create_initial_gpg_homedirs`, for puppet to create the first gpg homedirs
+
+### Changed
+- default config filename is now `scriptworker.json` instead of `config.json`
+- moved `scriptworker.config.get_context_from_cmdln` out of `scriptworker.worker.main`; now using argparse
+- changed default `sign_chain_of_trust` to True
+- `scriptworker.gpg.sign_key`, `scriptworker.gpg.rebuild_gpg_home_flat`, and `scriptworker.gpg.rebuild_gpg_home_signed` are now async, so they can happen in parallel in the background
+- `rebuild_gpg_home` now allows for a `gpg_keyserver` kwarg
+- renamed `scriptworker.gpg.latest_signed_git_commit` to `scriptworker.gpg.verify_signed_git_commit_output`
+- combined `scriptworker.log.log_errors` and `scriptworker.log.read_stdout` into `scriptworker.log.pipe_to_log`
+- added `taskGroupId` to the list of default valid `taskId`s to download from.  This logic will need to change in version 0.9.0 due to the new [chain of trust dependency traversal logic](https://gist.github.com/escapewindow/a6a6944f51d4219d08284ededc65aa30)
+
+### Fixed
+- added missing docstrings to the `download_artifacts` and `download_file` functions
+- fixed coverage version in `tox.ini py35-coveralls`
+- `sign_key` now supports signing keys with multiple subkeys
+
 ## [0.7.0] - 2016-09-23
 ### Added
 - added `DownloadError` exception for `download_file`

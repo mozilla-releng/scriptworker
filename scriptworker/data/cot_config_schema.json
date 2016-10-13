@@ -1,0 +1,53 @@
+{
+  "title": "Chain of Trust config schema",
+  "type": "object",
+  "properties": {
+    "git_key_repo_url": {"type": "string"},
+    "git_commit_signing_pubkey_dir": {"type": "string"},
+    "gpg_keyserver": {"type": "string"},
+    "gpg_homedirs": {
+      "type": "object",
+      "properties": {
+        "docker-worker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        },
+        "generic-worker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        },
+        "scriptworker": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["flat", "signed"]
+            },
+            "ignore_suffixes": {
+              "type": "array"
+            }
+          }
+        }
+      }
+    },
+    "pubkey_path": {"type": "string"},
+    "privkey_path": {"type": "string"}
+  },
+  "required": ["git_key_repo_url", "git_commit_signing_pubkey_dir", "gpg_homedirs", "gpg_keyserver", "pubkey_path", "privkey_path"]
+}
