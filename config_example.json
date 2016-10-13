@@ -23,7 +23,7 @@
 
     "verify_chain_of_trust": false,
     "sign_chain_of_trust": false,
-    "gpg_path": null,
+    "gpg_path": "gpg",
 
     "credentials": {
         "clientId": "...",

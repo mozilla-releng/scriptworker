@@ -1069,8 +1069,11 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
                                   consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
-    In this 'signed' model, import all the pubkeys in `consume_path` and sign
-    them directly.  This makes them valid but not trusted.
+    In this 'signed' model, import all the pubkeys in `trusted_path`, sign
+    them directly, and trust them.  Then import all the pubkeys in
+    `untrusted_path` with no signing.  The intention is that one of the keys
+    in `trusted_path` has already signed the keys in `untrusted_path`, making
+    them valid.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.

@@ -3,10 +3,12 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## [0.8.0] - 2016-10-13
 ### Added
 - added `git_key_repo_dir`, `base_gpg_home_dir`, `my_email`, and `gpg_path` to `config_example.json`
-- added `cot_config_example.json`, `firefox_cot_config_schema.json`, and `scriptworker.config.get_cot_config` for ChainOfTrust config
-- added `update_signed_git_repo`, `verify_signed_git_commit`, `build_gpg_homedirs_from_repo`, `reuibld_gpg_homedirs_loop`, and `create_initial_gpg_homedirs` for gpg homedir creation and updates in the background.
+- added `cot_config_example.json`, `cot_config_schema.json`, and `scriptworker.config.get_cot_config` for ChainOfTrust config
+- added `update_signed_git_repo`, `verify_signed_git_commit`, `build_gpg_homedirs_from_repo`, `rebuild_gpg_homedirs_loop`, and `create_initial_gpg_homedirs` for gpg homedir creation and updates in the background.
 - added a background call to update the gpg homedirs in `scriptworker.worker.async_main`
 - added another entry point, `create_initial_gpg_homedirs`, for puppet to create the first gpg homedirs
 

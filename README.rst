@@ -39,6 +39,9 @@ Credentials can live in ``./scriptworker.json``, ``./secrets.json``, ``~/.script
 -------
 Testing
 -------
+
+Note: GPG tests require gpg 2.0.x!
+
 Without integration tests,
 
 ``NO_TESTS_OVER_WIRE=1 python setup.py test``
