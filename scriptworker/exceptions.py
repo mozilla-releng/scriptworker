@@ -67,3 +67,15 @@ class DownloadError(ScriptWorkerTaskException):
         super(DownloadError, self).__init__(
             msg, exit_code=4
         )
+
+
+class CoTError(ScriptWorkerTaskException):
+    """Failure in Chain of Trust verification.
+
+    Attributes:
+        exit_code (int): this is set to 3 (malformed-payload).
+    """
+    def __init__(self, msg):
+        super(CoTError, self).__init__(
+            msg, exit_code=3
+        )

@@ -16,7 +16,8 @@ from scriptworker.utils import filepaths_in_dir, format_json, get_hash
 log = logging.getLogger(__name__)
 
 
-# get_cot_artifacts {{{1
+# cot generation {{{1
+# get_cot_artifacts {{{2
 def get_cot_artifacts(context):
     """Generate the artifact relative paths and shas for the chain of trust
 
@@ -36,7 +37,7 @@ def get_cot_artifacts(context):
     return artifacts
 
 
-# get_cot_environment {{{1
+# get_cot_environment {{{2
 def get_cot_environment(context):
     """Get environment information for the chain of trust artifact.
 
@@ -51,7 +52,7 @@ def get_cot_environment(context):
     return env
 
 
-# generate_cot_body {{{1
+# generate_cot_body {{{2
 def generate_cot_body(context):
     """Generate the chain of trust dictionary.
 
@@ -84,7 +85,7 @@ def generate_cot_body(context):
     return cot
 
 
-# generate_cot {{{1
+# generate_cot {{{2
 def generate_cot(context, path=None):
     """Format and sign the cot body, and write to disk
 
@@ -116,3 +117,29 @@ def generate_cot(context, path=None):
     with open(path, "w") as fh:
         print(body, file=fh, end="")
     return body
+
+
+# cot verification {{{1
+# check_interactive_docker_worker {{{2
+def check_interactive_docker_worker(task, name):
+    """Given a task, make sure the task was not defined as interactive.
+
+    * `task.payload.features.interactive` must be absent or False.
+    * `task.payload.env.TASKCLUSTER_INTERACTIVE` must be absent or False.
+
+    Args:
+        task (dict): the task definition to check.
+        name (str): the name of the task, used for error message strings.
+
+    Returns:
+        list: the list of error messages.  Success is an empty list.
+    """
+    messages = []
+    try:
+        if task['payload']['features'].get('interactive'):
+            messages.append("{} is interactive: task.payload.features.interactive!".format(name))
+        if task['payload']['env'].get('TASKCLUSTER_INTERACTIVE'):
+            messages.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(name))
+    except KeyError:
+        messages.append("check_interactive_docker_worker: {} task definition is malformed!".format(name))
+    return messages
