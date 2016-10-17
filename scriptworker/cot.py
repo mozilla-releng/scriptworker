@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from scriptworker.client import validate_json_schema
-from scriptworker.exceptions import ScriptWorkerException
+from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.gpg import GPG, sign
 from scriptworker.utils import filepaths_in_dir, format_json, get_hash
 
@@ -120,6 +120,48 @@ def generate_cot(context, path=None):
 
 
 # cot verification {{{1
+# classify_worker_type {{{1
+def classify_worker_type(task, name):
+    """Given a task, determine which worker type it was run on.
+
+    Currently there are no task markers for generic-worker and
+    taskcluster-worker hasn't been rolled out.  Those need to be populated here
+    once they're ready.
+
+    * docker-worker: `task.payload.image` is not None
+    * check for scopes beginning with the worker type name.
+
+    Args:
+        task (dict): the task definition to check.
+        name (str): the name of the task, used for error message strings.
+
+    Returns:
+        str: the worker type.
+
+    Raises:
+        CoTError: on inability to determine the worker type
+    """
+    worker_type = {'worker_type': None}
+
+    def _set_worker_type(wt):
+        if worker_type['worker_type'] is not None and worker_type['worker_type'] != wt:
+            raise CoTError("classify_worker_type: {} was {} and now looks like {}!\n{}".format(name, worker_type['worker_type'], wt, task))
+        worker_type['worker_type'] = wt
+
+    if task['payload'].get("image"):
+        _set_worker_type("docker-worker")
+    if task['provisionerId'] in ("scriptworker-prov-v1", ):
+        _set_worker_type("scriptworker")
+
+    for scope in task['scopes']:
+        if scope.startswith("docker-worker:"):
+            _set_worker_type("docker-worker")
+
+    if worker_type['worker_type'] is None:
+        raise CoTError("classify_worker_type: can't find a type for {}!\n{}".format(name, task))
+    return worker_type['worker_type']
+
+
 # check_interactive_docker_worker {{{2
 def check_interactive_docker_worker(task, name):
     """Given a task, make sure the task was not defined as interactive.
