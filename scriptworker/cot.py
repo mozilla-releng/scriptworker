@@ -8,6 +8,7 @@ Attributes:
 import json
 import logging
 import os
+from urllib.parse import unquote, urlparse
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.gpg import GPG, sign
@@ -120,7 +121,7 @@ def generate_cot(context, path=None):
 
 
 # cot verification {{{1
-# classify_worker_type {{{1
+# classify_worker_type {{{2
 def classify_worker_type(task, name):
     """Given a task, determine which worker type it was run on.
 
@@ -150,7 +151,10 @@ def classify_worker_type(task, name):
 
     if task['payload'].get("image"):
         _set_worker_type("docker-worker")
+    # TODO config for these scriptworker checks?
     if task['provisionerId'] in ("scriptworker-prov-v1", ):
+        _set_worker_type("scriptworker")
+    if task['workerType'] in ("signing-linux-v1", ):
         _set_worker_type("scriptworker")
 
     for scope in task['scopes']:
@@ -160,6 +164,42 @@ def classify_worker_type(task, name):
     if worker_type['worker_type'] is None:
         raise CoTError("classify_worker_type: can't find a type for {}!\n{}".format(name, task))
     return worker_type['worker_type']
+
+
+# is_try {{{2
+def _is_try_url(url):
+    parsed = urlparse(url)
+    path = unquote(parsed.path).lstrip('/')
+    parts = path.split('/')
+    if parts[0] == "try":
+        return True
+    return False
+
+
+def is_try(task, name):
+    """Determine if a task is a 'try' task (restricted privs).
+
+    XXX do we want this, or just do this behavior for any non-allowlisted repo?
+
+    This checks for the following things::
+
+        * `task.payload.env.GECKO_HEAD_REPOSITORY` == "https://hg.mozilla.org/try/"
+        * `task.payload.env.MH_BRANCH` == "try"
+        * `task.metadata.source` == "https://hg.mozilla.org/try/..."
+        * `task.schedulerId` in ("gecko-level-1", )
+
+    Returns:
+        bool: True if it's try
+    """
+    result = False
+    if task['payload']['env'].get("GECKO_HEAD_REPOSITORY"):
+        result = result or _is_try_url(task['payload']['env']['GECKO_HEAD_REPOSITORY'])
+    if task['payload']['env'].get("MH_BRANCH"):
+        result = result or task['payload']['env']['MH_BRANCH'] == 'try'
+    if task['metadata'].get('source'):
+        result = result or _is_try_url(task['metadata']['source'])
+    result = result or task['schedulerId'] in ("gecko-level-1", )
+    return result
 
 
 # check_interactive_docker_worker {{{2
