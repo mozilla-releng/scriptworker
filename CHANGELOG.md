@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.7.1] - 2016-10-18
+### Fixed
+- explicitly pass `taskId` and `runId` to `claim_task`.  There's a new `hintId` property that appears in `message_info['task_info']` that broke things.
+
 ## [0.7.0] - 2016-09-23
 ### Added
 - added `DownloadError` exception for `download_file`
