@@ -2,8 +2,7 @@
     "version": [
         0,
         8,
-        1,
-        "alpha1"
+        1
     ],
-    "version_string": "0.8.1-alpha1"
+    "version_string": "0.8.1"
 }
