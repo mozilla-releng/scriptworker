@@ -117,7 +117,7 @@ async def find_task(context, poll_url, delete_url, request_function):
     """
     xml = await request_function(context, poll_url)
     for message_info in parse_azure_xml(xml):
-        task = await claim_task(context, **message_info['task_info'])
+        task = await claim_task(context, message_info['task_info']['taskId'], message_info['task_info']['runId'])
         if task is not None:
             log.info("Found task! Deleting from azure...")
             delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
