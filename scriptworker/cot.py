@@ -225,3 +225,26 @@ def check_interactive_docker_worker(task, name):
     except KeyError:
         messages.append("check_interactive_docker_worker: {} task definition is malformed!".format(name))
     return messages
+
+
+# check_docker_image_sha {{{2
+def check_docker_image_sha(context, cot, name):
+    """Verify that pre-built docker shas are in allowlists.
+
+    Decision and docker-image tasks use pre-built docker images from docker hub.
+    Verify that these pre-built docker image shas are in the allowlists.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        cot (dict): the chain of trust json dict.
+        name (str): the name of the task.  This must be in
+            `context.cot_config['docker_image_allowlists']`.
+
+    Raises:
+        CoTError: on failure.
+        KeyError: on malformed config / cot
+    """
+    # XXX we will need some way to allow trusted developers to update these
+    # allowlists
+    if cot['environment']['imageHash'] not in context.cot_config['docker_image_allowlists'][name]:
+        raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
