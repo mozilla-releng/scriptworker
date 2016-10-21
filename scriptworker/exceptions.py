@@ -69,7 +69,7 @@ class DownloadError(ScriptWorkerTaskException):
         )
 
 
-class CoTError(ScriptWorkerTaskException):
+class CoTError(ScriptWorkerTaskException, KeyError):
     """Failure in Chain of Trust verification.
 
     Attributes:

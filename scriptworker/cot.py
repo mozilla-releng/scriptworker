@@ -248,3 +248,32 @@ def check_docker_image_sha(context, cot, name):
     # allowlists
     if cot['environment']['imageHash'] not in context.cot_config['docker_image_allowlists'][name]:
         raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
+
+
+# build_cot_task_dict {{{2
+def build_cot_task_dict(context):
+    """ TODO FILL ME OUT
+
+    {
+      "tasks": {
+        "taskId1": { # task defn },
+        "taskId2": { # task defn },
+        "taskId3": { # task defn },
+      },
+      "dependencies": {
+        "decision": "taskId",
+        "build": {
+          "taskId": "...",
+          "dependencies": {
+            "docker-image": {
+              "taskId": "...",
+              "dependencies": {
+                "decision": "taskId",
+              },
+            },
+          },
+        },
+      },
+    }
+    """
+    pass

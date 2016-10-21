@@ -26,6 +26,7 @@ from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_
 log = logging.getLogger(__name__)
 
 
+# worst_level {{{1
 def worst_level(level1, level2):
     """Given two int levels, return the larger.
 
@@ -39,6 +40,7 @@ def worst_level(level1, level2):
     return level1 if level1 > level2 else level2
 
 
+# run_task {{{1
 async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 
@@ -75,6 +77,7 @@ async def run_task(context):
     return exitcode
 
 
+# reclaim_task {{{1
 async def reclaim_task(context, task):
     """Try to reclaim a task from the queue.
 
@@ -109,6 +112,7 @@ async def reclaim_task(context, task):
                 raise
 
 
+# get_expiration_arrow {{{1
 def get_expiration_arrow(context):
     """Return an arrow, `artifact_expiration_hours` in the future from now.
 
@@ -122,6 +126,7 @@ def get_expiration_arrow(context):
     return now.replace(hours=context.config['artifact_expiration_hours'])
 
 
+# guess_content_type {{{1
 def guess_content_type(path):
     """Guess the content type of a path, using `mimetypes`
 
@@ -138,6 +143,7 @@ def guess_content_type(path):
     return content_type or "application/binary"
 
 
+# create_artifact {{{1
 async def create_artifact(context, path, target_path, storage_type='s3',
                           expires=None, content_type=None):
     """Create an artifact and upload it.
@@ -187,6 +193,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
                     )
 
 
+# retry_create_artifact {{{1
 async def retry_create_artifact(*args, **kwargs):
     """Retry create_artifact() calls.
 
@@ -202,6 +209,7 @@ async def retry_create_artifact(*args, **kwargs):
     )
 
 
+# upload_artifacts {{{1
 async def upload_artifacts(context):
     """Upload the files in `artifact_dir`, preserving relative paths.
 
@@ -238,6 +246,7 @@ async def upload_artifacts(context):
     await raise_future_exceptions(tasks)
 
 
+# complete_task {{{1
 async def complete_task(context, result):
     """Mark the task as completed in the queue.
 
@@ -272,6 +281,7 @@ async def complete_task(context, result):
             raise
 
 
+# kill {{{1
 async def kill(pid, sleep_time=1):
     """Kill `pid` with various signals.
 
@@ -293,6 +303,7 @@ async def kill(pid, sleep_time=1):
             return
 
 
+# max_timeout {{{1
 def max_timeout(context, proc, timeout):
     """Make sure the proc pid's process and process group are killed.
 
@@ -318,6 +329,7 @@ def max_timeout(context, proc, timeout):
     ]))
 
 
+# download_artifacts {{{1
 async def download_artifacts(context, file_urls, parent_dir=None, session=None,
                              download_func=download_file):
     """Download artifacts in parallel after validating their URLs.
