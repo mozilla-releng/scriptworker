@@ -4,6 +4,7 @@ import arrow
 import asyncio
 import logging
 import sys
+import traceback
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import create_config, read_worker_creds
@@ -106,7 +107,7 @@ def main():
         context.credentials = credentials
         while True:
             try:
-                loop.create_task(async_main(context))
-                loop.run_forever()
-            except RuntimeError:
-                pass
+                loop.run_until_complete(async_main(context))
+            except Exception as exc:
+                log.warning(traceback.format_exc())
+                raise

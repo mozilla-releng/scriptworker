@@ -44,15 +44,25 @@ def context(tmpdir):
     return context
 
 
+def die_sync(*args, **kwargs):
+    raise ScriptWorkerException("foo")
+
+
+async def die_async(*args, **kwargs):
+    raise ScriptWorkerException("foo")
+
+
 # tests {{{1
-def test_main_too_many_args(event_loop):
+def test_main_too_many_args(mocker, event_loop):
+    mocker.patch.object(worker, 'async_main', new=die_async)
     with pytest.raises(SystemExit):
         with mock.patch('sys.argv', new=[1, 2, 3, 4]):
             worker.main()
 
 
-def test_main_bad_json(event_loop):
+def test_main_bad_json(mocker, event_loop):
     path = os.path.join(os.path.dirname(__file__), "data", "bad.json")
+    mocker.patch.object(worker, 'async_main', new=die_async)
     with pytest.raises(SystemExit):
         with mock.patch('sys.argv', new=[__file__, path]):
             worker.main()
@@ -62,17 +72,15 @@ def test_main(mocker, event_loop):
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
     config, creds = create_config(path)
     loop = mock.MagicMock()
-    exceptions = [RuntimeError, ScriptWorkerException]
 
-    def run_forever():
-        exc = exceptions.pop(0)
-        raise exc("foo")
+    def run_until_complete(*args):
+        raise ScriptWorkerException("foo")
 
     def foo(arg):
         assert arg.config == config
         assert arg.credentials == creds
 
-    loop.run_forever = run_forever
+    loop.run_until_complete = run_until_complete
 
     mocker.patch.object(sys, 'argv', new=[__file__, path])
     mocker.patch.object(worker, 'async_main', new=foo)
