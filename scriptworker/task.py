@@ -40,6 +40,30 @@ def worst_level(level1, level2):
     return level1 if level1 > level2 else level2
 
 
+def get_task_id(claim_task):
+    """Given a claim_task json dict, return the taskId.
+
+    Args:
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        str: the taskId.
+    """
+    return claim_task['status']['taskId']
+
+
+def get_run_id(claim_task):
+    """Given a claim_task json dict, return the runId.
+
+    Args:
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        int: the runId.
+    """
+    return claim_task['runId']
+
+
 # run_task {{{1
 async def run_task(context):
     """Run the task, sending stdout+stderr to files.
@@ -101,8 +125,8 @@ async def reclaim_task(context, task):
         log.debug("Reclaiming task...")
         try:
             context.reclaim_task = await context.temp_queue.reclaimTask(
-                context.claim_task['status']['taskId'],
-                context.claim_task['runId']
+                get_task_id(context.claim_task),
+                get_run_id(context.claim_task),
             )
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
@@ -170,7 +194,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
         "expires": expires or get_expiration_arrow(context).isoformat(),
         "contentType": content_type or guess_content_type(path),
     }
-    args = [context.claim_task['status']['taskId'], context.claim_task['runId'],
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task),
             target_path, payload]
     tc_response = await context.temp_queue.createArtifact(*args)
     headers = {
@@ -261,7 +285,7 @@ async def complete_task(context, result):
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
     """
-    args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task)]
     try:
         if result == 0:
             log.info("Reporting task complete...")
