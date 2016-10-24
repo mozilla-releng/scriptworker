@@ -1399,7 +1399,6 @@ async def rebuild_gpg_homedirs_loop(context, basedir):
             without the lockfile means we're waiting to overwrite our gpg homedirs
             with the contents of this tmp dir.
     """
-    rm(basedir)
     if not context.config['sign_chain_of_trust'] and not context.config['verify_chain_of_trust']:
         log.warning("sign_chain_of_trust and verify_chain_of_trust are False; exiting rebuild_gpg_homedirs_loop!")
         return

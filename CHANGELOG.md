@@ -4,6 +4,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.8.2] - 2016-10-24
+### Changed
+- logged the stacktrace if the `main` loop hits an exception.  No longer catch and ignore `RuntimeError`, since it wasn't clear why that was put in.
+- updated `check_config` to make sure taskcluster-related configs match taskcluster requirements
+
+### Fixed
+- changed the way the polling loop works: `async_main` is now a single pass, which `main` calls in a `while True` loop.  This should fix the situation where polling was dying silently while the git update loop continued running every 5 minutes.
+
 ## [0.8.1] - 2016-10-18
 ### Fixed
 - explicitly pass `taskId` and `runId` to `claim_task`.  There's a new `hintId` property that appears in `message_info['task_info']` that broke things.

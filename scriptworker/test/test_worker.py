@@ -64,25 +64,24 @@ def test_main(mocker, context, event_loop):
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
     loop = mock.MagicMock()
-    exceptions = [RuntimeError, ScriptWorkerException]
 
-    def run_forever():
-        exc = exceptions.pop(0)
-        raise exc("foo")
+    def run_until_complete(*args, **kwargs):
+        raise ScriptWorkerException("foo")
 
-    def foo(arg):
+    async def foo(arg):
         # arg.config will be a frozendict.
         assert arg.config == frozendict(config)
         # arg.credentials will be a dict copy of a frozendict.
         assert arg.credentials == dict(creds)
 
-    loop.run_forever = run_forever
+    loop.run_until_complete = run_until_complete
 
     try:
         _, tmp = tempfile.mkstemp()
         with open(tmp, "w") as fh:
             json.dump(config, fh)
         del(config['credentials'])
+        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop_async)
         mocker.patch.object(worker, 'async_main', new=foo)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         with mock.patch.object(asyncio, 'get_event_loop') as p:
@@ -114,10 +113,13 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         sys.exit()
 
     try:
-        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop_async)
         mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
         mocker.patch.object(asyncio, 'sleep', new=noop_async)
-        mocker.patch.object(worker, 'overwrite_gpg_home', new=exit)
+        mocker.patch.object(worker, 'overwrite_gpg_home', new=noop_sync)
+        mocker.patch.object(worker, 'rm', new=exit)
+        event_loop.run_until_complete(
+            worker.async_main(context)
+        )
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
                 worker.async_main(context)
