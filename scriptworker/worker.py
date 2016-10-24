@@ -5,7 +5,6 @@ import asyncio
 import logging
 import os
 import sys
-import traceback
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import get_context_from_cmdln, read_worker_creds
@@ -105,6 +104,6 @@ def main():
         while True:
             try:
                 loop.run_until_complete(async_main(context))
-            except Exception as exc:
-                log.warning(traceback.format_exc())
+            except Exception:
+                log.critical("Fatal exception", exc_info=1)
                 raise
