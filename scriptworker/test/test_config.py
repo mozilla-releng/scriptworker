@@ -74,6 +74,13 @@ def test_check_config_bad_keyring(t_config):
     assert "needs to start with %(gpg_home)s/" in "\n".join(messages)
 
 
+@pytest.mark.parametrize("params", ("provisioner_id", "worker_group", "worker_type", "worker_id"))
+def test_check_config_invalid_ids(params, t_config):
+    t_config[params] = 'twenty-three-characters'
+    messages = config.check_config(t_config, "test_path")
+    assert '{} doesn\'t match "^[a-zA-Z0-9-_]{{1,22}}$" (required by Taskcluster)'.format(params) in messages
+
+
 def test_check_config_good(t_config):
     for key, value in t_config.items():
         if value == "...":

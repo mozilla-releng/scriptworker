@@ -12,6 +12,7 @@ from frozendict import frozendict
 import json
 import logging
 import os
+import re
 import sys
 
 from scriptworker.constants import DEFAULT_CONFIG
@@ -25,6 +26,10 @@ CREDS_FILES = (
     os.path.join(os.getcwd(), 'secrets.json'),
     os.path.join(os.environ.get('HOME', '/etc/'), '.scriptworker'),
 )
+
+# Based on
+# https://github.com/taskcluster/taskcluster-queue/blob/ced3b7bd824b445fd33ce0deb5de87a65f02b8b3/src/api.js#L94
+_GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
 
 
 # freeze_values {{{1
@@ -105,8 +110,14 @@ def check_config(config, path):
         if value in ("...", b"..."):
             messages.append("{} {} needs to be defined!".format(path, key))
         if key in ("gpg_public_keyring", "gpg_secret_keyring") and not value.startswith('%(gpg_home)s/'):
-            messages.append("{} needs to start with %(gpg_home)s/ to be portable!")
+            messages.append("{} needs to start with %(gpg_home)s/ to be portable!".format(key))
+        if key in ("provisioner_id", "worker_group", "worker_type", "worker_id") and not _is_id_valid(value):
+            messages.append('{} doesn\'t match "{}" (required by Taskcluster)'.format(key, _GENERIC_ID_REGEX.pattern))
     return messages
+
+
+def _is_id_valid(id_string):
+    return _GENERIC_ID_REGEX.match(id_string) is not None
 
 
 # _get_json_from_mandatory_file {{{1
