@@ -8,8 +8,10 @@ Attributes:
 import json
 import logging
 import os
+import re
 from urllib.parse import unquote, urlparse
 from scriptworker.client import validate_json_schema
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.gpg import GPG, sign
 from scriptworker.task import get_decision_task_id, get_task_id
@@ -252,29 +254,62 @@ def check_docker_image_sha(context, cot, name):
         raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
 
 
-# build_cot_task_dict {{{2
+# find_task_dependencies {{{2
 def find_task_dependencies(task, name, task_id):
-    """ TODO FILL ME OUT
+    """Find the taskIds of the chain of trust dependencies of a given task.
+
+    Args:
+        task (dict): the task definition to inspect.
+        name (str): the name of the task, for logging and naming children.
+        task_id (str): the taskId of the task.
+
+    Returns:
+        dict: mapping dependent task `name` to dependent task `taskId`.
     """
     log.info("find_task_dependencies {}".format(name))
     decision_task_id = get_decision_task_id(task)
     decision_key = '{}:decision'.format(name)
     dep_dict = {}
-    if decision_task_id != task_id:
-        dep_dict[decision_key] = decision_task_id
     for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
         dep_dict['{}:{}'.format(name, key)] = val
+    # XXX start hack: remove once all signing tasks have task.extra.chainOfTrust.inputs
+    if 'unsignedArtifacts' in task['payload']:
+        build_ids = []
+        for url in task['payload']['unsignedArtifacts']:
+            parts = urlparse(url)
+            path = unquote(parts.path)
+            m = re.search(DEFAULT_CONFIG['valid_artifact_path_regexes'][0], path)
+            path_info = m.groupdict()
+            if path_info['taskId'] not in build_ids:
+                build_ids.append(path_info['taskId'])
+        for count, build_id in enumerate(build_ids):
+            dep_dict['{}:build{}'.format(name, count)] = build_id
+    # XXX end hack
+    if decision_task_id != task_id:
+        dep_dict[decision_key] = decision_task_id
     log.info(dep_dict)
     return dep_dict
 
 
+# build_task_dependencies {{{2
 async def build_task_dependencies(context, task_dict, task, name, my_task_id):
-    """ TODO
+    """Recursively build the task dependencies of a task.
+
+    This is a helper function for `build_cot_task_dict`.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task_dict (dict): the task dict to modify.
+        task (dict): the task definition to operate on.
+        name (str): the name of the task to operate on.
+        my_task_id (str): the taskId of the task to operate on.
+
+    Raises:
+        KeyError: on failure.
     """
     log.info("build_task_dependencies {}".format(name))
-    if name.count(':') > 4:
-        import pprint
-        raise Exception(pprint.pformat(task_dict))
+    if name.count(':') > 5:
+        raise CoTError("Too deep recursion!\n{}".format(task_dict))
     deps = find_task_dependencies(task, name, my_task_id)
     for task_name, task_id in deps.items():
         task_dict['dependencies'][task_name] = task_id
@@ -290,22 +325,40 @@ async def build_task_dependencies(context, task_dict, task, name, my_task_id):
                 raise CoTError(str(exc))
 
 
+# build_cot_task_dict {{{2
 async def build_cot_task_dict(context, name, my_task_id=None):
-    """ TODO FILL ME OUT
+    """Build the chain of trust task dict, following dependencies.
 
-    {
-      "tasks": {
-        "taskId1": { # task defn },
-        "taskId2": { # task defn },
-        "taskId3": { # task defn },
-      },
-      "dependencies": {
-        "signing:decision": "taskId",
-        "signing:build": "taskId",
-        "signing:build:decision": "taskId",
-        "signing:build:docker-image": "taskId",
-      },
-    }
+    The task_dict looks like::
+
+        {
+          "tasks": {
+            "taskId0": { # task defn },
+            "taskId1": { # task defn },
+            "taskId2": { # task defn },
+            "taskId3": { # task defn },
+            "taskId4": { # task defn },
+          },
+          "dependencies": {
+            "signing": "taskId0",
+            "signing:decision": "taskId1",
+            "signing:build": "taskId2",
+            "signing:build:docker-image": "taskId3",
+            "signing:build:docker-image:decision": "taskId4",
+          },
+        }
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        name (str): the name of the top level task, e.g. 'signing'.
+        my_task_id (str, optional): Use this `taskId`.  If `None`, use
+            `get_task_id(context.claim_task)`.  Defaults to None.
+
+    Returns:
+        dict: the task_dict as shown above.
+
+    Raises:
+        KeyError: on failure.
     """
     my_task_id = my_task_id or get_task_id(context.claim_task)
     task_dict = {
