@@ -256,37 +256,41 @@ def check_docker_image_sha(context, cot, name):
 def find_task_dependencies(task, name, task_id):
     """ TODO FILL ME OUT
     """
+    log.info("find_task_dependencies {}".format(name))
     decision_task_id = get_decision_task_id(task)
     decision_key = '{}:decision'.format(name)
-    dep_dict = {decision_key: decision_task_id}
+    dep_dict = {}
+    if decision_task_id != task_id:
+        dep_dict[decision_key] = decision_task_id
     for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
         dep_dict['{}:{}'.format(name, key)] = val
-    if dep_dict[decision_key] != decision_task_id:
-        raise CoTError(
-            "{}:{} : task.extra.chainOfTrust.inputs.decision != get_decision_task_id!\n{}".format(name, task_id, task)
-        )
+    log.info(dep_dict)
     return dep_dict
 
 
 async def build_task_dependencies(context, task_dict, task, name, my_task_id):
     """ TODO
     """
+    log.info("build_task_dependencies {}".format(name))
+    if name.count(':') > 4:
+        import pprint
+        raise Exception(pprint.pformat(task_dict))
     deps = find_task_dependencies(task, name, my_task_id)
     for task_name, task_id in deps.items():
         task_dict['dependencies'][task_name] = task_id
         if task_id not in task_dict['tasks']:
             try:
                 task_defn = await context.queue.task(task_id)
-                task_dict[task_id] = task_defn
+                task_dict['tasks'][task_id] = task_defn
                 await build_task_dependencies(
                     context, task_dict, task_defn,
-                    "{}:{}".format(name, task_name), task_id
+                    task_name, task_id
                 )
             except TaskclusterFailure as exc:
                 raise CoTError(str(exc))
 
 
-async def build_cot_task_dict(context, name):
+async def build_cot_task_dict(context, name, my_task_id=None):
     """ TODO FILL ME OUT
 
     {
@@ -303,12 +307,14 @@ async def build_cot_task_dict(context, name):
       },
     }
     """
-    my_task_id = get_task_id(context.claim_task)
+    my_task_id = my_task_id or get_task_id(context.claim_task)
     task_dict = {
         "tasks": {
             my_task_id: context.task
         },
-        "dependencies": {},
+        "dependencies": {
+            name: my_task_id
+        },
     }
     await build_task_dependencies(context, task_dict, context.task, name, my_task_id)
     return task_dict
