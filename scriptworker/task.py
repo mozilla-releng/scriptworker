@@ -40,6 +40,7 @@ def worst_level(level1, level2):
     return level1 if level1 > level2 else level2
 
 
+# get_task_id {{{1
 def get_task_id(claim_task):
     """Given a claim_task json dict, return the taskId.
 
@@ -52,6 +53,7 @@ def get_task_id(claim_task):
     return claim_task['status']['taskId']
 
 
+# get_run_id {{{1
 def get_run_id(claim_task):
     """Given a claim_task json dict, return the runId.
 
@@ -62,6 +64,19 @@ def get_run_id(claim_task):
         int: the runId.
     """
     return claim_task['runId']
+
+
+# get_decision_task_id {{{1
+def get_decision_task_id(task):
+    """Given a claim_task json dict, return the decision taskId.
+
+    Args:
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        str: the taskId.
+    """
+    return task['taskGroupId']
 
 
 # run_task {{{1

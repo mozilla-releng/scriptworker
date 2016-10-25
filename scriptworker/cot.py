@@ -12,7 +12,9 @@ from urllib.parse import unquote, urlparse
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.gpg import GPG, sign
+from scriptworker.task import get_decision_task_id, get_task_id
 from scriptworker.utils import filepaths_in_dir, format_json, get_hash
+from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
 
@@ -251,7 +253,40 @@ def check_docker_image_sha(context, cot, name):
 
 
 # build_cot_task_dict {{{2
-def build_cot_task_dict(context):
+def find_task_dependencies(task, name, task_id):
+    """ TODO FILL ME OUT
+    """
+    decision_task_id = get_decision_task_id(task)
+    decision_key = '{}:decision'.format(name)
+    dep_dict = {decision_key: decision_task_id}
+    for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
+        dep_dict['{}:{}'.format(name, key)] = val
+    if dep_dict[decision_key] != decision_task_id:
+        raise CoTError(
+            "{}:{} : task.extra.chainOfTrust.inputs.decision != get_decision_task_id!\n{}".format(name, task_id, task)
+        )
+    return dep_dict
+
+
+async def build_task_dependencies(context, task_dict, task, name, my_task_id):
+    """ TODO
+    """
+    deps = find_task_dependencies(task, name, my_task_id)
+    for task_name, task_id in deps.items():
+        task_dict['dependencies'][task_name] = task_id
+        if task_id not in task_dict['tasks']:
+            try:
+                task_defn = await context.queue.task(task_id)
+                task_dict[task_id] = task_defn
+                await build_task_dependencies(
+                    context, task_dict, task_defn,
+                    "{}:{}".format(name, task_name), task_id
+                )
+            except TaskclusterFailure as exc:
+                raise CoTError(str(exc))
+
+
+async def build_cot_task_dict(context, name):
     """ TODO FILL ME OUT
 
     {
@@ -261,19 +296,19 @@ def build_cot_task_dict(context):
         "taskId3": { # task defn },
       },
       "dependencies": {
-        "decision": "taskId",
-        "build": {
-          "taskId": "...",
-          "dependencies": {
-            "docker-image": {
-              "taskId": "...",
-              "dependencies": {
-                "decision": "taskId",
-              },
-            },
-          },
-        },
+        "signing:decision": "taskId",
+        "signing:build": "taskId",
+        "signing:build:decision": "taskId",
+        "signing:build:docker-image": "taskId",
       },
     }
     """
-    pass
+    my_task_id = get_task_id(context.claim_task)
+    task_dict = {
+        "tasks": {
+            my_task_id: context.task
+        },
+        "dependencies": {},
+    }
+    await build_task_dependencies(context, task_dict, context.task, name, my_task_id)
+    return task_dict
