@@ -264,7 +264,8 @@ def find_task_dependencies(task, name, task_id):
         task_id (str): the taskId of the task.
 
     Returns:
-        dict: mapping dependent task `name` to dependent task `taskId`.
+        tuple (str, dict): decision task id, mapping dependent task `name` to
+            dependent task `taskId`.
     """
     log.info("find_task_dependencies {}".format(name))
     decision_task_id = get_decision_task_id(task)
@@ -288,7 +289,7 @@ def find_task_dependencies(task, name, task_id):
     if decision_task_id != task_id:
         dep_dict[decision_key] = decision_task_id
     log.info(dep_dict)
-    return dep_dict
+    return decision_task_id, dep_dict
 
 
 # build_task_dependencies {{{2
@@ -310,10 +311,21 @@ async def build_task_dependencies(context, task_dict, task, name, my_task_id):
     log.info("build_task_dependencies {}".format(name))
     if name.count(':') > 5:
         raise CoTError("Too deep recursion!\n{}".format(task_dict))
-    deps = find_task_dependencies(task, name, my_task_id)
-    for task_name, task_id in deps.items():
-        task_dict['dependencies'][task_name] = task_id
+    decision_task_id, deps = find_task_dependencies(task, name, my_task_id)
+    log.info("{} decision is {}".format(name, decision_task_id))
+    task_dict['dependencies'][name]['decision'] = decision_task_id
+    task_names = sorted(deps.keys())
+    # make sure we deal with the decision task first, or we may populate
+    # signing:build0:decision before signing:decision
+    decision_key = "{}:decision".format(name)
+    if decision_key in task_names:
+        task_names = [decision_key] + sorted([x for x in task_names if x != decision_key])
+    for task_name in task_names:
+        task_id = deps[task_name]
         if task_id not in task_dict['tasks']:
+            task_dict['dependencies'][task_name] = {
+                'taskId': task_id,
+            }
             try:
                 task_defn = await context.queue.task(task_id)
                 task_dict['tasks'][task_id] = task_defn
@@ -340,11 +352,26 @@ async def build_cot_task_dict(context, name, my_task_id=None):
             "taskId4": { # task defn },
           },
           "dependencies": {
-            "signing": "taskId0",
-            "signing:decision": "taskId1",
-            "signing:build": "taskId2",
-            "signing:build:docker-image": "taskId3",
-            "signing:build:docker-image:decision": "taskId4",
+            "signing": {
+                'taskId': "taskId0",
+                'decision': "taskId1",
+            },
+            "signing:decision": {
+                'taskId': "taskId1",
+                'decision': "taskId1",
+            }
+            "signing:build": {
+                'taskId': "taskId2",
+                'decision': "taskId1",
+            }
+            "signing:build:docker-image": {
+                'taskId': "taskId3",
+                'decision': "taskId4",
+            },
+            "signing:build:docker-image:decision": {
+                'taskId': "taskId4",
+                'decision': "taskId4",
+            },
           },
         }
 
@@ -366,7 +393,9 @@ async def build_cot_task_dict(context, name, my_task_id=None):
             my_task_id: context.task
         },
         "dependencies": {
-            name: my_task_id
+            name: {
+                'taskId': my_task_id
+            },
         },
     }
     await build_task_dependencies(context, task_dict, context.task, name, my_task_id)
