@@ -83,6 +83,12 @@ def test_guess_content_type(mimetypes):
     assert task.guess_content_type(path) == mimetype
 
 
+# get_decision_task_id {{{1
+@pytest.mark.parametrize("defn,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
+def test_get_decision_task_id(defn, result):
+    assert task.get_decision_task_id(defn) == result
+
+
 # run_task {{{1
 def test_run_task(context, event_loop):
     status = event_loop.run_until_complete(
