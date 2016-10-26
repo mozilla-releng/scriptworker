@@ -504,7 +504,7 @@ def verify_signature(gpg, signed_data, **kwargs):
     return verified
 
 
-def get_body(gpg, signed_data, gpg_home=None, **kwargs):
+def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
     """Verifies the signature, then returns the unsigned data from `signed_data`.
 
     Args:
@@ -512,6 +512,8 @@ def get_body(gpg, signed_data, gpg_home=None, **kwargs):
         signed_data (str): The ascii armored signed data.
         gpg_home (str, optional): override the gpg_home with a different
             gnupg home directory here.  Defaults to None.
+        verify_sig (bool, optional): verify the signature before decrypting.
+            Defaults to True.
         kwargs (dict, optional): These are passed directly to gpg.decrypt().
             Defaults to {}.
             https://pythonhosted.org/python-gnupg/#decryption
@@ -522,7 +524,8 @@ def get_body(gpg, signed_data, gpg_home=None, **kwargs):
     Raises:
         ScriptWorkerGPGException: on signature verification failure.
     """
-    verify_signature(gpg, signed_data)
+    if verify_sig:
+        verify_signature(gpg, signed_data)
     body = gpg.decrypt(signed_data, **kwargs)
     return str(body)
 

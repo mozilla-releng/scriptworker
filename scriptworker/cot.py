@@ -12,8 +12,8 @@ import re
 from urllib.parse import unquote, urljoin, urlparse
 from scriptworker.client import validate_json_schema
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.exceptions import CoTError, ScriptWorkerException
-from scriptworker.gpg import GPG, sign
+from scriptworker.exceptions import CoTError, ScriptWorkerException, ScriptWorkerGPGException
+from scriptworker.gpg import get_body, GPG, sign
 from scriptworker.task import download_artifacts, get_decision_task_id, get_task_id
 from scriptworker.utils import filepaths_in_dir, format_json, get_hash, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
@@ -242,7 +242,7 @@ def check_docker_image_sha(context, cot, name):
         context (scriptworker.context.Context): the scriptworker context.
         cot (dict): the chain of trust json dict.
         name (str): the name of the task.  This must be in
-            `context.cot_config['docker_image_allowlists']`.
+            `context.config['docker_image_allowlists']`.
 
     Raises:
         CoTError: on failure.
@@ -250,7 +250,7 @@ def check_docker_image_sha(context, cot, name):
     """
     # XXX we will need some way to allow trusted developers to update these
     # allowlists
-    if cot['environment']['imageHash'] not in context.cot_config['docker_image_allowlists'][name]:
+    if cot['environment']['imageHash'] not in context.config['docker_image_allowlists'][name]:
         raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
 
 
@@ -405,8 +405,8 @@ async def build_cot_task_dict(context, name, my_task_id=None):
     return task_dict
 
 
-# download_cot_artifacts {{{1
-async def download_cot_artifacts(context, task_dict, name):
+# download_cot {{{1
+async def download_cot(context, task_dict, name):
     """Download the signed chain of trust artifacts.
 
     Args:
@@ -439,4 +439,40 @@ async def download_cot_artifacts(context, task_dict, name):
                 context, [url], parent_dir=parent_dir, valid_artifact_task_ids=[task_id]
             )
         )
+    # XXX catch DownloadError and raise CoTError?
     await raise_future_exceptions(tasks)
+
+
+# verify_cot_signatures {{{1
+def verify_cot_signatures(context, task_dict, name):
+    """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
+
+    Populate `task_dict['dependencies'][task_name]['cot']` with the json body.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task_dict (dict): the task_dict from `build_cot_task_dict`
+        name (str): the name of the current task; used to skip parsing
+            the currently nonexistent chain of trust artifact for the
+            current task.
+
+    Raises:
+        CoTError: on failure.
+    """
+    for task_name, task_info in task_dict['dependencies'].items():
+        if task_name == name:
+            continue
+        path = os.path.join(task_info['cot_dir'], 'public/chainOfTrust.json.asc')
+        task_id = task_info['taskId']
+        worker_type = classify_worker_type(task_dict['tasks'][task_id])
+        gpg = GPG(context, gpg_home=os.path.join(context.config['base_gpg_home_dir'], worker_type))
+        try:
+            with open(path, "r") as fh:
+                contents = fh.read()
+        except OSError as exc:
+            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
+        try:
+            body = get_body(gpg, contents, verify_sig=context.config['verify_cot_signature'])
+        except ScriptWorkerGPGException as exc:
+            raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
+        task_dict['dependencies'][task_name]['cot'] = body
