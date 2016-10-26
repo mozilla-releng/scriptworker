@@ -9,13 +9,13 @@ import json
 import logging
 import os
 import re
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 from scriptworker.client import validate_json_schema
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.gpg import GPG, sign
-from scriptworker.task import get_decision_task_id, get_task_id
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash
+from scriptworker.task import download_artifacts, get_decision_task_id, get_task_id
+from scriptworker.utils import filepaths_in_dir, format_json, get_hash, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -314,6 +314,9 @@ async def build_task_dependencies(context, task_dict, task, name, my_task_id):
     decision_task_id, deps = find_task_dependencies(task, name, my_task_id)
     log.info("{} decision is {}".format(name, decision_task_id))
     task_dict['dependencies'][name]['decision'] = decision_task_id
+    task_dict['dependencies'][name]['cot_dir'] = os.path.join(
+        context.config['artifact_dir'], 'cot', my_task_id
+    )
     task_names = sorted(deps.keys())
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
@@ -400,3 +403,40 @@ async def build_cot_task_dict(context, name, my_task_id=None):
     }
     await build_task_dependencies(context, task_dict, context.task, name, my_task_id)
     return task_dict
+
+
+# download_cot_artifacts {{{1
+async def download_cot_artifacts(context, task_dict, name):
+    """Download the signed chain of trust artifacts.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task_dict (dict): the task_dict from `build_cot_task_dict`
+        name (str): the name of the current task; used to skip downloading
+            the currently nonexistent chain of trust artifact for the
+            current task.
+
+    Raises:
+        DownloadError: on failure.
+    """
+    tasks = []
+    for task_name, task_info in task_dict['dependencies'].items():
+        # don't try to download the current task's chain of trust artifact,
+        # which hasn't been created / uploaded yet
+        if task_name == name:
+            continue
+        task_id = task_info['taskId']
+        url = urljoin(
+            context.queue.options['baseUrl'],
+            context.queue.makeRoute('getLatestArtifact', replDict={
+                'taskId': task_id,
+                'name': 'public/chainOfTrust.json.asc'
+            })
+        )
+        parent_dir = task_info['cot_dir']
+        tasks.append(
+            download_artifacts(
+                context, [url], parent_dir=parent_dir, valid_artifact_task_ids=[task_id]
+            )
+        )
+    await raise_future_exceptions(tasks)
