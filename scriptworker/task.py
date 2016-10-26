@@ -370,7 +370,7 @@ def max_timeout(context, proc, timeout):
 
 # download_artifacts {{{1
 async def download_artifacts(context, file_urls, parent_dir=None, session=None,
-                             download_func=download_file):
+                             download_func=download_file, valid_artifact_task_ids=None):
     """Download artifacts in parallel after validating their URLs.
 
     Valid `taskId`s for download include the task's dependencies and the
@@ -385,6 +385,9 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             If None, defaults to context.session.  Default is None.
         download_func (function, optional): the function to call to download the files.
             default is `download_file`.
+        valid_artifact_task_ids (list, optional): the list of task ids that are
+            valid to download from.  If None, defaults to all task dependencies
+            plus the decision taskId.  Defaults to None.
 
     Returns:
         list: the relative paths to the files downloaded, relative to
@@ -400,10 +403,8 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     tasks = []
     files = []
     download_config = deepcopy(context.config)
-    download_config.setdefault(
-        'valid_artifact_task_ids',
-        context.task['dependencies'] + [context.task['taskGroupId']]
-    )
+    valid_artifact_task_ids = valid_artifact_task_ids or list(context.task['dependencies'] + [get_decision_task_id(context.task)])
+    download_config.setdefault('valid_artifact_task_ids', valid_artifact_task_ids)
     for file_url in file_urls:
         rel_path = validate_artifact_url(download_config, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
