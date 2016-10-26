@@ -443,6 +443,13 @@ async def download_cot(context, task_dict, name):
     await raise_future_exceptions(tasks)
 
 
+# download_cot_artifacts {{{1
+async def download_cot_artifacts(context, task_dict, task_id, paths):
+    """ TODO
+    """
+    pass
+
+
 # verify_cot_signatures {{{1
 def verify_cot_signatures(context, task_dict, name):
     """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
@@ -472,6 +479,7 @@ def verify_cot_signatures(context, task_dict, name):
         except OSError as exc:
             raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
+            # XXX remove verify_sig pref and kwarg when pubkeys are in git repo
             body = get_body(gpg, contents, verify_sig=context.config['verify_cot_signature'])
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))

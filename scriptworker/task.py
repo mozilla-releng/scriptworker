@@ -403,6 +403,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     tasks = []
     files = []
     download_config = deepcopy(context.config)
+    # XXX when chain of trust is on everywhere, hardcode the chain of trust task list
     valid_artifact_task_ids = valid_artifact_task_ids or list(context.task['dependencies'] + [get_decision_task_id(context.task)])
     download_config.setdefault('valid_artifact_task_ids', valid_artifact_task_ids)
     for file_url in file_urls:

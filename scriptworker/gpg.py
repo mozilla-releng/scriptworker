@@ -524,6 +524,7 @@ def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
     Raises:
         ScriptWorkerGPGException: on signature verification failure.
     """
+    # XXX remove verify_sig kwarg when pubkeys are in git repo
     if verify_sig:
         verify_signature(gpg, signed_data)
     body = gpg.decrypt(signed_data, **kwargs)
