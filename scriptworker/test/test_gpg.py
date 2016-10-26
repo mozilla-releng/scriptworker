@@ -335,12 +335,13 @@ def test_verify_bad_signatures(base_context, params):
 
 @pytest.mark.parametrize("text", [v for _, v in sorted(TEXT.items())])
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
-def test_get_body(base_context, text, params):
+@pytest.mark.parametrize("verify_sig", (True, False))
+def test_get_body(base_context, text, params, verify_sig):
     gpg = sgpg.GPG(base_context)
     data = sgpg.sign(gpg, text, keyid=params[1]["fingerprint"])
     if not text.endswith('\n'):
         text = "{}\n".format(text)
-    assert sgpg.get_body(gpg, data) == text
+    assert sgpg.get_body(gpg, data, verify_sig=verify_sig) == text
 
 
 # create_gpg_conf {{{1
