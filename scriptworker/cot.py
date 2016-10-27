@@ -412,37 +412,34 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
 
 # download_cot {{{2
-async def download_cot(context, task_dict, name):
+async def download_cot(chain):
     """Download the signed chain of trust artifacts.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        task_dict (dict): the task_dict from `build_cot_task_dict`
-        name (str): the name of the current task; used to skip downloading
-            the currently nonexistent chain of trust artifact for the
-            current task.
+        chain (ChainOfTrust): the chain of trust to add to.
 
     Raises:
         DownloadError: on failure.
     """
     tasks = []
-    for task_name, task_info in task_dict['dependencies'].items():
+    for link in chain.links:
         # don't try to download the current task's chain of trust artifact,
         # which hasn't been created / uploaded yet
-        if task_name == name:
+        if link.task_id == chain.task_id:
             continue
-        task_id = task_info['taskId']
+        task_id = link.task_id
         url = urljoin(
-            context.queue.options['baseUrl'],
-            context.queue.makeRoute('getLatestArtifact', replDict={
+            chain.context.queue.options['baseUrl'],
+            chain.context.queue.makeRoute('getLatestArtifact', replDict={
                 'taskId': task_id,
                 'name': 'public/chainOfTrust.json.asc'
             })
         )
-        parent_dir = task_info['cot_dir']
+        parent_dir = link.cot_dir
         tasks.append(
             download_artifacts(
-                context, [url], parent_dir=parent_dir, valid_artifact_task_ids=[task_id]
+                chain.context, [url], parent_dir=parent_dir,
+                valid_artifact_task_ids=[task_id]
             )
         )
     # XXX catch DownloadError and raise CoTError?
@@ -450,35 +447,34 @@ async def download_cot(context, task_dict, name):
 
 
 # download_cot_artifacts {{{2
-async def download_cot_artifacts(context, task_dict, task_id, paths):
+async def download_cot_artifacts(chain, task_id, paths):
     """ TODO
     """
     pass
 
 
 # verify_cot_signatures {{{2
-def verify_cot_signatures(context, task_dict, name):
+def verify_cot_signatures(chain):
     """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
 
-    Populate `task_dict['dependencies'][task_name]['cot']` with the json body.
+    Populate each link.cot with the chain of trust json body.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        task_dict (dict): the task_dict from `build_cot_task_dict`
-        name (str): the name of the current task; used to skip parsing
-            the currently nonexistent chain of trust artifact for the
-            current task.
+        chain (ChainOfTrust): the chain of trust to add to.
 
     Raises:
         CoTError: on failure.
     """
-    for task_name, task_info in task_dict['dependencies'].items():
-        if task_name == name:
+    for link in chain.links:
+        if link.task_id == chain.task_id:
             continue
-        path = os.path.join(task_info['cot_dir'], 'public/chainOfTrust.json.asc')
-        task_id = task_info['taskId']
-        worker_type = guess_worker_class(task_dict['tasks'][task_id])
-        gpg = GPG(context, gpg_home=os.path.join(context.config['base_gpg_home_dir'], worker_type))
+        path = os.path.join(link.cot_dir, 'public/chainOfTrust.json.asc')
+        gpg = GPG(
+            chain.context,
+            gpg_home=os.path.join(
+                chain.context.config['base_gpg_home_dir'], link.worker_class
+            )
+        )
         try:
             with open(path, "r") as fh:
                 contents = fh.read()
@@ -486,7 +482,10 @@ def verify_cot_signatures(context, task_dict, name):
             raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
             # XXX remove verify_sig pref and kwarg when pubkeys are in git repo
-            body = get_body(gpg, contents, verify_sig=context.config['verify_cot_signature'])
+            body = get_body(
+                gpg, contents,
+                verify_sig=chain.context.config['verify_cot_signature']
+            )
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
-        task_dict['dependencies'][task_name]['cot'] = body
+        link.cot = body
