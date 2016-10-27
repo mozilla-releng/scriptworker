@@ -23,6 +23,14 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
+VALID_TASK_TYPES = (
+    'build',
+    'decision',
+    'docker-image',
+    'signing',
+)
+
+
 # TODO ChainOfTrust {{{1
 class ChainOfTrust(object):
     """
@@ -32,6 +40,7 @@ class ChainOfTrust(object):
         self.name = name
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
+        self.decision_task_id = get_decision_task_id(self.task)
         self.context = context
         self.links = []
         # populate self.links
@@ -55,14 +64,16 @@ class LinkOfTrust(object):
     _cot = None
     decision_task_id = None
     worker_class = None
-    _status = None  # TODO automate status going to False or True?
-    messages = []
-    errors = []
-    tests_to_run = []
-    tests_completed = []
+    task_type = None
+    # status = None  # TODO automate status going to False or True?
+    # messages = []
+    # errors = []
+    # tests_to_run = []
+    # tests_completed = []
 
     def __init__(self, context, name, task_id):
         self.name = name
+        self.task_type = guess_task_type(self.name)
         self.task_id = task_id
         self.cot_dir = os.path.join(
             context.config['artifact_dir'], 'cot', self.task_id
@@ -252,6 +263,29 @@ def guess_worker_class(task, name):
     if worker_type['worker_type'] is None:
         raise CoTError("guess_worker_class: can't find a type for {}!\n{}".format(name, task))
     return worker_type['worker_type']
+
+
+def guess_task_type(name):
+    """Guess the task type of the task.
+
+    Args:
+        name (str): the name of the task.
+
+    Returns:
+        str: the task_type.
+
+    Raises:
+        CoTError: on invalid task_type.
+    """
+    parts = name.split(':')
+    task_type = parts[-1]
+    if task_type.startswith('build'):
+        task_type = 'build'
+    if task_type not in VALID_TASK_TYPES:
+        raise CoTError(
+            "Invalid task type for {}!".format(name)
+        )
+    return task_type
 
 
 # is_try {{{2
