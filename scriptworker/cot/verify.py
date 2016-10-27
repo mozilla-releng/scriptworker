@@ -29,6 +29,11 @@ VALID_TASK_TYPES = (
     'signing',
 )
 
+VALID_HASH_ALGORITHMS = (
+    'sha256',
+    'sha512',
+)
+
 
 # TODO ChainOfTrust {{{1
 class ChainOfTrust(object):
@@ -449,9 +454,11 @@ async def download_cot_artifacts(chain, task_id, paths):
         full_path = os.path.join(link.cot_dir, path)
         full_paths.append(full_path)
         for alg, expected_sha in link.cot['artifacts'][path].items():
+            if alg not in VALID_HASH_ALGORITHMS:
+                raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
             real_sha = get_hash(full_path, hash_alg=alg)
             if expected_sha != real_sha:
-                raise CoTError("BAD HASH: Expected {} {}; got {}!".format(alg, expected_sha, real_sha))
+                raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
     return full_paths
 
 
