@@ -59,7 +59,7 @@ setup(
     author="Mozilla Release Engineering",
     author_email="release+python@mozilla.com",
     url="https://github.com/mozilla-releng/scriptworker",
-    packages=["scriptworker", "scriptworker.test"],
+    packages=["scriptworker", "scriptworker.cot", "scriptworker.test"],
     package_data={"": ["version.json"]},
     include_package_data=True,
     entry_points={

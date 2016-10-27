@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.cot
+"""Test scriptworker.cot.generate
 """
 import logging
 import os
@@ -8,7 +8,7 @@ import pytest
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
-import scriptworker.cot as cot
+import scriptworker.cot.generate as cot
 import scriptworker.gpg as sgpg
 from . import ARTIFACT_SHAS, tmpdir
 

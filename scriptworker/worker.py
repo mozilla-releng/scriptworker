@@ -8,7 +8,7 @@ import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import get_context_from_cmdln, read_worker_creds
-from scriptworker.cot import generate_cot
+from scriptworker.cot.generate import generate_cot
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, overwrite_gpg_home
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level

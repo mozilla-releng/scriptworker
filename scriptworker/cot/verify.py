@@ -6,18 +6,16 @@ Attributes:
 """
 import asyncio
 from frozendict import frozendict
-import json
 import logging
 import os
 import re
 from urllib.parse import unquote, urljoin, urlparse
-from scriptworker.client import validate_json_schema
 from scriptworker.config import freeze_values
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.exceptions import CoTError, ScriptWorkerException, ScriptWorkerGPGException
-from scriptworker.gpg import get_body, GPG, sign
+from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
+from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_decision_task_id, get_task_id
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash, raise_future_exceptions
+from scriptworker.utils import get_hash, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -138,111 +136,7 @@ class LinkOfTrust(object):
         # TODO add tests to run
 
 
-# cot generation {{{1
-# get_cot_artifacts {{{2
-def get_cot_artifacts(context):
-    """Generate the artifact relative paths and shas for the chain of trust
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-
-    Returns:
-        dict: a dictionary of {"path/to/artifact": {"hash_alg": "..."}, ...}
-    """
-    artifacts = {}
-    filepaths = filepaths_in_dir(context.config['artifact_dir'])
-    hash_alg = context.config['chain_of_trust_hash_algorithm']
-    for filepath in sorted(filepaths):
-        path = os.path.join(context.config['artifact_dir'], filepath)
-        sha = get_hash(path, hash_alg=hash_alg)
-        artifacts[filepath] = {hash_alg: sha}
-    return artifacts
-
-
-# get_cot_environment {{{2
-def get_cot_environment(context):
-    """Get environment information for the chain of trust artifact.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-
-    Returns:
-        dict: the environment info.
-    """
-    env = {}
-    # TODO
-    return env
-
-
-# generate_cot_body {{{2
-def generate_cot_body(context):
-    """Generate the chain of trust dictionary.
-
-    This is the unsigned and unformatted chain of trust artifact contents.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-
-    Returns:
-        dict: the unsignd and unformatted chain of trust artifact contents.
-
-    Raises:
-        ScriptWorkerException: on error.
-    """
-    try:
-        cot = {
-            'artifacts': get_cot_artifacts(context),
-            'chainOfTrustVersion': 1,
-            'runId': context.claim_task['runId'],
-            'task': context.task,
-            'taskId': context.claim_task['status']['taskId'],
-            'workerGroup': context.claim_task['workerGroup'],
-            'workerId': context.config['worker_id'],
-            'workerType': context.config['worker_type'],
-            'environment': get_cot_environment(context),
-        }
-    except (KeyError, ) as exc:
-        raise ScriptWorkerException("Can't generate chain of trust! {}".format(str(exc)))
-
-    return cot
-
-
-# generate_cot {{{2
-def generate_cot(context, path=None):
-    """Format and sign the cot body, and write to disk
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        path (str, optional): The path to write the chain of trust artifact to.
-            If None, this is artifact_dir/public/chainOfTrust.json.asc.
-            Defaults to None.
-
-    Returns:
-        str: the contents of the chain of trust artifact.
-
-    Raises:
-        ScriptWorkerException: on schema error.
-    """
-    body = generate_cot_body(context)
-    try:
-        with open(context.config['cot_schema_path'], "r") as fh:
-            schema = json.load(fh)
-    except (IOError, ValueError) as e:
-        raise ScriptWorkerException(
-            "Can't read schema file {}: {}".format(context.config['cot_schema_path'], str(e))
-        )
-    validate_json_schema(body, schema, name="chain of trust")
-    body = format_json(body)
-    path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
-    if context.config['sign_chain_of_trust']:
-        body = sign(GPG(context), body)
-    with open(path, "w") as fh:
-        print(body, file=fh, end="")
-    return body
-
-
-# cot verification {{{1
-# guess_worker_class {{{2
+# guess_worker_class {{{1
 def guess_worker_class(task, name):
     """Given a task, determine which worker class it was run on.
 
@@ -310,7 +204,7 @@ def guess_task_type(name):
     return task_type
 
 
-# is_try {{{2
+# is_try {{{1
 def _is_try_url(url):
     parsed = urlparse(url)
     path = unquote(parsed.path).lstrip('/')
@@ -350,7 +244,7 @@ def is_try(link):
     return result
 
 
-# check_interactive_docker_worker {{{2
+# check_interactive_docker_worker {{{1
 def check_interactive_docker_worker(task, name):
     """Given a task, make sure the task was not defined as interactive.
 
@@ -375,7 +269,7 @@ def check_interactive_docker_worker(task, name):
     return messages
 
 
-# check_docker_image_sha {{{2
+# check_docker_image_sha {{{1
 def check_docker_image_sha(context, cot, name):
     """Verify that pre-built docker shas are in allowlists.
 
@@ -398,7 +292,7 @@ def check_docker_image_sha(context, cot, name):
         raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
 
 
-# find_task_dependencies {{{2
+# find_task_dependencies {{{1
 def find_task_dependencies(task, name, task_id):
     """Find the taskIds of the chain of trust dependencies of a given task.
 
@@ -435,7 +329,7 @@ def find_task_dependencies(task, name, task_id):
     return dep_dict
 
 
-# build_task_dependencies {{{2
+# build_task_dependencies {{{1
 async def build_task_dependencies(chain, task, name, my_task_id):
     """Recursively build the task dependencies of a task.
 
@@ -471,7 +365,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
                 raise CoTError(str(exc))
 
 
-# get_artifact_url {{{2
+# get_artifact_url {{{1
 def get_artifact_url(context, task_id, path):
     """Get a TaskCluster artifact url.
 
@@ -496,7 +390,7 @@ def get_artifact_url(context, task_id, path):
     return url
 
 
-# download_cot {{{2
+# download_cot {{{1
 async def download_cot(chain):
     """Download the signed chain of trust artifacts.
 
@@ -525,7 +419,7 @@ async def download_cot(chain):
     await raise_future_exceptions(tasks)
 
 
-# download_cot_artifacts {{{2
+# download_cot_artifacts {{{1
 async def download_cot_artifacts(chain, task_id, paths):
     """Download artifacts and verify their SHAs against the chain of trust.
 
@@ -561,7 +455,7 @@ async def download_cot_artifacts(chain, task_id, paths):
     return full_paths
 
 
-# verify_cot_signatures {{{2
+# verify_cot_signatures {{{1
 def verify_cot_signatures(chain):
     """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
 
