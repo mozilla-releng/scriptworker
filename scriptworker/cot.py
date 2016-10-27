@@ -52,6 +52,16 @@ class ChainOfTrust(object):
     def dependent_task_ids(self):
         return [x.task_id for x in self.links]
 
+    def is_try(self):
+        """
+        """
+        result = False
+        for link in self.links:
+            if link.is_try:
+                result = True
+                break
+        return result
+
 
 # TODO LinkOfTrust {{{1
 class LinkOfTrust(object):
@@ -101,6 +111,7 @@ class LinkOfTrust(object):
         self._set('_task', frozendict(task))
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_class = guess_worker_class(self.task, self.name)
+        self.is_try = is_try(self)
         # TODO add tests to run
 
     @property
@@ -298,7 +309,7 @@ def _is_try_url(url):
     return False
 
 
-def is_try(task, name):
+def is_try(link):
     """Determine if a task is a 'try' task (restricted privs).
 
     XXX do we want this, or just do this behavior for any non-allowlisted repo?
@@ -310,10 +321,14 @@ def is_try(task, name):
         * `task.metadata.source` == "https://hg.mozilla.org/try/..."
         * `task.schedulerId` in ("gecko-level-1", )
 
+    Args:
+        link (LinkOfTrust): the link to check.
+
     Returns:
         bool: True if it's try
     """
     result = False
+    task = link.task
     if task['payload']['env'].get("GECKO_HEAD_REPOSITORY"):
         result = result or _is_try_url(task['payload']['env']['GECKO_HEAD_REPOSITORY'])
     if task['payload']['env'].get("MH_BRANCH"):
@@ -445,6 +460,31 @@ async def build_task_dependencies(chain, task, name, my_task_id):
                 raise CoTError(str(exc))
 
 
+# get_artifact_url {{{2
+def get_artifact_url(context, task_id, path):
+    """Get a TaskCluster artifact url.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        task_id (str): the task id of the task that published the artifact
+        path (str): the relative path of the artifact
+
+    Returns:
+        str: the artifact url
+
+    Raises:
+        TaskClusterFailure: on failure.
+    """
+    url = urljoin(
+        context.queue.options['baseUrl'],
+        context.queue.makeRoute('getLatestArtifact', replDict={
+            'taskId': task_id,
+            'name': 'public/chainOfTrust.json.asc'
+        })
+    )
+    return url
+
+
 # download_cot {{{2
 async def download_cot(chain):
     """Download the signed chain of trust artifacts.
@@ -462,13 +502,7 @@ async def download_cot(chain):
         if link.task_id == chain.task_id:
             continue
         task_id = link.task_id
-        url = urljoin(
-            chain.context.queue.options['baseUrl'],
-            chain.context.queue.makeRoute('getLatestArtifact', replDict={
-                'taskId': task_id,
-                'name': 'public/chainOfTrust.json.asc'
-            })
-        )
+        url = get_artifact_url(chain.context, taskId, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
         tasks.append(
             download_artifacts(
