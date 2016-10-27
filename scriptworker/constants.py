@@ -27,13 +27,6 @@ DEFAULT_CONFIG = frozendict({
     }),
 
     # for download url validation.  The regexes need to define a 'filepath'.
-    # TODO remove valid_artifact_{schemes,netlocs,path_regexes,task_ids} in favor of rules
-    'valid_artifact_schemes': ('https', ),
-    'valid_artifact_netlocs': ('queue.taskcluster.net', ),
-    'valid_artifact_path_regexes': (
-        r'''^/v1/task/(?P<taskId>[^/]+)(/runs/\d+)?/artifacts/(?P<filepath>.*)$''',
-    ),
-    'valid_artifact_task_ids': (),
     'valid_artifact_rules': ({
         "schemes": ["https"],
         "netlocs": ["queue.taskcluster.net"],

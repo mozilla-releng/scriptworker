@@ -3,12 +3,14 @@
 """Test scriptworker.client
 """
 import arrow
+from copy import deepcopy
 import json
 import os
 import pytest
 from shutil import copyfile
-from scriptworker.exceptions import ScriptWorkerTaskException
 import scriptworker.client as client
+from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.exceptions import ScriptWorkerTaskException
 from . import tmpdir
 
 assert tmpdir  # silence pyflakes
@@ -22,69 +24,46 @@ BASIC_TASK = os.path.join(TEST_DATA_DIR, "basic_task.json")
 
 # constants helpers and fixtures {{{1
 # LEGAL_URLS format:
-#  1. config dictionary that can define `valid_artifact_schemes`,
-#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
-#     `valid_artifact_task_ids`
-#  2. url to test
-#  3. expected `filepath` return value from `validate_artifact_url()`
+#  1. valid_artifact_rules: tuple-of-dicts with `schemes`, `netlocs`, and `path_regexes`
+#  2. valid_artifact_task_ids: list
+#  3. url to test
+#  4. expected `filepath` return value from `validate_artifact_url()`
 LEGAL_URLS = ((
-    {'valid_artifact_task_ids': ("9999999", "VALID_TASK_ID", )},
-    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID/artifacts/FILE_PATH",
+    deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
+    ["VALID_TASK_ID1", "VALID_TASK_ID2"],
+    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID2/artifacts/FILE_PATH",
     "FILE_PATH",
 ), (
-    {'valid_artifact_path_regexes': ()},
-    "https://queue.taskcluster.net/FILE_PATH",
-    "FILE_PATH",
-), (
-    {
-        'valid_artifact_netlocs': ("example.com", "localhost"),
-        'valid_artifact_path_regexes': (),
-    },
-    "https://localhost/FILE/PATH.baz",
-    "FILE/PATH.baz",
-), (
-    {
-        'valid_artifact_schemes': ("https", "file"),
-        'valid_artifact_netlocs': ("example.com", "localhost"),
-        'valid_artifact_path_regexes': ("^/foo/(?P<filepath>.*)$", "^/bar/(?P<filepath>.*)$"),
-    },
-    "file://localhost/bar/FILE/PATH.baz",
-    "FILE/PATH.baz",
-), (
-    {
-        'valid_artifact_schemes': None,
-        'valid_artifact_netlocs': None,
-        'valid_artifact_path_regexes': None,
-    },
-    "anyscheme://anyhost/FILE/PATH.baz",
+    ({
+        'schemes': ("ftp", "http"),
+        'netlocs': ("example.com", "localhost"),
+        'path_regexes': ('(?P<filepath>.*.baz)', ),
+    }, ),
+    [],
+    "http://localhost/FILE/PATH.baz",
     "FILE/PATH.baz",
 ))
 
 # ILLEGAL_URLS format:
-#  1. config dictionary that can define `valid_artifact_schemes`,
-#     `valid_artifact_netlocs`, `valid_artifact_path_regexes`,
-#     `valid_artifact_task_ids`
-#  2. url to test
+#  1. valid_artifact_rules: dict with `schemes`, `netlocs`, and `path_regexes`
+#  2. valid_artifact_task_ids: list
+#  3. url to test
 ILLEGAL_URLS = ((
-    {}, "https://queue.taskcluster.net/v1/task/INVALID_TASK_ID/artifacts/FILE_PATH"
+    deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
+    ["VALID_TASK_ID1", "VALID_TASK_ID2"],
+    "https://queue.taskcluster.net/v1/task/INVALID_TASK_ID/artifacts/FILE_PATH"
 ), (
-    {},
-    "https://queue.taskcluster.net/BAD_FILE_PATH"
+    deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
+    ["VALID_TASK_ID1", "VALID_TASK_ID2"],
+    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID1/BAD_FILE_PATH"
 ), (
-    {
-        'valid_artifact_path_regexes': ('BAD_FILE_PATH', )
-    },
-    "https://queue.taskcluster.net/BAD_FILE_PATH"
+    deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
+    ["VALID_TASK_ID1", "VALID_TASK_ID2"],
+    "BAD_SCHEME://queue.taskcluster.net/v1/task/VALID_TASK_ID1/artifacts/FILE_PATH"
 ), (
-    {
-        'valid_artifact_path_regexes': (),
-    },
-    "BAD_SCHEME://queue.taskcluster.net/FILE_PATH"
-), (
-    {
-        'valid_artifact_path_regexes': (),
-    },
-    "https://BAD_NETLOC/FILE_PATH"
+    deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
+    ["VALID_TASK_ID1", "VALID_TASK_ID2"],
+    "https://BAD_NETLOC/v1/task/VALID_TASK_ID1/artifacts/FILE_PATH"
 ))
 
 
@@ -143,13 +122,13 @@ def test_invalid_task(schema):
         client.validate_json_schema({'foo': task}, schema)
 
 
-@pytest.mark.parametrize("params", LEGAL_URLS)
-def test_artifact_url(params):
-    value = client.validate_artifact_url(params[0], params[1])
-    assert value == params[2]
+@pytest.mark.parametrize("valid_artifact_rules,valid_artifact_task_ids,url,expected", LEGAL_URLS)
+def test_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url, expected):
+    value = client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
+    assert value == expected
 
 
-@pytest.mark.parametrize("params", ILLEGAL_URLS)
-def test_bad_artifact_url(params):
+@pytest.mark.parametrize("valid_artifact_rules,valid_artifact_task_ids,url", ILLEGAL_URLS)
+def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     with pytest.raises(ScriptWorkerTaskException):
-        client.validate_artifact_url(params[0], params[1])
+        client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)

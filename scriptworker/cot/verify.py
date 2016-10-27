@@ -321,7 +321,7 @@ def find_task_dependencies(task, name, task_id):
         for url in task['payload']['unsignedArtifacts']:
             parts = urlparse(url)
             path = unquote(parts.path)
-            m = re.search(DEFAULT_CONFIG['valid_artifact_path_regexes'][0], path)
+            m = re.search(DEFAULT_CONFIG['valid_artifact_rules'][0]['path_regexes'][0], path)
             path_info = m.groupdict()
             if path_info['taskId'] not in build_ids:
                 build_ids.append(path_info['taskId'])

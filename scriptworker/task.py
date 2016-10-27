@@ -8,7 +8,6 @@ import aiohttp.hdrs
 import arrow
 import asyncio
 from asyncio.subprocess import PIPE
-from copy import deepcopy
 import logging
 import mimetypes
 import os
@@ -402,12 +401,11 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
 
     tasks = []
     files = []
-    download_config = deepcopy(context.config)
+    valid_artifact_rules = context.config['valid_artifact_rules']
     # XXX when chain of trust is on everywhere, hardcode the chain of trust task list
     valid_artifact_task_ids = valid_artifact_task_ids or list(context.task['dependencies'] + [get_decision_task_id(context.task)])
-    download_config.setdefault('valid_artifact_task_ids', valid_artifact_task_ids)
     for file_url in file_urls:
-        rel_path = validate_artifact_url(download_config, file_url)
+        rel_path = validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
         files.append(rel_path)
         tasks.append(

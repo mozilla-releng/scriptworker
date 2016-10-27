@@ -8,6 +8,7 @@ import glob
 import mock
 import os
 import pytest
+from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
@@ -40,6 +41,7 @@ def context(tmpdir):
         'reclaim_interval': 0.001,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 1'),
         'task_max_timeout': .1,
+        'valid_artifact_rules': DEFAULT_CONFIG['valid_artifact_rules'],
     }
     context.claim_task = {
         'credentials': {'a': 'b'},
