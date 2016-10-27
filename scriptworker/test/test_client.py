@@ -64,6 +64,12 @@ ILLEGAL_URLS = ((
     deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
     ["VALID_TASK_ID1", "VALID_TASK_ID2"],
     "https://BAD_NETLOC/v1/task/VALID_TASK_ID1/artifacts/FILE_PATH"
+), (
+    ({'schemes': ['https'], 'netlocs': ['example.com'],
+      # missing filepath
+      'path_regexes': ['.*BAD_REGEX.*']}, ),
+    [],
+    "https://example.com/BAD_REGEX",
 ))
 
 
