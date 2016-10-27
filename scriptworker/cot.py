@@ -4,13 +4,15 @@
 Attributes:
     log (logging.Logger): the log object for this module.
 """
-
+import asyncio
+from frozendict import frozendict
 import json
 import logging
 import os
 import re
 from urllib.parse import unquote, urljoin, urlparse
 from scriptworker.client import validate_json_schema
+from scriptworker.config import freeze_values
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerException, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG, sign
@@ -19,6 +21,88 @@ from scriptworker.utils import filepaths_in_dir, format_json, get_hash, raise_fu
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
+
+
+# TODO ChainOfTrust {{{1
+class ChainOfTrust(object):
+    """
+    """
+    # TODO docstrings
+    def __init__(self, context, name, task_id=None):
+        self.name = name
+        self.task_id = task_id or get_task_id(context.claim_task)
+        self.task = context.task
+        self.context = context
+        self.links = []
+        # populate self.links
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(
+            build_task_dependencies(self, self.task, self.name, self.task_id)
+        )
+
+    def dependent_task_ids(self):
+        return [x.task_id for x in self.links]
+
+
+# TODO LinkOfTrust {{{1
+class LinkOfTrust(object):
+    """Each LinkOfTrust represents a task in the Chain of Trust and its status.
+
+    Attributes:
+    """
+    # TODO docstrings
+    _task = None
+    _cot = None
+    decision_task_id = None
+    worker_class = None
+    _status = None  # TODO automate status going to False or True?
+    messages = []
+    errors = []
+    tests_to_run = []
+    tests_completed = []
+
+    def __init__(self, context, name, task_id):
+        self.name = name
+        self.task_id = task_id
+        self.cot_dir = os.path.join(
+            context.config['artifact_dir'], 'cot', self.task_id
+        )
+
+    def _set(self, prop_name, value):
+        prev = getattr(self, prop_name)
+        if prev is not None:
+            raise CoTError(
+                "LinkOfTrust {}: re-setting {} to {} when it is already set to {}!".format(
+                    str(self.name), prop_name, value, prev
+                )
+            )
+        return setattr(self, prop_name, value)
+
+    @property
+    def task(self):
+        """ TODO
+        """
+        return self._task
+
+    @task.setter
+    def task(self, task):
+        freeze_values(task)
+        self._set('_task', frozendict(task))
+        self.decision_task_id = get_decision_task_id(self.task)
+        self.worker_class = guess_worker_class(self.task, self.name)
+        # TODO add tests to run
+
+    @property
+    def cot(self):
+        """
+        """
+        return self._cot
+
+    @cot.setter
+    def cot(self, cot):
+        freeze_values(cot)
+        self._set('_cot', frozendict(cot))
+        # TODO add tests to run
 
 
 # cot generation {{{1
@@ -125,9 +209,9 @@ def generate_cot(context, path=None):
 
 
 # cot verification {{{1
-# classify_worker_type {{{2
-def classify_worker_type(task, name):
-    """Given a task, determine which worker type it was run on.
+# guess_worker_class {{{2
+def guess_worker_class(task, name):
+    """Given a task, determine which worker class it was run on.
 
     Currently there are no task markers for generic-worker and
     taskcluster-worker hasn't been rolled out.  Those need to be populated here
@@ -150,7 +234,7 @@ def classify_worker_type(task, name):
 
     def _set_worker_type(wt):
         if worker_type['worker_type'] is not None and worker_type['worker_type'] != wt:
-            raise CoTError("classify_worker_type: {} was {} and now looks like {}!\n{}".format(name, worker_type['worker_type'], wt, task))
+            raise CoTError("guess_worker_class: {} was {} and now looks like {}!\n{}".format(name, worker_type['worker_type'], wt, task))
         worker_type['worker_type'] = wt
 
     if task['payload'].get("image"):
@@ -166,7 +250,7 @@ def classify_worker_type(task, name):
             _set_worker_type("docker-worker")
 
     if worker_type['worker_type'] is None:
-        raise CoTError("classify_worker_type: can't find a type for {}!\n{}".format(name, task))
+        raise CoTError("guess_worker_class: can't find a type for {}!\n{}".format(name, task))
     return worker_type['worker_type']
 
 
@@ -264,8 +348,7 @@ def find_task_dependencies(task, name, task_id):
         task_id (str): the taskId of the task.
 
     Returns:
-        tuple (str, dict): decision task id, mapping dependent task `name` to
-            dependent task `taskId`.
+        dict: mapping dependent task `name` to dependent task `taskId`.
     """
     log.info("find_task_dependencies {}".format(name))
     decision_task_id = get_decision_task_id(task)
@@ -289,18 +372,15 @@ def find_task_dependencies(task, name, task_id):
     if decision_task_id != task_id:
         dep_dict[decision_key] = decision_task_id
     log.info(dep_dict)
-    return decision_task_id, dep_dict
+    return dep_dict
 
 
 # build_task_dependencies {{{2
-async def build_task_dependencies(context, task_dict, task, name, my_task_id):
+async def build_task_dependencies(chain, task, name, my_task_id):
     """Recursively build the task dependencies of a task.
 
-    This is a helper function for `build_cot_task_dict`.
-
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        task_dict (dict): the task dict to modify.
+        chain (ChainOfTrust): the chain of trust to add to.
         task (dict): the task definition to operate on.
         name (str): the name of the task to operate on.
         my_task_id (str): the taskId of the task to operate on.
@@ -310,13 +390,8 @@ async def build_task_dependencies(context, task_dict, task, name, my_task_id):
     """
     log.info("build_task_dependencies {}".format(name))
     if name.count(':') > 5:
-        raise CoTError("Too deep recursion!\n{}".format(task_dict))
-    decision_task_id, deps = find_task_dependencies(task, name, my_task_id)
-    log.info("{} decision is {}".format(name, decision_task_id))
-    task_dict['dependencies'][name]['decision'] = decision_task_id
-    task_dict['dependencies'][name]['cot_dir'] = os.path.join(
-        context.config['artifact_dir'], 'cot', my_task_id
-    )
+        raise CoTError("Too deep recursion!\n{}".format(name))
+    deps = find_task_dependencies(task, name, my_task_id)
     task_names = sorted(deps.keys())
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
@@ -325,87 +400,18 @@ async def build_task_dependencies(context, task_dict, task, name, my_task_id):
         task_names = [decision_key] + sorted([x for x in task_names if x != decision_key])
     for task_name in task_names:
         task_id = deps[task_name]
-        if task_id not in task_dict['tasks']:
-            task_dict['dependencies'][task_name] = {
-                'taskId': task_id,
-            }
+        if task_id not in chain.dependent_task_ids():
+            link = LinkOfTrust(chain.context, task_name, task_id)
             try:
-                task_defn = await context.queue.task(task_id)
-                task_dict['tasks'][task_id] = task_defn
-                await build_task_dependencies(
-                    context, task_dict, task_defn,
-                    task_name, task_id
-                )
+                task_defn = await chain.context.queue.task(task_id)
+                link.task = task_defn
+                chain.links.append(link)
+                await build_task_dependencies(chain, task_defn, task_name, task_id)
             except TaskclusterFailure as exc:
                 raise CoTError(str(exc))
 
 
-# build_cot_task_dict {{{2
-async def build_cot_task_dict(context, name, my_task_id=None):
-    """Build the chain of trust task dict, following dependencies.
-
-    The task_dict looks like::
-
-        {
-          "tasks": {
-            "taskId0": { # task defn },
-            "taskId1": { # task defn },
-            "taskId2": { # task defn },
-            "taskId3": { # task defn },
-            "taskId4": { # task defn },
-          },
-          "dependencies": {
-            "signing": {
-                'taskId': "taskId0",
-                'decision': "taskId1",
-            },
-            "signing:decision": {
-                'taskId': "taskId1",
-                'decision': "taskId1",
-            }
-            "signing:build": {
-                'taskId': "taskId2",
-                'decision': "taskId1",
-            }
-            "signing:build:docker-image": {
-                'taskId': "taskId3",
-                'decision': "taskId4",
-            },
-            "signing:build:docker-image:decision": {
-                'taskId': "taskId4",
-                'decision': "taskId4",
-            },
-          },
-        }
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        name (str): the name of the top level task, e.g. 'signing'.
-        my_task_id (str, optional): Use this `taskId`.  If `None`, use
-            `get_task_id(context.claim_task)`.  Defaults to None.
-
-    Returns:
-        dict: the task_dict as shown above.
-
-    Raises:
-        KeyError: on failure.
-    """
-    my_task_id = my_task_id or get_task_id(context.claim_task)
-    task_dict = {
-        "tasks": {
-            my_task_id: context.task
-        },
-        "dependencies": {
-            name: {
-                'taskId': my_task_id
-            },
-        },
-    }
-    await build_task_dependencies(context, task_dict, context.task, name, my_task_id)
-    return task_dict
-
-
-# download_cot {{{1
+# download_cot {{{2
 async def download_cot(context, task_dict, name):
     """Download the signed chain of trust artifacts.
 
@@ -443,14 +449,14 @@ async def download_cot(context, task_dict, name):
     await raise_future_exceptions(tasks)
 
 
-# download_cot_artifacts {{{1
+# download_cot_artifacts {{{2
 async def download_cot_artifacts(context, task_dict, task_id, paths):
     """ TODO
     """
     pass
 
 
-# verify_cot_signatures {{{1
+# verify_cot_signatures {{{2
 def verify_cot_signatures(context, task_dict, name):
     """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
 
@@ -471,7 +477,7 @@ def verify_cot_signatures(context, task_dict, name):
             continue
         path = os.path.join(task_info['cot_dir'], 'public/chainOfTrust.json.asc')
         task_id = task_info['taskId']
-        worker_type = classify_worker_type(task_dict['tasks'][task_id])
+        worker_type = guess_worker_class(task_dict['tasks'][task_id])
         gpg = GPG(context, gpg_home=os.path.join(context.config['base_gpg_home_dir'], worker_type))
         try:
             with open(path, "r") as fh:
