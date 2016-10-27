@@ -23,6 +23,7 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
+# TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
 VALID_TASK_TYPES = (
     'build',
     'decision',
@@ -50,6 +51,8 @@ class ChainOfTrust(object):
         )
 
     def dependent_task_ids(self):
+        """
+        """
         return [x.task_id for x in self.links]
 
     def is_try(self):
@@ -61,6 +64,14 @@ class ChainOfTrust(object):
                 result = True
                 break
         return result
+
+    def get_link(self, task_id):
+        """
+        """
+        links = [x for x in self.links if x.task_id == task_id]
+        if len(links) != 1:
+            raise CoTError("No single Link matches task_id {}!\n{}".format(task_id, self.dependent_task_ids()))
+        return links[0]
 
 
 # TODO LinkOfTrust {{{1
@@ -502,7 +513,7 @@ async def download_cot(chain):
         if link.task_id == chain.task_id:
             continue
         task_id = link.task_id
-        url = get_artifact_url(chain.context, taskId, 'public/chainOfTrust.json.asc')
+        url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
         tasks.append(
             download_artifacts(
@@ -516,9 +527,38 @@ async def download_cot(chain):
 
 # download_cot_artifacts {{{2
 async def download_cot_artifacts(chain, task_id, paths):
-    """ TODO
+    """Download artifacts and verify their SHAs against the chain of trust.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust object
+        task_id (str): the task ID to download from
+        paths (list): the list of artifacts to download
+
+    Returns:
+        list: the full paths of the artifacts
+
+    Raises:
+        CoTError: on failure.
     """
-    pass
+    full_paths = []
+    urls = []
+    link = chain.get_link(task_id)
+    for path in paths:
+        if path not in link.cot['artifacts']:
+            raise CoTError("path {} not in {} chain of trust artifacts!".format(path, link.name))
+        url = get_artifact_url(chain.context, task_id, path)
+        urls.append(url)
+    await download_artifacts(
+        chain.context, urls, parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
+    )
+    for path in paths:
+        full_path = os.path.join(link.cot_dir, path)
+        full_paths.append(full_path)
+        for alg, expected_sha in link.cot['artifacts'][path].items():
+            real_sha = get_hash(full_path, hash_alg=alg)
+            if expected_sha != real_sha:
+                raise CoTError("BAD HASH: Expected {} {}; got {}!".format(alg, expected_sha, real_sha))
+    return full_paths
 
 
 # verify_cot_signatures {{{2
