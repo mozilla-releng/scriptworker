@@ -10,7 +10,7 @@ import traceback
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import get_context_from_cmdln, read_worker_creds
 from scriptworker.cot import generate_cot
-from scriptworker.gpg import overwrite_gpg_home, rebuild_gpg_homedirs_loop
+from scriptworker.gpg import get_tmp_base_gpg_home_dir, overwrite_gpg_home
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request, rm
@@ -74,12 +74,6 @@ async def run_loop(context, creds_key="credentials"):
                 context.credentials = credentials
 
 
-def _get_tmp_gpg_home(context):
-    tmp_gpg_home = "{}.tmp".format(context.config['base_gpg_home_dir'])
-    lockfile = os.path.join(tmp_gpg_home, ".lock")
-    return tmp_gpg_home, lockfile
-
-
 async def async_main(context):
     """Main async loop, following the drawing at
     http://docs.taskcluster.net/queue/worker-interaction/
@@ -89,7 +83,8 @@ async def async_main(context):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
     """
-    tmp_gpg_home, lockfile = _get_tmp_gpg_home(context)
+    tmp_gpg_home = get_tmp_base_gpg_home_dir(context)
+    lockfile = context.config['gpg_lockfile']
     await run_loop(context)
     await asyncio.sleep(context.config['poll_interval'])
     if os.path.exists(tmp_gpg_home) and not os.path.exists(lockfile):
@@ -107,12 +102,6 @@ def main():
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.credentials = credentials
-        tmp_gpg_home, _ = _get_tmp_gpg_home(context)
-        loop.create_task(
-            rebuild_gpg_homedirs_loop(
-                context, tmp_gpg_home
-            )
-        )
         while True:
             try:
                 loop.run_until_complete(async_main(context))

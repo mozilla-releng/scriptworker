@@ -65,6 +65,7 @@ setup(
         "console_scripts": [
             "scriptworker = scriptworker.worker:main",
             "create_initial_gpg_homedirs = scriptworker.gpg:create_initial_gpg_homedirs",
+            "rebuild_gpg_homedirs = scriptworker.gpg:rebuild_gpg_homedirs",
         ],
     },
     zip_safe=False,

@@ -10,6 +10,8 @@
     "task_log_dir": "/tmp/artifact/public/logs",
     "git_key_repo_dir": "/tmp/key_repo",
     "base_gpg_home_dir": "/tmp/gpg",
+    "gpg_lockfile": "/tmp/gpg_homedir.lock",
+    "last_good_git_revision_file": "/tmp/git_revision",
 
     "my_email": "scriptworker@example.com",
 

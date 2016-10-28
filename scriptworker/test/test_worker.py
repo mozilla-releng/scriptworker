@@ -81,7 +81,6 @@ def test_main(mocker, context, event_loop):
         with open(tmp, "w") as fh:
             json.dump(config, fh)
         del(config['credentials'])
-        mocker.patch.object(worker, 'rebuild_gpg_homedirs_loop', new=noop_async)
         mocker.patch.object(worker, 'async_main', new=foo)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         with mock.patch.object(asyncio, 'get_event_loop') as p:
@@ -102,7 +101,7 @@ def test_async_main(context, event_loop, mocker, tmpdir):
             os.makedirs(path)
         except FileExistsError:
             pass
-        lockfile = os.path.join(path, ".lock")
+        lockfile = context.config['gpg_lockfile']
         if os.path.exists(lockfile):
             os.remove(lockfile)
         else:

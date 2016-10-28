@@ -3,7 +3,6 @@
 """Test scriptworker.gpg
 """
 import arrow
-import asyncio
 from contextlib import contextmanager
 from copy import deepcopy
 import glob
@@ -231,7 +230,6 @@ class PexpectChild():
         self.signalstatus = signalstatus
         self.exc = exc
 
-    @asyncio.coroutine
     def expect(self, _, **kwargs):
         if self.exc:
             raise pexpect.exceptions.TIMEOUT("")
@@ -285,9 +283,10 @@ def test_guess_gpg_home(base_context, gpg_home, expected):
     assert sgpg.guess_gpg_home(base_context, gpg_home=gpg_home) == expected
 
 
-@pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, "bar")))
-def test_guess_gpg_home_GPG(base_context, gpg_home, expected):
-    gpg = sgpg.GPG(base_context, "bar")
+@pytest.mark.parametrize("gpg_home,expected", (("foo", "foo"), (None, None)))
+def test_guess_gpg_home_GPG(base_context, gpg_home, expected, tmpdir):
+    expected = expected or tmpdir
+    gpg = sgpg.GPG(base_context, tmpdir)
     assert sgpg.guess_gpg_home(gpg, gpg_home) == expected
 
 
@@ -421,8 +420,7 @@ def test_export_unknown_key(base_context):
 
 
 # sign_key {{{1
-@pytest.mark.asyncio
-async def test_sign_key(context, event_loop):
+def test_sign_key(context):
     """This test calls get_list_sigs_output in several different ways.  Each
     is valid; the main thing is more code coverage.
 
@@ -453,7 +451,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     # update gpg configs, sign signed key
     sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
     sgpg.check_ownertrust(context)
-    await sgpg.sign_key(context, signed_fingerprint)
+    sgpg.sign_key(context, signed_fingerprint)
     # signed key get_list_sigs_output
     signed_output = sgpg.get_list_sigs_output(context, signed_fingerprint)
     # unsigned key get_list_sigs_output
@@ -467,7 +465,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert [unsigned_keyid] == unsigned_output['sig_keyids']
     assert ["three (three) <three>"] == unsigned_output['sig_uids']
     # sign the unsigned key and test
-    await sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
+    sgpg.sign_key(context, unsigned_fingerprint, signing_key=signed_fingerprint)
     # Call get_list_sigs_output with expected, for more code coverage
     new_output = sgpg.get_list_sigs_output(
         context, unsigned_fingerprint, expected={
@@ -483,8 +481,7 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     assert ["three (three) <three>", "two (two) <two>"] == sorted(new_output['sig_uids'])
 
 
-@pytest.mark.asyncio
-async def test_sign_key_twice(context):
+def test_sign_key_twice(context):
     gpg = sgpg.GPG(context)
     for suffix in (".sec", ".pub"):
         with open("{}{}".format(KEYS_AND_FINGERPRINTS[0][2], suffix), "r") as fh:
@@ -492,12 +489,11 @@ async def test_sign_key_twice(context):
         fingerprint = sgpg.import_key(gpg, contents)[0]
     # keys already sign themselves, so this is a second signature that should
     # be noop.
-    await sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
+    sgpg.sign_key(context, fingerprint, signing_key=fingerprint)
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("exportable", (True, False))
-async def test_sign_key_exportable(context, exportable, event_loop):
+def test_sign_key_exportable(context, exportable):
     gpg_home2 = os.path.join(context.config['gpg_home'], "two")
     context.config['gpg_home'] = os.path.join(context.config['gpg_home'], "one")
     gpg = sgpg.GPG(context)
@@ -517,7 +513,7 @@ async def test_sign_key_exportable(context, exportable, event_loop):
     # generate a new key
     fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
     # sign it, exportable signature is `exportable`
-    await sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
+    sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
     # export my privkey and import it in gpg_home2
     priv_key = sgpg.export_key(gpg, my_fingerprint, private=True)
     sgpg.import_key(gpg2, priv_key)
@@ -535,10 +531,9 @@ async def test_sign_key_exportable(context, exportable, event_loop):
             sgpg.get_list_sigs_output(context, fingerprint, gpg_home=gpg_home2, expected=expected)
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("expect_status", (0, 1))
 @pytest.mark.parametrize("exc_bool", (False, True))
-async def test_sign_key_failure(context, mocker, expect_status, exc_bool):
+def test_sign_key_failure(context, mocker, expect_status, exc_bool):
 
     def child(*args, **kwargs):
         return PexpectChild(expect_status=expect_status, exc=exc_bool)
@@ -546,7 +541,7 @@ async def test_sign_key_failure(context, mocker, expect_status, exc_bool):
     mocker.patch.object(pexpect, 'spawn', new=child)
     mocker.patch.object(pexpect, 'spawn', new=child)
     with pytest.raises(ScriptWorkerGPGException):
-        await sgpg.sign_key(context, "foo")
+        sgpg.sign_key(context, "foo")
 
 
 # list sigs and parsing {{{1
@@ -653,15 +648,13 @@ def test_consume_valid_keys_suffixes(context):
     sgpg.consume_valid_keys(context, PUBKEY_DIR, ignore_suffixes=('.json', '.asc', '.unsigned.pub'))
 
 
-def test_rebuild_gpg_home_flat(context, event_loop):
-    event_loop.run_until_complete(
-        sgpg.rebuild_gpg_home_flat(
-            context,
-            context.config['gpg_home'],
-            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-            os.path.join(PUBKEY_DIR, "unsigned")
-        )
+def test_rebuild_gpg_home_flat(context):
+    sgpg.rebuild_gpg_home_flat(
+        context,
+        context.config['gpg_home'],
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+        os.path.join(PUBKEY_DIR, "unsigned")
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
@@ -670,19 +663,17 @@ def test_rebuild_gpg_home_flat(context, event_loop):
 
 
 @pytest.mark.parametrize("trusted_email", ("docker@example.com", "docker.root@example.com"))
-def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir, event_loop):
+def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
 
     gpg = sgpg.GPG(context)
     for path in glob.glob(os.path.join(GPG_HOME, "keys", "{}.*".format(trusted_email))):
         shutil.copyfile(path, os.path.join(tmpdir, os.path.basename(path)))
-    event_loop.run_until_complete(
-        sgpg.rebuild_gpg_home_signed(
-            context,
-            context.config['gpg_home'],
-            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
-            "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
-            tmpdir,
-        )
+    sgpg.rebuild_gpg_home_signed(
+        context,
+        context.config['gpg_home'],
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".pub"),
+        "{}{}".format(KEYS_AND_FINGERPRINTS[0][2], ".sec"),
+        tmpdir,
     )
     with open(os.path.join(PUBKEY_DIR, "manifest.json")) as fh:
         manifest = json.load(fh)
@@ -741,11 +732,11 @@ async def test_get_git_revision_exception(mocker):
 # update_signed_git_repo {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("result1,result2,expected,return_value", ((
-    "one", "one", False, 0
+    "one", "one", "one", 0
 ), (
-    "one", "two", True, 0
+    "one", "two", "one", 0
 ), (
-    "one", "two", True, 1
+    "one", "two", "one", 1
 )))
 async def test_update_signed_git_repo(context, mocker, result1, result2, expected,
                                       return_value):
@@ -795,15 +786,14 @@ async def test_verify_signed_git_commit(context, mocker):
 
 
 # build_gpg_homedirs_from_repo {{{1
-@pytest.mark.asyncio
-async def test_build_gpg_homedirs_from_repo(context, mocker):
+def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
     homedirs = {'flat': [], 'signed': []}
     expected = {
         'flat': ['docker-worker', 'generic-worker'],
         'signed': ['scriptworker'],
     }
 
-    async def counter(_, path, *args, **kwargs):
+    def counter(_, path, *args, **kwargs):
         worker_dir = os.path.basename(path)
         key = 'flat'
         if 'untrusted_path' in kwargs:
@@ -811,37 +801,43 @@ async def test_build_gpg_homedirs_from_repo(context, mocker):
         homedirs[key].append(worker_dir)
         homedirs[key] = sorted(homedirs[key])
 
-    await sgpg.build_gpg_homedirs_from_repo(
+    sgpg.build_gpg_homedirs_from_repo(
         context, verify_function=noop_async, flat_function=counter, signed_function=counter
     )
     assert homedirs == expected
 
 
-@pytest.mark.asyncio
-async def test_build_gpg_homedirs_from_repo_lockfile(context, mocker):
-
-    os.makedirs(context.config['base_gpg_home_dir'])
-    touch(os.path.join(context.config['base_gpg_home_dir'], '.lock'))
-    await sgpg.build_gpg_homedirs_from_repo(
-        context, verify_function=die_async, flat_function=die_async, signed_function=die_async
-    )
+def test_build_gpg_homedirs_from_repo_lockfile(context, mocker, event_loop):
+    try:
+        touch(context.config['gpg_lockfile'])
+        sgpg.build_gpg_homedirs_from_repo(
+            context, verify_function=die_async, flat_function=die_sync, signed_function=die_sync
+        )
+    finally:
+        os.remove(context.config['gpg_lockfile'])
 
 
 # create_initial_gpg_homedirs {{{1
-def test_create_initial_gpg_homedirs(context, mocker, event_loop):
+@pytest.mark.parametrize("new_rev_found", (True, False))
+def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found):
 
     def fake_context(*args):
         return (context, None)
 
+    async def new_revision(*args, **kwargs):
+        if new_rev_found:
+            return "NEW REVISION!!!"
+
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=noop_async)
-    mocker.patch.object(sgpg, "retry_async", new=noop_async)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=noop_sync)
+    mocker.patch.object(sgpg, "retry_async", new=new_revision)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
     mocker.patch.object(sgpg, "check_ownertrust", new=noop_sync)
     mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
     mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
-    mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
-    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+    mocker.patch.object(sgpg, "get_last_good_git_revision", new=noop_sync)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
+    mocker.patch.object(sgpg, "write_last_good_git_revision", new=noop_sync)
 
     sgpg.create_initial_gpg_homedirs()
 
@@ -852,64 +848,62 @@ def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
         return (context, None)
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=die_async)
+    mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=die_sync)
     mocker.patch.object(sgpg, "retry_async", new=noop_async)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
     mocker.patch.object(sgpg, "verify_signed_git_commit", new=noop_async)
     mocker.patch.object(sgpg, "overwrite_gpg_home", new=noop_sync)
     mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
-    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_async)
+    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
 
     with pytest.raises(SystemExit):
         sgpg.create_initial_gpg_homedirs()
 
 
-# rebuild_gpg_homedirs_loop {{{1
-@pytest.mark.asyncio
-async def test_rebuild_gpg_homedirs_loop(context, mocker):
-    """Try to hit all the parts of the actual loop
-    """
-    counts = {
-        "rm_basedir": 0,
-        "return_none": 0,
-        "raise": 0
-    }
-    basedir = context.config['base_gpg_home_dir']
+# rebuild_gpg_homedirs {{{1
+def test_rebuild_gpg_homedirs(context, mocker, event_loop):
 
-    async def rm_basedir_2nd_pass(*args, **kwargs):
-        counts['rm_basedir'] += 1
-        if counts['rm_basedir'] > 1 and os.path.exists(basedir):
-            shutil.rmtree(basedir)
+    def fake_context(*args):
+        return (context, None)
 
-    async def return_none_1st_pass(*args, **kwargs):
-        counts['return_none'] += 1
-        if counts['return_none'] > 1:
-            return True
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
+    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=noop_sync)
 
-    def raise_1st_die_2nd(*args, **kwargs):
-        counts['raise'] += 1
-        if counts['raise'] == 1:
-            raise ScriptWorkerGPGException("foo")
-        else:
-            raise SystemExit()
+    sgpg.rebuild_gpg_homedirs()
 
-    context.config['sign_chain_of_trust'] = True
-    context.config['verify_chain_of_trust'] = True
-    os.makedirs(basedir)
-    mocker.patch.object(sgpg, "rm", new=noop_sync)
-    mocker.patch.object(asyncio, "sleep", new=rm_basedir_2nd_pass)
-    mocker.patch.object(sgpg, "retry_async", new=return_none_1st_pass)
-    mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=raise_1st_die_2nd)
+
+def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
+    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=die_sync)
 
     with pytest.raises(SystemExit):
-        await sgpg.rebuild_gpg_homedirs_loop(context, basedir)
+        sgpg.rebuild_gpg_homedirs()
 
 
-@pytest.mark.asyncio
-async def test_rebuild_gpg_homedirs_loop_skip(context, tmpdir, mocker):
-    path = os.path.join(tmpdir, "foo")
-    context.config['sign_chain_of_trust'] = False
-    context.config['verify_chain_of_trust'] = False
-    mocker.patch.object(asyncio, "sleep", new=die_sync)
-    mocker.patch.object(sgpg, "retry_async", new=die_async)
-    await sgpg.rebuild_gpg_homedirs_loop(context, path)
+# last_good_git_revision {{{1
+def test_last_good_git_revision_exists(context):
+    try:
+        sgpg.write_last_good_git_revision(context, "foo")
+        assert sgpg.get_last_good_git_revision(context) == "foo"
+    finally:
+        os.remove(context.config['last_good_git_revision_file'])
+
+
+def test_last_good_git_revision(context):
+    assert sgpg.get_last_good_git_revision(context) is None
+
+
+def test_write_last_good_git_revision_exception(context, mocker):
+
+    def boom(*args):
+        raise OSError("blah")
+
+    mocker.patch.object(sgpg, "open", new=boom)
+    with pytest.raises(ScriptWorkerGPGException):
+        sgpg.write_last_good_git_revision(context, "foo")

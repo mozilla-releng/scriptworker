@@ -62,6 +62,7 @@ DEFAULT_CONFIG = frozendict({
     # Boolean to use the gpg agent
     "gpg_use_agent": False,
     "gpg_encoding": 'utf-8',
+    "gpg_lockfile": os.path.join(os.getcwd(), "gpg_homedir.lock"),
 
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",
@@ -69,13 +70,15 @@ DEFAULT_CONFIG = frozendict({
     "log_max_bytes": 1024 * 1024 * 512,
     "log_num_backups": 10,
 
+    "git_key_repo_dir": "...",
+    "base_gpg_home_dir": "...",
+    "last_good_git_revision_file": os.path.join(os.getcwd(), "git_revision"),
+
     # Task settings
     "work_dir": "...",
     "log_dir": "...",
     "artifact_dir": "...",
     "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
-    "git_key_repo_dir": "...",
-    "base_gpg_home_dir": "...",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
     "sign_key_timeout": 60 * 2,

@@ -28,8 +28,8 @@ import traceback
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
     ScriptWorkerRetryException
-from scriptworker.log import pipe_to_log
-from scriptworker.utils import filepaths_in_dir, makedirs, raise_future_exceptions, retry_async, rm
+from scriptworker.log import pipe_to_log, update_logging_config
+from scriptworker.utils import filepaths_in_dir, makedirs, retry_async, rm
 
 log = logging.getLogger(__name__)
 
@@ -300,18 +300,13 @@ def export_key(gpg, fingerprint, private=False):
     return key
 
 
-@asyncio.coroutine
 def sign_key(context, target_fingerprint, signing_key=None,
              exportable=False, gpg_home=None):
     """Sign the `target_fingerprint` key with the `signing_key` or default key
 
     This signs the target key with the signing key, which adds to the web of trust.
 
-    This function is async, but should not be used in parallel in the same
-    gpg homedir.  GPG keysigning requires a lock on the keyring, so any
-    parallelization in the same homedir will result in failures and unhappiness.
-    This function is meant to be used async to parallelize multiple GPG
-    homedir operations.
+    Due to pexpect async issues, this function is once more synchronous.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -345,7 +340,7 @@ def sign_key(context, target_fingerprint, signing_key=None,
     child = pexpect.spawn(gpg_path, cmd_args, timeout=context.config['sign_key_timeout'])
     try:
         while True:
-            index = yield from child.expect([pexpect.EOF, b".*Really sign\? \(y/N\) ", b".*Really sign all user IDs\? \(y/N\) "], async=True)
+            index = child.expect([pexpect.EOF, b".*Really sign\? \(y/N\) ", b".*Really sign all user IDs\? \(y/N\) "])
             if index == 0:
                 break
             child.sendline(b'y')
@@ -412,7 +407,6 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
     log.debug(pprint.pformat(ownertrust))
     ownertrust = ''.join(ownertrust).encode('utf-8')
     cmd = [gpg_path] + gpg_default_args(gpg_home) + ["--import-ownertrust"]
-    # TODO asyncio?
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout = p.communicate(input=ownertrust)[0] or b''
     if p.returncode:
@@ -997,9 +991,6 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
 def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
     """Take the contents of tmp_gpg_home and copy them to real_gpg_home.
 
-    For now, back up real_gpg_home before doing so.  We may want to revisit
-    for disk space reasons: only keep N backups?
-
     Args:
         tmp_gpg_home (str): path to the rebuilt gpg_home with the new keychains+
             trust models
@@ -1008,7 +999,8 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
     log.info("overwrite_gpg_home: {} to {}".format(tmp_gpg_home, real_gpg_home))
     # Back up real_gpg_home until we have more confidence in blowing this away
     if os.path.exists(real_gpg_home):
-        backup = "{}.{}".format(real_gpg_home, str(arrow.utcnow().timestamp))
+        backup = "{}.old".format(real_gpg_home)
+        rm(backup)
         log.info("Backing up {} to {}".format(real_gpg_home, backup))
         os.rename(real_gpg_home, backup)
     makedirs(real_gpg_home)
@@ -1022,9 +1014,9 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
     # contexts that expect to clean up tmp_gpg_home on exiting the block.
 
 
-async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
-                                my_priv_key_path, consume_path, ignore_suffixes=(),
-                                consume_function=consume_valid_keys):
+def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
+                          my_priv_key_path, consume_path, ignore_suffixes=(),
+                          consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
     In this 'flat' model, import all the pubkeys in `consume_path` and sign
@@ -1055,7 +1047,7 @@ async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
         # sign all the keys
         for fingerprint in fingerprints:
             log.info("signing {} with {}".format(fingerprint, my_fingerprint))
-            await sign_key(
+            sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
@@ -1063,10 +1055,10 @@ async def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
         overwrite_gpg_home(tmp_gpg_home, real_gpg_home)
 
 
-async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
-                                  my_priv_key_path, trusted_path,
-                                  untrusted_path=None, ignore_suffixes=(),
-                                  consume_function=consume_valid_keys):
+def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
+                            my_priv_key_path, trusted_path,
+                            untrusted_path=None, ignore_suffixes=(),
+                            consume_function=consume_valid_keys):
     """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
 
     In this 'signed' model, import all the pubkeys in `trusted_path`, sign
@@ -1105,7 +1097,7 @@ async def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
         trusted_fingerprints_to_keyid = {}
         # sign all the keys
         for fingerprint in set(trusted_fingerprints):
-            await sign_key(
+            sign_key(
                 context, fingerprint, signing_key=my_fingerprint,
                 gpg_home=tmp_gpg_home
             )
@@ -1269,14 +1261,13 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
         revision (str, optional): the revision to update to.  Defaults to 'master'.
 
     Returns:
-        bool: True if there has been a change; False otherwise.
+        str: the current git revision.
 
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on `git pull` failure.
     """
     path = context.config['git_key_repo_dir']
-    old_revision = await get_git_revision(path)
     proc = await exec_function(
         "git", "pull", "--ff-only", repo, revision, cwd=path,
         stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
@@ -1288,7 +1279,7 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
             "Can't update repo at {}!".format(path)
         )
     revision = await get_git_revision(path)
-    return old_revision != revision
+    return revision
 
 
 async def verify_signed_git_commit(context, path=None,
@@ -1322,8 +1313,48 @@ async def verify_signed_git_commit(context, path=None,
     verify_signed_git_commit_output(output)
 
 
+# last_good_git_revision_file functions {{{1
+def get_last_good_git_revision(context):
+    """This returns the contents of the config['last_good_git_revision_file'], if it exists.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        str: the latest good git revision, if the file exists
+        None: if the file doesn't exist
+    """
+    result = None
+    if os.path.exists(context.config['last_good_git_revision_file']):
+        with open(context.config['last_good_git_revision_file'], "r") as fh:
+            result = fh.read().rstrip()
+    return result
+
+
+def write_last_good_git_revision(context, revision):
+    """This writes `revision` to config['last_good_git_revision_file'].
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        revision (str): the last good git revision
+
+    Raises:
+        ScriptWorkerGPGException: on failure
+    """
+    log.info(
+        "writing last_good_git_revision {} to {}...".format(
+            revision, context.config['last_good_git_revision_file']
+        )
+    )
+    try:
+        with open(context.config['last_good_git_revision_file'], "w") as fh:
+            print(revision, file=fh, end='')
+    except OSError as exc:
+        raise ScriptWorkerGPGException(str(exc))
+
+
 # build gpg homedirs from repo {{{1
-async def build_gpg_homedirs_from_repo(
+def build_gpg_homedirs_from_repo(
     context, basedir=None, verify_function=verify_signed_git_commit,
     flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
 ):
@@ -1343,125 +1374,128 @@ async def build_gpg_homedirs_from_repo(
     """
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
-    lockfile = os.path.join(basedir, ".lock")
+    lockfile = context.config['gpg_lockfile']
+    event_loop = asyncio.get_event_loop()
     if os.path.exists(lockfile):
         log.warning("Skipping build_gpg_homedirs_from_repo: lockfile {} exists!".format(lockfile))
         return
-    rm(basedir)
-    makedirs(basedir)
     try:
         # create lockfile
         with open(lockfile, "w") as fh:
             print(str(arrow.utcnow().timestamp), file=fh, end="")
         # verify our input.  Hardcoding the check before importing, as opposed
         # to expecting something else to run the check for us.
-        await verify_function(context)
+        event_loop.run_until_complete(verify_function(context))
+        rm(basedir)
+        makedirs(basedir)
         # create gpg homedirs
-        tasks = []
         for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
             source_path = os.path.join(repo_path, worker_class)
             real_gpg_home = os.path.join(basedir, worker_class)
             my_pub_key_path = context.cot_config['pubkey_path']
             my_priv_key_path = context.cot_config['privkey_path']
             if worker_config['type'] == 'flat':
-                tasks.append(asyncio.ensure_future(
-                    flat_function(
-                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                        source_path, ignore_suffixes=worker_config['ignore_suffixes']
-                    )
-                ))
+                flat_function(
+                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                    source_path, ignore_suffixes=worker_config['ignore_suffixes']
+                )
             else:
                 trusted_path = os.path.join(source_path, "trusted")
                 untrusted_path = os.path.join(source_path, "valid")
-                tasks.append(asyncio.ensure_future(
-                    signed_function(
-                        context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                        trusted_path, untrusted_path=untrusted_path,
-                        ignore_suffixes=worker_config['ignore_suffixes']
-                    )
-                ))
-            await raise_future_exceptions(tasks)
+                signed_function(
+                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                    trusted_path, untrusted_path=untrusted_path,
+                    ignore_suffixes=worker_config['ignore_suffixes']
+                )
     finally:
         rm(lockfile)
     return basedir
 
 
-async def rebuild_gpg_homedirs_loop(context, basedir):
-    """Run a loop to update the git repo and rebuild the homedirs.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        basedir (str): the base directory path, to create the gpg homedirs under.
-            This should be a temporary directory, so we can create the gpg
-            homedirs in the background without affecting anything.
-            The presence of this directory with a lockfile means something is
-            still generating the gpg homedirs.  The presence of this directory
-            without the lockfile means we're waiting to overwrite our gpg homedirs
-            with the contents of this tmp dir.
-    """
-    if not context.config['sign_chain_of_trust'] and not context.config['verify_chain_of_trust']:
-        log.warning("sign_chain_of_trust and verify_chain_of_trust are False; exiting rebuild_gpg_homedirs_loop!")
-        return
-    while True:
-        await asyncio.sleep(context.config['poll_git_interval'])
-        if os.path.exists(basedir):
-            log.warning("rebuild_gpg_homedirs_loop: {} exists; sleeping another {}!".format(basedir, str(context.config['poll_git_interval'])))
-            continue
-        try:
-            message = "build_gpg_homedirs_from_repo error updating git repo!\n{}"
-            result = await retry_async(
-                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
-                args=(context, )
-            )
-            if not result:  # no updates
-                continue
-            message = "build_gpg_homedirs_from_repo error in build_gpg_homedirs_from_repo!\n{}"
-            build_gpg_homedirs_from_repo(context, basedir=basedir)
-        except ScriptWorkerException as exc:
-            # We don't want these exceptions to be fatal; this will happen in the background
-            # of scriptworker tasks
-            log.error(message.format(str(exc)))
-            continue
+# create_initial_gpg_homedirs and rebuild_gpg_homedirs {{{1
+def _update_git_and_rebuild_homedirs(context, basedir=None):
+    log.info("Updating git repo")
+    basedir = basedir or context.config['base_gpg_home_dir']
+    makedirs(context.config['git_key_repo_dir'])
+    trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
+    with tempfile.TemporaryDirectory() as tmp_gpg_home:
+        rebuild_gpg_home_signed(
+            context, tmp_gpg_home,
+            context.cot_config['pubkey_path'],
+            context.cot_config['privkey_path'],
+            trusted_path
+        )
+        overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
+    event_loop = asyncio.get_event_loop()
+    old_revision = get_last_good_git_revision(context)
+    new_revision = event_loop.run_until_complete(
+        retry_async(
+            update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
+            args=(context, )
+        )
+    )
+    if new_revision != old_revision:
+        log.info("Found new git revision {}!".format(new_revision))
+        # XXX at some point, verify signatures on all non-merge git commits up to old_revision
+        event_loop.run_until_complete(verify_signed_git_commit(context))
+        log.info("Updating gpg homedirs...")
+        build_gpg_homedirs_from_repo(context, basedir=basedir)
+        log.info("Writing last_good_git_revision...")
+        write_last_good_git_revision(context, new_revision)
+        # Get rid of spurious event_loop errors.  Since this function is only
+        # called from non-scriptworker entry points, this shouldn't have any
+        # negative effects.
+        event_loop.close()
 
 
 def create_initial_gpg_homedirs():
-    """Create the initial gpg homedirs.
+    """Create the gpg homedirs before scriptworker is launched.
 
-    This should be called before scriptworker is run.
+    This is an entry point, and should be called before scriptworker is run.
 
     Raises:
         SystemExit: on failure.
     """
-    logging.basicConfig()
     context, _ = get_context_from_cmdln(sys.argv[1:])
+    update_logging_config(context, file_name='create_initial_gpg_homedirs.log')
     log.info("create_initial_gpg_homedirs()...")
-    trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
     makedirs(context.config['git_key_repo_dir'])
-    event_loop = asyncio.get_event_loop()
     try:
-        with tempfile.TemporaryDirectory() as tmp_gpg_home:
-            event_loop.run_until_complete(
-                rebuild_gpg_home_signed(
-                    context, tmp_gpg_home,
-                    context.cot_config['pubkey_path'],
-                    context.cot_config['privkey_path'],
-                    trusted_path
-                )
-            )
-            overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
-        log.info("Updating git repo")
-        event_loop.run_until_complete(
-            retry_async(
-                update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
-                args=(context, )
-            )
-        )
-        event_loop.run_until_complete(verify_signed_git_commit(context))
-        log.info("Updating gpg homedirs")
-        event_loop.run_until_complete(
-            build_gpg_homedirs_from_repo(context, basedir=context.config['base_gpg_home_dir'])
-        )
-        event_loop.close()
+        _update_git_and_rebuild_homedirs(context)
+    except ScriptWorkerException as exc:
+        traceback.print_exc()
+        sys.exit(exc.exit_code)
+
+
+def get_tmp_base_gpg_home_dir(context):
+    """Return the base_gpg_home_dir with a .tmp at the end.
+
+    This function is really only here so we don't have to duplicate this
+    logic.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        str: the base_gpg_home_dir with .tmp at the end.
+    """
+    return '{}.tmp'.format(context.config['base_gpg_home_dir'])
+
+
+def rebuild_gpg_homedirs():
+    """Rebuild the gpg homedirs in the background.
+
+    This is an entry point, and should be called before scriptworker is run.
+
+    Raises:
+        SystemExit: on failure.
+    """
+    context, _ = get_context_from_cmdln(sys.argv[1:])
+    update_logging_config(context, file_name='rebuild_gpg_homedirs.log')
+    log.info("rebuild_gpg_homedirs()...")
+    basedir = get_tmp_base_gpg_home_dir(context)
+    try:
+        _update_git_and_rebuild_homedirs(context, basedir=basedir)
     except ScriptWorkerException as exc:
         traceback.print_exc()
         sys.exit(exc.exit_code)
