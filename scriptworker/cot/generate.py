@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Chain of Trust artifact validation and creation.
+"""Chain of Trust artifact generation.
 
 Attributes:
     log (logging.Logger): the log object for this module.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Chain of Trust artifact validation and creation.
+"""Chain of Trust artifact validation.
 
 Attributes:
     log (logging.Logger): the log object for this module.
@@ -32,6 +32,10 @@ VALID_TASK_TYPES = (
 VALID_HASH_ALGORITHMS = (
     'sha256',
     'sha512',
+)
+
+VALID_DECISION_WORKER_TYPES = (
+    'gecko-decision',
 )
 
 
@@ -498,3 +502,10 @@ def verify_cot_signatures(chain):
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
         link.cot = body
+
+
+# verify_decision_tasks {{{1
+def verify_decision_tasks(chain, num=None):
+    """
+    """
+    num = num or range(1, 3)
