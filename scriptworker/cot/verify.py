@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for this module.
 """
 import asyncio
+from contextlib import contextmanager
 from frozendict import frozendict
 import logging
 import os
@@ -15,7 +16,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_decision_task_id, get_task_id
-from scriptworker.utils import get_hash, raise_future_exceptions
+from scriptworker.utils import get_hash, makedirs, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -143,6 +144,30 @@ class LinkOfTrust(object):
         freeze_values(cot)
         self._set('_cot', frozendict(cot))
         # TODO add tests to run
+
+
+# audit_log_handler {{{1
+@contextmanager
+def audit_log_handler(context):
+    """Add an audit.log for `scriptworker.cot.verify` with a contextmanager for cleanup.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Yields:
+        None: but cleans up the handler afterwards.
+    """
+    parent_path = os.path.join(context.config['artifact_dir'], 'cot')
+    makedirs(parent_path)
+    log_path = os.path.join(parent_path, 'audit.log')
+    audit_handler = logging.FileHandler(log_path)
+    audit_handler.setLevel(logging.DEBUG)
+    audit_handler.setFormatter(
+        logging.Formatter('%(asctime)s %levelname)8s - %(message)s', '%H:%M:%s')
+    )
+    log.addHandler(audit_handler)
+    yield
+    log.removeHandler(audit_handler)
 
 
 # guess_worker_class {{{1
