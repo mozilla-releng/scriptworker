@@ -208,6 +208,7 @@ def context(tmpdir2):
     """
     context_ = Context()
     context_.config = dict(deepcopy(DEFAULT_CONFIG))
+    context_.config['gpg_lockfile'] = os.path.join(tmpdir2, 'gpg_lockfile')
     cot_config_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
         "cot_config_example.json"
@@ -215,7 +216,6 @@ def context(tmpdir2):
     for key, value in context_.config.items():
         if key.endswith("_dir") or key in ("gpg_home", ):
             context_.config[key] = os.path.join(tmpdir2, key)
-    context_.config['sign_key_timeout'] = 5 * 60
     with open(cot_config_path) as fh:
         context_.cot_config = json.load(fh)
     yield context_
@@ -807,16 +807,6 @@ def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
     assert homedirs == expected
 
 
-def test_build_gpg_homedirs_from_repo_lockfile(context, mocker, event_loop):
-    try:
-        touch(context.config['gpg_lockfile'])
-        sgpg.build_gpg_homedirs_from_repo(
-            context, verify_function=die_async, flat_function=die_sync, signed_function=die_sync
-        )
-    finally:
-        os.remove(context.config['gpg_lockfile'])
-
-
 # create_initial_gpg_homedirs {{{1
 @pytest.mark.parametrize("new_rev_found", (True, False))
 def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found):
@@ -829,6 +819,7 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found)
             return "NEW REVISION!!!"
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
     mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=noop_sync)
     mocker.patch.object(sgpg, "retry_async", new=new_revision)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
@@ -848,6 +839,7 @@ def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
         return (context, None)
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
     mocker.patch.object(sgpg, "rebuild_gpg_home_signed", new=die_sync)
     mocker.patch.object(sgpg, "retry_async", new=noop_async)
     mocker.patch.object(sgpg, "update_ownertrust", new=noop_sync)
@@ -858,6 +850,18 @@ def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
 
     with pytest.raises(SystemExit):
         sgpg.create_initial_gpg_homedirs()
+
+
+def test_create_initial_gpg_homedirs_lockfile(context, mocker, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
+
+    touch(context.config['gpg_lockfile'])
+    sgpg.create_initial_gpg_homedirs()
 
 
 # rebuild_gpg_homedirs {{{1
@@ -884,6 +888,18 @@ def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop):
 
     with pytest.raises(SystemExit):
         sgpg.rebuild_gpg_homedirs()
+
+
+def test_rebuild_gpg_homedirs_lockfile(context, mocker, event_loop):
+
+    def fake_context(*args):
+        return (context, None)
+
+    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
+    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
+
+    touch(context.config['gpg_lockfile'])
+    sgpg.rebuild_gpg_homedirs()
 
 
 # last_good_git_revision {{{1

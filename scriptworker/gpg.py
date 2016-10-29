@@ -1374,41 +1374,31 @@ def build_gpg_homedirs_from_repo(
     """
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
-    lockfile = context.config['gpg_lockfile']
     event_loop = asyncio.get_event_loop()
-    if os.path.exists(lockfile):
-        log.warning("Skipping build_gpg_homedirs_from_repo: lockfile {} exists!".format(lockfile))
-        return
-    try:
-        # create lockfile
-        with open(lockfile, "w") as fh:
-            print(str(arrow.utcnow().timestamp), file=fh, end="")
-        # verify our input.  Hardcoding the check before importing, as opposed
-        # to expecting something else to run the check for us.
-        event_loop.run_until_complete(verify_function(context))
-        rm(basedir)
-        makedirs(basedir)
-        # create gpg homedirs
-        for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
-            source_path = os.path.join(repo_path, worker_class)
-            real_gpg_home = os.path.join(basedir, worker_class)
-            my_pub_key_path = context.cot_config['pubkey_path']
-            my_priv_key_path = context.cot_config['privkey_path']
-            if worker_config['type'] == 'flat':
-                flat_function(
-                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                    source_path, ignore_suffixes=worker_config['ignore_suffixes']
-                )
-            else:
-                trusted_path = os.path.join(source_path, "trusted")
-                untrusted_path = os.path.join(source_path, "valid")
-                signed_function(
-                    context, real_gpg_home, my_pub_key_path, my_priv_key_path,
-                    trusted_path, untrusted_path=untrusted_path,
-                    ignore_suffixes=worker_config['ignore_suffixes']
-                )
-    finally:
-        rm(lockfile)
+    # verify our input.  Hardcoding the check before importing, as opposed
+    # to expecting something else to run the check for us.
+    event_loop.run_until_complete(verify_function(context))
+    rm(basedir)
+    makedirs(basedir)
+    # create gpg homedirs
+    for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
+        source_path = os.path.join(repo_path, worker_class)
+        real_gpg_home = os.path.join(basedir, worker_class)
+        my_pub_key_path = context.cot_config['pubkey_path']
+        my_priv_key_path = context.cot_config['privkey_path']
+        if worker_config['type'] == 'flat':
+            flat_function(
+                context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                source_path, ignore_suffixes=worker_config['ignore_suffixes']
+            )
+        else:
+            trusted_path = os.path.join(source_path, "trusted")
+            untrusted_path = os.path.join(source_path, "valid")
+            signed_function(
+                context, real_gpg_home, my_pub_key_path, my_priv_key_path,
+                trusted_path, untrusted_path=untrusted_path,
+                ignore_suffixes=worker_config['ignore_suffixes']
+            )
     return basedir
 
 
@@ -1459,12 +1449,17 @@ def create_initial_gpg_homedirs():
     context, _ = get_context_from_cmdln(sys.argv[1:])
     update_logging_config(context, file_name='create_initial_gpg_homedirs.log')
     log.info("create_initial_gpg_homedirs()...")
+    if check_lockfile(context, "create_initial_gpg_homedirs"):
+        return
     makedirs(context.config['git_key_repo_dir'])
+    create_lockfile(context)
     try:
         _update_git_and_rebuild_homedirs(context)
     except ScriptWorkerException as exc:
         traceback.print_exc()
         sys.exit(exc.exit_code)
+    finally:
+        rm_lockfile(context)
 
 
 def get_tmp_base_gpg_home_dir(context):
@@ -1482,6 +1477,42 @@ def get_tmp_base_gpg_home_dir(context):
     return '{}.tmp'.format(context.config['base_gpg_home_dir'])
 
 
+def check_lockfile(context, name):
+    """Check for the lockfile.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        name (str): the name of the calling function
+
+    Returns:
+        bool: True if lockfile exists.
+    """
+    lockfile = context.config['gpg_lockfile']
+    if os.path.exists(lockfile):
+        log.warning("Skipping {}: lockfile {} exists!".format(name, lockfile))
+        return True
+
+
+def create_lockfile(context):
+    """Create the lockfile.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+    """
+    lockfile = context.config['gpg_lockfile']
+    with open(lockfile, "w") as fh:
+        print(str(arrow.utcnow().timestamp), file=fh, end="")
+
+
+def rm_lockfile(context):
+    """Remove the lockfile.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+    """
+    rm(context.config['gpg_lockfile'])
+
+
 def rebuild_gpg_homedirs():
     """Rebuild the gpg homedirs in the background.
 
@@ -1494,8 +1525,13 @@ def rebuild_gpg_homedirs():
     update_logging_config(context, file_name='rebuild_gpg_homedirs.log')
     log.info("rebuild_gpg_homedirs()...")
     basedir = get_tmp_base_gpg_home_dir(context)
+    if check_lockfile(context, "rebuild_gpg_homedirs"):
+        return
+    create_lockfile(context)
     try:
         _update_git_and_rebuild_homedirs(context, basedir=basedir)
     except ScriptWorkerException as exc:
         traceback.print_exc()
         sys.exit(exc.exit_code)
+    finally:
+        rm_lockfile(context)
