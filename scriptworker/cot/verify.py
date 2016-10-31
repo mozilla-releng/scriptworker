@@ -10,7 +10,6 @@ Attributes:
     VALID_DECISION_WORKER_TYPES (tuple): the valid `workerType`s for decision
         tasks.
 """
-import asyncio
 from contextlib import contextmanager
 from frozendict import frozendict
 import logging
@@ -83,6 +82,14 @@ class ChainOfTrust(object):
             list: the list of `task_id`s
         """
         return [x.task_id for x in self.links]
+
+    def all_tasks(self):
+        """The list of task definitions for all `self.links` + `self`
+
+        Returns:
+            list of dicts: the task definitions for all links + self
+        """
+        return [self.task] + [x.task for x in self.links]
 
     def is_try(self):
         """Helper method to determine if any task in the chain is a try task.
@@ -578,8 +585,11 @@ def verify_cot_signatures(chain):
 def verify_decision_tasks(chain, num=None):
     """
     """
-    # TODO
+    # TODO docstring
+    # TODO num of decision tasks per chain
     num = num or range(1, 3)
+    # TODO download_cot_artifacts full task graph
+    # TODO add tests for docker image -- here or in docker_worker tests?
 
 
 # build_chain_of_trust {{{1
@@ -593,3 +603,16 @@ async def build_chain_of_trust(chain):
     await download_cot(chain)
     # verify the signatures and populate the `link.cot`s
     verify_cot_signatures(chain)
+    # TODO find decision tasks; add tests
+    # TODO verify build tasks
+    # verify_task_types(chain)
+    #  - decision
+    #    - download full task graph
+    #    - verify all child tasks are part of that graph
+    #  - build
+    #  - docker-image
+    #  - signing
+    # TODO verify worker types
+    # verify_worker_types(chain)
+    # TODO trace back to tree
+    # - allowlisted repo/branch/revision
