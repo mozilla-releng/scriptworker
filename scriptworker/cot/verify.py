@@ -75,11 +75,6 @@ class ChainOfTrust(object):
         self.decision_task_id = get_decision_task_id(self.task)
         self.context = context
         self.links = []
-        # populate self.links
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(
-            build_task_dependencies(self, self.task, self.name, self.task_id)
-        )
 
     def dependent_task_ids(self):
         """Helper method to get all `task_id`s for all `LinkOfTrust` tasks.
@@ -592,6 +587,9 @@ async def build_chain_of_trust(chain):
     """
     """
     # TODO
+    # build LinkOfTrust objects
+    build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
     # download the signed chain of trust artifacts
     await download_cot(chain)
+    # verify the signatures and populate the `link.cot`s
     verify_cot_signatures(chain)
