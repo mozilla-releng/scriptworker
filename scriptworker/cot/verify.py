@@ -3,6 +3,12 @@
 
 Attributes:
     log (logging.Logger): the log object for this module.
+    SCRIPTWORKER_PROVISIONERS (tuple): the provisioner ids for all scriptworkers
+    VALID_TASK_TYPES (tuple): the valid task types (e.g., signing) for scriptworker.
+    VALID_HASH_ALGORITHMS (tuple): the valid hash algorithms (e.g., sha256) for
+        chain of trust artifact hashes.
+    VALID_DECISION_WORKER_TYPES (tuple): the valid `workerType`s for decision
+        tasks.
 """
 import asyncio
 from contextlib import contextmanager
@@ -39,12 +45,28 @@ VALID_DECISION_WORKER_TYPES = (
     'gecko-decision',
 )
 
+# TODO move these to cot_config ?
+SCRIPTWORKER_PROVISIONERS = (
+    "scriptworker-prov-v1",
+)
 
-# TODO ChainOfTrust {{{1
+SCRIPTWORKER_WORKER_TYPES = (
+    "signing-linux-v1",
+)
+
+
+# ChainOfTrust {{{1
 class ChainOfTrust(object):
+    """The master Chain of Trust, tracking all the various `LinkOfTrust`s.
+
+    Attributes:
+        name (str): the name of the current task, e.g. signing
+        task_id (str): the taskcluster task id of the current task
+        task (dict): the current task's task definition
+        decision_task_id (str): the current task's decision task id
+        context (scriptworker.context.Context): the scriptworker context
+        links (list): the list of `LinkOfTrust`s
     """
-    """
-    # TODO docstrings
     def __init__(self, context, name, task_id=None):
         self.name = name
         self.task_id = task_id or get_task_id(context.claim_task)
@@ -59,14 +81,20 @@ class ChainOfTrust(object):
         )
 
     def dependent_task_ids(self):
-        """
+        """Helper method to get all `task_id`s for all `LinkOfTrust` tasks.
+
+        Returns:
+            list: the list of `task_id`s
         """
         return [x.task_id for x in self.links]
 
     def is_try(self):
+        """Helper method to determine if any task in the chain is a try task.
+
+        Returns:
+            bool: True if a task is a try task.
         """
-        """
-        result = False
+        result = is_try(self.task)
         for link in self.links:
             if link.is_try:
                 result = True
@@ -74,7 +102,16 @@ class ChainOfTrust(object):
         return result
 
     def get_link(self, task_id):
-        """
+        """Get a `LinkOfTrust` by task id.
+
+        Args:
+            task_id (str): the task id to find.
+
+        Returns:
+            LinkOfTrust: the link matching the task id.
+
+        Raises:
+            CoTError: if no `LinkOfTrust` matches.
         """
         links = [x for x in self.links if x.task_id == task_id]
         if len(links) != 1:
@@ -82,18 +119,24 @@ class ChainOfTrust(object):
         return links[0]
 
 
-# TODO LinkOfTrust {{{1
+# LinkOfTrust {{{1
 class LinkOfTrust(object):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
+        cot_dir (str): the local path containing this link's artifacts
+        decision_task_id (str): the task_id of self.task's decision task
+        is_try (bool): whether the task is a try task
+        name (str): the name of the task (e.g., signing.decision)
+        task_id (str): the taskId of the task
+        task_type (str): the task type (e.g., build)
+        worker_class (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
-    # TODO docstrings
     _task = None
     _cot = None
     decision_task_id = None
-    worker_class = None
     task_type = None
+    worker_class = None
     # status = None  # TODO automate status going to False or True?
     # messages = []
     # errors = []
@@ -120,7 +163,11 @@ class LinkOfTrust(object):
 
     @property
     def task(self):
-        """ TODO
+        """frozendict: the task definition.
+
+        When set, the task dict is converted to a frozendict, and we also set
+        `self.decision_task_id`, `self.worker_class`, and `self.is_try` based
+        on the task definition.
         """
         return self._task
 
@@ -130,12 +177,14 @@ class LinkOfTrust(object):
         self._set('_task', frozendict(task))
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_class = guess_worker_class(self.task, self.name)
-        self.is_try = is_try(self)
+        self.is_try = is_try(self.link)
         # TODO add tests to run
 
     @property
     def cot(self):
-        """
+        """frozendict: the chain of trust json body.
+
+        When set, the chain of trust dict is converted to a frozendict.
         """
         return self._cot
 
@@ -200,10 +249,9 @@ def guess_worker_class(task, name):
 
     if task['payload'].get("image"):
         _set_worker_type("docker-worker")
-    # TODO config for these scriptworker checks?
-    if task['provisionerId'] in ("scriptworker-prov-v1", ):
+    if task['provisionerId'] in SCRIPTWORKER_PROVISIONERS:
         _set_worker_type("scriptworker")
-    if task['workerType'] in ("signing-linux-v1", ):
+    if task['workerType'] in SCRIPTWORKER_WORKER_TYPES:
         _set_worker_type("scriptworker")
 
     for scope in task['scopes']:
@@ -248,7 +296,7 @@ def _is_try_url(url):
     return False
 
 
-def is_try(link):
+def is_try(task):
     """Determine if a task is a 'try' task (restricted privs).
 
     XXX do we want this, or just do this behavior for any non-allowlisted repo?
@@ -261,13 +309,12 @@ def is_try(link):
         * `task.schedulerId` in ("gecko-level-1", )
 
     Args:
-        link (LinkOfTrust): the link to check.
+        task (dict): the task definition to check
 
     Returns:
         bool: True if it's try
     """
     result = False
-    task = link.task
     if task['payload']['env'].get("GECKO_HEAD_REPOSITORY"):
         result = result or _is_try_url(task['payload']['env']['GECKO_HEAD_REPOSITORY'])
     if task['payload']['env'].get("MH_BRANCH"):
