@@ -28,6 +28,7 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
+# constants {{{1
 # TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
 VALID_TASK_TYPES = (
     'build',
@@ -124,6 +125,7 @@ class LinkOfTrust(object):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
+        chain (ChainOfTrust): the ChainOfTrust object.
         cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
         is_try (bool): whether the task is a try task
@@ -177,7 +179,7 @@ class LinkOfTrust(object):
         self._set('_task', frozendict(task))
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_class = guess_worker_class(self.task, self.name)
-        self.is_try = is_try(self.link)
+        self.is_try = is_try(self.task)
         # TODO add tests to run
 
     @property
@@ -440,6 +442,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
             try:
                 task_defn = await chain.context.queue.task(task_id)
                 link.task = task_defn
+                link.chain = chain
                 chain.links.append(link)
                 await build_task_dependencies(chain, task_defn, task_name, task_id)
             except TaskclusterFailure as exc:
@@ -481,23 +484,22 @@ async def download_cot(chain):
     Raises:
         DownloadError: on failure.
     """
-    tasks = []
+    async_tasks = []
+    # only deal with chain.links, which are previously finished tasks with
+    # signed chain of trust artifacts.  `chain.task` is the current running
+    # task, and will not have a signed chain of trust artifact yet.
     for link in chain.links:
-        # don't try to download the current task's chain of trust artifact,
-        # which hasn't been created / uploaded yet
-        if link.task_id == chain.task_id:
-            continue
         task_id = link.task_id
         url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
-        tasks.append(
+        async_tasks.append(
             download_artifacts(
                 chain.context, [url], parent_dir=parent_dir,
                 valid_artifact_task_ids=[task_id]
             )
         )
     # XXX catch DownloadError and raise CoTError?
-    await raise_future_exceptions(tasks)
+    await raise_future_exceptions(async_tasks)
 
 
 # download_cot_artifacts {{{1
@@ -566,7 +568,8 @@ def verify_cot_signatures(chain):
         except OSError as exc:
             raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
-            # XXX remove verify_sig pref and kwarg when pubkeys are in git repo
+            # TODO remove verify_sig pref and kwarg when git repo pubkey
+            # verification works reliably!
             body = get_body(
                 gpg, contents,
                 verify_sig=chain.context.config['verify_cot_signature']
@@ -580,4 +583,15 @@ def verify_cot_signatures(chain):
 def verify_decision_tasks(chain, num=None):
     """
     """
+    # TODO
     num = num or range(1, 3)
+
+
+# build_chain_of_trust {{{1
+async def build_chain_of_trust(chain):
+    """
+    """
+    # TODO
+    # download the signed chain of trust artifacts
+    await download_cot(chain)
+    verify_cot_signatures(chain)
