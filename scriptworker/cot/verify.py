@@ -4,7 +4,6 @@
 Attributes:
     log (logging.Logger): the log object for this module.
     SCRIPTWORKER_PROVISIONERS (tuple): the provisioner ids for all scriptworkers
-    VALID_TASK_TYPES (tuple): the valid task types (e.g., signing) for scriptworker.
     VALID_HASH_ALGORITHMS (tuple): the valid hash algorithms (e.g., sha256) for
         chain of trust artifact hashes.
     VALID_DECISION_WORKER_TYPES (tuple): the valid `workerType`s for decision
@@ -28,14 +27,7 @@ log = logging.getLogger(__name__)
 
 
 # constants {{{1
-# TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
-VALID_TASK_TYPES = (
-    'build',
-    'decision',
-    'docker-image',
-    'signing',
-)
-
+# TODO move these to cot_config ?
 VALID_HASH_ALGORITHMS = (
     'sha256',
     'sha512',
@@ -45,7 +37,6 @@ VALID_DECISION_WORKER_TYPES = (
     'gecko-decision',
 )
 
-# TODO move these to cot_config ?
 SCRIPTWORKER_PROVISIONERS = (
     "scriptworker-prov-v1",
 )
@@ -283,11 +274,29 @@ def guess_task_type(name):
     task_type = parts[-1]
     if task_type.startswith('build'):
         task_type = 'build'
-    if task_type not in VALID_TASK_TYPES:
+    if task_type not in get_valid_task_types():
         raise CoTError(
             "Invalid task type for {}!".format(name)
         )
     return task_type
+
+
+# get_valid_task_types {{{1
+def get_valid_task_types():
+    """Get the valid task types, e.g. signing.
+
+    No longer a constant, due to code ordering issues.
+
+    Returns:
+        frozendict: maps the valid task types (e.g., signing) to their validation functions.
+    """
+    # TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
+    return frozendict({
+        'build': verify_build_tasks,
+        'decision': verify_decision_tasks,
+        'docker-image': verify_docker_image_tasks,
+        'signing': verify_signing_tasks,
+    })
 
 
 # is_try {{{1
@@ -587,9 +596,28 @@ def verify_decision_tasks(chain, num=None):
     """
     # TODO docstring
     # TODO num of decision tasks per chain
+    # VALID_DECISION_WORKER_TYPES
     num = num or range(1, 3)
     # TODO download_cot_artifacts full task graph
     # TODO add tests for docker image -- here or in docker_worker tests?
+
+
+def verify_build_tasks(chain):
+    """
+    """
+    pass
+
+
+def verify_docker_image_tasks(chain):
+    """
+    """
+    pass
+
+
+def verify_signing_tasks(chain):
+    """
+    """
+    pass
 
 
 # build_chain_of_trust {{{1
