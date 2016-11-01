@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+
+## [0.9.0] - 2016-11-01
 ### Added
 - `gpg_lockfile` and `last_good_git_revision_file` in config
 - `get_last_good_git_revision` and `write_last_good_git_revision` now return the last good git revision, and write it to `last_good_git_revision_file`, respectively.
