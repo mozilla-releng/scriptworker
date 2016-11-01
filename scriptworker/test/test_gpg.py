@@ -209,15 +209,9 @@ def context(tmpdir2):
     context_ = Context()
     context_.config = dict(deepcopy(DEFAULT_CONFIG))
     context_.config['gpg_lockfile'] = os.path.join(tmpdir2, 'gpg_lockfile')
-    cot_config_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        "cot_config_example.json"
-    )
     for key, value in context_.config.items():
         if key.endswith("_dir") or key in ("gpg_home", ):
             context_.config[key] = os.path.join(tmpdir2, key)
-    with open(cot_config_path) as fh:
-        context_.cot_config = json.load(fh)
     yield context_
 
 

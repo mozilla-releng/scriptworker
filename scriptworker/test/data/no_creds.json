@@ -4,5 +4,8 @@
     "artifact_dir": ".test/artifact",
     "task_log_dir": ".test/artifact/public/logs",
     "git_key_repo_dir": ".test/gpg_keys",
-    "base_gpg_home_dir": ".test/gpg"
+    "base_gpg_home_dir": ".test/gpg",
+    "git_commit_signing_pubkey_dir": ".test/pubkeys",
+    "pubkey_path": ".test/pubkey",
+    "privkey_path": ".test/privkey"
 }

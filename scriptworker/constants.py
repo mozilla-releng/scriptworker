@@ -12,6 +12,7 @@ from frozendict import frozendict
 import os
 
 # DEFAULT_CONFIG {{{1
+# When making changes to DEFAULT_CONFIG, also make changes to scriptworker.yaml.tmpl
 DEFAULT_CONFIG = frozendict({
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
@@ -26,12 +27,18 @@ DEFAULT_CONFIG = frozendict({
     }),
 
     # for download url validation.  The regexes need to define a 'filepath'.
+    # TODO remove valid_artifact_{schemes,netlocs,path_regexes,task_ids} in favor of rules
     'valid_artifact_schemes': ('https', ),
     'valid_artifact_netlocs': ('queue.taskcluster.net', ),
     'valid_artifact_path_regexes': (
         r'''^/v1/task/(?P<taskId>[^/]+)(/runs/\d+)?/artifacts/(?P<filepath>.*)$''',
     ),
     'valid_artifact_task_ids': (),
+    'valid_artifact_rules': ({
+        "schemes": ["https"],
+        "netlocs": ["queue.taskcluster.net"],
+        "path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"]
+    }, ),
 
     # Worker settings; these probably don't need tweaking
     "max_connections": 30,
@@ -47,8 +54,6 @@ DEFAULT_CONFIG = frozendict({
     "my_email": "scriptworker@example.com",
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
-    "cot_config_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json"),
-    "cot_config_path": os.path.join(os.getcwd(), "cot_config.json"),
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
@@ -79,12 +84,42 @@ DEFAULT_CONFIG = frozendict({
     "log_dir": "...",
     "artifact_dir": "...",
     "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
+    "git_commit_signing_pubkey_dir": "...",
     "artifact_expiration_hours": 24,
     "artifact_upload_timeout": 60 * 20,
     "sign_key_timeout": 60 * 2,
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
     "task_max_timeout": 60 * 20,
     "verbose": True,
+
+    # Chain of Trust verification settings
+    "git_key_repo_url": "https://github.com/mozilla-releng/cot-gpg-keys.git",
+    "verify_cot_signature": False,
+    "pubkey_path": "...",
+    "privkey_path": "...",
+    "docker_image_allowlists": frozendict({
+        "decision": [
+            "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
+        ],
+        "docker-image": [
+            "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
+        ]
+    }),
+    "gpg_homedirs": frozendict({
+        "docker-worker": {
+            "type": "flat",
+            "ignore_suffixes": [".md"]
+        },
+        "generic-worker": {
+            "type": "flat",
+            "ignore_suffixes": [".md"]
+        },
+        "scriptworker": {
+            "type": "signed",
+            "ignore_suffixes": [".md"]
+        }
+    }),
+
 })
 
 # STATUSES and REVERSED_STATUSES {{{1

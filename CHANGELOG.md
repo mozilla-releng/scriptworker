@@ -50,7 +50,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - moved `scriptworker.config.get_context_from_cmdln` out of `scriptworker.worker.main`; now using argparse
 - changed default `sign_chain_of_trust` to True
 - `scriptworker.gpg.sign_key`, `scriptworker.gpg.rebuild_gpg_home_flat`, and `scriptworker.gpg.rebuild_gpg_home_signed` are now async, so they can happen in parallel in the background
-- `rebuild_gpg_home` now allows for a `gpg_keyserver` kwarg
 - renamed `scriptworker.gpg.latest_signed_git_commit` to `scriptworker.gpg.verify_signed_git_commit_output`
 - combined `scriptworker.log.log_errors` and `scriptworker.log.read_stdout` into `scriptworker.log.pipe_to_log`
 - added `taskGroupId` to the list of default valid `taskId`s to download from.  This logic will need to change in version 0.9.0 due to the new [chain of trust dependency traversal logic](https://gist.github.com/escapewindow/a6a6944f51d4219d08284ededc65aa30)

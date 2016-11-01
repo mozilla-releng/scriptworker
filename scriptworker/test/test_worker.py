@@ -34,9 +34,14 @@ def context(tmpdir2):
     context.config['artifact_dir'] = os.path.join(tmpdir2, "artifact")
     context.config['git_key_repo_dir'] = os.path.join(tmpdir2, "gpg_keys")
     context.config['base_gpg_home_dir'] = os.path.join(tmpdir2, "base_gpg_home")
+    context.config['git_commit_signing_pubkey_dir'] = os.path.join(tmpdir2, "pubkeys")
+    context.config['pubkey_path'] = os.path.join(tmpdir2, "pubkey")
+    context.config['privkey_path'] = os.path.join(tmpdir2, "privkey")
     context.config['poll_interval'] = .1
     context.config['credential_update_interval'] = .1
-    context.cot_config = {}
+    for k, v in context.config.items():
+        if isinstance(v, frozendict):
+            context.config[k] = dict(v)
     context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
     context.poll_task_urls = {
         'queues': [{
@@ -53,14 +58,9 @@ def context(tmpdir2):
 
 # main {{{1
 def test_main(mocker, context, event_loop):
-
-    cot_path = os.path.join(os.path.dirname(__file__), "data", "cot_config.json")
-    cot_schema_path = os.path.join(os.path.dirname(__file__), "data", "cot_config_schema.json")
     config = dict(context.config)
     config['poll_interval'] = 1
     config['credential_update_interval'] = 1
-    config['cot_config_path'] = cot_path
-    config['cot_config_schema_path'] = cot_schema_path
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
     loop = mock.MagicMock()

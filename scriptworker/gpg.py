@@ -1288,7 +1288,7 @@ async def verify_signed_git_commit(context, path=None,
 
     This function calls `verify_signed_git_commit_output` to make sure the
     latest non-merge-commit commit is signed with a key that lives in
-    `context.cot_config['git_commit_signing_pubkey_dir']`.
+    `context.config['git_commit_signing_pubkey_dir']`.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1375,11 +1375,11 @@ def build_gpg_homedirs_from_repo(
     rm(basedir)
     makedirs(basedir)
     # create gpg homedirs
-    for worker_class, worker_config in context.cot_config['gpg_homedirs'].items():
+    for worker_class, worker_config in context.config['gpg_homedirs'].items():
         source_path = os.path.join(repo_path, worker_class)
         real_gpg_home = os.path.join(basedir, worker_class)
-        my_pub_key_path = context.cot_config['pubkey_path']
-        my_priv_key_path = context.cot_config['privkey_path']
+        my_pub_key_path = context.config['pubkey_path']
+        my_priv_key_path = context.config['privkey_path']
         if worker_config['type'] == 'flat':
             flat_function(
                 context, real_gpg_home, my_pub_key_path, my_priv_key_path,
@@ -1401,12 +1401,12 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
     log.info("Updating git repo")
     basedir = basedir or context.config['base_gpg_home_dir']
     makedirs(context.config['git_key_repo_dir'])
-    trusted_path = context.cot_config['git_commit_signing_pubkey_dir']
+    trusted_path = context.config['git_commit_signing_pubkey_dir']
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         rebuild_gpg_home_signed(
             context, tmp_gpg_home,
-            context.cot_config['pubkey_path'],
-            context.cot_config['privkey_path'],
+            context.config['pubkey_path'],
+            context.config['privkey_path'],
             trusted_path
         )
         overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
