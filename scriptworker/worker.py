@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 import aiohttp
-import arrow
 import asyncio
 import logging
 import os
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import get_context_from_cmdln, read_worker_creds
+from scriptworker.config import get_context_from_cmdln
 from scriptworker.cot.generate import generate_cot
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, overwrite_gpg_home
 from scriptworker.exceptions import ScriptWorkerException
@@ -67,10 +66,6 @@ async def run_loop(context, creds_key="credentials"):
             return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
-        if arrow.utcnow().timestamp - context.credentials_timestamp > context.config['credential_update_interval']:  # pragma: no branch
-            credentials = read_worker_creds(key=creds_key)
-            if credentials and credentials != context.credentials:
-                context.credentials = credentials
 
 
 async def async_main(context):
@@ -96,7 +91,7 @@ def main():
     """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
-    conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
+    conn = aiohttp.TCPConnector()
     loop = asyncio.get_event_loop()
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session

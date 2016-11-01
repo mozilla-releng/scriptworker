@@ -38,7 +38,6 @@ def context(tmpdir2):
     context.config['pubkey_path'] = os.path.join(tmpdir2, "pubkey")
     context.config['privkey_path'] = os.path.join(tmpdir2, "privkey")
     context.config['poll_interval'] = .1
-    context.config['credential_update_interval'] = .1
     for k, v in context.config.items():
         if isinstance(v, frozendict):
             context.config[k] = dict(v)
@@ -60,21 +59,15 @@ def context(tmpdir2):
 def test_main(mocker, context, event_loop):
     config = dict(context.config)
     config['poll_interval'] = 1
-    config['credential_update_interval'] = 1
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
-    loop = mock.MagicMock()
-
-    def run_until_complete(*args, **kwargs):
-        raise ScriptWorkerException("foo")
 
     async def foo(arg):
         # arg.config will be a frozendict.
         assert arg.config == frozendict(config)
         # arg.credentials will be a dict copy of a frozendict.
         assert arg.credentials == dict(creds)
-
-    loop.run_until_complete = run_until_complete
+        raise ScriptWorkerException("foo")
 
     try:
         _, tmp = tempfile.mkstemp()
@@ -83,10 +76,8 @@ def test_main(mocker, context, event_loop):
         del(config['credentials'])
         mocker.patch.object(worker, 'async_main', new=foo)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
-        with mock.patch.object(asyncio, 'get_event_loop') as p:
-            p.return_value = loop
-            with pytest.raises(ScriptWorkerException):
-                worker.main()
+        with pytest.raises(ScriptWorkerException):
+            worker.main()
     finally:
         os.remove(tmp)
 
@@ -166,29 +157,8 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert context.credentials is None
-    assert status is None
-
-
-def test_mocker_run_loop_noop_update_creds(context, successful_queue,
-                                           event_loop, mocker):
-    new_creds = {"new_creds": "true"}
-
-    def get_creds(*args, **kwargs):
-        return deepcopy(new_creds)
-
-    mocker.patch.object(worker, "find_task", new=noop_async)
-    mocker.patch.object(worker, "reclaim_task", new=noop_async)
-    mocker.patch.object(worker, "run_task", new=noop_async)
-    mocker.patch.object(worker, "generate_cot", new=noop_sync)
-    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
-    mocker.patch.object(worker, "complete_task", new=noop_async)
-    mocker.patch.object(worker, "read_worker_creds", new=get_creds)
-    context.queue = successful_queue
-    status = event_loop.run_until_complete(worker.run_loop(context))
-    assert context.credentials == new_creds
     assert status is None
 
 
@@ -222,6 +192,5 @@ def test_mocker_run_loop_exception(context, successful_queue,
     else:
         mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    mocker.patch.object(worker, "read_worker_creds", new=noop_sync)
     status = event_loop.run_until_complete(worker.run_loop(context))
     assert status == ScriptWorkerException.exit_code

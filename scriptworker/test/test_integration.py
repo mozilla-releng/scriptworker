@@ -73,7 +73,6 @@ def build_config(override, basedir):
         "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
         "gpg_use_agent": None,
         'reclaim_interval': 5,
-        'credential_update_interval': .1,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
     })
