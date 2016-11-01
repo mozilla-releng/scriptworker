@@ -398,8 +398,11 @@ def find_task_dependencies(task, name, task_id):
             path_info = m.groupdict()
             if path_info['taskId'] not in build_ids:
                 build_ids.append(path_info['taskId'])
-        for count, build_id in enumerate(build_ids):
-            dep_dict['{}:build{}'.format(name, count)] = build_id
+        if len(build_ids) > 1:
+            for count, build_id in enumerate(build_ids):
+                dep_dict['{}:build{}'.format(name, count)] = build_id
+        else:
+            dep_dict['{}:build'.format(name)] = build_id
     # XXX end hack
     if decision_task_id != task_id:
         dep_dict[decision_key] = decision_task_id
@@ -489,16 +492,16 @@ async def download_cot(chain):
         url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
         try:
-#        async_tasks.append(
-#            asyncio.ensure_future(
-            await download_artifacts(
-                    chain.context, [url], parent_dir=parent_dir,
-                    valid_artifact_task_ids=[task_id]
+            # XXX await download_artifacts(
+            async_tasks.append(
+                asyncio.ensure_future(
+                    download_artifacts(
+                        chain.context, [url], parent_dir=parent_dir,
+                        valid_artifact_task_ids=[task_id]
+                    )
                 )
-#            )
-#        )
-        # XXX catch DownloadError and raise CoTError?
-#        await raise_future_exceptions(async_tasks)
+            )
+            await raise_future_exceptions(async_tasks)
         except Exception:
             log.exception("boo")
 
