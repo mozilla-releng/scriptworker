@@ -15,7 +15,7 @@ from scriptworker.utils import makedirs, to_unicode
 log = logging.getLogger(__name__)
 
 
-def update_logging_config(context, log_name=None):
+def update_logging_config(context, log_name=None, file_name='worker.log'):
     """Update python logging settings from config.
 
     By default, this sets the `scriptworker` log settings, but this will
@@ -49,7 +49,7 @@ def update_logging_config(context, log_name=None):
 
     # Rotating log file
     makedirs(context.config['log_dir'])
-    path = os.path.join(context.config['log_dir'], 'worker.log')
+    path = os.path.join(context.config['log_dir'], file_name)
     handler = logging.handlers.RotatingFileHandler(
         path, maxBytes=context.config['log_max_bytes'],
         backupCount=context.config['log_num_backups'],

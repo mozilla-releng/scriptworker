@@ -4,6 +4,27 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+## [0.9.0] - 2016-11-01
+### Added
+- `gpg_lockfile` and `last_good_git_revision_file` in config
+- `get_last_good_git_revision` and `write_last_good_git_revision` now return the last good git revision, and write it to `last_good_git_revision_file`, respectively.
+- `get_tmp_base_gpg_home_dir` is a helper function to avoid duplication in logic.
+- `rebuild_gpg_homedirs` is a new entry point script that allows us to recreate the gpg homedirs in a tmpdir, in a separate process
+- `is_lockfile_present`, `create_lockfile`, and `rm_lockfile` as helper functions for the two gpg homedir entry points.
+
+### Changed
+- `sign_key`, `rebuild_gpg_home_flat`, `rebuild_gpg_home_signed`, `build_gpg_homedirs_from_repo` are no longer async.
+- `overwrite_gpg_home` only keeps one backup.
+- `update_signed_git_repo` now returns the latest git revision, instead of a boolean marking whether the revision is new or not.  This will help avoid the scenario where we update, fail to generate the gpg homedirs, and then stay on an old revision until the next push.
+- `update_logging_config` now takes a `file_name` kwarg, which allows us to create new log files for the `rebuild_gpg_homedirs` and `create_initial_gpg_homedirs` entry points.
+
+### Fixed
+- `build_gpg_homedirs_from_repo` now waits to verify the contents of the updated git repo before nuking the previous base gpg homedir.
+- `create_initial_gpg_homedirs` now creates a logfile
+
+### Removed
+- `rebuild_gpg_homedirs_loop` is no longer needed, and is removed.
+
 ## [0.8.2] - 2016-10-24
 ### Changed
 - logged the stacktrace if the `main` loop hits an exception.  No longer catch and ignore `RuntimeError`, since it wasn't clear why that was put in.
