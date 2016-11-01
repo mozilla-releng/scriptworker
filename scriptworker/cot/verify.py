@@ -4,8 +4,10 @@
 Attributes:
     log (logging.Logger): the log object for this module.
 """
+import asyncio
 from contextlib import contextmanager
 from frozendict import frozendict
+import json
 import logging
 import os
 import re
@@ -21,24 +23,38 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
+# TrustBase {{{1
+class TrustBase(object):
+    """Base class for ChainOfTrust and LinkOfTrust, since they had some common code.
+
+    Attributes:
+        context (scriptworker.context.Context): the scriptworker context
+        name (str): the name of the current task, e.g. signing
+        task_type (str): the task type (e.g., build)
+    """
+    def __init__(self, context, name, **kwargs):
+        self.name = name
+        self.task_type = guess_task_type(self.name)
+        self.context = context
+
+
 # ChainOfTrust {{{1
-class ChainOfTrust(object):
+class ChainOfTrust(TrustBase):
     """The master Chain of Trust, tracking all the various `LinkOfTrust`s.
 
     Attributes:
-        name (str): the name of the current task, e.g. signing
-        task_id (str): the taskcluster task id of the current task
-        task (dict): the current task's task definition
-        decision_task_id (str): the current task's decision task id
         context (scriptworker.context.Context): the scriptworker context
+        cot_dir (str): the local path containing this link's artifacts
+        decision_task_id (str): the task_id of self.task's decision task
         links (list): the list of `LinkOfTrust`s
+        name (str): the name of the task (e.g., signing.decision)
+        task_id (str): the taskId of the task
     """
     def __init__(self, context, name, task_id=None):
-        self.name = name
+        super(ChainOfTrust, self).__init__(context, name)
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
         self.decision_task_id = get_decision_task_id(self.task)
-        self.context = context
         self.links = []
 
     def dependent_task_ids(self):
@@ -89,7 +105,7 @@ class ChainOfTrust(object):
 
 
 # LinkOfTrust {{{1
-class LinkOfTrust(object):
+class LinkOfTrust(TrustBase):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
@@ -100,24 +116,14 @@ class LinkOfTrust(object):
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
-        task_type (str): the task type (e.g., build)
         worker_class (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
     _task = None
     _cot = None
-    decision_task_id = None
-    task_type = None
-    worker_class = None
-    # status = None  # TODO automate status going to False or True?
-    # messages = []
-    # errors = []
-    # tests_to_run = []
-    # tests_completed = []
+    status = None
 
     def __init__(self, context, name, task_id):
-        self.name = name
-        self.context = context
-        self.task_type = guess_task_type(self.name)
+        super(LinkOfTrust, self).__init__(context, name)
         self.task_id = task_id
         self.cot_dir = os.path.join(
             context.config['artifact_dir'], 'cot', self.task_id
@@ -148,7 +154,7 @@ class LinkOfTrust(object):
         freeze_values(task)
         self._set('_task', frozendict(task))
         self.decision_task_id = get_decision_task_id(self.task)
-        self.worker_class = guess_worker_class(self.task, self.name)
+        self.worker_class = guess_worker_class(self)
         self.is_try = is_try(self.task)
         # TODO add tests to run
 
@@ -192,7 +198,7 @@ def audit_log_handler(context):
 
 
 # guess_worker_class {{{1
-def guess_worker_class(task, name):
+def guess_worker_class(link):
     """Given a task, determine which worker class it was run on.
 
     Currently there are no task markers for generic-worker and
@@ -203,8 +209,7 @@ def guess_worker_class(task, name):
     * check for scopes beginning with the worker type name.
 
     Args:
-        task (dict): the task definition to check.
-        name (str): the name of the task, used for error message strings.
+        link (LinkOfTrust): the link to check.
 
     Returns:
         str: the worker type.
@@ -213,6 +218,8 @@ def guess_worker_class(task, name):
         CoTError: on inability to determine the worker type
     """
     worker_type = {'worker_type': None}
+    task = link.task
+    name = link.name
 
     def _set_worker_type(wt):
         if worker_type['worker_type'] is not None and worker_type['worker_type'] != wt:
@@ -221,9 +228,9 @@ def guess_worker_class(task, name):
 
     if task['payload'].get("image"):
         _set_worker_type("docker-worker")
-    if task['provisionerId'] in task.context.config['scriptworker_provisioners']:
+    if task['provisionerId'] in link.context.config['scriptworker_provisioners']:
         _set_worker_type("scriptworker")
-    if task['workerType'] in task.context.config['scriptworker_worker_types']:
+    if task['workerType'] in link.context.config['scriptworker_worker_types']:
         _set_worker_type("scriptworker")
 
     for scope in task['scopes']:
@@ -454,10 +461,11 @@ def get_artifact_url(context, task_id, path):
     """
     url = urljoin(
         context.queue.options['baseUrl'],
-        context.queue.makeRoute('getLatestArtifact', replDict={
+        'v1/' +
+        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
             'taskId': task_id,
             'name': 'public/chainOfTrust.json.asc'
-        })
+        }))
     )
     return url
 
@@ -480,15 +488,19 @@ async def download_cot(chain):
         task_id = link.task_id
         url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
-        async_tasks.append(
-            download_artifacts(
-                chain.context, [url], parent_dir=parent_dir,
-                valid_artifact_task_ids=[task_id]
-            )
-        )
-    # XXX catch DownloadError and raise CoTError?
-    await raise_future_exceptions(async_tasks)
-
+        try:
+#        async_tasks.append(
+#            asyncio.ensure_future(
+            await download_artifacts(
+                    chain.context, [url], parent_dir=parent_dir,
+                    valid_artifact_task_ids=[task_id]
+                )
+#            )
+#        )
+        # XXX catch DownloadError and raise CoTError?
+#        await raise_future_exceptions(async_tasks)
+        except Exception:
+            log.exception("boo")
 
 # download_cot_artifacts {{{1
 async def download_cot_artifacts(chain, task_id, paths):
@@ -554,7 +566,9 @@ def verify_cot_signatures(chain):
             with open(path, "r") as fh:
                 contents = fh.read()
         except OSError as exc:
-            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
+            log.warning("{} {} missing cot!".format(link.name, link.task_id))
+            continue
+#            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
             # TODO remove verify_sig pref and kwarg when git repo pubkey
             # verification works reliably!
@@ -564,7 +578,7 @@ def verify_cot_signatures(chain):
             )
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
-        link.cot = body
+        link.cot = json.loads(body)
 
 
 # verify_*_tasks {{{1
@@ -582,24 +596,29 @@ def verify_decision_tasks(chain, num=None):
 def verify_build_tasks(chain):
     """
     """
+    # TODO
     pass
 
 
 def verify_docker_image_tasks(chain):
     """
     """
+    # TODO
     pass
 
 
 def verify_signing_tasks(chain):
     """
     """
+    # TODO
     pass
 
 
 def verify_task_types(chain):
     """
     """
+    # TODO
+    pass
 
 
 # build_chain_of_trust {{{1
@@ -608,7 +627,7 @@ async def build_chain_of_trust(chain):
     """
     # TODO
     # build LinkOfTrust objects
-    build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+    await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
     # download the signed chain of trust artifacts
     await download_cot(chain)
     # verify the signatures and populate the `link.cot`s
