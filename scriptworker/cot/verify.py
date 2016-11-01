@@ -3,11 +3,6 @@
 
 Attributes:
     log (logging.Logger): the log object for this module.
-    SCRIPTWORKER_PROVISIONERS (tuple): the provisioner ids for all scriptworkers
-    VALID_HASH_ALGORITHMS (tuple): the valid hash algorithms (e.g., sha256) for
-        chain of trust artifact hashes.
-    VALID_DECISION_WORKER_TYPES (tuple): the valid `workerType`s for decision
-        tasks.
 """
 from contextlib import contextmanager
 from frozendict import frozendict
@@ -24,26 +19,6 @@ from scriptworker.utils import get_hash, makedirs, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
-
-
-# constants {{{1
-# TODO move these to cot_config ?
-VALID_HASH_ALGORITHMS = (
-    'sha256',
-    'sha512',
-)
-
-VALID_DECISION_WORKER_TYPES = (
-    'gecko-decision',
-)
-
-SCRIPTWORKER_PROVISIONERS = (
-    "scriptworker-prov-v1",
-)
-
-SCRIPTWORKER_WORKER_TYPES = (
-    "signing-linux-v1",
-)
 
 
 # ChainOfTrust {{{1
@@ -119,6 +94,7 @@ class LinkOfTrust(object):
 
     Attributes:
         chain (ChainOfTrust): the ChainOfTrust object.
+        context (scriptworker.context.Context): the scriptworker context
         cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
         is_try (bool): whether the task is a try task
@@ -140,6 +116,7 @@ class LinkOfTrust(object):
 
     def __init__(self, context, name, task_id):
         self.name = name
+        self.context = context
         self.task_type = guess_task_type(self.name)
         self.task_id = task_id
         self.cot_dir = os.path.join(
@@ -244,9 +221,9 @@ def guess_worker_class(task, name):
 
     if task['payload'].get("image"):
         _set_worker_type("docker-worker")
-    if task['provisionerId'] in SCRIPTWORKER_PROVISIONERS:
+    if task['provisionerId'] in task.context.config['scriptworker_provisioners']:
         _set_worker_type("scriptworker")
-    if task['workerType'] in SCRIPTWORKER_WORKER_TYPES:
+    if task['workerType'] in task.context.config['scriptworker_worker_types']:
         _set_worker_type("scriptworker")
 
     for scope in task['scopes']:
@@ -543,7 +520,7 @@ async def download_cot_artifacts(chain, task_id, paths):
         full_path = os.path.join(link.cot_dir, path)
         full_paths.append(full_path)
         for alg, expected_sha in link.cot['artifacts'][path].items():
-            if alg not in VALID_HASH_ALGORITHMS:
+            if alg not in chain.context.config['valid_hash_algorithms']:
                 raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
             real_sha = get_hash(full_path, hash_alg=alg)
             if expected_sha != real_sha:
@@ -590,7 +567,7 @@ def verify_cot_signatures(chain):
         link.cot = body
 
 
-# verify_decision_tasks {{{1
+# verify_*_tasks {{{1
 def verify_decision_tasks(chain, num=None):
     """
     """
@@ -618,6 +595,11 @@ def verify_signing_tasks(chain):
     """
     """
     pass
+
+
+def verify_task_types(chain):
+    """
+    """
 
 
 # build_chain_of_trust {{{1

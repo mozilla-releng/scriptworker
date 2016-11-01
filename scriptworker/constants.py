@@ -89,6 +89,8 @@ DEFAULT_CONFIG = frozendict({
         "netlocs": ["queue.taskcluster.net"],
         "path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"]
     }, ),
+
+    # docker image shas
     "docker_image_allowlists": frozendict({
         "decision": [
             "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
@@ -97,6 +99,7 @@ DEFAULT_CONFIG = frozendict({
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
         ]
     }),
+    # git gpg homedir layout
     "gpg_homedirs": frozendict({
         "docker-worker": {
             "type": "flat",
@@ -111,6 +114,22 @@ DEFAULT_CONFIG = frozendict({
             "ignore_suffixes": [".md"]
         }
     }),
+    # scriptworker identification
+    "scriptworker_worker_types": (
+        "signing-linux-v1",
+    ),
+    "scriptworker_provisioners": (
+        "scriptworker-prov-v1",
+    ),
+    # valid hash algorithms for chain of trust artifacts
+    "valid_hash_algorithms": (
+        "sha256",
+        "sha512",
+    ),
+    # decision worker types
+    "valid_decision_worker_types": (
+        "gecko-decision",
+    ),
 
 })
 
