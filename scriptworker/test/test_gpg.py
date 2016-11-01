@@ -921,5 +921,5 @@ def test_write_last_good_git_revision_exception(context, mocker):
         raise OSError("blah")
 
     mocker.patch.object(sgpg, "open", new=boom)
-    with pytest.raises(ScriptWorkerGPGException):
+    with pytest.raises(OSError):
         sgpg.write_last_good_git_revision(context, "foo")

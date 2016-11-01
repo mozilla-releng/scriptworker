@@ -1337,20 +1337,14 @@ def write_last_good_git_revision(context, revision):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         revision (str): the last good git revision
-
-    Raises:
-        ScriptWorkerGPGException: on failure
     """
     log.info(
         "writing last_good_git_revision {} to {}...".format(
             revision, context.config['last_good_git_revision_file']
         )
     )
-    try:
-        with open(context.config['last_good_git_revision_file'], "w") as fh:
-            print(revision, file=fh, end='')
-    except OSError as exc:
-        raise ScriptWorkerGPGException(str(exc))
+    with open(context.config['last_good_git_revision_file'], "w") as fh:
+        fh.write(revision)
 
 
 # build gpg homedirs from repo {{{1
@@ -1449,7 +1443,7 @@ def create_initial_gpg_homedirs():
     context, _ = get_context_from_cmdln(sys.argv[1:])
     update_logging_config(context, file_name='create_initial_gpg_homedirs.log')
     log.info("create_initial_gpg_homedirs()...")
-    if check_lockfile(context, "create_initial_gpg_homedirs"):
+    if is_lockfile_present(context, "create_initial_gpg_homedirs"):
         return
     makedirs(context.config['git_key_repo_dir'])
     create_lockfile(context)
@@ -1477,7 +1471,7 @@ def get_tmp_base_gpg_home_dir(context):
     return '{}.tmp'.format(context.config['base_gpg_home_dir'])
 
 
-def check_lockfile(context, name):
+def is_lockfile_present(context, name):
     """Check for the lockfile.
 
     Args:
@@ -1491,6 +1485,7 @@ def check_lockfile(context, name):
     if os.path.exists(lockfile):
         log.warning("Skipping {}: lockfile {} exists!".format(name, lockfile))
         return True
+    return False
 
 
 def create_lockfile(context):
@@ -1525,7 +1520,7 @@ def rebuild_gpg_homedirs():
     update_logging_config(context, file_name='rebuild_gpg_homedirs.log')
     log.info("rebuild_gpg_homedirs()...")
     basedir = get_tmp_base_gpg_home_dir(context)
-    if check_lockfile(context, "rebuild_gpg_homedirs"):
+    if is_lockfile_present(context, "rebuild_gpg_homedirs"):
         return
     create_lockfile(context)
     try:

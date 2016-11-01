@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `get_last_good_git_revision` and `write_last_good_git_revision` now return the last good git revision, and write it to `last_good_git_revision_file`, respectively.
 - `get_tmp_base_gpg_home_dir` is a helper function to avoid duplication in logic.
 - `rebuild_gpg_homedirs` is a new entry point script that allows us to recreate the gpg homedirs in a tmpdir, in a separate process
-- `check_lockfile`, `create_lockfile`, and `rm_lockfile` as helper functions for the two gpg homedir entry points.
+- `is_lockfile_present`, `create_lockfile`, and `rm_lockfile` as helper functions for the two gpg homedir entry points.
 
 ### Changed
 - `sign_key`, `rebuild_gpg_home_flat`, `rebuild_gpg_home_signed`, `build_gpg_homedirs_from_repo` are no longer async.
