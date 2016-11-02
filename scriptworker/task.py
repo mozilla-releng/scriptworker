@@ -67,15 +67,27 @@ def get_run_id(claim_task):
 
 # get_decision_task_id {{{1
 def get_decision_task_id(task):
-    """Given a claim_task json dict, return the decision taskId.
+    """Given a task dict, return the decision taskId.
 
     Args:
-        claim_task (dict): the claim_task dict.
+        task (dict): the task dict.
 
     Returns:
         str: the taskId.
     """
     return task['taskGroupId']
+
+
+def get_worker_type(task):
+    """Given a task dict, return the workerType.
+
+    Args:
+        task (dict): the task dict.
+
+    Returns:
+        str: the workerType.
+    """
+    return task['workerType']
 
 
 # run_task {{{1

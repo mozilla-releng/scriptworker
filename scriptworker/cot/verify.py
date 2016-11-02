@@ -16,7 +16,7 @@ from scriptworker.config import freeze_values
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
-from scriptworker.task import download_artifacts, get_decision_task_id, get_task_id
+from scriptworker.task import download_artifacts, get_decision_task_id, get_worker_type, get_task_id
 from scriptworker.utils import get_hash, makedirs, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
@@ -113,7 +113,7 @@ class LinkOfTrust(object):
         self.context = context
         self.task_id = task_id
         self.cot_dir = os.path.join(
-            context.config['artifact_dir'], 'cot', self.task_id
+            context.config['artifact_dir'], 'public', 'cot', self.task_id
         )
 
     def _set(self, prop_name, value):
@@ -143,6 +143,7 @@ class LinkOfTrust(object):
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
         self.is_try = is_try(self.task)
+        # TODO write task json to cot_dir ?
 
     @property
     def cot(self):
@@ -578,10 +579,16 @@ async def verify_decision_tasks(chain, link):
     Raises:
         CoTError: on chain of trust verification error.
     """
-    log.info("verify_decision_tasks {}".format(link.name))
-    # VALID_DECISION_WORKER_TYPES
-    # TODO download_cot_artifacts full task graph
-    #    - verify all child tasks are part of that graph
+    messages = []
+    worker_type = get_worker_type(link.task)
+    if worker_type not in chain.context.config['valid_decision_worker_types']:
+        messages.append("{} is not a valid decision workerType!".format(worker_type))
+    paths = await download_cot_artifacts(chain, link.task_id, ["public/full-task-graph.json"])
+    with open(paths[0], "r") as fh:
+        link.full_task_graph = json.load(fh)
+    # TODO - verify all child tasks are part of that graph
+    if messages:
+        raise CoTError("\n".join(messages))
 
 
 # TODO verify_build_tasks {{{1
@@ -589,7 +596,7 @@ async def verify_build_tasks(chain, obj):
     """
     """
     # TODO
-    log.info("verify_build_tasks {}".format(obj.name))
+    pass
 
 
 # TODO verify_docker_image_tasks {{{1
@@ -597,7 +604,7 @@ async def verify_docker_image_tasks(chain, obj):
     """
     """
     # TODO
-    log.info("verify_docker_image_tasks {}".format(obj.name))
+    pass
 
 
 # TODO verify_signing_tasks {{{1
@@ -605,7 +612,7 @@ async def verify_signing_tasks(chain, obj):
     """
     """
     # TODO
-    log.info("verify_signing_tasks {}".format(obj.name))
+    pass
 
 
 def check_num_tasks(chain, task_count):
@@ -636,6 +643,7 @@ async def verify_task_types(chain):
     task_count = {}
     for obj in [chain] + chain.links:
         task_type = guess_task_type(obj.name)
+        log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
         task_count.setdefault(task_type, 0)
         task_count[task_type] += 1
         # Run tests synchronously for now.  We can parallelize if efficiency
