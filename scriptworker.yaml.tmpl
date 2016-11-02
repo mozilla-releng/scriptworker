@@ -1,0 +1,149 @@
+#-----------------------------------------------------------------------------------------------
+# Taskcluster worker settings.
+# For development, keep the test-dummy-* and dummy-worker-* convention.
+# In production, follow the production conventions.
+#-----------------------------------------------------------------------------------------------
+provisioner_id: test-dummy-provisioner
+worker_group: test-dummy-workers
+worker_type: dummy-worker-myname
+
+# worker_id will default to env['SCRIPTWORKER_WORKER_ID'] if not set, for CloudOps deployment.
+# We may be able to remove that default if we don't use CloudOps deployment for scriptworker
+# instances.
+worker_id: dummy-worker-myname1
+
+
+#-----------------------------------------------------------------------------------------------
+# Taskcluster credentials.
+# Uncomment and edit to specify the taskcluster credentials here.
+# Taskcluster credentials can also be set in secrets.json, $HOME/.scriptworker,
+# /etc/.scriptworker, or the environment variables TASKCLUSTER_ACCESS_TOKEN,
+# TASKCLUSTER_CLIENT_ID, and TASKCLUSTER_CERITIFICATE.
+#-----------------------------------------------------------------------------------------------
+# credentials:
+#    clientId: ...
+#    accessToken: ...
+#    certificate: ...
+
+#-----------------------------------------------------------------------------------------------
+# Task configs
+#-----------------------------------------------------------------------------------------------
+artifact_expiration_hours: 24
+
+# The timeouts are in seconds.
+artifact_upload_timeout: 1200
+task_max_timeout: 1200
+
+# This is the command line to execute the task.
+task_script: ["bash", "-c", "echo foo && sleep 19 && exit 1"]
+
+# debug logging?
+verbose: true
+
+# In tier 1 production, these should all be true.
+sign_chain_of_trust: false
+verify_chain_of_trust: false
+verify_cot_signature: false
+
+
+#-----------------------------------------------------------------------------------------------
+# Scriptworker paths.
+#-----------------------------------------------------------------------------------------------
+# Scriptworker logs go here; this is a long-lived directory.
+log_dir: "/tmp/log"
+
+# work_dir and artifact_dir will be nuked before every task run.
+work_dir: "/tmp/work"
+artifact_dir: "/tmp/artifact"
+
+# task_log_dir should be a subdirectory of artifact_dir; its relative path will be the same
+# as the log artifacts in taskcluster (i.e., public/logs).
+# Set this to private/... if the logs shouldn't be publicly visible.
+task_log_dir: "/tmp/artifact/public/logs"
+
+
+#-----------------------------------------------------------------------------------------------
+# GPG and git settings.
+# These must be set, but they're not used if sign_chain_of_trust, verify_chain_of_trust,
+# and verify_cot_signature are all false.
+#-----------------------------------------------------------------------------------------------
+# the gpg home directories are built as subdirectories of base_gpg_home_dir.
+base_gpg_home_dir: "/tmp/gpg"
+
+# this lockfile prevents multiple rebuild-gpg-homedir processes from clobbering each other
+gpg_lockfile: "/tmp/gpg_homedir.lock"
+
+# the git_key_repo_url is cloned into git_key_repo_dir.
+git_key_repo_dir: "/tmp/key_repo"
+
+# Uncomment and edit to override the default url.  This shouldn't be necessary unless you're
+# testing changes to the chain of trust.
+# git_key_repo_url: "https://github.com/mozilla-releng/cot-gpg-keys.git"
+
+# this directory holds pubkeys that are allowed to sign git commits in the git_key_repo_url
+git_commit_signing_pubkey_dir: "/tmp/valid_git_fingerprints/"
+last_good_git_revision_file: "/tmp/git_revision"
+# this scriptworker's public and private gpg keys
+pubkey_path: "/tmp/my_pubkey.asc"
+privkey_path: "/tmp/my_privkey.asc"
+# the path to the gpg executable
+gpg_path: gpg
+# the email of this scriptworker instance, used for gpg
+my_email: "scriptworker@example.com"
+
+
+#-----------------------------------------------------------------------------------------------
+# Valid artifact rules.
+# This is a list of dictionaries.  Each dictionary specifies schemes, netlocs, and path_regexes.
+# All valid artifact downloads should match these.  `filepath` must be specified in the
+# path_regexes.
+#
+# If `taskId` is specified in the path_regex, it must be in task.dependencies, the decision task,
+# or an upstream chain of trust task.
+#-----------------------------------------------------------------------------------------------
+# valid_artifact_rules:
+#     netlocs:
+#         - queue.taskcluster.net
+#     path_regexes:
+#         - "^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"
+#     schemes:
+#         - https
+
+
+
+#-----------------------------------------------------------------------------------------------
+# These are allowlists for docker images that are based in docker hub.
+#-----------------------------------------------------------------------------------------------
+# docker_image_allowlists:
+#     decision:
+#         - "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
+#     docker-image:
+#         - "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
+
+
+#-----------------------------------------------------------------------------------------------
+# gpg_homedirs specifies the layout of cot-gpg-keys.git
+# Each key is a top level directory.
+#
+# `type: flat` means scriptworker will sign each pubkey after importing, making them valid.
+#
+# `type: signed` means scriptworker will sign and trust each pubkey in the `trusted`
+# subdirectory, then import the pubkeys in the `valid` subdirectory without trusting or signing.
+# The expectation is one of the keys in the `trusted` subdirectory has already signed the keys
+# in the `valid` subdirectory.
+#
+# `ignore_suffixes` is a list of file suffixes to ignore when importing keys.
+#-----------------------------------------------------------------------------------------------
+# gpg_homedirs:
+#     docker-worker:
+#         type: flat
+#         ignore_suffixes:
+#             - .md
+#     generic-worker:
+#         type: flat
+#         ignore_suffixes:
+#             - .md
+#     scriptworker:
+#         type: signed
+#         ignore_suffixes:
+#             - .md

@@ -12,6 +12,7 @@ reqs = [
     "jsonschema",
     "pexpect",
     "python-gnupg",
+    "PyYAML",
     "taskcluster",
     "virtualenv",
 ]

@@ -115,26 +115,6 @@ def test_create_config_good(t_config):
     assert isinstance(generated_creds, frozendict)
 
 
-# create_cot_config {{{1
-def test_create_cot_config(t_config):
-    context = mock.MagicMock()
-    context.config = t_config
-    context.config['cot_config_path'] = os.path.join(
-        os.path.dirname(__file__), "data", "cot_config.json"
-    )
-    context.config['cot_config_schema_path'] = os.path.join(
-        os.path.dirname(__file__), "data", "cot_config_schema.json"
-    )
-    assert config.create_cot_config(context) == frozendict({"foo": "bar"})
-
-
-def test_create_cot_config_exception(t_config):
-    context = mock.MagicMock()
-    context.config = t_config
-    with pytest.raises(SystemExit):
-        config.create_cot_config(context)
-
-
 # credentials {{{1
 def test_bad_worker_creds():
     path = os.path.join(os.path.dirname(__file__), "data", "good.json")
@@ -181,10 +161,9 @@ def test_get_context_from_cmdln(t_config):
     def noop(*args, **kwargs):
         pass
 
-    with mock.patch.object(config, "create_cot_config", new=noop):
-        context, credentials = config.get_context_from_cmdln([path])
-        assert credentials == expected_creds
-        assert context.config == expected_config
+    context, credentials = config.get_context_from_cmdln([path])
+    assert credentials == expected_creds
+    assert context.config == expected_config
 
 
 @pytest.mark.parametrize("args", ([

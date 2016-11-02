@@ -6,6 +6,7 @@ import aiohttp
 import arrow
 from contextlib import contextmanager
 from copy import deepcopy
+from frozendict import frozendict
 import json
 import os
 import pytest
@@ -51,6 +52,9 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
 def build_config(override, basedir):
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = dict(deepcopy(DEFAULT_CONFIG))
+    for k, v in config.items():
+        if isinstance(v, frozendict):
+            config[k] = dict(v)
     GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
     config.update({
         'log_dir': os.path.join(basedir, "log"),
