@@ -102,7 +102,7 @@ class LinkOfTrust(object):
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
-        worker_class (str): the taskcluster worker class (e.g., docker-worker) of the task
+        worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
     _task = None
     _cot = None
@@ -131,7 +131,7 @@ class LinkOfTrust(object):
         """frozendict: the task definition.
 
         When set, the task dict is converted to a frozendict, and we also set
-        `self.decision_task_id`, `self.worker_class`, and `self.is_try` based
+        `self.decision_task_id`, `self.worker_impl`, and `self.is_try` based
         on the task definition.
         """
         return self._task
@@ -141,7 +141,7 @@ class LinkOfTrust(object):
         freeze_values(task)
         self._set('_task', frozendict(task))
         self.decision_task_id = get_decision_task_id(self.task)
-        self.worker_class = guess_worker_class(self)
+        self.worker_impl = guess_worker_impl(self)
         self.is_try = is_try(self.task)
 
     @property
@@ -182,9 +182,9 @@ def audit_log_handler(context):
     log.removeHandler(audit_handler)
 
 
-# guess_worker_class {{{1
-def guess_worker_class(link):
-    """Given a task, determine which worker class it was run on.
+# guess_worker_impl {{{1
+def guess_worker_impl(link):
+    """Given a task, determine which worker implementation (e.g., docker-worker) it was run on.
 
     Currently there are no task markers for generic-worker and
     taskcluster-worker hasn't been rolled out.  Those need to be populated here
@@ -200,31 +200,31 @@ def guess_worker_class(link):
         str: the worker type.
 
     Raises:
-        CoTError: on inability to determine the worker type
+        CoTError: on inability to determine the worker implementation
     """
-    worker_type = {'worker_type': None}
+    worker_impl = {'worker_impl': None}
     task = link.task
     name = link.name
 
-    def _set_worker_type(wt):
-        if worker_type['worker_type'] is not None and worker_type['worker_type'] != wt:
-            raise CoTError("guess_worker_class: {} was {} and now looks like {}!\n{}".format(name, worker_type['worker_type'], wt, task))
-        worker_type['worker_type'] = wt
+    def _set_worker_impl(wt):
+        if worker_impl['worker_impl'] is not None and worker_impl['worker_impl'] != wt:
+            raise CoTError("guess_worker_impl: {} was {} and now looks like {}!\n{}".format(name, worker_impl['worker_impl'], wt, task))
+        worker_impl['worker_impl'] = wt
 
     if task['payload'].get("image"):
-        _set_worker_type("docker-worker")
+        _set_worker_impl("docker-worker")
     if task['provisionerId'] in link.context.config['scriptworker_provisioners']:
-        _set_worker_type("scriptworker")
-    if task['workerType'] in link.context.config['scriptworker_worker_types']:
-        _set_worker_type("scriptworker")
+        _set_worker_impl("scriptworker")
+    if task['workerType'] in link.context.config['scriptworker_worker_impls']:
+        _set_worker_impl("scriptworker")
 
     for scope in task['scopes']:
         if scope.startswith("docker-worker:"):
-            _set_worker_type("docker-worker")
+            _set_worker_impl("docker-worker")
 
-    if worker_type['worker_type'] is None:
-        raise CoTError("guess_worker_class: can't find a type for {}!\n{}".format(name, task))
-    return worker_type['worker_type']
+    if worker_impl['worker_impl'] is None:
+        raise CoTError("guess_worker_impl: can't find a type for {}!\n{}".format(name, task))
+    return worker_impl['worker_impl']
 
 
 def guess_task_type(name):
@@ -547,7 +547,7 @@ def verify_cot_signatures(chain):
         gpg = GPG(
             chain.context,
             gpg_home=os.path.join(
-                chain.context.config['base_gpg_home_dir'], link.worker_class
+                chain.context.config['base_gpg_home_dir'], link.worker_impl
             )
         )
         try:
@@ -567,19 +567,24 @@ def verify_cot_signatures(chain):
         link.cot = json.loads(body)
 
 
-# verify_*_tasks {{{1
-async def verify_decision_tasks(chain, obj, num=None):
+# verify_decision_tasks {{{1
+async def verify_decision_tasks(chain, link):
+    """Verify decision tasks in the chain.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
+
+    Raises:
+        CoTError: on chain of trust verification error.
     """
-    """
-    log.info("verify_decision_tasks {}".format(obj.name))
-    # TODO docstring
-    # TODO num of decision tasks per chain
+    log.info("verify_decision_tasks {}".format(link.name))
     # VALID_DECISION_WORKER_TYPES
-    num = num or range(1, 3)
     # TODO download_cot_artifacts full task graph
-    # TODO add tests for docker image -- here or in docker_worker tests?
+    #    - verify all child tasks are part of that graph
 
 
+# TODO verify_build_tasks {{{1
 async def verify_build_tasks(chain, obj):
     """
     """
@@ -587,6 +592,7 @@ async def verify_build_tasks(chain, obj):
     log.info("verify_build_tasks {}".format(obj.name))
 
 
+# TODO verify_docker_image_tasks {{{1
 async def verify_docker_image_tasks(chain, obj):
     """
     """
@@ -594,6 +600,7 @@ async def verify_docker_image_tasks(chain, obj):
     log.info("verify_docker_image_tasks {}".format(obj.name))
 
 
+# TODO verify_signing_tasks {{{1
 async def verify_signing_tasks(chain, obj):
     """
     """
@@ -601,19 +608,40 @@ async def verify_signing_tasks(chain, obj):
     log.info("verify_signing_tasks {}".format(obj.name))
 
 
+def check_num_tasks(chain, task_count):
+    """
+    """
+    messages = []
+    # hardcode for now.  If we need a different set of constraints, either
+    # go by cot_product settings or by task_count['docker-image'] + 1
+    min_decision_tasks = 1
+    max_decision_tasks = 2
+    if task_count['decision'] < min_decision_tasks:
+        messages.append("{} decision tasks; we must have at least {}!".format(
+            task_count['decision'], min_decision_tasks
+        ))
+    elif task_count['decision'] > max_decision_tasks:
+        messages.append("{} decision tasks; we must have at most {}!".format(
+            task_count['decision'], max_decision_tasks
+        ))
+    if messages:
+        raise CoTError('\n'.join(messages))
+
+
+# verify_task_types {{{1
 async def verify_task_types(chain):
     """
     """
     valid_task_types = get_valid_task_types()
-    async_tasks = []
+    task_count = {}
     for obj in [chain] + chain.links:
         task_type = guess_task_type(obj.name)
-        async_tasks.append(
-            asyncio.ensure_future(
-                valid_task_types[task_type](chain, obj)
-            )
-        )
-    await raise_future_exceptions(async_tasks)
+        task_count.setdefault(task_type, 0)
+        task_count[task_type] += 1
+        # Run tests synchronously for now.  We can parallelize if efficiency
+        # is more important than a single simple logfile.
+        await valid_task_types[task_type](chain, obj)
+    return task_count
 
 
 # build_chain_of_trust {{{1
@@ -621,22 +649,22 @@ async def build_chain_of_trust(chain):
     """
     """
     # TODO
-    # build LinkOfTrust objects
-    await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-    # download the signed chain of trust artifacts
-    await download_cot(chain)
-    # verify the signatures and populate the `link.cot`s
-    verify_cot_signatures(chain)
-    # TODO find decision tasks; add tests
-    # TODO verify build tasks
-    await verify_task_types(chain)
-    #  - decision
-    #    - download full task graph
-    #    - verify all child tasks are part of that graph
-    #  - build
-    #  - docker-image
-    #  - signing
-    # TODO verify worker types
-    # verify_worker_types(chain)
-    # TODO trace back to tree
-    # - allowlisted repo/branch/revision
+    with audit_log_handler(chain.context):
+        try:
+            # build LinkOfTrust objects
+            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+            # download the signed chain of trust artifacts
+            await download_cot(chain)
+            # verify the signatures and populate the `link.cot`s
+            verify_cot_signatures(chain)
+            task_count = await verify_task_types(chain)
+            check_num_tasks(chain, task_count)
+            # TODO verify worker types
+            # verify_worker_types(chain)
+            # TODO add tests for docker image -- either in sha whitelist or trace to
+            #   docker image task in chain
+            # TODO trace back to tree
+            # - allowlisted repo/branch/revision
+        except KeyError:
+            log.critical("Chain of Trust verification error!", exc_info=True)
+            raise

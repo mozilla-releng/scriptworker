@@ -1379,9 +1379,9 @@ def build_gpg_homedirs_from_repo(
     rm(basedir)
     makedirs(basedir)
     # create gpg homedirs
-    for worker_class, worker_config in context.config['gpg_homedirs'].items():
-        source_path = os.path.join(repo_path, worker_class)
-        real_gpg_home = os.path.join(basedir, worker_class)
+    for worker_impl, worker_config in context.config['gpg_homedirs'].items():
+        source_path = os.path.join(repo_path, worker_impl)
+        real_gpg_home = os.path.join(basedir, worker_impl)
         my_pub_key_path = context.config['pubkey_path']
         my_priv_key_path = context.config['privkey_path']
         if worker_config['type'] == 'flat':
