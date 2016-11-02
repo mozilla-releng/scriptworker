@@ -101,23 +101,24 @@ my_email: "scriptworker@example.com"
 # If `taskId` is specified in the path_regex, it must be in task.dependencies, the decision task,
 # or an upstream chain of trust task.
 #-----------------------------------------------------------------------------------------------
-# valid_artifact_rules: [{
-#     "schemes": ["https"],
-#     "netlocs": ["queue.taskcluster.net"],
-#     "path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"]
-# }]
+# valid_artifact_rules:
+#     netlocs:
+#         - queue.taskcluster.net
+#     path_regexes:
+#         - "^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"
+#     schemes:
+#         - https
+
 
 
 #-----------------------------------------------------------------------------------------------
 # These are allowlists for docker images that are based in docker hub.
 #-----------------------------------------------------------------------------------------------
 # docker_image_allowlists:
-#     decision: [
-#         "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
-#     ]
-#     docker-image: [
-#         "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
-#     ]
+#     decision:
+#         - "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
+#     docker-image:
+#         - "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
 
 
 #-----------------------------------------------------------------------------------------------
@@ -135,11 +136,14 @@ my_email: "scriptworker@example.com"
 #-----------------------------------------------------------------------------------------------
 # gpg_homedirs:
 #     docker-worker:
-#         type: "flat"
-#         ignore_suffixes: [".md"]
+#         type: flat
+#         ignore_suffixes:
+#             - .md
 #     generic-worker:
-#         type: "flat"
-#         ignore_suffixes: [".md"]
+#         type: flat
+#         ignore_suffixes:
+#             - .md
 #     scriptworker:
-#         type: "signed"
-#         ignore_suffixes: [".md"]
+#         type: signed
+#         ignore_suffixes:
+#             - .md
