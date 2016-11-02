@@ -23,23 +23,8 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
-# TrustBase {{{1
-class TrustBase(object):
-    """Base class for ChainOfTrust and LinkOfTrust, since they had some common code.
-
-    Attributes:
-        context (scriptworker.context.Context): the scriptworker context
-        name (str): the name of the current task, e.g. signing
-        task_type (str): the task type (e.g., build)
-    """
-    def __init__(self, context, name, **kwargs):
-        self.name = name
-        self.task_type = guess_task_type(self.name)
-        self.context = context
-
-
 # ChainOfTrust {{{1
-class ChainOfTrust(TrustBase):
+class ChainOfTrust(object):
     """The master Chain of Trust, tracking all the various `LinkOfTrust`s.
 
     Attributes:
@@ -51,7 +36,8 @@ class ChainOfTrust(TrustBase):
         task_id (str): the taskId of the task
     """
     def __init__(self, context, name, task_id=None):
-        super(ChainOfTrust, self).__init__(context, name)
+        self.name = name
+        self.context = context
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
         self.decision_task_id = get_decision_task_id(self.task)
@@ -105,7 +91,7 @@ class ChainOfTrust(TrustBase):
 
 
 # LinkOfTrust {{{1
-class LinkOfTrust(TrustBase):
+class LinkOfTrust(object):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
@@ -123,7 +109,8 @@ class LinkOfTrust(TrustBase):
     status = None
 
     def __init__(self, context, name, task_id):
-        super(LinkOfTrust, self).__init__(context, name)
+        self.name = name
+        self.context = context
         self.task_id = task_id
         self.cot_dir = os.path.join(
             context.config['artifact_dir'], 'cot', self.task_id
@@ -156,7 +143,6 @@ class LinkOfTrust(TrustBase):
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_class = guess_worker_class(self)
         self.is_try = is_try(self.task)
-        # TODO add tests to run
 
     @property
     def cot(self):
@@ -170,7 +156,6 @@ class LinkOfTrust(TrustBase):
     def cot(self, cot):
         freeze_values(cot)
         self._set('_cot', frozendict(cot))
-        # TODO add tests to run
 
 
 # audit_log_handler {{{1
@@ -402,7 +387,7 @@ def find_task_dependencies(task, name, task_id):
             for count, build_id in enumerate(build_ids):
                 dep_dict['{}:build{}'.format(name, count)] = build_id
         else:
-            dep_dict['{}:build'.format(name)] = build_id
+            dep_dict['{}:build'.format(name)] = build_ids[0]
     # XXX end hack
     if decision_task_id != task_id:
         dep_dict[decision_key] = decision_task_id
@@ -569,9 +554,7 @@ def verify_cot_signatures(chain):
             with open(path, "r") as fh:
                 contents = fh.read()
         except OSError as exc:
-            log.warning("{} {} missing cot!".format(link.name, link.task_id))
-            continue
-#            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
+            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
             # TODO remove verify_sig pref and kwarg when git repo pubkey
             # verification works reliably!
@@ -585,9 +568,10 @@ def verify_cot_signatures(chain):
 
 
 # verify_*_tasks {{{1
-def verify_decision_tasks(chain, num=None):
+async def verify_decision_tasks(chain, obj, num=None):
     """
     """
+    log.info("verify_decision_tasks {}".format(obj.name))
     # TODO docstring
     # TODO num of decision tasks per chain
     # VALID_DECISION_WORKER_TYPES
@@ -596,32 +580,40 @@ def verify_decision_tasks(chain, num=None):
     # TODO add tests for docker image -- here or in docker_worker tests?
 
 
-def verify_build_tasks(chain):
+async def verify_build_tasks(chain, obj):
     """
     """
     # TODO
-    pass
+    log.info("verify_build_tasks {}".format(obj.name))
 
 
-def verify_docker_image_tasks(chain):
+async def verify_docker_image_tasks(chain, obj):
     """
     """
     # TODO
-    pass
+    log.info("verify_docker_image_tasks {}".format(obj.name))
 
 
-def verify_signing_tasks(chain):
+async def verify_signing_tasks(chain, obj):
     """
     """
     # TODO
-    pass
+    log.info("verify_signing_tasks {}".format(obj.name))
 
 
-def verify_task_types(chain):
+async def verify_task_types(chain):
     """
     """
-    # TODO
-    pass
+    valid_task_types = get_valid_task_types()
+    async_tasks = []
+    for obj in [chain] + chain.links:
+        task_type = guess_task_type(obj.name)
+        async_tasks.append(
+            asyncio.ensure_future(
+                valid_task_types[task_type](chain, obj)
+            )
+        )
+    await raise_future_exceptions(async_tasks)
 
 
 # build_chain_of_trust {{{1
@@ -637,7 +629,7 @@ async def build_chain_of_trust(chain):
     verify_cot_signatures(chain)
     # TODO find decision tasks; add tests
     # TODO verify build tasks
-    # verify_task_types(chain)
+    await verify_task_types(chain)
     #  - decision
     #    - download full task graph
     #    - verify all child tasks are part of that graph
