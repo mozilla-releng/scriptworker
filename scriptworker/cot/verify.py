@@ -159,21 +159,21 @@ class LinkOfTrust(object):
         self._set('_cot', cot)
 
 
-# raise_on_messages {{{1
-def raise_on_messages(messages):
-    """Raise a CoTError if messages.
+# raise_on_errors {{{1
+def raise_on_errors(errors):
+    """Raise a CoTError if errors.
 
     Helper function because I had this code block everywhere.
 
     Args:
-        messages (list): the error messages
+        errors (list): the error errors
 
     Raises:
-        CoTError: if messages is non-empty
+        CoTError: if errors is non-empty
     """
-    if messages:
-        log.critical("\n".join(messages))
-        raise CoTError("\n".join(messages))
+    if errors:
+        log.critical("\n".join(errors))
+        raise CoTError("\n".join(errors))
 
 
 # audit_log_handler {{{1
@@ -212,7 +212,7 @@ def guess_worker_impl(link):
     * check for scopes beginning with the worker type name.
 
     Args:
-        link (LinkOfTrust): the link to check.
+        link (LinkOfTrust or ChainOfTrust): the link to check.
 
     Returns:
         str: the worker type.
@@ -220,29 +220,28 @@ def guess_worker_impl(link):
     Raises:
         CoTError: on inability to determine the worker implementation
     """
-    worker_impl = {'worker_impl': None}
+    worker_impls = []
     task = link.task
     name = link.name
-
-    def _set_worker_impl(wt):
-        if worker_impl['worker_impl'] is not None and worker_impl['worker_impl'] != wt:
-            raise CoTError("guess_worker_impl: {} was {} and now looks like {}!\n{}".format(name, worker_impl['worker_impl'], wt, task))
-        worker_impl['worker_impl'] = wt
+    errors = []
 
     if task['payload'].get("image"):
-        _set_worker_impl("docker-worker")
+        worker_impls.append("docker-worker")
     if task['provisionerId'] in link.context.config['scriptworker_provisioners']:
-        _set_worker_impl("scriptworker")
+        worker_impls.append("scriptworker")
     if task['workerType'] in link.context.config['scriptworker_worker_types']:
-        _set_worker_impl("scriptworker")
+        worker_impls.append("scriptworker")
 
     for scope in task['scopes']:
         if scope.startswith("docker-worker:"):
-            _set_worker_impl("docker-worker")
+            worker_impls.append("docker-worker")
 
-    if worker_impl['worker_impl'] is None:
-        raise CoTError("guess_worker_impl: can't find a type for {}!\n{}".format(name, task))
-    return worker_impl['worker_impl']
+    if not worker_impls:
+        errors.append("guess_worker_impl: can't find a worker_impl for {}!\n{}".format(name, task))
+    if len(set(worker_impls)) > 1:
+        errors.append("guess_worker_impl: too many matches for {}: {}!\n{}".format(name, set(worker_impls), task))
+    raise_on_errors(errors)
+    return worker_impls[0]
 
 
 def guess_task_type(name):
@@ -337,17 +336,17 @@ def check_interactive_docker_worker(task, name):
         name (str): the name of the task, used for error message strings.
 
     Returns:
-        list: the list of error messages.  Success is an empty list.
+        list: the list of error errors.  Success is an empty list.
     """
-    messages = []
+    errors = []
     try:
         if task['payload']['features'].get('interactive'):
-            messages.append("{} is interactive: task.payload.features.interactive!".format(name))
+            errors.append("{} is interactive: task.payload.features.interactive!".format(name))
         if task['payload']['env'].get('TASKCLUSTER_INTERACTIVE'):
-            messages.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(name))
+            errors.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(name))
     except KeyError:
-        messages.append("check_interactive_docker_worker: {} task definition is malformed!".format(name))
-    return messages
+        errors.append("check_interactive_docker_worker: {} task definition is malformed!".format(name))
+    return errors
 
 
 # check_docker_image_sha {{{1
@@ -602,13 +601,13 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
     ))
     ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
-    messages = []
+    errors = []
     runtime_defn = deepcopy(task_link.task)
     graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
     # dependencies
     bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
     if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
-        messages.append("{} {} dependencies don't line up!\n{}".format(
+        errors.append("{} {} dependencies don't line up!\n{}".format(
             task_link.name, task_link.task_id, bad_deps
         ))
     # payload - eliminate the 'expires' key from artifacts because the datestring
@@ -622,11 +621,11 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         if key in ignore_keys:
             continue
         if value != runtime_defn[key]:
-            messages.append("{} {} {} differs!\n graph: {}\n task: {}".format(
+            errors.append("{} {} {} differs!\n graph: {}\n task: {}".format(
                 task_link.name, task_link.task_id, key,
                 pprint.pformat(value), pprint.pformat(runtime_defn[key])
             ))
-    raise_on_messages(messages)
+    raise_on_errors(errors)
 
 
 # verify_decision_tasks {{{1
@@ -670,10 +669,10 @@ async def verify_decision_tasks(chain, link):
     Raises:
         CoTError: on chain of trust verification error.
     """
-    messages = []
+    errors = []
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_decision_worker_types']:
-        messages.append("{} is not a valid decision workerType!".format(worker_type))
+        errors.append("{} is not a valid decision workerType!".format(worker_type))
     # make sure all tasks generated from this decision task match the published task-graph.json
     paths = await download_cot_artifacts(chain, link.task_id, ["public/task-graph.json"])
     with open(paths[0], "r") as fh:
@@ -684,9 +683,9 @@ async def verify_decision_tasks(chain, link):
     # limit what can be in payload.env
     for key in link.task['payload'].get('env', {}).keys():
         if key not in link.context.config['valid_decision_env_vars']:
-            messages.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+            errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
     # TODO limit what can be in payload.command -- this is going to be tricky
-    raise_on_messages(messages)
+    raise_on_errors(errors)
 
 
 # verify_build_tasks {{{1
@@ -714,12 +713,12 @@ async def verify_build_tasks(chain, link):
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
     """
-    messages = []
+    errors = []
     if link.worker_impl == 'docker-worker':
         for key in link.task['payload'].get('env', {}).keys():
             if key not in link.context.config['valid_docker_worker_build_env_vars']:
-                messages.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
-    raise_on_messages(messages)
+                errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+    raise_on_errors(errors)
 
 
 # TODO verify_docker_image_tasks {{{1
@@ -730,31 +729,39 @@ async def verify_docker_image_tasks(chain, obj):
     pass
 
 
-# TODO verify_signing_tasks {{{1
+# verify_signing_tasks {{{1
 async def verify_signing_tasks(chain, obj):
+    """Verify the signing task definition.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
     """
-    """
-    # TODO
-    pass
+    errors = []
+    if guess_worker_impl(obj) != "scriptworker":
+        errors.append("{} {} must be run from scriptworker!".format(obj.name, obj.task_id))
+    raise_on_errors(errors)
 
 
 def check_num_tasks(chain, task_count):
     """
     """
-    messages = []
+    errors = []
     # hardcode for now.  If we need a different set of constraints, either
     # go by cot_product settings or by task_count['docker-image'] + 1
     min_decision_tasks = 1
     max_decision_tasks = 2
     if task_count['decision'] < min_decision_tasks:
-        messages.append("{} decision tasks; we must have at least {}!".format(
+        errors.append("{} decision tasks; we must have at least {}!".format(
             task_count['decision'], min_decision_tasks
         ))
     elif task_count['decision'] > max_decision_tasks:
-        messages.append("{} decision tasks; we must have at most {}!".format(
+        errors.append("{} decision tasks; we must have at most {}!".format(
             task_count['decision'], max_decision_tasks
         ))
-    raise_on_messages(messages)
+    raise_on_errors(errors)
 
 
 # verify_task_types {{{1

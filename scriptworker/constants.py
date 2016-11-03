@@ -144,20 +144,21 @@ DEFAULT_CONFIG = frozendict({
 
     # docker-worker build envs
     "valid_docker_worker_build_env_vars": (
-        "MOZ_BUILD_DATE",
-        "MH_BUILD_POOL",
-        "HG_STORE_PATH",
-        "GECKO_HEAD_REV",
-        "MH_BRANCH",
-        "MOZ_SCM_LEVEL",
-        "MOZHARNESS_ACTIONS",
-        "TOOLTOOL_REPO",
         "GECKO_BASE_REPOSITORY",
-        "TOOLTOOL_REV",
         "GECKO_HEAD_REPOSITORY",
+        "GECKO_HEAD_REV",
+        "HG_STORE_PATH",
+        "MH_BRANCH",
+        "MH_BUILD_POOL",
+        "MOZHARNESS_ACTIONS",
         "MOZHARNESS_CONFIG",
         "MOZHARNESS_SCRIPT",
+        "MOZ_BUILD_DATE",
+        "MOZ_SCM_LEVEL",
+        "NEED_XVFB",
         "TOOLTOOL_CACHE",
+        "TOOLTOOL_REPO",
+        "TOOLTOOL_REV",
     ),
 })
 
