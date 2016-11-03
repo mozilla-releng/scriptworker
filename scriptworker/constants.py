@@ -130,7 +130,7 @@ DEFAULT_CONFIG = frozendict({
         "sha512",
     ),
 
-    # decision worker types
+    # decision task cot
     "valid_decision_worker_types": (
         "gecko-decision",
     ),
@@ -142,7 +142,7 @@ DEFAULT_CONFIG = frozendict({
         "HG_STORE_PATH",
     ),
 
-    # docker-worker build envs
+    # docker-worker build cot
     "valid_docker_worker_build_env_vars": (
         "GECKO_BASE_REPOSITORY",
         "GECKO_HEAD_REPOSITORY",
@@ -160,6 +160,22 @@ DEFAULT_CONFIG = frozendict({
         "TOOLTOOL_REPO",
         "TOOLTOOL_REV",
     ),
+
+    # docker-image cot
+    "valid_docker_image_worker_types": (
+        "taskcluster-images",
+    ),
+
+    "valid_docker_image_env_vars": (
+        "HEAD_REF",
+        "PROJECT",
+        "CONTEXT_URL",
+        "HEAD_REPOSITORY",
+        "CONTEXT_PATH",
+        "HEAD_REV",
+        "BASE_REPOSITORY",
+        "HASH",
+    )
 })
 
 # STATUSES and REVERSED_STATUSES {{{1

@@ -630,7 +630,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 
 # verify_decision_task {{{1
 async def verify_decision_task(chain, link):
-    """Verify decision tasks in the chain.
+    """Verify the decision task Link.
 
     TODO check the command
     "/home/worker/bin/run-task",
@@ -690,7 +690,7 @@ async def verify_decision_task(chain, link):
 
 # verify_build_task {{{1
 async def verify_build_task(chain, link):
-    """Verify the build task definition.
+    """Verify the build Link.
 
     The main points of concern are tested elsewhere:
     The task is the same as the task graph task; the command;
@@ -721,17 +721,26 @@ async def verify_build_task(chain, link):
     raise_on_errors(errors)
 
 
-# TODO verify_docker_image_task {{{1
-async def verify_docker_image_task(chain, obj):
+# verify_docker_image_task {{{1
+async def verify_docker_image_task(chain, link):
+    """Verify the docker image Link.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
     """
-    """
-    # TODO
-    pass
+    errors = []
+    for key in link.task['payload'].get('env', {}).keys():
+        if key not in link.context.config['valid_docker_image_env_vars']:
+            errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+    if link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
+        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
+    raise_on_errors(errors)
 
 
 # verify_signing_task {{{1
 async def verify_signing_task(chain, obj):
-    """Verify the signing task definition.
+    """Verify the signing trust object.
 
     Currently the only check is to make sure it was run on a scriptworker.
 
@@ -746,7 +755,16 @@ async def verify_signing_task(chain, obj):
 
 
 def check_num_tasks(chain, task_count):
-    """
+    """Make sure there are a specific number of specific task types.
+
+    Currently we only check decision tasks.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        task_count (dict): mapping task type to the number of links.
+
+    Raises:
+        CoTError: on failure.
     """
     errors = []
     # hardcode for now.  If we need a different set of constraints, either
@@ -766,7 +784,13 @@ def check_num_tasks(chain, task_count):
 
 # verify_task_types {{{1
 async def verify_task_types(chain):
-    """
+    """Verify the task type (e.g. decision, build) of each link in the chain.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+
+    Returns:
+        dict: mapping task type to the number of links.
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
