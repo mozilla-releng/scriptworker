@@ -6,13 +6,14 @@ Attributes:
 """
 import asyncio
 from contextlib import contextmanager
+from copy import deepcopy
 from frozendict import frozendict
 import json
 import logging
 import os
+import pprint
 import re
 from urllib.parse import unquote, urljoin, urlparse
-from scriptworker.config import freeze_values
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
@@ -138,8 +139,7 @@ class LinkOfTrust(object):
 
     @task.setter
     def task(self, task):
-        freeze_values(task)
-        self._set('_task', frozendict(task))
+        self._set('_task', task)
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
         self.is_try = is_try(self.task)
@@ -155,8 +155,7 @@ class LinkOfTrust(object):
 
     @cot.setter
     def cot(self, cot):
-        freeze_values(cot)
-        self._set('_cot', frozendict(cot))
+        self._set('_cot', cot)
 
 
 # audit_log_handler {{{1
@@ -170,7 +169,7 @@ def audit_log_handler(context):
     Yields:
         None: but cleans up the handler afterwards.
     """
-    parent_path = os.path.join(context.config['artifact_dir'], 'cot')
+    parent_path = os.path.join(context.config['artifact_dir'], 'public', 'cot')
     makedirs(parent_path)
     log_path = os.path.join(parent_path, 'audit.log')
     audit_handler = logging.FileHandler(log_path)
@@ -216,7 +215,7 @@ def guess_worker_impl(link):
         _set_worker_impl("docker-worker")
     if task['provisionerId'] in link.context.config['scriptworker_provisioners']:
         _set_worker_impl("scriptworker")
-    if task['workerType'] in link.context.config['scriptworker_worker_impls']:
+    if task['workerType'] in link.context.config['scriptworker_worker_types']:
         _set_worker_impl("scriptworker")
 
     for scope in task['scopes']:
@@ -453,7 +452,7 @@ def get_artifact_url(context, task_id, path):
         'v1/' +
         unquote(context.queue.makeRoute('getLatestArtifact', replDict={
             'taskId': task_id,
-            'name': 'public/chainOfTrust.json.asc'
+            'name': path
         }))
     )
     return url
@@ -510,10 +509,12 @@ async def download_cot_artifacts(chain, task_id, paths):
     urls = []
     link = chain.get_link(task_id)
     for path in paths:
+        log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
         if path not in link.cot['artifacts']:
             raise CoTError("path {} not in {} chain of trust artifacts!".format(path, link.name))
         url = get_artifact_url(chain.context, task_id, path)
         urls.append(url)
+    log.info("Downloading Chain of Trust artifacts:\n" + "\n".join(urls))
     await download_artifacts(
         chain.context, urls, parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
     )
@@ -568,6 +569,50 @@ def verify_cot_signatures(chain):
         link.cot = json.loads(body)
 
 
+# verify_link_in_task_graph {{{1
+def verify_link_in_task_graph(chain, decision_link, task_link):
+    """Compare the runtime task definition against the decision task graph.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        decision_link (LinkOfTrust):
+
+    Raises:
+        CoTError: on failure.
+    """
+    log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
+        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+    ))
+    ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
+    messages = []
+    runtime_defn = deepcopy(task_link.task)
+    graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
+    # dependencies
+    bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
+    if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
+        messages.append("{} {} dependencies don't line up!\n{}".format(
+            task_link.name, task_link.task_id, bad_deps
+        ))
+    # payload - eliminate the 'expires' key from artifacts because the datestring
+    # will change
+    for payload in (runtime_defn['payload'], graph_defn['task']['payload']):
+        for key, value in payload.get('artifacts', {}).items():
+            if isinstance(value, dict) and 'expires' in value:
+                del(value['expires'])
+    # test all non-ignored key/value pairs in the task defn
+    for key, value in graph_defn['task'].items():
+        if key in ignore_keys:
+            continue
+        if value != runtime_defn[key]:
+            messages.append("{} {} {} differs!\n graph: {}\n task: {}".format(
+                task_link.name, task_link.task_id, key,
+                pprint.pformat(value), pprint.pformat(runtime_defn[key])
+            ))
+    if messages:
+        log.critical("\n".join(messages))
+        raise CoTError("\n".join(messages))
+
+
 # verify_decision_tasks {{{1
 async def verify_decision_tasks(chain, link):
     """Verify decision tasks in the chain.
@@ -583,10 +628,12 @@ async def verify_decision_tasks(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_decision_worker_types']:
         messages.append("{} is not a valid decision workerType!".format(worker_type))
-    paths = await download_cot_artifacts(chain, link.task_id, ["public/full-task-graph.json"])
+    paths = await download_cot_artifacts(chain, link.task_id, ["public/task-graph.json"])
     with open(paths[0], "r") as fh:
-        link.full_task_graph = json.load(fh)
-    # TODO - verify all child tasks are part of that graph
+        link.task_graph = json.load(fh)
+    for target_link in [chain] + chain.links:
+        if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
+            verify_link_in_task_graph(chain, link, target_link)
     if messages:
         raise CoTError("\n".join(messages))
 
@@ -653,26 +700,38 @@ async def verify_task_types(chain):
 
 
 # build_chain_of_trust {{{1
-async def build_chain_of_trust(chain):
+async def verify_chain_of_trust(chain):
+    """Build and verify the chain of trust.
     """
-    """
-    # TODO
-    with audit_log_handler(chain.context):
-        try:
-            # build LinkOfTrust objects
-            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-            # download the signed chain of trust artifacts
-            await download_cot(chain)
-            # verify the signatures and populate the `link.cot`s
-            verify_cot_signatures(chain)
-            task_count = await verify_task_types(chain)
-            check_num_tasks(chain, task_count)
-            # TODO verify worker types
-            # verify_worker_types(chain)
-            # TODO add tests for docker image -- either in sha whitelist or trace to
-            #   docker image task in chain
-            # TODO trace back to tree
-            # - allowlisted repo/branch/revision
-        except KeyError:
-            log.critical("Chain of Trust verification error!", exc_info=True)
-            raise
+    try:
+        await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+        # download the signed chain of trust artifacts
+        await download_cot(chain)
+        # verify the signatures and populate the `link.cot`s
+        verify_cot_signatures(chain)
+        task_count = await verify_task_types(chain)
+        check_num_tasks(chain, task_count)
+    except KeyError as exc:
+        log.critical("Chain of Trust verification error!")
+        import sys
+        sys.exit(1)
+    # TODO fix audit_log_handler
+#    with audit_log_handler(chain.context):
+#        try:
+#            # build LinkOfTrust objects
+#            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+#            # download the signed chain of trust artifacts
+#            await download_cot(chain)
+#            # verify the signatures and populate the `link.cot`s
+#            verify_cot_signatures(chain)
+#            task_count = await verify_task_types(chain)
+#            check_num_tasks(chain, task_count)
+#            # TODO verify worker types
+#            # verify_worker_types(chain)
+#            # TODO add tests for docker image -- either in sha whitelist or trace to
+#            #   docker image task in chain
+#            # TODO trace back to tree
+#            # - allowlisted repo/branch/revision
+#        except KeyError:
+#            log.critical("Chain of Trust verification error!", exc_info=True)
+#            raise
