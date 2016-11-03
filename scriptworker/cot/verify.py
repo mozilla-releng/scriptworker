@@ -144,7 +144,6 @@ class LinkOfTrust(object):
         self.decision_task_id = get_decision_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
         self.is_try = is_try(self.task)
-        # TODO write task json to cot_dir ?
 
     @property
     def cot(self):
@@ -278,10 +277,10 @@ def get_valid_task_types():
     """
     # TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
     return frozendict({
-        'build': verify_build_tasks,
-        'decision': verify_decision_tasks,
-        'docker-image': verify_docker_image_tasks,
-        'signing': verify_signing_tasks,
+        'build': verify_build_task,
+        'decision': verify_decision_task,
+        'docker-image': verify_docker_image_task,
+        'signing': verify_signing_task,
     })
 
 
@@ -441,6 +440,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
             link = LinkOfTrust(chain.context, task_name, task_id)
             try:
                 task_defn = await chain.context.queue.task(task_id)
+                # TODO write task to cot_dir?
                 link.task = task_defn
                 link.chain = chain
                 chain.links.append(link)
@@ -628,8 +628,8 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
     raise_on_errors(errors)
 
 
-# verify_decision_tasks {{{1
-async def verify_decision_tasks(chain, link):
+# verify_decision_task {{{1
+async def verify_decision_task(chain, link):
     """Verify decision tasks in the chain.
 
     TODO check the command
@@ -688,8 +688,8 @@ async def verify_decision_tasks(chain, link):
     raise_on_errors(errors)
 
 
-# verify_build_tasks {{{1
-async def verify_build_tasks(chain, link):
+# verify_build_task {{{1
+async def verify_build_task(chain, link):
     """Verify the build task definition.
 
     The main points of concern are tested elsewhere:
@@ -721,16 +721,16 @@ async def verify_build_tasks(chain, link):
     raise_on_errors(errors)
 
 
-# TODO verify_docker_image_tasks {{{1
-async def verify_docker_image_tasks(chain, obj):
+# TODO verify_docker_image_task {{{1
+async def verify_docker_image_task(chain, obj):
     """
     """
     # TODO
     pass
 
 
-# verify_signing_tasks {{{1
-async def verify_signing_tasks(chain, obj):
+# verify_signing_task {{{1
+async def verify_signing_task(chain, obj):
     """Verify the signing task definition.
 
     Currently the only check is to make sure it was run on a scriptworker.
