@@ -13,6 +13,7 @@ import logging
 import os
 import pprint
 import re
+# import shlex
 from urllib.parse import unquote, urljoin, urlparse
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
@@ -156,6 +157,23 @@ class LinkOfTrust(object):
     @cot.setter
     def cot(self, cot):
         self._set('_cot', cot)
+
+
+# raise_on_messages {{{1
+def raise_on_messages(messages):
+    """Raise a CoTError if messages.
+
+    Helper function because I had this code block everywhere.
+
+    Args:
+        messages (list): the error messages
+
+    Raises:
+        CoTError: if messages is non-empty
+    """
+    if messages:
+        log.critical("\n".join(messages))
+        raise CoTError("\n".join(messages))
 
 
 # audit_log_handler {{{1
@@ -608,9 +626,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
                 task_link.name, task_link.task_id, key,
                 pprint.pformat(value), pprint.pformat(runtime_defn[key])
             ))
-    if messages:
-        log.critical("\n".join(messages))
-        raise CoTError("\n".join(messages))
+    raise_on_messages(messages)
 
 
 # verify_decision_tasks {{{1
@@ -670,17 +686,40 @@ async def verify_decision_tasks(chain, link):
         if key not in link.context.config['valid_decision_env_vars']:
             messages.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
     # TODO limit what can be in payload.command -- this is going to be tricky
-    if messages:
-        log.critical("\n".join(messages))
-        raise CoTError("\n".join(messages))
+    raise_on_messages(messages)
 
 
-# TODO verify_build_tasks {{{1
-async def verify_build_tasks(chain, obj):
+# verify_build_tasks {{{1
+async def verify_build_tasks(chain, link):
+    """Verify the build task definition.
+
+    The main points of concern are tested elsewhere:
+    The task is the same as the task graph task; the command;
+    the docker-image for docker-worker builds; the revision and repo.
+
+    TODO command
+    "/home/worker/bin/run-task",
+    "--chown-recursive",
+    "/home/worker/workspace",
+    "--chown-recursive",
+    "/home/worker/tooltool-cache",
+    "--vcs-checkout",
+    "/home/worker/workspace/build/src",
+    "--tools-checkout",
+    "/home/worker/workspace/build/tools",
+    "--",
+    "/home/worker/workspace/build/src/taskcluster/scripts/builder/build-linux.sh"
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
     """
-    """
-    # TODO
-    pass
+    messages = []
+    if link.worker_impl == 'docker-worker':
+        for key in link.task['payload'].get('env', {}).keys():
+            if key not in link.context.config['valid_docker_worker_build_env_vars']:
+                messages.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+    raise_on_messages(messages)
 
 
 # TODO verify_docker_image_tasks {{{1
@@ -715,8 +754,7 @@ def check_num_tasks(chain, task_count):
         messages.append("{} decision tasks; we must have at most {}!".format(
             task_count['decision'], max_decision_tasks
         ))
-    if messages:
-        raise CoTError('\n'.join(messages))
+    raise_on_messages(messages)
 
 
 # verify_task_types {{{1
@@ -750,12 +788,13 @@ async def verify_chain_of_trust(chain):
             verify_cot_signatures(chain)
             task_count = await verify_task_types(chain)
             check_num_tasks(chain, task_count)
-#            # TODO verify worker types
-#            # verify_worker_types(chain)
-#            # TODO add tests for docker image -- either in sha whitelist or trace to
-#            #   docker image task in chain
-#            # TODO trace back to tree
-#            # - allowlisted repo/branch/revision
+            # TODO verify worker types
+            # verify_worker_types(chain)
+            # TODO verify command for docker_worker
+            # TODO add tests for docker image -- either in sha whitelist or trace to
+            #   docker image task in chain
+            # TODO trace back to tree
+            # - allowlisted repo/branch/revision
         except CoTError:
             log.critical("Chain of Trust verification error!", exc_info=True)
             raise

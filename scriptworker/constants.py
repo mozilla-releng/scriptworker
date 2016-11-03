@@ -99,6 +99,7 @@ DEFAULT_CONFIG = frozendict({
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
         ]
     }),
+
     # git gpg homedir layout
     "gpg_homedirs": frozendict({
         "docker-worker": {
@@ -114,6 +115,7 @@ DEFAULT_CONFIG = frozendict({
             "ignore_suffixes": [".md"]
         }
     }),
+
     # scriptworker identification
     "scriptworker_worker_types": (
         "signing-linux-v1",
@@ -121,11 +123,13 @@ DEFAULT_CONFIG = frozendict({
     "scriptworker_provisioners": (
         "scriptworker-prov-v1",
     ),
+
     # valid hash algorithms for chain of trust artifacts
     "valid_hash_algorithms": (
         "sha256",
         "sha512",
     ),
+
     # decision worker types
     "valid_decision_worker_types": (
         "gecko-decision",
@@ -138,6 +142,23 @@ DEFAULT_CONFIG = frozendict({
         "HG_STORE_PATH",
     ),
 
+    # docker-worker build envs
+    "valid_docker_worker_build_env_vars": (
+        "MOZ_BUILD_DATE",
+        "MH_BUILD_POOL",
+        "HG_STORE_PATH",
+        "GECKO_HEAD_REV",
+        "MH_BRANCH",
+        "MOZ_SCM_LEVEL",
+        "MOZHARNESS_ACTIONS",
+        "TOOLTOOL_REPO",
+        "GECKO_BASE_REPOSITORY",
+        "TOOLTOOL_REV",
+        "GECKO_HEAD_REPOSITORY",
+        "MOZHARNESS_CONFIG",
+        "MOZHARNESS_SCRIPT",
+        "TOOLTOOL_CACHE",
+    ),
 })
 
 # STATUSES and REVERSED_STATUSES {{{1
