@@ -172,10 +172,10 @@ def audit_log_handler(context):
     parent_path = os.path.join(context.config['artifact_dir'], 'public', 'cot')
     makedirs(parent_path)
     log_path = os.path.join(parent_path, 'audit.log')
-    audit_handler = logging.FileHandler(log_path)
+    audit_handler = logging.FileHandler(log_path, encoding='utf-8')
     audit_handler.setLevel(logging.DEBUG)
     audit_handler.setFormatter(
-        logging.Formatter('%(asctime)s %levelname)8s - %(message)s', '%H:%M:%s')
+        logging.Formatter(fmt='%(asctime)s %(levelname)8s - %(message)s')
     )
     log.addHandler(audit_handler)
     yield
@@ -617,6 +617,36 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 async def verify_decision_tasks(chain, link):
     """Verify decision tasks in the chain.
 
+    TODO check the command
+    "/home/worker/bin/run-task",
+    "--vcs-checkout=/home/worker/checkouts/gecko",
+    "--",
+    "bash",
+    "-cx",
+    "cd /home/worker/checkouts/gecko &&
+    ln -s /home/worker/artifacts artifacts &&
+    ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
+    --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
+    --base-repository='https://hg.mozilla.org/mozilla-central'
+    --head-repository='https://hg.mozilla.org/integration/mozilla-inbound/'
+    --head-ref='e7023fe48f7c48e33ef3b91747647f0873e306d6'
+    --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
+    --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
+
+    "/home/worker/bin/run-task",
+    "--vcs-checkout=/home/worker/checkouts/gecko",
+    "--",
+    "bash",
+    "-cx",
+    "cd /home/worker/checkouts/gecko &&
+    ln -s /home/worker/artifacts artifacts &&
+    ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
+    --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
+    --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
+    --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
+    --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
+
+
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
@@ -628,13 +658,20 @@ async def verify_decision_tasks(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_decision_worker_types']:
         messages.append("{} is not a valid decision workerType!".format(worker_type))
+    # make sure all tasks generated from this decision task match the published task-graph.json
     paths = await download_cot_artifacts(chain, link.task_id, ["public/task-graph.json"])
     with open(paths[0], "r") as fh:
         link.task_graph = json.load(fh)
     for target_link in [chain] + chain.links:
         if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
             verify_link_in_task_graph(chain, link, target_link)
+    # limit what can be in payload.env
+    for key in link.task['payload'].get('env', {}).keys():
+        if key not in link.context.config['valid_decision_env_vars']:
+            messages.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+    # TODO limit what can be in payload.command -- this is going to be tricky
     if messages:
+        log.critical("\n".join(messages))
         raise CoTError("\n".join(messages))
 
 
@@ -703,35 +740,23 @@ async def verify_task_types(chain):
 async def verify_chain_of_trust(chain):
     """Build and verify the chain of trust.
     """
-    try:
-        await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-        # download the signed chain of trust artifacts
-        await download_cot(chain)
-        # verify the signatures and populate the `link.cot`s
-        verify_cot_signatures(chain)
-        task_count = await verify_task_types(chain)
-        check_num_tasks(chain, task_count)
-    except KeyError as exc:
-        log.critical("Chain of Trust verification error!")
-        import sys
-        sys.exit(1)
-    # TODO fix audit_log_handler
-#    with audit_log_handler(chain.context):
-#        try:
-#            # build LinkOfTrust objects
-#            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-#            # download the signed chain of trust artifacts
-#            await download_cot(chain)
-#            # verify the signatures and populate the `link.cot`s
-#            verify_cot_signatures(chain)
-#            task_count = await verify_task_types(chain)
-#            check_num_tasks(chain, task_count)
+    with audit_log_handler(chain.context):
+        try:
+            # build LinkOfTrust objects
+            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+            # download the signed chain of trust artifacts
+            await download_cot(chain)
+            # verify the signatures and populate the `link.cot`s
+            verify_cot_signatures(chain)
+            task_count = await verify_task_types(chain)
+            check_num_tasks(chain, task_count)
 #            # TODO verify worker types
 #            # verify_worker_types(chain)
 #            # TODO add tests for docker image -- either in sha whitelist or trace to
 #            #   docker image task in chain
 #            # TODO trace back to tree
 #            # - allowlisted repo/branch/revision
-#        except KeyError:
-#            log.critical("Chain of Trust verification error!", exc_info=True)
-#            raise
+        except CoTError:
+            log.critical("Chain of Trust verification error!", exc_info=True)
+            raise
+        log.info("Good.")

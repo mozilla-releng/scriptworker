@@ -130,6 +130,13 @@ DEFAULT_CONFIG = frozendict({
     "valid_decision_worker_types": (
         "gecko-decision",
     ),
+    "valid_decision_env_vars": (
+        "GECKO_BASE_REPOSITORY",
+        "GECKO_HEAD_REPOSITORY",
+        "GECKO_HEAD_REF",
+        "GECKO_HEAD_REV",
+        "HG_STORE_PATH",
+    ),
 
 })
 
