@@ -687,7 +687,7 @@ def verify_firefox_decision_command(decision_link):
         ))
     bash_commands = command[-1].split('&&')
     allowed_commands = ('cd', 'ln')
-    allowed_mach_args = ('./mach', 'taskgraph', 'decision')
+    allowed_mach_args = ['./mach', 'taskgraph', 'decision']
     for bash_command in bash_commands:
         parts = shlex.split(bash_command)
         if parts[0] in allowed_commands:
@@ -695,7 +695,7 @@ def verify_firefox_decision_command(decision_link):
         for part in parts:
             if part.startswith('--'):
                 continue
-            if part not in allowed_mach_args:
+            if not allowed_mach_args or part != allowed_mach_args.pop(0):
                 errors.append("{} {} Illegal command `{}`".format(
                     decision_link.name, decision_link.task_id, bash_command
                 ))
