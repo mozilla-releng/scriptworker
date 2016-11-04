@@ -19,7 +19,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_decision_task_id, get_worker_type, get_task_id
-from scriptworker.utils import get_hash, makedirs, raise_future_exceptions
+from scriptworker.utils import format_json, get_hash, makedirs, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -438,12 +438,16 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         task_id = deps[task_name]
         if task_id not in chain.dependent_task_ids():
             link = LinkOfTrust(chain.context, task_name, task_id)
+            json_path = os.path.join(link.cot_dir, 'public', 'task.json')
             try:
                 task_defn = await chain.context.queue.task(task_id)
-                # TODO write task to cot_dir?
                 link.task = task_defn
                 link.chain = chain
                 chain.links.append(link)
+                # write task json to disk
+                makedirs(os.path.dirname(json_path))
+                with open(json_path, 'w') as fh:
+                    fh.write(format_json(task_defn))
                 await build_task_dependencies(chain, task_defn, task_name, task_id)
             except TaskclusterFailure as exc:
                 raise CoTError(str(exc))
@@ -696,7 +700,7 @@ async def verify_build_task(chain, link):
     The task is the same as the task graph task; the command;
     the docker-image for docker-worker builds; the revision and repo.
 
-    TODO command
+    TODO verify / limit what can go in command
     "/home/worker/bin/run-task",
     "--chown-recursive",
     "/home/worker/workspace",
@@ -730,9 +734,15 @@ async def verify_docker_image_task(chain, link):
         link (LinkOfTrust): the task link we're checking.
     """
     errors = []
+    # workerType
+    worker_type = get_worker_type(link.task)
+    if worker_type not in chain.context.config['valid_docker_image_worker_types']:
+        errors.append("{} is not a valid docker-image workerType!".format(worker_type))
+    # env
     for key in link.task['payload'].get('env', {}).keys():
         if key not in link.context.config['valid_docker_image_env_vars']:
             errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
+    # command
     if link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
         errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
@@ -824,6 +834,8 @@ async def verify_chain_of_trust(chain):
             # TODO verify command for docker_worker
             # TODO add tests for docker image -- either in sha whitelist or trace to
             #   docker image task in chain
+            #   hardcode `public/image.tar` or detect?
+            #   can be detected from task.payload.artifacts.keys()?
             # TODO trace back to tree
             # - allowlisted repo/branch/revision
         except CoTError:
