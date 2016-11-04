@@ -13,7 +13,7 @@ import logging
 import os
 import pprint
 import re
-# import shlex
+import shlex
 from urllib.parse import unquote, urljoin, urlparse
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
@@ -365,6 +365,7 @@ def check_docker_image_sha(context, cot, name):
         CoTError: on failure.
         KeyError: on malformed config / cot
     """
+    # TODO also test for docker-image shas here?
     # XXX we will need some way to allow trusted developers to update these
     # allowlists
     if cot['environment']['imageHash'] not in context.config['docker_image_allowlists'][name]:
@@ -632,11 +633,9 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
     raise_on_errors(errors)
 
 
-# verify_decision_task {{{1
-async def verify_decision_task(chain, link):
-    """Verify the decision task Link.
-
-    TODO check the command
+# verify_firefox_decision_command {{{1
+def verify_firefox_decision_command(decision_link):
+    """
     "/home/worker/bin/run-task",
     "--vcs-checkout=/home/worker/checkouts/gecko",
     "--",
@@ -665,6 +664,47 @@ async def verify_decision_task(chain, link):
     --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
     --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
 
+    This is very firefox-centric and potentially fragile, but decision tasks are
+    important enough to need to monitor.  The ideal fix would maybe be to simplify
+    the commandline if possible.
+
+    """
+    log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
+    errors = []
+    command = decision_link.task['payload']['command']
+    allowed_args = ('--', 'bash', '-cx')
+    if command[0] != '/home/worker/bin/run-task':
+        errors.append("{} {} command must start with /home/worker/bin/run-task!".format(
+            decision_link.name, decision_link.task_id
+        ))
+    for item in command[1:-1]:
+        if item in allowed_args:
+            continue
+        if item.startswith('--vcs-checkout='):
+            continue
+        errors.append("{} {} illegal option {} in the command!".format(
+            decision_link.name, decision_link.task_id
+        ))
+    bash_commands = command[-1].split('&&')
+    allowed_commands = ('cd', 'ln')
+    allowed_mach_args = ('./mach', 'taskgraph', 'decision')
+    for bash_command in bash_commands:
+        parts = shlex.split(bash_command)
+        if parts[0] in allowed_commands:
+            continue
+        for part in parts:
+            if part.startswith('--'):
+                continue
+            if part not in allowed_mach_args:
+                errors.append("{} {} Illegal command `{}`".format(
+                    decision_link.name, decision_link.task_id, bash_command
+                ))
+    raise_on_errors(errors)
+
+
+# verify_decision_task {{{1
+async def verify_decision_task(chain, link):
+    """Verify the decision task Link.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on.
@@ -688,7 +728,7 @@ async def verify_decision_task(chain, link):
     for key in link.task['payload'].get('env', {}).keys():
         if key not in link.context.config['valid_decision_env_vars']:
             errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
-    # TODO limit what can be in payload.command -- this is going to be tricky
+    verify_firefox_decision_command(link)
     raise_on_errors(errors)
 
 
@@ -829,9 +869,7 @@ async def verify_chain_of_trust(chain):
             verify_cot_signatures(chain)
             task_count = await verify_task_types(chain)
             check_num_tasks(chain, task_count)
-            # TODO verify worker types
-            # verify_worker_types(chain)
-            # TODO verify command for docker_worker
+
             # TODO add tests for docker image -- either in sha whitelist or trace to
             #   docker image task in chain
             #   hardcode `public/image.tar` or detect?
