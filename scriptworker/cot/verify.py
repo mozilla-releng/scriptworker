@@ -243,6 +243,24 @@ def guess_worker_impl(link):
     return worker_impls[0]
 
 
+# get_valid_worker_impls {{{1
+def get_valid_worker_impls():
+    """Get the valid worker_impls, e.g. docker-worker.
+
+    No longer a constant, due to code ordering issues.
+
+    Returns:
+        frozendict: maps the valid worker_impls (e.g., docker-worker) to their
+            validation functions.
+    """
+    # TODO support the rest of the worker impls... generic worker, taskcluster worker
+    return frozendict({
+        'docker-worker': verify_docker_worker_task,
+        'scriptworker': verify_scriptworker_task,
+    })
+
+
+# guess_task_type {{{1
 def guess_task_type(name):
     """Guess the task type of the task.
 
@@ -324,52 +342,81 @@ def is_try(task):
 
 
 # check_interactive_docker_worker {{{1
-def check_interactive_docker_worker(task, name):
+def check_interactive_docker_worker(link):
     """Given a task, make sure the task was not defined as interactive.
 
     * `task.payload.features.interactive` must be absent or False.
     * `task.payload.env.TASKCLUSTER_INTERACTIVE` must be absent or False.
 
     Args:
-        task (dict): the task definition to check.
-        name (str): the name of the task, used for error message strings.
+        link (LinkOfTrust): the task link we're checking.
 
     Returns:
         list: the list of error errors.  Success is an empty list.
     """
     errors = []
     try:
-        if task['payload']['features'].get('interactive'):
-            errors.append("{} is interactive: task.payload.features.interactive!".format(name))
-        if task['payload']['env'].get('TASKCLUSTER_INTERACTIVE'):
-            errors.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(name))
-    except KeyError:
-        errors.append("check_interactive_docker_worker: {} task definition is malformed!".format(name))
+        if link.task['payload']['features'].get('interactive'):
+            errors.append("{} is interactive: task.payload.features.interactive!".format(link.name))
+        if link.task['payload']['env'].get('TASKCLUSTER_INTERACTIVE'):
+            errors.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(link.name))
+    except CoTError:
+        errors.append("check_interactive_docker_worker: {} task definition is malformed!".format(link.name))
     return errors
 
 
-# check_docker_image_sha {{{1
-def check_docker_image_sha(context, cot, name):
+# verify_docker_image_sha {{{1
+def verify_docker_image_sha(chain, link):
     """Verify that pre-built docker shas are in allowlists.
 
     Decision and docker-image tasks use pre-built docker images from docker hub.
     Verify that these pre-built docker image shas are in the allowlists.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        cot (dict): the chain of trust json dict.
-        name (str): the name of the task.  This must be in
-            `context.config['docker_image_allowlists']`.
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
 
     Raises:
         CoTError: on failure.
-        KeyError: on malformed config / cot
     """
-    # TODO also test for docker-image shas here?
-    # XXX we will need some way to allow trusted developers to update these
-    # allowlists
-    if cot['environment']['imageHash'] not in context.config['docker_image_allowlists'][name]:
-        raise CoTError("{} docker imageHash {} not in the allowlist!\n{}".format(name, cot['environment']['imageHash'], cot))
+    cot = link.cot
+    task = link.task
+    errors = []
+    image_hash = cot['environment']['imageHash']
+    if isinstance(task['payload'].get('image'), dict):
+        # Using pre-built image from docker-image task
+        docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
+        if docker_image_task_id != task['payload']['image']['taskId']:
+            errors.append("{} {} docker-image taskId isn't consistent!: {} vs {}".format(
+                link.name, link.task_id, docker_image_task_id,
+                task['payload']['image']['taskId']
+            ))
+        else:
+            path = task['payload']['image']['path']
+            # we need change the hash alg everywhere if we change, and recreate
+            # the docker images...
+            alg, sha = image_hash.split(':')
+            docker_image_link = chain.get_link(docker_image_task_id)
+            upstream_sha = docker_image_link.cot['artifacts'][path].get(alg)
+            if upstream_sha is None:
+                errors.append("{} {} docker-image docker sha {} is missing! {}".format(
+                    link.name, link.task_id, alg,
+                    docker_image_link.cot['artifacts'][path]
+                ))
+            elif upstream_sha != sha:
+                errors.append("{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
+                    link.name, link.task_id, alg, sha, upstream_sha
+                ))
+    else:
+        # Using downloaded image from docker hub
+        task_type = guess_task_type(link.name)
+        # XXX we will need some way to allow trusted developers to update these
+        # allowlists
+        if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
+            errors.append("{} {} docker imageHash {} not in the allowlist!\n{}".format(
+                link.name, link.task_id, image_hash, cot
+            ))
+    raise_on_errors(errors)
 
 
 # find_task_dependencies {{{1
@@ -423,7 +470,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         my_task_id (str): the taskId of the task to operate on.
 
     Raises:
-        KeyError: on failure.
+        CoTError: on failure.
     """
     log.info("build_task_dependencies {}".format(name))
     if name.count(':') > 5:
@@ -439,7 +486,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         task_id = deps[task_name]
         if task_id not in chain.dependent_task_ids():
             link = LinkOfTrust(chain.context, task_name, task_id)
-            json_path = os.path.join(link.cot_dir, 'public', 'task.json')
+            json_path = os.path.join(link.cot_dir, 'task.json')
             try:
                 task_defn = await chain.context.queue.task(task_id)
                 link.task = task_defn
@@ -589,6 +636,9 @@ def verify_cot_signatures(chain):
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
         link.cot = json.loads(body)
+        unsigned_path = os.path.join(link.cot_dir, 'public', 'chainOfTrust.json')
+        with open(unsigned_path, "w") as fh:
+            fh.write(format_json(link.cot))
 
 
 # verify_link_in_task_graph {{{1
@@ -844,6 +894,7 @@ async def verify_task_types(chain):
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
+    # check the chain object (current task) as well
     for obj in [chain] + chain.links:
         task_type = guess_task_type(obj.name)
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
@@ -855,9 +906,62 @@ async def verify_task_types(chain):
     return task_count
 
 
+# verify_docker_worker_task {{{1
+async def verify_docker_worker_task(chain, link):
+    """Docker-worker specific checks.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+
+    Raises:
+        CoTError: on failure.
+    """
+    check_interactive_docker_worker(link)
+    verify_docker_image_sha(chain, link)
+
+
+# verify_scriptworker_task {{{1
+async def verify_scriptworker_task(chain, obj):
+    """Verify the scriptworker object.
+
+    Noop for now.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+    """
+    pass
+
+
+# verify_worker_impls {{{1
+async def verify_worker_impls(chain):
+    """Verify the task type (e.g. decision, build) of each link in the chain.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+
+    Raises:
+        CoTError: on failure
+    """
+    valid_worker_impls = get_valid_worker_impls()
+    for obj in [chain] + chain.links:
+        worker_impl = guess_worker_impl(obj)
+        log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, worker_impl))
+        # Run tests synchronously for now.  We can parallelize if efficiency
+        # is more important than a single simple logfile.
+        await valid_worker_impls[worker_impl](chain, obj)
+
+
 # build_chain_of_trust {{{1
 async def verify_chain_of_trust(chain):
     """Build and verify the chain of trust.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+
+    Raises:
+        CoTError: on failure
     """
     with audit_log_handler(chain.context):
         try:
@@ -867,16 +971,17 @@ async def verify_chain_of_trust(chain):
             await download_cot(chain)
             # verify the signatures and populate the `link.cot`s
             verify_cot_signatures(chain)
+            # verify the task types, e.g. decision
             task_count = await verify_task_types(chain)
             check_num_tasks(chain, task_count)
-
-            # TODO add tests for docker image -- either in sha whitelist or trace to
-            #   docker image task in chain
-            #   hardcode `public/image.tar` or detect?
-            #   can be detected from task.payload.artifacts.keys()?
+            # verify the worker_impls, e.g. docker-worker
+            await verify_worker_impls(chain)
             # TODO trace back to tree
             # - allowlisted repo/branch/revision
-        except CoTError:
+        except (KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
-            raise
+            if isinstance(exc, CoTError):
+                raise
+            else:
+                raise CoTError(str(exc))
         log.info("Good.")

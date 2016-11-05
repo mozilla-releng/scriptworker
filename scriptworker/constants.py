@@ -93,10 +93,12 @@ DEFAULT_CONFIG = frozendict({
     # docker image shas
     "docker_image_allowlists": frozendict({
         "decision": [
-            "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9"
+            "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9",
+            "sha256:7320c720c770e9f93df26f7da742db72b334b7ded77539fb240fc4a28363de5a",
+            "sha256:9db282317340838f0015335d74ed56c4ee0dbad588be33e6999928a181548587",
         ],
         "docker-image": [
-            "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747"
+            "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
         ]
     }),
 
