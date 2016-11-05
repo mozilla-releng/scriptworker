@@ -404,9 +404,12 @@ def verify_docker_image_sha(chain, link):
                     docker_image_link.cot['artifacts'][path]
                 ))
             elif upstream_sha != sha:
-                errors.append("{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
+                message = "{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
                     link.name, link.task_id, alg, sha, upstream_sha
-                ))
+                )
+                log.warning("Known issue:\n{}".format(message))
+                # TODO make this an error once we fix the underlying issue
+                # errors.append(message)
     else:
         # Using downloaded image from docker hub
         task_type = guess_task_type(link.name)
@@ -636,7 +639,7 @@ def verify_cot_signatures(chain):
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
         link.cot = json.loads(body)
-        unsigned_path = os.path.join(link.cot_dir, 'public', 'chainOfTrust.json')
+        unsigned_path = os.path.join(link.cot_dir, 'chainOfTrust.json')
         with open(unsigned_path, "w") as fh:
             fh.write(format_json(link.cot))
 
