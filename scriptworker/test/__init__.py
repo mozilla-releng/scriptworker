@@ -10,6 +10,11 @@ import mock
 import pytest
 import tempfile
 import taskcluster.exceptions
+try:
+    import yarl
+    YARL = True
+except ImportError:
+    YARL = False
 
 
 GOOD_GPG_KEYS = {
@@ -110,7 +115,6 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
     the aiohttp session's _request method return a FakeResponse.
     """
     def __init__(self, *args, status=200, payload=None, **kwargs):
-        super(FakeResponse, self).__init__(*args, **kwargs)
         self._connection = mock.MagicMock()
         self._payload = payload or {}
         self.status = status
@@ -118,6 +122,9 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
+        if YARL:
+            # try to fix aiohttp 1.1.0
+            self._url_obj = yarl.URL(args[1])
 
     @asyncio.coroutine
     def text(self, *args, **kwargs):
