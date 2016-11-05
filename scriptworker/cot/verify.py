@@ -688,39 +688,44 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 
 # verify_firefox_decision_command {{{1
 def verify_firefox_decision_command(decision_link):
-    """
-    "/home/worker/bin/run-task",
-    "--vcs-checkout=/home/worker/checkouts/gecko",
-    "--",
-    "bash",
-    "-cx",
-    "cd /home/worker/checkouts/gecko &&
-    ln -s /home/worker/artifacts artifacts &&
-    ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
-    --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
-    --base-repository='https://hg.mozilla.org/mozilla-central'
-    --head-repository='https://hg.mozilla.org/integration/mozilla-inbound/'
-    --head-ref='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-    --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-    --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
+    """Verify the decision command for a firefox decision task.
 
-    "/home/worker/bin/run-task",
-    "--vcs-checkout=/home/worker/checkouts/gecko",
-    "--",
-    "bash",
-    "-cx",
-    "cd /home/worker/checkouts/gecko &&
-    ln -s /home/worker/artifacts artifacts &&
-    ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
-    --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
-    --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
-    --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
-    --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
+    Some example commands::
+
+        "/home/worker/bin/run-task",
+        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "--",
+        "bash",
+        "-cx",
+        "cd /home/worker/checkouts/gecko &&
+        ln -s /home/worker/artifacts artifacts &&
+        ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
+        --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
+        --base-repository='https://hg.mozilla.org/mozilla-central'
+        --head-repository='https://hg.mozilla.org/integration/mozilla-inbound/'
+        --head-ref='e7023fe48f7c48e33ef3b91747647f0873e306d6'
+        --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
+        --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
+
+        "/home/worker/bin/run-task",
+        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "--",
+        "bash",
+        "-cx",
+        "cd /home/worker/checkouts/gecko &&
+        ln -s /home/worker/artifacts artifacts &&
+        ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
+        --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
+        --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
+        --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
+        --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
 
     This is very firefox-centric and potentially fragile, but decision tasks are
     important enough to need to monitor.  The ideal fix would maybe be to simplify
     the commandline if possible.
 
+    Args:
+        decision_link (LinkOfTrust): the decision link to test.
     """
     log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
     errors = []
@@ -972,6 +977,9 @@ async def verify_chain_of_trust(chain):
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
+            # XXX download all other required artifacts before continuing?
+            #   task-graph.json so far
+
             # verify the signatures and populate the `link.cot`s
             verify_cot_signatures(chain)
             # verify the task types, e.g. decision
@@ -981,6 +989,8 @@ async def verify_chain_of_trust(chain):
             await verify_worker_impls(chain)
             # TODO trace back to tree
             # - allowlisted repo/branch/revision
+            # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
+            # allowlisted -> open
         except (KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
