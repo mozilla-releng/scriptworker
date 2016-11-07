@@ -404,11 +404,11 @@ def verify_docker_image_sha(chain, link):
                     docker_image_link.cot['artifacts'][path]
                 ))
             elif upstream_sha != sha:
+                # TODO make this an error once we fix bug 1315415
                 message = "{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
                     link.name, link.task_id, alg, sha, upstream_sha
                 )
                 log.warning("Known issue:\n{}".format(message))
-                # TODO make this an error once we fix the underlying issue
                 # errors.append(message)
     else:
         # Using downloaded image from docker hub
