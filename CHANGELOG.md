@@ -3,11 +3,22 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
+### Added
+- `scriptworker.cot.verify` now verifies the chain of trust for the graph.
+- `scriptworker.exceptions.CoTError` now marks chain of trust validation errors.
+- `scriptworker.task.get_task_id`, `scriptworker.task.get_run_id`, `scriptworker.task.get_decision_task_id`, `scriptworker.task.get_worker_type`
+
 ### Changed
 - config files are now yaml, to enable comments.  `config_example.json` and `cot_config_example.json` have been consolidated into `scriptworker.yaml.tmpl`.  `context.cot_config` items now live in `context.config`.
+- `validate_artifact_url` now takes a list of dictionaries as rules, leading to more configurable url checking.
+- `scriptworker.cot` is now `scriptworker.cot.generate`.  The `get_environment` function has been renamed to `get_cot_environment`.
+- `scriptworker.gpg.get_body` now takes a `verify_sig` kwarg.
+- `download_artifacts` now takes `valid_artifact_task_ids` as a kwarg.
 
 ### Removed
 - removed all references to `cot_config`
+- removed the credential update, since puppet restarts scriptworker on config change.
+- removed aiohttp max connections
 
 ## [0.9.0] - 2016-11-01
 ### Added
