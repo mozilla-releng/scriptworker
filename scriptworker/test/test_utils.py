@@ -7,13 +7,14 @@ import mock
 import os
 import pytest
 import tempfile
-from scriptworker.context import Context
 from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
 from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
     touch
+from . import rw_context as context
 
 assert event_loop, tmpdir  # silence flake8
+assert context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1
@@ -63,18 +64,6 @@ async def always_fail(*args, **kwargs):
 
 async def fake_sleep(*args, **kwargs):
     pass
-
-
-@pytest.fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        'log_dir': os.path.join(tmpdir, 'log'),
-        'task_log_dir': os.path.join(tmpdir, 'artifact', 'public', 'logs'),
-        'artifact_dir': os.path.join(tmpdir, 'artifact'),
-        'work_dir': os.path.join(tmpdir, 'work'),
-    }
-    return context
 
 
 # to_unicode {{{1

@@ -5,23 +5,14 @@
 import json
 import os
 import pytest
-from scriptworker.context import Context
 import taskcluster
 from . import tmpdir
+from . import rw_context as context
 
-assert tmpdir  # silence pyflakes
+assert tmpdir, context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
-@pytest.yield_fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        "work_dir": tmpdir,
-    }
-    yield context
-
-
 @pytest.fixture(scope='function')
 def claim_task():
     return {

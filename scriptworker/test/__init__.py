@@ -5,11 +5,16 @@
 import aiohttp
 import arrow
 import asyncio
+from copy import deepcopy
+from frozendict import frozendict
 import json
 import mock
+import os
 import pytest
 import tempfile
 import taskcluster.exceptions
+from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.context import Context
 try:
     import yarl
     YARL = True
@@ -249,6 +254,20 @@ def tmpdir2():
     """
     with tempfile.TemporaryDirectory() as tmp:
         yield tmp
+
+
+@pytest.yield_fixture(scope='function')
+def rw_context():
+    with tempfile.TemporaryDirectory() as tmp:
+        context = Context()
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
+        for key, value in context.config.items():
+            if key.endswith("_dir") or key.endswith("key_path") or key in ("gpg_home", ):
+                context.config[key] = os.path.join(tmp, key)
+            if isinstance(value, frozendict):
+                context.config[key] = dict(value)
+        yield context
 
 
 async def noop_async(*args, **kwargs):

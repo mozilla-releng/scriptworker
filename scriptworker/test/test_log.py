@@ -7,29 +7,14 @@ from asyncio.subprocess import PIPE
 import logging
 import os
 import pytest
-from scriptworker.context import Context
 import scriptworker.log as swlog
-from . import event_loop, read, tmpdir
+from . import event_loop, read
+from . import rw_context as context
 
-assert event_loop, tmpdir  # silence pyflakes
+assert event_loop, context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
-@pytest.fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        "log_fmt": "%(message)s",
-        "log_datefmt": "%H:%M:%S",
-        "log_dir": tmpdir,
-        "task_log_dir": os.path.join(tmpdir, "public", "logs"),
-        "log_max_bytes": 100,
-        "log_num_backups": 1,
-        "verbose": True,
-    }
-    return context
-
-
 @pytest.fixture(scope='function')
 def text():
     return u"""This

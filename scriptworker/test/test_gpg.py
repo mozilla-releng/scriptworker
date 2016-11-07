@@ -4,7 +4,6 @@
 """
 import arrow
 from contextlib import contextmanager
-from copy import deepcopy
 import glob
 import json
 import mock
@@ -13,14 +12,13 @@ import pexpect
 import pytest
 import shutil
 import subprocess
-from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2, touch
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, touch
+from . import rw_context as context
 
 assert event_loop, tmpdir  # silence pyflakes
-assert tmpdir2  # silence pyflakes
+assert context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -199,20 +197,6 @@ def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
             else:
                 messages.append("{} {} error: {}".format(fingerprint, info['signing_email'], str(exc)))
     return messages
-
-
-@pytest.yield_fixture(scope='function')
-def context(tmpdir2):
-    """Use this function to get a context obj pointing at any directory as
-    gnupghome.
-    """
-    context_ = Context()
-    context_.config = dict(deepcopy(DEFAULT_CONFIG))
-    context_.config['gpg_lockfile'] = os.path.join(tmpdir2, 'gpg_lockfile')
-    for key, value in context_.config.items():
-        if key.endswith("_dir") or key in ("gpg_home", ):
-            context_.config[key] = os.path.join(tmpdir2, key)
-    yield context_
 
 
 class PexpectChild():

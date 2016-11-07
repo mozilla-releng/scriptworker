@@ -5,14 +5,12 @@
 import logging
 import os
 import pytest
-from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.cot.generate as cot
 import scriptworker.gpg as sgpg
-from . import ARTIFACT_SHAS, tmpdir
+from . import ARTIFACT_SHAS, rw_context
 
-assert tmpdir  # silence pyflakes
+assert rw_context  # silence pyflakes
 
 log = logging.getLogger(__name__)
 
@@ -22,29 +20,12 @@ ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "data", "artifacts")
 
 
 @pytest.yield_fixture(scope='function')
-def context(tmpdir):
+def context(rw_context):
     GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
-    context_ = Context()
-    context_.config = {
-        "artifact_dir": ARTIFACT_DIR,
-        "work_dir": os.path.join(tmpdir, "work"),
-        "log_dir": os.path.join(tmpdir, "log"),
-
-        "chain_of_trust_hash_algorithm": "sha256",
-        "cot_schema_path": DEFAULT_CONFIG['cot_schema_path'],
-        "gpg_home": GPG_HOME,
-        "gpg_encoding": 'utf-8',
-        "gpg_options": None,
-        "gpg_path": os.environ.get("GPG_PATH", None),
-        "gpg_public_keyring": "%(gpg_home)s/pubring.gpg",
-        "gpg_secret_keyring": "%(gpg_home)s/secring.gpg",
-        "gpg_use_agent": None,
-        "sign_chain_of_trust": True,
-
-        "worker_id": "worker_id",
-        "worker_type": "worker_type",
-    }
-    context_.claim_task = {
+    rw_context.config['artifact_dir'] = ARTIFACT_DIR
+    rw_context.config['gpg_home'] = GPG_HOME
+    rw_context.config['sign_chain_of_trust'] = True
+    rw_context.claim_task = {
         "runId": 2,
         "status": {
             "taskId": "taskId",
@@ -59,7 +40,7 @@ def context(tmpdir):
         "workerGroup": "worker_group",
         "credentials": {'c': 'd'},
     }
-    yield context_
+    yield rw_context
 
 
 def expected_cot_body(context_, artifacts):

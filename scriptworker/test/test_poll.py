@@ -6,11 +6,10 @@ import arrow
 from copy import deepcopy
 import os
 import pytest
-from scriptworker.context import Context
 import scriptworker.poll as poll
-from . import event_loop, successful_queue, unsuccessful_queue
+from . import rw_context, event_loop, successful_queue, unsuccessful_queue
 
-assert event_loop  # silence flake8
+assert rw_context, event_loop  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 
@@ -24,14 +23,9 @@ async def fake_request(*args, **kwargs):
         return fh.read()
 
 
-@pytest.fixture(scope='function')
-def context():
-    context = Context()
-    context.config = {
-        'worker_group': 'worker_group',
-        'worker_id': 'worker_id',
-    }
-    context.poll_task_urls = {
+@pytest.yield_fixture(scope='function')
+def context(rw_context):
+    rw_context.poll_task_urls = {
         'queues': [{
             "signedPollUrl": "poll0",
             "signedDeleteUrl": "delete0",
@@ -40,7 +34,7 @@ def context():
             "signedDeleteUrl": "delete1",
         }],
     }
-    return context
+    yield rw_context
 
 
 @pytest.fixture(scope='function')

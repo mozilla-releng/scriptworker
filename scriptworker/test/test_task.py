@@ -8,8 +8,6 @@ import glob
 import mock
 import os
 import pytest
-from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
@@ -17,39 +15,15 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import event_loop, fake_session, fake_session_500, successful_queue, \
-    tmpdir, touch, unsuccessful_queue, read
+from . import event_loop, fake_session, fake_session_500, rw_context, successful_queue, \
+    touch, unsuccessful_queue, read
 
-assert event_loop, tmpdir  # silence flake8
+assert event_loop, rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
-
-
-@pytest.fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        'log_dir': os.path.join(tmpdir, "log"),
-        'artifact_dir': os.path.join(tmpdir, "artifact"),
-        'task_log_dir': os.path.join(tmpdir, "artifact", "public", "logs"),
-        'work_dir': os.path.join(tmpdir, "work"),
-        'artifact_upload_timeout': 200,
-        'artifact_expiration_hours': 1,
-        'reclaim_interval': 0.001,
-        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 1'),
-        'task_max_timeout': .1,
-        'valid_artifact_rules': DEFAULT_CONFIG['valid_artifact_rules'],
-    }
-    context.claim_task = {
-        'credentials': {'a': 'b'},
-        'status': {'taskId': 'taskId'},
-        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
-        'runId': 'runId',
-    }
-    return context
 
 mimetypes = {
     "/foo/bar/test.txt": "text/plain",
@@ -58,6 +32,21 @@ mimetypes = {
     "/foo/bar/blah.log": "text/plain",
     "/totally/unknown": "application/binary",
 }
+
+
+@pytest.yield_fixture(scope='function')
+def context(rw_context):
+    rw_context.config['artifact_expiration_hours'] = 1
+    rw_context.config['reclaim_interval'] = 0.001
+    rw_context.config['task_max_timeout'] = .1
+    rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
+    rw_context.claim_task = {
+        'credentials': {'a': 'b'},
+        'status': {'taskId': 'taskId'},
+        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
+        'runId': 'runId',
+    }
+    yield rw_context
 
 
 # worst_level {{{1

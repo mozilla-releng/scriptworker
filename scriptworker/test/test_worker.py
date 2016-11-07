@@ -13,36 +13,19 @@ import pytest
 import tempfile
 import shutil
 import sys
-from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-from . import event_loop, noop_async, noop_sync, successful_queue, tmpdir, tmpdir2
+from . import event_loop, noop_async, noop_sync, rw_context, successful_queue, tmpdir
 
-assert tmpdir, tmpdir2  # silence flake8
+assert rw_context, tmpdir  # silence flake8
 assert successful_queue, event_loop  # silence flake8
 
 
 # constants helpers and fixtures {{{1
-@pytest.fixture(scope='function')
-def context(tmpdir2):
-    context = Context()
-    context.config = dict(deepcopy(DEFAULT_CONFIG))
-    context.config['log_dir'] = os.path.join(tmpdir2, "log")
-    context.config['task_log_dir'] = os.path.join(tmpdir2, "task_log")
-    context.config['work_dir'] = os.path.join(tmpdir2, "work")
-    context.config['artifact_dir'] = os.path.join(tmpdir2, "artifact")
-    context.config['git_key_repo_dir'] = os.path.join(tmpdir2, "gpg_keys")
-    context.config['base_gpg_home_dir'] = os.path.join(tmpdir2, "base_gpg_home")
-    context.config['git_commit_signing_pubkey_dir'] = os.path.join(tmpdir2, "pubkeys")
-    context.config['pubkey_path'] = os.path.join(tmpdir2, "pubkey")
-    context.config['privkey_path'] = os.path.join(tmpdir2, "privkey")
-    context.config['poll_interval'] = .1
-    for k, v in context.config.items():
-        if isinstance(v, frozendict):
-            context.config[k] = dict(v)
-    context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
-    context.poll_task_urls = {
+@pytest.yield_fixture(scope='function')
+def context(rw_context):
+    rw_context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
+    rw_context.poll_task_urls = {
         'queues': [{
             "signedPollUrl": "poll0",
             "signedDeleteUrl": "delete0",
@@ -52,7 +35,7 @@ def context(tmpdir2):
         }],
         'expires': arrow.utcnow().replace(hours=10).isoformat(),
     }
-    return context
+    yield rw_context
 
 
 # main {{{1
