@@ -562,44 +562,90 @@ async def download_cot(chain):
         except Exception:
             log.exception("boo")
 
-# download_cot_artifacts {{{1
-async def download_cot_artifacts(chain, task_id, paths):
-    """Download artifacts and verify their SHAs against the chain of trust.
+# download_cot_artifact {{{1
+async def download_cot_artifact(chain, task_id, path):
+    """Download an artifact and verify its SHA against the chain of trust.
 
     Args:
         chain (ChainOfTrust): the chain of trust object
         task_id (str): the task ID to download from
-        paths (list): the list of artifacts to download
+        path (str): the relative path to the artifact to download
 
     Returns:
-        list: the full paths of the artifacts
+        str: the full path of the downloaded artifact
 
     Raises:
         CoTError: on failure.
     """
-    full_paths = []
-    urls = []
     link = chain.get_link(task_id)
-    for path in paths:
-        log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
-        if path not in link.cot['artifacts']:
-            raise CoTError("path {} not in {} chain of trust artifacts!".format(path, link.name))
-        url = get_artifact_url(chain.context, task_id, path)
-        urls.append(url)
-    log.info("Downloading Chain of Trust artifacts:\n" + "\n".join(urls))
+    log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
+    if path not in link.cot['artifacts']:
+        raise CoTError("path {} not in {} chain of trust artifacts!".format(path, link.name))
+    url = get_artifact_url(chain.context, task_id, path)
+    log.info("Downloading Chain of Trust artifact:\n{}".format(url))
     await download_artifacts(
-        chain.context, urls, parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
+        chain.context, [url], parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
     )
-    for path in paths:
-        full_path = os.path.join(link.cot_dir, path)
-        full_paths.append(full_path)
-        for alg, expected_sha in link.cot['artifacts'][path].items():
-            if alg not in chain.context.config['valid_hash_algorithms']:
-                raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
-            real_sha = get_hash(full_path, hash_alg=alg)
-            if expected_sha != real_sha:
-                raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
+    full_path = os.path.join(link.cot_dir, path)
+    for alg, expected_sha in link.cot['artifacts'][path].items():
+        if alg not in chain.context.config['valid_hash_algorithms']:
+            raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
+        real_sha = get_hash(full_path, hash_alg=alg)
+        if expected_sha != real_sha:
+            raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
+    return full_path
+
+
+# download_cot_artifacts {{{1
+async def download_cot_artifacts(chain, artifact_dict):
+    """Call `download_cot_artifact` in parallel for each key/value in `artifact_dict`
+
+    Args:
+        chain (ChainOfTrust): the chain of trust object
+        artifact_dict (dict): maps task_id to list of paths of artifacts to download
+
+    Returns:
+        list: list of full paths to artifacts
+
+    Raises:
+        CoTError: on chain of trust sha validation error
+        DownloadError: on download error
+    """
+    tasks = []
+    for task_id, paths in artifact_dict.items():
+        for path in paths:
+            tasks.append(
+                download_cot_artifact(
+                    chain, task_id, path
+                )
+            )
+    full_paths = raise_future_exceptions(tasks)
     return full_paths
+
+
+# download_firefox_cot_artifacts {{{1
+async def download_firefox_cot_artifacts(chain):
+    """Download artifacts needed for firefox chain of trust verification.
+
+    This is only task-graph.json so far.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust object
+
+    Returns:
+        list: list of full paths to artifacts
+
+    Raises:
+        CoTError: on chain of trust sha validation error
+        DownloadError: on download error
+    """
+    artifact_dict = {}
+    for link in chain.links:
+        task_type = guess_task_type(link.name)
+        if task_type == 'decision':
+            artifact_dict.setdefault(link.task_id, [])
+            artifact_dict[link.task_id].append('public/chainOfTrust.json.asc')
+    return await download_cot_artifacts(chain, artifact_dict)
 
 
 # verify_cot_signatures {{{1
@@ -776,8 +822,11 @@ async def verify_decision_task(chain, link):
     if worker_type not in chain.context.config['valid_decision_worker_types']:
         errors.append("{} is not a valid decision workerType!".format(worker_type))
     # make sure all tasks generated from this decision task match the published task-graph.json
-    paths = await download_cot_artifacts(chain, link.task_id, ["public/task-graph.json"])
-    with open(paths[0], "r") as fh:
+    path = os.path.join(link.cot_dir, "public", "task-graph.json")
+    if not os.path.exists(path):
+        errors.append("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
+        raise_on_errors(errors)
+    with open(path, "r") as fh:
         link.task_graph = json.load(fh)
     for target_link in [chain] + chain.links:
         if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
@@ -966,6 +1015,7 @@ async def trace_back_to_tree(chain):
     """
     # TODO trace back to tree
     # - allowlisted repo/branch/revision
+    # ignore other decision tasks or be more lax?
     # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
     # allowlisted -> open
     """
@@ -988,9 +1038,7 @@ async def verify_chain_of_trust(chain):
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
-            # XXX download all other required artifacts before continuing?
-            #   task-graph.json so far
-
+            await download_firefox_cot_artifacts(chain)
             # verify the signatures and populate the `link.cot`s
             verify_cot_signatures(chain)
             # verify the task types, e.g. decision

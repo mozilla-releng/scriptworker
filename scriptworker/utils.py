@@ -246,16 +246,23 @@ async def raise_future_exceptions(tasks):
     Args:
         tasks (list): the list of futures to await and check for exceptions.
 
+    Returns:
+        list: the list of result()s from the futures.
+
     Raises:
-        Exception: any exceptions in task.exception()
+        Exception: any exceptions in task.exception(), or CancelledError if
+            the task was cancelled
     """
     if not tasks:
         return
+    result = []
     await asyncio.wait(tasks)
     for task in tasks:
         exc = task.exception()
         if exc is not None:
             raise exc
+        result.append(task.result())
+    return result
 
 
 def filepaths_in_dir(path):
