@@ -91,6 +91,12 @@ def test_get_decision_task_id(defn, result):
     assert task.get_decision_task_id(defn) == result
 
 
+# get_worker_type {{{1
+@pytest.mark.parametrize("defn,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
+def test_get_worker_type(defn, result):
+    assert task.get_worker_type(defn) == result
+
+
 # run_task {{{1
 def test_run_task(context, event_loop):
     status = event_loop.run_until_complete(
