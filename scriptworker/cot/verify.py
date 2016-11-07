@@ -961,6 +961,17 @@ async def verify_worker_impls(chain):
         await valid_worker_impls[worker_impl](chain, obj)
 
 
+# TODO trace_back_to_tree {{{1
+async def trace_back_to_tree(chain):
+    """
+    # TODO trace back to tree
+    # - allowlisted repo/branch/revision
+    # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
+    # allowlisted -> open
+    """
+    pass
+
+
 # build_chain_of_trust {{{1
 async def verify_chain_of_trust(chain):
     """Build and verify the chain of trust.
@@ -987,10 +998,7 @@ async def verify_chain_of_trust(chain):
             check_num_tasks(chain, task_count)
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
-            # TODO trace back to tree
-            # - allowlisted repo/branch/revision
-            # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
-            # allowlisted -> open
+            await trace_back_to_tree(chain)
         except (KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
