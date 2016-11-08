@@ -1014,7 +1014,7 @@ async def verify_worker_impls(chain):
         # Run tests synchronously for now.  We can parallelize if efficiency
         # is more important than a single simple logfile.
         await valid_worker_impls[worker_impl](chain, obj)
-        if isinstance(obj, ChainOfTrust) && obj.worker_impl != "scriptworker":
+        if isinstance(obj, ChainOfTrust) and obj.worker_impl != "scriptworker":
             raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
