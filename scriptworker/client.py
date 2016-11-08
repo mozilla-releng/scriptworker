@@ -72,20 +72,21 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     Raises:
         ScriptWorkerTaskException: on failure to validate.
     """
-    matches = match_url_regex(valid_artifact_rules, url)
-    for match in matches:
+
+    def callback(match):
         path_info = match.groupdict()
         # make sure we're pointing at a valid task ID
         if 'taskId' in path_info and \
                 path_info['taskId'] not in valid_artifact_task_ids:
-            continue
+            return
         if 'filepath' not in path_info:
-            continue
-        return_value = path_info['filepath']
-        break
-    else:
+            return
+        return path_info['filepath']
+
+    filepath = match_url_regex(valid_artifact_rules, url, callback)
+    if filepath is None:
         raise ScriptWorkerTaskException(
             "Can't validate url {}".format(url),
             exit_code=STATUSES['malformed-payload']
         )
-    return return_value.lstrip('/')
+    return filepath.lstrip('/')

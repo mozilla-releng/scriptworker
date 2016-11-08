@@ -392,12 +392,8 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
 
 
 # match_url_regex {{{1
-def match_url_regex(rules, url):
-    """Given rules, return a list of `re.MatchObject`s that match the rules.
-
-    We can still apply further rules to the `MatchObject`s after we get the
-    ordered list of matches, which is why we build a full list rather than
-    returning the first match.  (We could also use a callback if preferred)
+def match_url_regex(rules, url, callback):
+    """Given rules and a callback, find the rule that matches the url.
 
     Rules look like::
 
@@ -416,13 +412,15 @@ def match_url_regex(rules, url):
         rules (list): a list of dictionaries specifying lists of `schemes`,
             `netlocs`, and `path_regexes`.
         url (str): the url to test
+        callback (function): a callback that takes an `re.MatchObject`.
+            If it returns None, continue searching.  Otherwise, return the
+            value from the callback.
 
     Returns:
-        list: the list of matching `re.MatchObject`s, if any.
+        value: the value from the callback, or None if no match.
     """
     parts = urlparse(url)
     path = unquote(parts.path)
-    results = []
     for rule in rules:
         if parts.scheme not in rule['schemes']:
             continue
@@ -432,5 +430,6 @@ def match_url_regex(rules, url):
             m = re.search(regex, path)
             if m is None:
                 continue
-            results.append(m)
-    return results
+            result = callback(m)
+            if result is not None:
+                return result

@@ -18,7 +18,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_decision_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, load_json, makedirs, raise_future_exceptions
+from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -1040,13 +1040,20 @@ also head_ref or "tip"
     """
     # get chain.task.metadata.source, e.g. "https://hg.mozilla.org/projects/date//file/10b21d912f60b8de5c655799a27e9229c8761bb1/taskcluster/ci/build-signing"
     errors = []
-    my_source = chain.task.get('metadata', {}).get('source')
-    # get my_repo
+    my_source_url = chain.task.get('metadata', {}).get('source')
+
+    def callback(match):
+        path_info = match.groupdict()
+        return path_info.path
+
+    path = match_url_regex(chain.context.config['valid_vcs_rules'], my_source_url, callback)
+    if path is None:
+        pass
     # TODO all tasks w/ same decision_task_id have the same source repo
     # TODO check chain.is_try
     # TODO check source repo vs scopes
     # TODO check vs docker-image & secondary decision repo?
-    assert errors, my_source  # silence flake8 for now
+    assert errors, my_source_url  # silence flake8 for now
 
 
 # build_chain_of_trust {{{1
