@@ -44,7 +44,7 @@ class ChainOfTrust(object):
         self.context = context
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
-        self.worker_impl = guess_worker_impl(context.task)  # this should be scriptworker
+        self.worker_impl = guess_worker_impl(self)  # this should be scriptworker
         self.decision_task_id = get_decision_task_id(self.task)
         self.links = []
 
@@ -336,9 +336,10 @@ def is_try(task):
         bool: True if it's try
     """
     result = False
-    if task['payload']['env'].get("GECKO_HEAD_REPOSITORY"):
+    env = task['payload'].get('env', {})
+    if env.get("GECKO_HEAD_REPOSITORY"):
         result = result or _is_try_url(task['payload']['env']['GECKO_HEAD_REPOSITORY'])
-    if task['payload']['env'].get("MH_BRANCH"):
+    if env.get("MH_BRANCH"):
         result = result or task['payload']['env']['MH_BRANCH'] == 'try'
     if task['metadata'].get('source'):
         result = result or _is_try_url(task['metadata']['source'])
@@ -585,7 +586,7 @@ async def download_cot_artifact(chain, task_id, path):
     link = chain.get_link(task_id)
     log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
     if path not in link.cot['artifacts']:
-        raise CoTError("path {} not in {} chain of trust artifacts!".format(path, link.name))
+        raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
     url = get_artifact_url(chain.context, task_id, path)
     log.info("Downloading Chain of Trust artifact:\n{}".format(url))
     await download_artifacts(
@@ -620,11 +621,13 @@ async def download_cot_artifacts(chain, artifact_dict):
     for task_id, paths in artifact_dict.items():
         for path in paths:
             tasks.append(
-                download_cot_artifact(
-                    chain, task_id, path
+                asyncio.ensure_future(
+                    download_cot_artifact(
+                        chain, task_id, path
+                    )
                 )
             )
-    full_paths = raise_future_exceptions(tasks)
+    full_paths = await raise_future_exceptions(tasks)
     return full_paths
 
 
@@ -649,7 +652,7 @@ async def download_firefox_cot_artifacts(chain):
         task_type = link.task_type
         if task_type == 'decision':
             artifact_dict.setdefault(link.task_id, [])
-            artifact_dict[link.task_id].append('public/chainOfTrust.json.asc')
+            artifact_dict[link.task_id].append('public/task-graph.json')
     return await download_cot_artifacts(chain, artifact_dict)
 
 
@@ -1035,12 +1038,15 @@ def get_firefox_source_url(obj):
         CoTError: if repo and source are defined and don't match
     """
     task = obj.task
-    repo = task['payload']['env'].get('GECKO_HEAD_REPOSITORY')
+    log.debug("Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
+    repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
     source = task['metadata']['source']
+    # We hit this for hooks.
     if repo and not source.startswith(repo):
-        raise CoTError("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}!".format(
-            obj.name, obj.task_id, repo, source
+        log.info("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}... returning {}".format(
+            obj.name, obj.task_id, repo, source, repo
         ))
+        return repo
     return source
 
 
@@ -1057,7 +1063,8 @@ async def trace_back_to_firefox_tree(chain):
 
     def callback(match):
         path_info = match.groupdict()
-        return path_info.path
+        if 'path' in path_info:
+            return path_info['path']
 
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
@@ -1114,9 +1121,10 @@ async def verify_chain_of_trust(chain):
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
-            await download_firefox_cot_artifacts(chain)
             # verify the signatures and populate the `link.cot`s
             verify_cot_signatures(chain)
+            # download all other artifacts needed to verify chain of trust
+            await download_firefox_cot_artifacts(chain)
             # verify the task types, e.g. decision
             task_count = await verify_task_types(chain)
             check_num_tasks(chain, task_count)
