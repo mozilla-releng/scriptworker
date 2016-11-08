@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Chain of Trust artifact validation.
+"""Chain of Trust artifact verification.
 
 Attributes:
     log (logging.Logger): the log object for this module.
@@ -36,12 +36,16 @@ class ChainOfTrust(object):
         links (list): the list of `LinkOfTrust`s
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
+        task_type (str): the task type of the task (e.g., decision, build)
+        worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
     def __init__(self, context, name, task_id=None):
         self.name = name
+        self.task_type = guess_task_type(name)
         self.context = context
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
+        self.worker_impl = guess_worker_impl(context.task)  # this should be scriptworker
         self.decision_task_id = get_decision_task_id(self.task)
         self.links = []
 
@@ -104,6 +108,7 @@ class LinkOfTrust(object):
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
+        task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
     _task = None
@@ -112,6 +117,7 @@ class LinkOfTrust(object):
 
     def __init__(self, context, name, task_id):
         self.name = name
+        self.task_type = guess_task_type(name)
         self.context = context
         self.task_id = task_id
         self.cot_dir = os.path.join(
@@ -412,7 +418,7 @@ def verify_docker_image_sha(chain, link):
                 # errors.append(message)
     else:
         # Using downloaded image from docker hub
-        task_type = guess_task_type(link.name)
+        task_type = link.task_type
         # XXX we will need some way to allow trusted developers to update these
         # allowlists
         if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
@@ -641,7 +647,7 @@ async def download_firefox_cot_artifacts(chain):
     """
     artifact_dict = {}
     for link in chain.links:
-        task_type = guess_task_type(link.name)
+        task_type = link.task_type
         if task_type == 'decision':
             artifact_dict.setdefault(link.task_id, [])
             artifact_dict[link.task_id].append('public/chainOfTrust.json.asc')
@@ -906,7 +912,7 @@ async def verify_signing_task(chain, obj):
         obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
     """
     errors = []
-    if guess_worker_impl(obj) != "scriptworker":
+    if obj.worker_impl != "scriptworker":
         errors.append("{} {} must be run from scriptworker!".format(obj.name, obj.task_id))
     raise_on_errors(errors)
 
@@ -953,7 +959,7 @@ async def verify_task_types(chain):
     task_count = {}
     # check the chain object (current task) as well
     for obj in [chain] + chain.links:
-        task_type = guess_task_type(obj.name)
+        task_type = obj.task_type
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
         task_count.setdefault(task_type, 0)
         task_count[task_type] += 1
@@ -1003,11 +1009,13 @@ async def verify_worker_impls(chain):
     """
     valid_worker_impls = get_valid_worker_impls()
     for obj in [chain] + chain.links:
-        worker_impl = guess_worker_impl(obj)
+        worker_impl = obj.worker_impl
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, worker_impl))
         # Run tests synchronously for now.  We can parallelize if efficiency
         # is more important than a single simple logfile.
         await valid_worker_impls[worker_impl](chain, obj)
+        if isinstance(obj, ChainOfTrust) && obj.worker_impl != "scriptworker":
+            raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
 # TODO trace_back_to_tree {{{1
