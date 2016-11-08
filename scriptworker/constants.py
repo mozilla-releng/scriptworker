@@ -57,7 +57,7 @@ DEFAULT_CONFIG = frozendict({
     "sign_chain_of_trust": True,
     "verify_chain_of_trust": False,  # TODO True
     "verify_cot_signature": False,
-    "cot_job_type": "...",  # e.g., signing
+    "cot_job_type": "unknown",  # e.g., signing
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,

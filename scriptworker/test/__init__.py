@@ -263,6 +263,7 @@ def rw_context():
         context = Context()
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
+        context.config['cot_job_type'] = "signing"
         for key, value in context.config.items():
             if key.endswith("_dir"):
                 context.config[key] = os.path.join(tmp, key)
