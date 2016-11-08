@@ -19,6 +19,7 @@ from yaml import safe_load
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config
+from scriptworker.utils import load_json
 
 log = logging.getLogger(__name__)
 
@@ -64,12 +65,9 @@ def read_worker_creds(key="credentials"):
     for path in CREDS_FILES:
         if not os.path.exists(path):
             continue
-        with open(path, "r") as fh:
-            try:
-                contents = json.load(fh)
-                return contents[key]
-            except (json.decoder.JSONDecodeError, KeyError):
-                pass
+        contents = load_json(path, is_path=True, exception=None)
+        if contents.get(key):
+            return contents[key]
     else:
         if key == "credentials" and os.environ.get("TASKCLUSTER_ACCESS_TOKEN") and \
                 os.environ.get("TASKCLUSTER_CLIENT_ID"):

@@ -29,12 +29,8 @@ def get_task(config):
     """
     path = os.path.join(config['work_dir'], "task.json")
     message = "Can't read task from {}!\n%(exc)s".format(path)
-    try:
-        with open(path, "r") as fh:
-            contents = load_json(fh, exception=ScriptWorkerTaskException, message=message)
-            return contents
-    except OSError as exc:
-        raise ScriptWorkerTaskException(message % {'exc': str(exc)})
+    contents = load_json(path, is_path=True, message=message)
+    return contents
 
 
 def validate_json_schema(data, schema, name="task"):

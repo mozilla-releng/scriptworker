@@ -42,7 +42,7 @@ def parse_azure_message(message):
     message_info['popReceipt'] = urllib.parse.quote(message_info['popReceipt'])
     message_text = base64.b64decode(message_info['messageText']).decode('utf-8')
     message_info['task_info'] = load_json(
-        message_text, ScriptWorkerException,
+        message_text, exception=ScriptWorkerException,
         message="Can't load azure json! %(exc)s\n{}".format(message_text)
     )
     return message_info

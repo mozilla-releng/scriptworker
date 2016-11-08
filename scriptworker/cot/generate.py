@@ -4,13 +4,12 @@
 Attributes:
     log (logging.Logger): the log object for this module.
 """
-import json
 import logging
 import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import GPG, sign
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash
+from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json
 
 log = logging.getLogger(__name__)
 
@@ -100,14 +99,11 @@ def generate_cot(context, path=None):
         ScriptWorkerException: on schema error.
     """
     body = generate_cot_body(context)
-    # load_json doesn't catch a missing file =\
-    try:
-        with open(context.config['cot_schema_path'], "r") as fh:
-            schema = json.load(fh)
-    except (IOError, ValueError) as e:
-        raise ScriptWorkerException(
-            "Can't read schema file {}: {}".format(context.config['cot_schema_path'], str(e))
-        )
+    schema = load_json(
+        context.config['cot_schema_path'], is_path=True,
+        exception=ScriptWorkerException,
+        message="Can't read schema file {}: %(exc)s".format(context.config['cot_schema_path'])
+    )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
     path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")

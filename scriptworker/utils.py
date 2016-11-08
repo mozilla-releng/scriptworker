@@ -315,14 +315,15 @@ def format_json(data):
     return json.dumps(data, indent=2, sort_keys=True)
 
 
-def load_json(obj, exception=ScriptWorkerTaskException, message="Failed to load json: %(exc)s"):
+def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
+              message="Failed to load json: %(exc)s"):
     """Load json from a filehandle or string, and raise a custom exception on failure
 
     Args:
-        obj (str or filehandle): a str to pass to `json.loads` or a filehandle
-            to pass to `json.load`
+        string (str): json body or a path to open
+        is_path (bool, optional): if `string` is a path. Defaults to False.
         exception (exception, optional): the exception to raise on failure.
-            Defaults to ScriptWorkerTaskException.
+            If None, don't raise an exception.  Defaults to ScriptWorkerTaskException.
         message (str, optional): the message to use for the exception.
             Defaults to "Failed to load json: %(exc)s"
 
@@ -333,14 +334,16 @@ def load_json(obj, exception=ScriptWorkerTaskException, message="Failed to load 
         Exception: as specified, on failure
     """
     try:
-        if isinstance(obj, str):
-            contents = json.loads(obj)
+        if is_path:
+            with open(string, "r") as fh:
+                contents = json.load(fh)
         else:
-            contents = json.load(obj)
+            contents = json.loads(string)
         return contents
     except (OSError, ValueError) as exc:
-        repl_dict = {'exc': str(exc)}
-        raise exception(message % repl_dict)
+        if exception is not None:
+            repl_dict = {'exc': str(exc)}
+            raise exception(message % repl_dict)
 
 
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):
