@@ -320,7 +320,8 @@ def _is_try_url(url):
 def is_try(task):
     """Determine if a task is a 'try' task (restricted privs).
 
-    XXX do we want this, or just do this behavior for any non-allowlisted repo?
+    This goes further than get_firefox_source_url.  We may or may not want
+    to keep this.
 
     This checks for the following things::
 
@@ -859,7 +860,7 @@ async def verify_build_task(chain, link):
     The task is the same as the task graph task; the command;
     the docker-image for docker-worker builds; the revision and repo.
 
-    TODO verify / limit what can go in command
+    TODO verify / limit what can go in command?
     "/home/worker/bin/run-task",
     "--chown-recursive",
     "/home/worker/workspace",
@@ -1105,7 +1106,7 @@ async def trace_back_to_firefox_tree(chain):
     raise_on_errors(errors)
 
 
-# build_chain_of_trust {{{1
+# verify_chain_of_trust {{{1
 async def verify_chain_of_trust(chain):
     """Build and verify the chain of trust.
 
