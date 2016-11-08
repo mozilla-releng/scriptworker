@@ -7,12 +7,10 @@ modules, to avoid circular imports.
 """
 import jsonschema
 import os
-import re
-from urllib.parse import urlparse, unquote
 
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
-from scriptworker.utils import load_json
+from scriptworker.utils import load_json, match_url_regex
 
 
 def get_task(config):
@@ -74,32 +72,17 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     Raises:
         ScriptWorkerTaskException: on failure to validate.
     """
-    parts = urlparse(url)
-    path = unquote(parts.path)
-    return_value = None
-    for valid_artifact_rule in valid_artifact_rules:
-        # scheme allowed?  e.g. https
-        if parts.scheme not in valid_artifact_rule['schemes']:
+    matches = match_url_regex(valid_artifact_rules, url)
+    for match in matches:
+        path_info = match.groupdict()
+        # make sure we're pointing at a valid task ID
+        if 'taskId' in path_info and \
+                path_info['taskId'] not in valid_artifact_task_ids:
             continue
-        # netloc whitelisted?  e.g. queue.taskcluster.net
-        if parts.netloc not in valid_artifact_rule['netlocs']:
+        if 'filepath' not in path_info:
             continue
-        # check the paths
-        for regex in valid_artifact_rule['path_regexes']:
-            m = re.search(regex, path)
-            if m is None:
-                continue
-            path_info = m.groupdict()
-            # make sure we're pointing at a valid task ID
-            if 'taskId' in path_info and \
-                    path_info['taskId'] not in valid_artifact_task_ids:
-                continue
-            if 'filepath' not in path_info:
-                continue
-            return_value = path_info['filepath']
-            break
-        if return_value is not None:
-            break
+        return_value = path_info['filepath']
+        break
     else:
         raise ScriptWorkerTaskException(
             "Can't validate url {}".format(url),
