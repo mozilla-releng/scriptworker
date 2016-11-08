@@ -1021,39 +1021,81 @@ async def verify_worker_impls(chain):
             raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
-# TODO trace_back_to_firefox_tree {{{1
+# get_firefox_source_url {{{1
+def get_firefox_source_url(obj):
+    """Get the firefox source url for a Trust object.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the source url.
+
+    Raises:
+        CoTError: if repo and source are defined and don't match
+    """
+    task = obj.task
+    repo = task['payload']['env'].get('GECKO_HEAD_REPOSITORY')
+    source = task['metadata']['source']
+    if repo and not source.startswith(repo):
+        raise CoTError("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}!".format(
+            obj.name, obj.task_id, repo, source
+        ))
+    return source
+
+
+# trace_back_to_firefox_tree {{{1
 async def trace_back_to_firefox_tree(chain):
     """
-    # TODO trace back to tree
-    # - allowlisted repo/branch/revision
-    # ignore other decision tasks or be more lax?
-    # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
-    # allowlisted -> open
-
-    build:
-        task.metadata.source: "https://hg.mozilla.org/projects/date//file/a80373508881bfbff67a2a49297c328ff8052572/taskcluster/ci/build"
-        task.payload.env.GECKO_BASE_REPOSITORY "https://hg.mozilla.org/mozilla-central" or mozilla-unified
-        task.payload.env.GECKO_HEAD_REPOSITORY "https://hg.mozilla.org/projects/date/"
-        task.payload.eng.GECKO_HEAD_REV: "a80373508881bfbff67a2a49297c328ff8052572" or ""
-also head_ref or "tip"
-
+    task.metadata.source: "https://hg.mozilla.org/projects/date//file/a80373508881bfbff67a2a49297c328ff8052572/taskcluster/ci/build"
+    task.payload.env.GECKO_HEAD_REPOSITORY "https://hg.mozilla.org/projects/date/"
     """
-    # get chain.task.metadata.source, e.g. "https://hg.mozilla.org/projects/date//file/10b21d912f60b8de5c655799a27e9229c8761bb1/taskcluster/ci/build-signing"
     errors = []
-    my_source_url = chain.task.get('metadata', {}).get('source')
+    repos = {}
+    restricted_privs = None
+    scope_rules = chain.context.config['cot_restricted_scopes'][chain.name]
 
     def callback(match):
         path_info = match.groupdict()
         return path_info.path
 
-    path = match_url_regex(chain.context.config['valid_vcs_rules'], my_source_url, callback)
-    if path is None:
-        pass
-    # TODO all tasks w/ same decision_task_id have the same source repo
-    # TODO check chain.is_try
-    # TODO check source repo vs scopes
-    # TODO check vs docker-image & secondary decision repo?
-    assert errors, my_source_url  # silence flake8 for now
+    # a repo_path of None means we have no restricted privs.
+    # a string repo_path may mean we have higher privs
+    for obj in [chain] + chain.links:
+        source_url = get_firefox_source_url(obj)
+        repo_path = match_url_regex(chain.context.config['valid_vcs_rules'], source_url, callback)
+        repos[obj] = repo_path
+    # check for restricted scopes.
+    my_repo = repos[chain]
+    for scope in chain.task['scopes']:
+        if scope in scope_rules:
+            log.info("Found privileged scope {}".format(scope))
+            restricted_privs = True
+            if my_repo not in scope_rules[scope]:
+                errors.append("{} {}: repo {} not allowlisted for scope {}!".format(
+                    chain.name, chain.task_id, my_repo, scope
+                ))
+    # verify all tasks w/ same decision_task_id have the same source repo.
+    if len(set(repos.values())) > 1:
+        for obj, repo in repos.items():
+            if obj.decision_task_id == chain.decision_task_id:
+                if repo != my_repo:
+                    errors.append("{} {} repo {} doesn't match my repo {}!".format(
+                        obj.name, obj.task_id, repo, my_repo
+                    ))
+            # if we have restricted privs, the non-sibling tasks must at least be in
+            # a known repo.
+            # (Not currently requiring that all tasks have the same privilege level,
+            #  in case a docker-image build is run on mozilla-central and that image
+            #  is used for a release-priv task, for example.)
+            elif restricted_privs and repo is None:
+                errors.append("{} {} has no privileged repo on an restricted privilege scope!".format(
+                    obj.name, obj.task_id
+                ))
+    # Disallow restricted privs on is_try.  This may be a redundant check.
+    if restricted_privs and chain.is_try():
+        errors.append("{} {} has restricted privilege scope, and is_try()!".format(chain.name, chain.task_id))
+    raise_on_errors(errors)
 
 
 # build_chain_of_trust {{{1
