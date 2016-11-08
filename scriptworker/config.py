@@ -9,7 +9,6 @@ Attributes:
 import argparse
 from copy import deepcopy
 from frozendict import frozendict
-import json
 import logging
 import os
 import re
