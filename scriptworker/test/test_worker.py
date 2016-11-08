@@ -5,7 +5,6 @@
 import arrow
 import asyncio
 from copy import deepcopy
-from frozendict import frozendict
 import json
 import mock
 import os
@@ -46,8 +45,6 @@ def test_main(mocker, context, event_loop):
     config['credentials'] = deepcopy(creds)
 
     async def foo(arg):
-        # arg.config will be a frozendict.
-        assert arg.config == frozendict(config)
         # arg.credentials will be a dict copy of a frozendict.
         assert arg.credentials == dict(creds)
         raise ScriptWorkerException("foo")

@@ -177,7 +177,59 @@ DEFAULT_CONFIG = frozendict({
         "HEAD_REV",
         "BASE_REPOSITORY",
         "HASH",
-    )
+    ),
+
+    # for trace_back_to_*_tree.  These repos have access to restricted scopes;
+    # all other repos are relegated to CI scopes.
+    'valid_vcs_rules': ({
+        "schemes": ["https", "ssh"],
+        "netlocs": ["hg.mozilla.org"],
+        "path_regexes": [
+            "^(?P<path>/mozilla-(central|unified))(/|$)",
+            "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
+            "^(?P<path>/releases/mozilla-(aurora|beta|release|esr45|esr52))(/|$)",
+            # XXX remove /projects/date when taskcluster nightly migration is
+            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/jamun when we no longer release firefox
+            #     from it
+            "^(?P<path>/projects/(date|jamun))(/|$)",
+        ],
+    }, ),
+
+    # Scopes, restricted by task type and repo
+    'cot_restricted_scopes': frozendict({
+        'signing': {
+            # Which repos can do release signing?
+            # Allow aurora for staging betas.
+            # XXX remove /projects/jamun when we no longer release firefox
+            #     from it
+            'project:releng:signing:cert:release-signing': (
+                "/releases/mozilla-aurora",
+                "/releases/mozilla-beta",
+                "/releases/mozilla-release",
+                "/releases/mozilla-esr45",
+                "/releases/mozilla-esr52",
+                "/projects/jamun",
+            ),
+            # Which repos can do nightly signing?
+            # XXX remove /projects/date when taskcluster nightly migration is
+            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/jamun when we no longer release firefox
+            #     from it
+            'project:releng:signing:cert:nightly-signing': (
+                "/releases/mozilla-central",
+                "/releases/mozilla-unified",
+                "/releases/mozilla-aurora",
+                "/releases/mozilla-beta",
+                "/releases/mozilla-release",
+                "/releases/mozilla-esr45",
+                "/releases/mozilla-esr52",
+                "/projects/jamun",
+                "/projects/date",
+            ),
+        },
+        # TODO other scriptworker instance types
+    }),
 })
 
 # STATUSES and REVERSED_STATUSES {{{1

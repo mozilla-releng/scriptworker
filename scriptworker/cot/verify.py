@@ -8,7 +8,6 @@ import asyncio
 from contextlib import contextmanager
 from copy import deepcopy
 from frozendict import frozendict
-import json
 import logging
 import os
 import pprint
@@ -19,7 +18,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_decision_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, makedirs, raise_future_exceptions
+from scriptworker.utils import format_json, get_hash, load_json, makedirs, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -629,7 +628,7 @@ async def download_cot_artifacts(chain, artifact_dict):
     return full_paths
 
 
-# download_firefox_cot_artifacts {{{1
+# download_gecko_cot_artifacts {{{1
 async def download_firefox_cot_artifacts(chain):
     """Download artifacts needed for firefox chain of trust verification.
 
@@ -690,7 +689,10 @@ def verify_cot_signatures(chain):
             )
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
-        link.cot = json.loads(body)
+        link.cot = load_json(
+            body, exception=CoTError,
+            message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
+        )
         unsigned_path = os.path.join(link.cot_dir, 'chainOfTrust.json')
         with open(unsigned_path, "w") as fh:
             fh.write(format_json(link.cot))
@@ -832,8 +834,9 @@ async def verify_decision_task(chain, link):
     if not os.path.exists(path):
         errors.append("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
         raise_on_errors(errors)
-    with open(path, "r") as fh:
-        link.task_graph = json.load(fh)
+    link.task_graph = load_json(
+        path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
+    )
     for target_link in [chain] + chain.links:
         if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
             verify_link_in_task_graph(chain, link, target_link)
@@ -1018,16 +1021,32 @@ async def verify_worker_impls(chain):
             raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
-# TODO trace_back_to_tree {{{1
-async def trace_back_to_tree(chain):
+# TODO trace_back_to_firefox_tree {{{1
+async def trace_back_to_firefox_tree(chain):
     """
     # TODO trace back to tree
     # - allowlisted repo/branch/revision
     # ignore other decision tasks or be more lax?
     # TODO 2 levels: is_try / non-allowlisted -> dep-signing etc
     # allowlisted -> open
+
+    build:
+        task.metadata.source: "https://hg.mozilla.org/projects/date//file/a80373508881bfbff67a2a49297c328ff8052572/taskcluster/ci/build"
+        task.payload.env.GECKO_BASE_REPOSITORY "https://hg.mozilla.org/mozilla-central" or mozilla-unified
+        task.payload.env.GECKO_HEAD_REPOSITORY "https://hg.mozilla.org/projects/date/"
+        task.payload.eng.GECKO_HEAD_REV: "a80373508881bfbff67a2a49297c328ff8052572" or ""
+also head_ref or "tip"
+
     """
-    pass
+    # get chain.task.metadata.source, e.g. "https://hg.mozilla.org/projects/date//file/10b21d912f60b8de5c655799a27e9229c8761bb1/taskcluster/ci/build-signing"
+    errors = []
+    my_source = chain.task.get('metadata', {}).get('source')
+    # get my_repo
+    # TODO all tasks w/ same decision_task_id have the same source repo
+    # TODO check chain.is_try
+    # TODO check source repo vs scopes
+    # TODO check vs docker-image & secondary decision repo?
+    assert errors, my_source  # silence flake8 for now
 
 
 # build_chain_of_trust {{{1
@@ -1054,7 +1073,7 @@ async def verify_chain_of_trust(chain):
             check_num_tasks(chain, task_count)
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
-            await trace_back_to_tree(chain)
+            await trace_back_to_firefox_tree(chain)
         except (KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
