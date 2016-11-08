@@ -87,7 +87,6 @@ def test_datestring_to_timestamp(datestring):
 def test_cleanup(context):
     for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
-        os.makedirs(path)
         open(os.path.join(path, 'tempfile'), "w").close()
         assert os.path.exists(os.path.join(path, "tempfile"))
     utils.cleanup(context)

@@ -7,13 +7,13 @@ Attributes:
 """
 import base64
 import defusedxml.ElementTree
-import json
 import logging
 import time
 import urllib.parse
 
 import taskcluster.exceptions
-from scriptworker.utils import datestring_to_timestamp
+from scriptworker.exceptions import ScriptWorkerException
+from scriptworker.utils import datestring_to_timestamp, load_json
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +26,9 @@ def parse_azure_message(message):
 
     Returns:
         dict: the relevant message info
+
+    Raises:
+        ScriptWorkerException: on load_json failure
     """
     message_info = {}
     interesting_keys = {
@@ -37,8 +40,10 @@ def parse_azure_message(message):
         if element.tag in interesting_keys:
             message_info[interesting_keys[element.tag]] = element.text
     message_info['popReceipt'] = urllib.parse.quote(message_info['popReceipt'])
-    message_info['task_info'] = json.loads(
-        base64.b64decode(message_info['messageText']).decode('utf-8')
+    message_text = base64.b64decode(message_info['messageText']).decode('utf-8')
+    message_info['task_info'] = load_json(
+        message_text, ScriptWorkerException,
+        message="Can't load azure json! %(exc)s\n{}".format(message_text)
     )
     return message_info
 

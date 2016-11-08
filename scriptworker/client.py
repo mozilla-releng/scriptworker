@@ -5,7 +5,6 @@ This module should be largely standalone.  This should only depend on
 scriptworker.exceptions and scriptworker.constants, or other standalone
 modules, to avoid circular imports.
 """
-import json
 import jsonschema
 import os
 import re
@@ -13,6 +12,7 @@ from urllib.parse import urlparse, unquote
 
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.utils import load_json
 
 
 def get_task(config):
@@ -27,16 +27,14 @@ def get_task(config):
     Raises:
         ScriptWorkerTaskException: on error.
     """
+    path = os.path.join(config['work_dir'], "task.json")
+    message = "Can't read task from {}!\n%(exc)s".format(path)
     try:
-        path = os.path.join(config['work_dir'], "task.json")
         with open(path, "r") as fh:
-            contents = json.load(fh)
+            contents = load_json(fh, exception=ScriptWorkerTaskException, message=message)
             return contents
-    except (OSError, ValueError) as exc:
-        raise ScriptWorkerTaskException(
-            "Can't read task from {}!\n{}".format(path, str(exc)),
-            exit_code=STATUSES['internal-error']
-        )
+    except OSError as exc:
+        raise ScriptWorkerTaskException(message % {'exc': str(exc)})
 
 
 def validate_json_schema(data, schema, name="task"):

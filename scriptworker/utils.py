@@ -15,7 +15,7 @@ import os
 import shutil
 from taskcluster.utils import calculateSleepTime
 from taskcluster.client import createTemporaryCredentials
-from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerException
+from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
 log = logging.getLogger(__name__)
 
@@ -313,6 +313,34 @@ def format_json(data):
         str: the formatted json.
     """
     return json.dumps(data, indent=2, sort_keys=True)
+
+
+def load_json(obj, exception=ScriptWorkerTaskException, message="Failed to load json: %(exc)s"):
+    """Load json from a filehandle or string, and raise a custom exception on failure
+
+    Args:
+        obj (str or filehandle): a str to pass to `json.loads` or a filehandle
+            to pass to `json.load`
+        exception (exception, optional): the exception to raise on failure.
+            Defaults to ScriptWorkerTaskException.
+        message (str, optional): the message to use for the exception.
+            Defaults to "Failed to load json: %(exc)s"
+
+    Returns:
+        dict: the json contents
+
+    Raises:
+        Exception: as specified, on failure
+    """
+    try:
+        if isinstance(obj, str):
+            contents = json.loads(obj)
+        else:
+            contents = json.load(obj)
+        return contents
+    except (OSError, ValueError) as exc:
+        repl_dict = {'exc': str(exc)}
+        raise exception(message % repl_dict)
 
 
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):

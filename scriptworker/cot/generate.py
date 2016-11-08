@@ -100,6 +100,7 @@ def generate_cot(context, path=None):
         ScriptWorkerException: on schema error.
     """
     body = generate_cot_body(context)
+    # load_json doesn't catch a missing file =\
     try:
         with open(context.config['cot_schema_path'], "r") as fh:
             schema = json.load(fh)

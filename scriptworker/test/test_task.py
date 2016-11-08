@@ -188,7 +188,6 @@ def test_upload_artifacts(context, event_loop):
 # create_artifact {{{1
 def test_create_artifact(context, fake_session, successful_queue, event_loop):
     path = os.path.join(context.config['artifact_dir'], "one.txt")
-    os.makedirs(context.config['artifact_dir'])
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
@@ -209,7 +208,6 @@ def test_create_artifact(context, fake_session, successful_queue, event_loop):
 def test_create_artifact_retry(context, fake_session_500, successful_queue,
                                event_loop):
     path = os.path.join(context.config['artifact_dir'], "one.log")
-    os.makedirs(context.config['artifact_dir'])
     touch(path)
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
