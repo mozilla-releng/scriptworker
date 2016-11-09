@@ -11,10 +11,8 @@ from frozendict import frozendict
 import logging
 import os
 import pprint
-import re
 import shlex
 from urllib.parse import unquote, urlparse
-from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
@@ -444,22 +442,13 @@ def find_task_dependencies(task, name, task_id):
     dep_dict = {}
     for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
         dep_dict['{}:{}'.format(name, key)] = val
-    # XXX start hack: remove once all signing tasks have task.extra.chainOfTrust.inputs
-    if 'unsignedArtifacts' in task['payload']:
-        build_ids = []
-        for url in task['payload']['unsignedArtifacts']:
-            parts = urlparse(url)
-            path = unquote(parts.path)
-            m = re.search(DEFAULT_CONFIG['valid_artifact_rules'][0]['path_regexes'][0], path)
-            path_info = m.groupdict()
-            if path_info['taskId'] not in build_ids:
-                build_ids.append(path_info['taskId'])
-        if len(build_ids) > 1:
-            for count, build_id in enumerate(build_ids):
-                dep_dict['{}:build{}'.format(name, count)] = build_id
-        else:
-            dep_dict['{}:build'.format(name)] = build_ids[0]
-    # XXX end hack
+    if 'upstreamArtifacts' in task['payload']:
+        upstream_ids = {}
+        for artifact_dict in task['payload']['upstreamArtifacts']:
+            if artifact_dict['taskId'] not in upstream_ids:
+                upstream_ids[artifact_dict['taskId']] = artifact_dict['taskType']
+        for upstream_task_id, upstream_task_type in upstream_ids.items():
+            dep_dict['{}:{}'.format(name, upstream_task_type)] = upstream_task_id
     if decision_task_id != task_id:
         dep_dict[decision_key] = decision_task_id
     log.info(dep_dict)
@@ -599,7 +588,7 @@ async def download_cot_artifacts(chain, artifact_dict):
     return full_paths
 
 
-# download_gecko_cot_artifacts {{{1
+# download_firefox_cot_artifacts {{{1
 async def download_firefox_cot_artifacts(chain):
     """Download artifacts needed for firefox chain of trust verification.
 
@@ -621,6 +610,11 @@ async def download_firefox_cot_artifacts(chain):
         if task_type == 'decision':
             artifact_dict.setdefault(link.task_id, [])
             artifact_dict[link.task_id].append('public/task-graph.json')
+    if 'upstreamArtifacts' in chain.task['payload']:
+        for upstream_dict in chain.task['payload']['upstreamArtifacts']:
+            artifact_dict.setdefault(upstream_dict['taskId'], [])
+            for path in upstream_dict['paths']:
+                artifact_dict[upstream_dict['taskId']].append(path)
     return await download_cot_artifacts(chain, artifact_dict)
 
 
