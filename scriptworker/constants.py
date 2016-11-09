@@ -153,6 +153,7 @@ DEFAULT_CONFIG = frozendict({
         "HG_STORE_PATH",
         "MH_BRANCH",
         "MH_BUILD_POOL",
+        "MH_CUSTOM_BUILD_VARIANT_CFG",
         "MOZHARNESS_ACTIONS",
         "MOZHARNESS_CONFIG",
         "MOZHARNESS_SCRIPT",
