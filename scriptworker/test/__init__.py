@@ -129,7 +129,7 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self.content = self
         self.resp = [b"asdf", b"asdf"]
         if YARL:
-            # try to fix aiohttp 1.1.0
+            # fix aiohttp 1.1.0
             self._url_obj = yarl.URL(args[1])
 
     @asyncio.coroutine

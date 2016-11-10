@@ -13,11 +13,11 @@ import os
 import pprint
 import re
 import shlex
-from urllib.parse import unquote, urljoin, urlparse
+from urllib.parse import unquote, urlparse
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
+from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
-from scriptworker.task import download_artifacts, get_decision_task_id, get_worker_type, get_task_id
+from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
 from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
@@ -280,8 +280,6 @@ def guess_task_type(name):
     """
     parts = name.split(':')
     task_type = parts[-1]
-    if task_type.startswith('build'):
-        task_type = 'build'
     if task_type not in get_valid_task_types():
         raise CoTError(
             "Invalid task type for {}!".format(name)
@@ -511,32 +509,6 @@ async def build_task_dependencies(chain, task, name, my_task_id):
                 raise CoTError(str(exc))
 
 
-# get_artifact_url {{{1
-def get_artifact_url(context, task_id, path):
-    """Get a TaskCluster artifact url.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context
-        task_id (str): the task id of the task that published the artifact
-        path (str): the relative path of the artifact
-
-    Returns:
-        str: the artifact url
-
-    Raises:
-        TaskClusterFailure: on failure.
-    """
-    url = urljoin(
-        context.queue.options['baseUrl'],
-        'v1/' +
-        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
-            'taskId': task_id,
-            'name': path
-        }))
-    )
-    return url
-
-
 # download_cot {{{1
 async def download_cot(chain):
     """Download the signed chain of trust artifacts.
@@ -555,19 +527,16 @@ async def download_cot(chain):
         task_id = link.task_id
         url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
-        try:
-            # XXX await download_artifacts(
-            async_tasks.append(
-                asyncio.ensure_future(
-                    download_artifacts(
-                        chain.context, [url], parent_dir=parent_dir,
-                        valid_artifact_task_ids=[task_id]
-                    )
+        async_tasks.append(
+            asyncio.ensure_future(
+                download_artifacts(
+                    chain.context, [url], parent_dir=parent_dir,
+                    valid_artifact_task_ids=[task_id]
                 )
             )
-            await raise_future_exceptions(async_tasks)
-        except Exception:
-            log.exception("boo")
+        )
+        await raise_future_exceptions(async_tasks)
+
 
 # download_cot_artifact {{{1
 async def download_cot_artifact(chain, task_id, path):
@@ -1132,7 +1101,7 @@ async def verify_chain_of_trust(chain):
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
             await trace_back_to_firefox_tree(chain)
-        except (KeyError, AttributeError) as exc:
+        except (DownloadError, KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
                 raise

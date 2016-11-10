@@ -12,6 +12,7 @@ import logging
 import mimetypes
 import os
 import signal
+from urllib.parse import unquote, urljoin
 
 import taskcluster
 import taskcluster.exceptions
@@ -377,6 +378,32 @@ def max_timeout(context, proc, timeout):
         asyncio.ensure_future(kill(-pid)),
         asyncio.ensure_future(kill(pid))
     ]))
+
+
+# get_artifact_url {{{1
+def get_artifact_url(context, task_id, path):
+    """Get a TaskCluster artifact url.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        task_id (str): the task id of the task that published the artifact
+        path (str): the relative path of the artifact
+
+    Returns:
+        str: the artifact url
+
+    Raises:
+        TaskClusterFailure: on failure.
+    """
+    url = urljoin(
+        context.queue.options['baseUrl'],
+        'v1/' +
+        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
+            'taskId': task_id,
+            'name': path
+        }))
+    )
+    return url
 
 
 # download_artifacts {{{1
