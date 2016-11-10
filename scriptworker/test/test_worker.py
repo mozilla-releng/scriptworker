@@ -112,16 +112,23 @@ def test_run_loop_exception(context, successful_queue, event_loop):
     assert status is None
 
 
-def test_mocker_run_loop(context, successful_queue, event_loop, mocker):
+@pytest.mark.parametrize("verify_cot", (True, False))
+def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
     async def find_task(*args, **kwargs):
         return deepcopy(task)
 
+    fake_cot = mock.MagicMock
+
+    context.config['verify_chain_of_trust'] = verify_cot
+
     context.queue = successful_queue
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
+    mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_async)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
