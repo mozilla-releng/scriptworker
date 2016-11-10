@@ -296,6 +296,7 @@ def get_valid_task_types():
     # TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
     return frozendict({
         'build': verify_build_task,
+        'l10n': verify_build_task,
         'decision': verify_decision_task,
         'docker-image': verify_docker_image_task,
         'signing': verify_signing_task,
