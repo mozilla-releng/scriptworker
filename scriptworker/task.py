@@ -8,9 +8,11 @@ import aiohttp.hdrs
 import arrow
 import asyncio
 from asyncio.subprocess import PIPE
+from copy import deepcopy
 import logging
 import mimetypes
 import os
+import pprint
 import signal
 from urllib.parse import unquote, urljoin
 
@@ -155,6 +157,10 @@ async def reclaim_task(context, task):
                 get_task_id(context.claim_task),
                 get_run_id(context.claim_task),
             )
+            clean_response = deepcopy(context.reclaim_task)
+            if 'credentials' in clean_response:
+                clean_response['credentials'] = "{********}"
+            log.debug("Reclaim task response:\n{}".format(pprint.pformat(clean_response)))
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
