@@ -100,7 +100,6 @@ class LinkOfTrust(object):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
-        chain (ChainOfTrust): the ChainOfTrust object.
         context (scriptworker.context.Context): the scriptworker context
         cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
@@ -498,7 +497,6 @@ async def build_task_dependencies(chain, task, name, my_task_id):
             try:
                 task_defn = await chain.context.queue.task(task_id)
                 link.task = task_defn
-                link.chain = chain
                 chain.links.append(link)
                 # write task json to disk
                 makedirs(os.path.dirname(json_path))
