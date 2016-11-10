@@ -145,17 +145,21 @@ DEFAULT_CONFIG = frozendict({
         "HG_STORE_PATH",
     ),
 
-    # docker-worker build cot
+    # docker-worker build/l10n cot
     "valid_docker_worker_build_env_vars": (
+        "EN_US_BINARY_URL",
+        "EN_US_PACKAGE_NAME",
         "GECKO_BASE_REPOSITORY",
         "GECKO_HEAD_REPOSITORY",
         "GECKO_HEAD_REV",
         "HG_STORE_PATH",
+        "JOB_SCRIPT",
         "MH_BRANCH",
         "MH_BUILD_POOL",
         "MH_CUSTOM_BUILD_VARIANT_CFG",
         "MOZHARNESS_ACTIONS",
         "MOZHARNESS_CONFIG",
+        "MOZHARNESS_OPTIONS",
         "MOZHARNESS_SCRIPT",
         "MOZ_BUILD_DATE",
         "MOZ_SCM_LEVEL",
