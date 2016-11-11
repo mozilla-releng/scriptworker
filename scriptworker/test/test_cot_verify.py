@@ -492,3 +492,35 @@ async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
         mocker.patch.object(cotverify, 'download_cot_artifact', new=fake_download)
         result = await cotverify.download_cot_artifacts(chain, artifact_dict)
         assert sorted(result) == ['path1', 'path2']
+
+
+# download_firefox_cot_artifacts {{{1
+@pytest.mark.parametrize("upstream_artifacts,expected", ((
+    None, {'decision_task_id': ['public/task-graph.json']}
+), (
+    [{
+        "taskId": "id1",
+        "paths": ["id1_path1", "id1_path2"],
+    }, {
+        "taskId": "id2",
+        "paths": ["id2_path1", "id2_path2"],
+    }],
+    {
+        'decision_task_id': ['public/task-graph.json'],
+        'id1': ['id1_path1', 'id1_path2'],
+        'id2': ['id2_path1', 'id2_path2'],
+    }
+)))
+@pytest.mark.asyncio
+async def test_download_firefox_cot_artifacts(chain, decision_link, build_link,
+                                              upstream_artifacts, expected,
+                                              docker_image_link, mocker, event_loop):
+
+    async def fake_download(_, result):
+        return result
+
+    chain.links = [decision_link, build_link, docker_image_link]
+    if upstream_artifacts is not None:
+        chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
+    mocker.patch.object(cotverify, 'download_cot_artifacts', new=fake_download)
+    assert expected == await cotverify.download_firefox_cot_artifacts(chain)
