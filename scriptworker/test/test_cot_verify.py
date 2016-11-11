@@ -28,6 +28,10 @@ VALID_WORKER_IMPLS = (
 def chain(rw_context):
     rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
     rw_context.config['scriptworker_worker_types'] = [rw_context.config['worker_type']]
+    rw_context.config['docker_image_allowlists'] = {
+        "decision": ["sha256:decision_image_sha"],
+        "docker-image": ["sha256:docker_image_sha"],
+    }
     rw_context.task = {
         'scopes': [],
         'provisionerId': rw_context.config['provisioner_id'],
@@ -44,6 +48,89 @@ def chain(rw_context):
         rw_context, 'signing', task_id='taskid'
     )
     yield chain_
+
+
+@pytest.yield_fixture(scope='function')
+def build_link(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'build', 'build_task_id')
+    link.cot = {
+        'environment': {
+            'imageHash': "sha256:built_docker_image_sha",
+        },
+    }
+    link.task = {
+        'taskGroupId': 'decision_task_id',
+        'schedulerId': 'scheduler_id',
+        'provisionerId': 'provisioner',
+        'workerType': 'workerType',
+        'scopes': [],
+        'metadata': {},
+        'payload': {
+            'image': {
+                'taskId': 'docker_image_task_id',
+                'path': 'path/image',
+            },
+        },
+        'extra': {
+            'chainOfTrust': {
+                'inputs': {
+                    'docker-image': 'docker_image_task_id',
+                },
+            },
+        },
+    }
+    yield link
+
+
+@pytest.yield_fixture(scope='function')
+def decision_link(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
+    link.cot = {
+        'environment': {
+            'imageHash': "sha256:decision_image_sha",
+        },
+    }
+    link.task = {
+        'taskGroupId': 'decision_task_id',
+        'schedulerId': 'scheduler_id',
+        'provisionerId': 'provisioner_id',
+        'workerType': 'workerType',
+        'scopes': [],
+        'metadata': {},
+        'payload': {
+            'image': "blah",
+        },
+        'extra': {},
+    }
+    yield link
+
+
+@pytest.yield_fixture(scope='function')
+def docker_image_link(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'docker-image', 'docker_image_task_id')
+    link.cot = {
+        'artifacts': {
+            'path/image': {
+                'sha256': 'built_docker_image_sha',
+            },
+        },
+        'environment': {
+            'imageHash': "sha256:docker_image_sha",
+        },
+    }
+    link.task = {
+        'taskGroupId': 'decision_task_id',
+        'schedulerId': 'scheduler_id',
+        'provisionerId': 'provisioner_id',
+        'workerType': 'workerType',
+        'scopes': [],
+        'metadata': {},
+        'payload': {
+            'image': "blah",
+        },
+        'extra': {},
+    }
+    yield link
 
 
 # dependent_task_ids {{{1
@@ -181,11 +268,11 @@ def test_get_task_type():
 
 # check_interactive_docker_worker {{{1
 @pytest.mark.parametrize("task,has_errors", ((
-    {'payload': {'features': {}, 'env': {}}}, False
+    {'payload': {'features': {}, 'env': {}} }, False
 ), (
-    {'payload': {'features': {'interactive': True}, 'env': {}}}, True
+    {'payload': {'features': {'interactive': True}, 'env': {}} }, True
 ), (
-    {'payload': {'features': {}, 'env': {'TASKCLUSTER_INTERACTIVE': "x"}}}, True
+    {'payload': {'features': {}, 'env': {'TASKCLUSTER_INTERACTIVE': "x"}} }, True
 ), (
     {}, True
 )))
@@ -198,3 +285,10 @@ def test_check_interactive_docker_worker(task, has_errors):
         assert len(result) >= 1
     else:
         assert result == []
+
+
+# verify_docker_image_sha
+def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_link):
+    chain.links = [build_link, decision_link, docker_image_link]
+    for link in chain.links:
+        cotverify.verify_docker_image_sha(chain, link)
