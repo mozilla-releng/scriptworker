@@ -96,11 +96,13 @@ class LinkOfTrust(object):
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
+        task_graph (dict): the task graph of the task, if this is a decision task
         task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
     _task = None
     _cot = None
+    _task_graph = None
     status = None
 
     def __init__(self, context, name, task_id):
@@ -124,11 +126,10 @@ class LinkOfTrust(object):
 
     @property
     def task(self):
-        """frozendict: the task definition.
+        """dict: the task definition.
 
-        When set, the task dict is converted to a frozendict, and we also set
-        `self.decision_task_id`, `self.worker_impl`, and `self.is_try` based
-        on the task definition.
+        When set, we also set `self.decision_task_id`, `self.worker_impl`,
+        and `self.is_try` based on the task definition.
         """
         return self._task
 
@@ -141,15 +142,23 @@ class LinkOfTrust(object):
 
     @property
     def cot(self):
-        """frozendict: the chain of trust json body.
-
-        When set, the chain of trust dict is converted to a frozendict.
+        """dict: the chain of trust json body.
         """
         return self._cot
 
     @cot.setter
     def cot(self, cot):
         self._set('_cot', cot)
+
+    @property
+    def task_graph(self):
+        """dict: the decision task graph, if this is a decision task.
+        """
+        return self._task_graph
+
+    @task_graph.setter
+    def task_graph(self, task_graph):
+        self._set('_task_graph', task_graph)
 
 
 # raise_on_errors {{{1

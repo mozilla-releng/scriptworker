@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify
 """
+from copy import deepcopy
 from frozendict import frozendict
 import json
 import logging
@@ -71,8 +72,18 @@ def build_link(chain):
         'provisionerId': 'provisioner',
         'workerType': 'workerType',
         'scopes': [],
+        'dependencies': [],
         'metadata': {},
         'payload': {
+            'artifacts': {
+                'foo': {
+                    'sha256': "foo_sha",
+                    'expires': "blah",
+                },
+                'bar': {
+                    'sha256': "bar_sha",
+                },
+            },
             'image': {
                 'taskId': 'docker_image_task_id',
                 'path': 'path/image',
@@ -568,3 +579,29 @@ def test_verify_cot_signatures(chain, build_link, mocker):
     assert os.path.exists(path)
     with open(path, "r") as fh:
         assert json.load(fh) == {}
+
+
+# verify_link_in_task_graph {{{1
+def test_verify_link_in_task_graph(chain, decision_link, build_link):
+    chain.links = [decision_link, build_link]
+    decision_link.task_graph = {
+        build_link.task_id: {
+            'task': deepcopy(build_link.task)
+        },
+    }
+    cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
+
+
+def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
+    chain.links = [decision_link, build_link]
+    bad_task = deepcopy(build_link.task)
+    bad_task['dependencies'].append("foo")
+    bad_task['x'] = 'y'
+    build_link.task['x'] = 'z'
+    decision_link.task_graph = {
+        build_link.task_id: {
+            'task': bad_task
+        },
+    }
+    with pytest.raises(CoTError):
+        cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
