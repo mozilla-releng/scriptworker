@@ -268,11 +268,11 @@ def test_get_task_type():
 
 # check_interactive_docker_worker {{{1
 @pytest.mark.parametrize("task,has_errors", ((
-    {'payload': {'features': {}, 'env': {}} }, False
+    {'payload': {'features': {}, 'env': {}, }}, False
 ), (
-    {'payload': {'features': {'interactive': True}, 'env': {}} }, True
+    {'payload': {'features': {'interactive': True}, 'env': {}, }}, True
 ), (
-    {'payload': {'features': {}, 'env': {'TASKCLUSTER_INTERACTIVE': "x"}} }, True
+    {'payload': {'features': {}, 'env': {'TASKCLUSTER_INTERACTIVE': "x"}, }}, True
 ), (
     {}, True
 )))
