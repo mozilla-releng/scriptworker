@@ -432,3 +432,44 @@ async def test_download_cot(chain, mocker, raises, event_loop):
     else:
         mocker.patch.object(cotverify, 'download_artifacts', new=noop_async)
         await cotverify.download_cot(chain)
+
+
+# download_cot_artifact {{{1
+@pytest.mark.parametrize("path,sha,raises", ((
+    "one", "sha", False
+), (
+    "one", "bad_sha", True
+), (
+    "bad", "bad_sha", True
+), (
+    "missing", "bad_sha", True
+)))
+@pytest.mark.asyncio
+async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loop):
+
+    def fake_get_hash(*args, **kwargs):
+        return sha
+
+    link = mock.MagicMock()
+    link.task_id = 'task_id'
+    link.name = 'name'
+    link.cot_dir = 'cot_dir'
+    link.cot = {
+        'artifacts': {
+            'one': {
+                'sha256': 'sha',
+            },
+            'bad': {
+                'illegal': 'bad_sha',
+            },
+        }
+    }
+    chain.links = [link]
+    mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
+    mocker.patch.object(cotverify, 'download_artifacts', new=noop_async)
+    mocker.patch.object(cotverify, 'get_hash', new=fake_get_hash)
+    if raises:
+        with pytest.raises(CoTError):
+            await cotverify.download_cot_artifact(chain, 'task_id', path)
+    else:
+        await cotverify.download_cot_artifact(chain, 'task_id', path)
