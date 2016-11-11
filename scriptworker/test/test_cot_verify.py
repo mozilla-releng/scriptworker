@@ -11,9 +11,6 @@ from . import rw_context
 
 assert rw_context  # silence pyflakes
 
-# TODO remove once we use
-assert CoTError
-
 log = logging.getLogger(__name__)
 
 
@@ -25,11 +22,13 @@ def chain(rw_context):
     rw_context.task = {
         'scopes': [],
         'provisionerId': rw_context.config['provisioner_id'],
+        'schedulerId': 'schedulerId',
         'workerType': rw_context.config['worker_type'],
         'taskGroupId': 'groupid',
         'payload': {
             'image': None,
         },
+        'metadata': {},
     }
     # decision_task_id
     chain_ = cotverify.ChainOfTrust(
@@ -46,3 +45,23 @@ def test_dependent_task_ids(chain):
         m.task_id = i
         chain.links.append(m)
     assert sorted(chain.dependent_task_ids()) == sorted(ids)
+
+
+# is_try {{{1
+@pytest.mark.parametrize("bools,result", (([False, False], False), ([False, True], True)))
+def test_chain_is_try(chain, bools, result):
+    for b in bools:
+        m = mock.MagicMock()
+        m.is_try = b
+        chain.links.append(m)
+    assert chain.is_try() == result
+
+
+@pytest.mark.parametrize("task", (
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/sdfsd"}}, 'metadata': {}, 'schedulerId': "x"},
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"},
+    {'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"},
+    {'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"},
+))
+def test_is_try(task):
+    assert cotverify.is_try(task)

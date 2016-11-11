@@ -54,14 +54,6 @@ class ChainOfTrust(object):
         """
         return [x.task_id for x in self.links]
 
-    def all_tasks(self):
-        """The list of task definitions for all `self.links` + `self`
-
-        Returns:
-            list of dicts: the task definitions for all links + self
-        """
-        return [self.task] + [x.task for x in self.links]
-
     def is_try(self):
         """Helper method to determine if any task in the chain is a try task.
 
