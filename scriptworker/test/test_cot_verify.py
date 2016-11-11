@@ -65,3 +65,23 @@ def test_chain_is_try(chain, bools, result):
 ))
 def test_is_try(task):
     assert cotverify.is_try(task)
+
+
+# get_link {{{1
+@pytest.mark.parametrize("ids,req,raises", ((
+    ("one", "two", "three"), "one", False
+), (
+    ("one", "one", "two"), "one", True
+), (
+    ("one", "two"), "three", True
+)))
+def test_get_link(chain, ids, req, raises):
+    for i in ids:
+        m = mock.MagicMock()
+        m.task_id = i
+        chain.links.append(m)
+    if raises:
+        with pytest.raises(CoTError):
+            chain.get_link(req)
+    else:
+        chain.get_link(req)
