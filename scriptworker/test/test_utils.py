@@ -285,3 +285,22 @@ def test_download_file_exception(context, fake_session_500, tmpdir, event_loop):
         event_loop.run_until_complete(
             utils.download_file(context, "url", path, session=fake_session_500)
         )
+
+
+# load_json {{{1
+@pytest.mark.parametrize("string,is_path,exception,raises,result", ((
+    os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
+    True, None, False, {"credentials": ["blah"]}
+), (
+    '{"a": "b"}', False, None, False, {"a": "b"}
+), (
+    '{"a": "b}', False, None, False, None
+), (
+    '{"a": "b}', False, ScriptWorkerException, True, None
+)))
+def test_load_json(string, is_path, exception, raises, result):
+    if raises:
+        with pytest.raises(exception):
+            utils.load_json(string, is_path=is_path, exception=exception)
+    else:
+        assert result == utils.load_json(string, is_path=is_path, exception=exception)
