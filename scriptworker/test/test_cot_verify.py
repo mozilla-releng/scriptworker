@@ -143,17 +143,17 @@ def test_dependent_task_ids(chain):
 
 
 # is_try {{{1
-@pytest.mark.parametrize("bools,result", (([False, False], False), ([False, True], True)))
-def test_chain_is_try(chain, bools, result):
+@pytest.mark.parametrize("bools,expected", (([False, False], False), ([False, True], True)))
+def test_chain_is_try(chain, bools, expected):
     for b in bools:
         m = mock.MagicMock()
         m.is_try = b
         chain.links.append(m)
-    assert chain.is_try() == result
+    assert chain.is_try() == expected
 
 
 @pytest.mark.parametrize("task", (
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/sdfsd"}}, 'metadata': {}, 'schedulerId': "x"},
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"},
     {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"},
     {'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"},
     {'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"},
@@ -224,7 +224,7 @@ def test_audit_log_handler(rw_context, mocker):
 
 
 # guess_worker_impl {{{1
-@pytest.mark.parametrize("task,result,raises", ((
+@pytest.mark.parametrize("task,expected,raises", ((
     {'payload': {}, 'provisionerId': '', 'workerType': '', 'scopes': []},
     None, True
 ), (
@@ -237,7 +237,7 @@ def test_audit_log_handler(rw_context, mocker):
     {'payload': {'image': 'x'}, 'provisionerId': 'test-dummy-provisioner', 'workerType': '', 'scopes': []},
     None, True
 )))
-def test_guess_worker_impl(chain, task, result, raises):
+def test_guess_worker_impl(chain, task, expected, raises):
     link = mock.MagicMock()
     link.task = task
     link.name = "foo"
@@ -246,7 +246,7 @@ def test_guess_worker_impl(chain, task, result, raises):
         with pytest.raises(CoTError):
             cotverify.guess_worker_impl(link)
     else:
-        assert result == cotverify.guess_worker_impl(link)
+        assert expected == cotverify.guess_worker_impl(link)
 
 
 # get_valid_worker_impls {{{1
@@ -287,26 +287,82 @@ def test_check_interactive_docker_worker(task, has_errors):
         assert result == []
 
 
-# verify_docker_image_sha
+# verify_docker_image_sha {{{1
 def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_link):
     chain.links = [build_link, decision_link, docker_image_link]
-    # clean pass
     for link in chain.links:
         cotverify.verify_docker_image_sha(chain, link)
+
+
+def test_verify_docker_image_sha_wrong_built_sha(chain, build_link, decision_link, docker_image_link):
+    chain.links = [build_link, decision_link, docker_image_link]
     # wrong built sha: for now this will only warn
-    orig_docker_image_sha = docker_image_link.cot['artifacts']['path/image']['sha256']
     docker_image_link.cot['artifacts']['path/image']['sha256'] = "wrong_sha"
     cotverify.verify_docker_image_sha(chain, build_link)
+
+
+def test_verify_docker_image_sha_missing(chain, build_link, decision_link, docker_image_link):
+    chain.links = [build_link, decision_link, docker_image_link]
     # missing built sha
     docker_image_link.cot['artifacts']['path/image']['sha256'] = None
     with pytest.raises(CoTError):
         cotverify.verify_docker_image_sha(chain, build_link)
+
+
+def test_verify_docker_image_sha_wrong_task_id(chain, build_link, decision_link, docker_image_link):
+    chain.links = [build_link, decision_link, docker_image_link]
     # wrong task id
-    docker_image_link.cot['artifacts']['path/image']['sha256'] = orig_docker_image_sha
     build_link.task['extra']['chainOfTrust']['inputs']['docker-image'] = "wrong_task_id"
     with pytest.raises(CoTError):
         cotverify.verify_docker_image_sha(chain, build_link)
+
+
+def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link, docker_image_link):
+    chain.links = [build_link, decision_link, docker_image_link]
     # wrong docker hub sha
     decision_link.cot['environment']['imageHash'] = "sha256:not_allowlisted"
     with pytest.raises(CoTError):
         cotverify.verify_docker_image_sha(chain, decision_link)
+
+
+# find_task_dependencies {{{1
+@pytest.mark.parametrize("task,expected", ((
+    {'taskGroupId': 'task_id', 'extra': {}, 'payload': {}},
+    {}
+), (
+    {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
+    {'build:decision': 'decision_task_id'}
+), (
+    {
+        'taskGroupId': 'decision_task_id',
+        'extra': {
+            'chainOfTrust': {'inputs': {'docker-image': 'docker_image_task_id'}}
+        },
+        'payload': {},
+    }, {
+        'build:decision': 'decision_task_id',
+        'build:docker-image': 'docker_image_task_id'
+    }
+), (
+    {
+        'taskGroupId': 'decision_task_id',
+        'extra': {
+            'chainOfTrust': {'inputs': {'docker-image': 'docker_image_task_id'}}
+        },
+        'payload': {
+            'upstreamArtifacts': [{
+                'taskId': "blah_task_id",
+                'taskType': "blah",
+            }, {
+                'taskId': "blah_task_id",
+                'taskType': "blah",
+            }],
+        },
+    }, {
+        'build:decision': 'decision_task_id',
+        'build:docker-image': 'docker_image_task_id',
+        'build:blah': 'blah_task_id',
+    }
+)))
+def test_find_task_dependencies(task, expected):
+    assert expected == cotverify.find_task_dependencies(task, 'build', 'task_id')
