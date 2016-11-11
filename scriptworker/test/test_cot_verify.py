@@ -96,6 +96,15 @@ def test_link_task(chain):
         link.task = {}
 
 
+# link.cot {{{1
+def test_link_cot(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'build', "one")
+    link.cot = chain.task
+    assert link.cot == chain.task
+    with pytest.raises(CoTError):
+        link.cot = {}
+
+
 # raise_on_errors {{{1
 @pytest.mark.parametrize("errors,raises", (([], False,), (["foo"], True)))
 def test_raise_on_errors(errors, raises):
@@ -117,3 +126,29 @@ def test_audit_log_handler(rw_context, mocker):
         contents = fh.read().splitlines()
     assert len(contents) == 1
     assert contents[0].endswith("foo")
+
+
+# guess_worker_impl {{{1
+@pytest.mark.parametrize("task,result,raises", ((
+    {'payload': {}, 'provisionerId': '', 'workerType': '', 'scopes': []},
+    None, True
+), (
+    {'payload': {'image': 'x'}, 'provisionerId': '', 'workerType': '', 'scopes': ['docker-worker:']},
+    'docker-worker', False
+), (
+    {'payload': {}, 'provisionerId': 'test-dummy-provisioner', 'workerType': 'test-dummy-myname', 'scopes': ["x"]},
+    'scriptworker', False
+), (
+    {'payload': {'image': 'x'}, 'provisionerId': 'test-dummy-provisioner', 'workerType': '', 'scopes': []},
+    None, True
+)))
+def test_guess_worker_impl(chain, task, result, raises):
+    link = mock.MagicMock()
+    link.task = task
+    link.name = "foo"
+    link.context = chain.context
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.guess_worker_impl(link)
+    else:
+        assert result == cotverify.guess_worker_impl(link)
