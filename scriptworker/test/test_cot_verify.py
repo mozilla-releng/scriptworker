@@ -7,6 +7,7 @@ import logging
 import mock
 import os
 import pytest
+from taskcluster.exceptions import TaskclusterFailure
 from scriptworker.exceptions import CoTError
 import scriptworker.cot.verify as cotverify
 from . import rw_context
@@ -366,3 +367,46 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
 )))
 def test_find_task_dependencies(task, expected):
     assert expected == cotverify.find_task_dependencies(task, 'build', 'task_id')
+
+
+# build_task_dependencies {{{1
+@pytest.mark.asyncio
+async def test_build_task_dependencies(chain, mocker, event_loop):
+
+    async def fake_task(task_id):
+        if task_id == 'die':
+            raise TaskclusterFailure("dying")
+        else:
+            return {
+                'taskGroupId': 'decision_task_id',
+                'provisionerId': '',
+                'schedulerId': '',
+                'workerType': '',
+                'scopes': [],
+                'payload': {
+                    'image': "x",
+                },
+                'metadata': {},
+            }
+
+    def fake_find(task, name, _):
+        if name.endswith('decision'):
+            return {}
+        return {
+            'build:decision': 'decision_task_id',
+            'build:a': 'already_exists',
+            'build:docker-image': 'die',
+        }
+
+    already_exists = mock.MagicMock()
+    already_exists.task_id = 'already_exists'
+    chain.links = [already_exists]
+
+    chain.context.queue = mock.MagicMock()
+    chain.context.queue.task = fake_task
+
+    mocker.patch.object(cotverify, 'find_task_dependencies', new=fake_find)
+    with pytest.raises(CoTError):
+        await cotverify.build_task_dependencies(chain, {}, 'too:many:colons:in:this:name:z', 'task_id')
+    with pytest.raises(CoTError):
+        await cotverify.build_task_dependencies(chain, {}, 'build', 'task_id')
