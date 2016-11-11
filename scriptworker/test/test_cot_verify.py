@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify
 """
+from frozendict import frozendict
 import logging
 import mock
 import os
@@ -14,8 +15,15 @@ assert rw_context  # silence pyflakes
 
 log = logging.getLogger(__name__)
 
-
 # constants helpers and fixtures {{{1
+VALID_WORKER_IMPLS = (
+    'docker-worker',
+    'generic-worker',
+    'scriptworker',
+    'taskcluster-worker',
+)
+
+
 @pytest.yield_fixture(scope='function')
 def chain(rw_context):
     rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
@@ -152,3 +160,12 @@ def test_guess_worker_impl(chain, task, result, raises):
             cotverify.guess_worker_impl(link)
     else:
         assert result == cotverify.guess_worker_impl(link)
+
+
+# get_valid_worker_impls {{{1
+def test_get_valid_worker_impls():
+    result = cotverify.get_valid_worker_impls()
+    assert isinstance(result, frozendict)
+    for key, value in result.items():
+        assert key in VALID_WORKER_IMPLS
+        assert callable(value)
