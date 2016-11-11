@@ -624,8 +624,6 @@ def verify_cot_signatures(chain):
         CoTError: on failure.
     """
     for link in chain.links:
-        if link.task_id == chain.task_id:
-            continue
         path = os.path.join(link.cot_dir, 'public/chainOfTrust.json.asc')
         gpg = GPG(
             chain.context,

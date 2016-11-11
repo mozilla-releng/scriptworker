@@ -3,14 +3,16 @@
 """Test scriptworker.cot.verify
 """
 from frozendict import frozendict
+import json
 import logging
 import mock
 import os
 import pytest
 from taskcluster.exceptions import TaskclusterFailure
-from scriptworker.exceptions import CoTError
 import scriptworker.cot.verify as cotverify
-from . import noop_async, noop_sync, rw_context
+from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
+from scriptworker.utils import makedirs
+from . import noop_async, noop_sync, rw_context, touch
 
 assert rw_context  # silence pyflakes
 
@@ -524,3 +526,45 @@ async def test_download_firefox_cot_artifacts(chain, decision_link, build_link,
         chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
     mocker.patch.object(cotverify, 'download_cot_artifacts', new=fake_download)
     assert expected == await cotverify.download_firefox_cot_artifacts(chain)
+
+
+# verify_cot_signatures {{{1
+def test_verify_cot_signatures_no_file(chain, build_link, mocker):
+    chain.links = [build_link]
+    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
+    with pytest.raises(CoTError):
+        cotverify.verify_cot_signatures(chain)
+
+
+def test_verify_cot_signatures_bad_sig(chain, build_link, mocker):
+
+    def die(*args, **kwargs):
+        raise ScriptWorkerGPGException("x")
+
+    path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
+    makedirs(os.path.dirname(path))
+    touch(path)
+    chain.links = [build_link]
+    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
+    mocker.patch.object(cotverify, 'get_body', new=die)
+    with pytest.raises(CoTError):
+        cotverify.verify_cot_signatures(chain)
+
+
+def test_verify_cot_signatures(chain, build_link, mocker):
+
+    def fake_body(*args, **kwargs):
+        return '{}'
+
+    build_link._cot = None
+    unsigned_path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
+    path = os.path.join(build_link.cot_dir, 'chainOfTrust.json')
+    makedirs(os.path.dirname(unsigned_path))
+    touch(unsigned_path)
+    chain.links = [build_link]
+    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
+    mocker.patch.object(cotverify, 'get_body', new=fake_body)
+    cotverify.verify_cot_signatures(chain)
+    assert os.path.exists(path)
+    with open(path, "r") as fh:
+        assert json.load(fh) == {}
