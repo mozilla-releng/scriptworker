@@ -10,7 +10,7 @@ import pytest
 from taskcluster.exceptions import TaskclusterFailure
 from scriptworker.exceptions import CoTError
 import scriptworker.cot.verify as cotverify
-from . import rw_context
+from . import noop_async, noop_sync, rw_context
 
 assert rw_context  # silence pyflakes
 
@@ -410,3 +410,25 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
         await cotverify.build_task_dependencies(chain, {}, 'too:many:colons:in:this:name:z', 'task_id')
     with pytest.raises(CoTError):
         await cotverify.build_task_dependencies(chain, {}, 'build', 'task_id')
+
+
+# download_cot {{{1
+@pytest.mark.parametrize("raises", (True, False))
+@pytest.mark.asyncio
+async def test_download_cot(chain, mocker, raises, event_loop):
+
+    async def die(*args, **kwargs):
+        raise CoTError("x")
+
+    m = mock.MagicMock()
+    m.task_id = "x"
+    m.cot_dir = "y"
+    chain.links = [m]
+    mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
+    if raises:
+        mocker.patch.object(cotverify, 'download_artifacts', new=die)
+        with pytest.raises(CoTError):
+            await cotverify.download_cot(chain)
+    else:
+        mocker.patch.object(cotverify, 'download_artifacts', new=noop_async)
+        await cotverify.download_cot(chain)
