@@ -41,9 +41,8 @@ def chain(rw_context):
 def test_dependent_task_ids(chain):
     ids = ["one", "TWO", "thr33", "vier"]
     for i in ids:
-        m = mock.MagicMock()
-        m.task_id = i
-        chain.links.append(m)
+        l = cotverify.LinkOfTrust(chain.context, 'build', i)
+        chain.links.append(l)
     assert sorted(chain.dependent_task_ids()) == sorted(ids)
 
 
@@ -77,9 +76,8 @@ def test_is_try(task):
 )))
 def test_get_link(chain, ids, req, raises):
     for i in ids:
-        m = mock.MagicMock()
-        m.task_id = i
-        chain.links.append(m)
+        l = cotverify.LinkOfTrust(chain.context, 'build', i)
+        chain.links.append(l)
     if raises:
         with pytest.raises(CoTError):
             chain.get_link(req)
