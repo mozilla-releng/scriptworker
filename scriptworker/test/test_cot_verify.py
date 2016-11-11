@@ -169,3 +169,11 @@ def test_get_valid_worker_impls():
     for key, value in result.items():
         assert key in VALID_WORKER_IMPLS
         assert callable(value)
+
+
+# get_task_type {{{1
+def test_get_task_type():
+    for name in cotverify.get_valid_task_types().keys():
+        with pytest.raises(CoTError):
+            cotverify.guess_task_type("foo:bar:baz:{}0".format(name))
+        assert name == cotverify.guess_task_type("foo:bar:baz:{}".format(name))
