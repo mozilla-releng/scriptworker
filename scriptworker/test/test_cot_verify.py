@@ -177,3 +177,24 @@ def test_get_task_type():
         with pytest.raises(CoTError):
             cotverify.guess_task_type("foo:bar:baz:{}0".format(name))
         assert name == cotverify.guess_task_type("foo:bar:baz:{}".format(name))
+
+
+# check_interactive_docker_worker {{{1
+@pytest.mark.parametrize("task,has_errors", ((
+    {'payload': {'features': {}, 'env': {}}}, False
+), (
+    {'payload': {'features': {'interactive': True}, 'env': {}}}, True
+), (
+    {'payload': {'features': {}, 'env': {'TASKCLUSTER_INTERACTIVE': "x"}}}, True
+), (
+    {}, True
+)))
+def test_check_interactive_docker_worker(task, has_errors):
+    link = mock.MagicMock()
+    link.name = "foo"
+    link.task = task
+    result = cotverify.check_interactive_docker_worker(link)
+    if has_errors:
+        assert len(result) >= 1
+    else:
+        assert result == []

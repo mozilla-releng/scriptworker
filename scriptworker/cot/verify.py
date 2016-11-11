@@ -355,7 +355,7 @@ def check_interactive_docker_worker(link):
             errors.append("{} is interactive: task.payload.features.interactive!".format(link.name))
         if link.task['payload']['env'].get('TASKCLUSTER_INTERACTIVE'):
             errors.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(link.name))
-    except CoTError:
+    except KeyError:
         errors.append("check_interactive_docker_worker: {} task definition is malformed!".format(link.name))
     return errors
 
