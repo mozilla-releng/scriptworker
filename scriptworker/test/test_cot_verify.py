@@ -25,6 +25,10 @@ VALID_WORKER_IMPLS = (
 )
 
 
+async def die_async(*args, **kwargs):
+    raise CoTError("x")
+
+
 @pytest.yield_fixture(scope='function')
 def chain(rw_context):
     rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
@@ -416,17 +420,13 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
 @pytest.mark.parametrize("raises", (True, False))
 @pytest.mark.asyncio
 async def test_download_cot(chain, mocker, raises, event_loop):
-
-    async def die(*args, **kwargs):
-        raise CoTError("x")
-
     m = mock.MagicMock()
     m.task_id = "x"
     m.cot_dir = "y"
     chain.links = [m]
     mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
     if raises:
-        mocker.patch.object(cotverify, 'download_artifacts', new=die)
+        mocker.patch.object(cotverify, 'download_artifacts', new=die_async)
         with pytest.raises(CoTError):
             await cotverify.download_cot(chain)
     else:
@@ -473,3 +473,22 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loo
             await cotverify.download_cot_artifact(chain, 'task_id', path)
     else:
         await cotverify.download_cot_artifact(chain, 'task_id', path)
+
+
+# download_cot_artifacts {{{1
+@pytest.mark.parametrize("raises", (True, False))
+@pytest.mark.asyncio
+async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
+
+    async def fake_download(x, y, path):
+        return path
+
+    artifact_dict = {'task_id': ['path1', 'path2']}
+    if raises:
+        mocker.patch.object(cotverify, 'download_cot_artifact', new=die_async)
+        with pytest.raises(CoTError):
+            await cotverify.download_cot_artifacts(chain, artifact_dict)
+    else:
+        mocker.patch.object(cotverify, 'download_cot_artifact', new=fake_download)
+        result = await cotverify.download_cot_artifacts(chain, artifact_dict)
+        assert sorted(result) == ['path1', 'path2']
