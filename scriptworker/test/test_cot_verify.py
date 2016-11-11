@@ -83,3 +83,13 @@ def test_get_link(chain, ids, req, raises):
             chain.get_link(req)
     else:
         chain.get_link(req)
+
+
+# link.task {{{1
+def test_link_task(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'build', "one")
+    link.task = chain.task
+    assert not link.is_try
+    assert link.worker_impl == 'scriptworker'
+    with pytest.raises(CoTError):
+        link.task = {}
