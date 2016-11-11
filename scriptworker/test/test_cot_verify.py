@@ -290,5 +290,23 @@ def test_check_interactive_docker_worker(task, has_errors):
 # verify_docker_image_sha
 def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_link):
     chain.links = [build_link, decision_link, docker_image_link]
+    # clean pass
     for link in chain.links:
         cotverify.verify_docker_image_sha(chain, link)
+    # wrong built sha: for now this will only warn
+    orig_docker_image_sha = docker_image_link.cot['artifacts']['path/image']['sha256']
+    docker_image_link.cot['artifacts']['path/image']['sha256'] = "wrong_sha"
+    cotverify.verify_docker_image_sha(chain, build_link)
+    # missing built sha
+    docker_image_link.cot['artifacts']['path/image']['sha256'] = None
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, build_link)
+    # wrong task id
+    docker_image_link.cot['artifacts']['path/image']['sha256'] = orig_docker_image_sha
+    build_link.task['extra']['chainOfTrust']['inputs']['docker-image'] = "wrong_task_id"
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, build_link)
+    # wrong docker hub sha
+    decision_link.cot['environment']['imageHash'] = "sha256:not_allowlisted"
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, decision_link)
