@@ -247,6 +247,19 @@ def test_max_timeout(context, event_loop):
     assert len(files.keys()) == 6
 
 
+# get_artifact_url {{{1
+def test_get_artifact_url():
+
+    def makeRoute(*args, **kwargs):
+        return "rel/path"
+
+    context = mock.MagicMock()
+    context.queue = mock.MagicMock()
+    context.queue.options = {'baseUrl': 'https://netloc/'}
+    context.queue.makeRoute = makeRoute
+    assert task.get_artifact_url(context, "x", "y") == "https://netloc/v1/rel/path"
+
+
 # download_artifacts {{{1
 def test_download_artifacts(context, event_loop):
     urls = []

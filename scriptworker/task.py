@@ -158,8 +158,7 @@ async def reclaim_task(context, task):
                 get_run_id(context.claim_task),
             )
             clean_response = deepcopy(context.reclaim_task)
-            if 'credentials' in clean_response:
-                clean_response['credentials'] = "{********}"
+            clean_response['credentials'] = "{********}"
             log.debug("Reclaim task response:\n{}".format(pprint.pformat(clean_response)))
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
