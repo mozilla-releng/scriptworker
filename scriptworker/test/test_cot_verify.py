@@ -4,6 +4,7 @@
 """
 import logging
 import mock
+import os
 import pytest
 from scriptworker.exceptions import CoTError
 import scriptworker.cot.verify as cotverify
@@ -93,3 +94,26 @@ def test_link_task(chain):
     assert link.worker_impl == 'scriptworker'
     with pytest.raises(CoTError):
         link.task = {}
+
+
+# raise_on_errors {{{1
+@pytest.mark.parametrize("errors,raises", (([], False,), (["foo"], True)))
+def test_raise_on_errors(errors, raises):
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.raise_on_errors(errors)
+    else:
+        cotverify.raise_on_errors(errors)
+
+
+# audit_log_handler {{{1
+def test_audit_log_handler(rw_context, mocker):
+    cotverify.log.setLevel(logging.DEBUG)
+    with cotverify.audit_log_handler(rw_context):
+        cotverify.log.info("foo")
+    cotverify.log.info("bar")
+    audit_path = os.path.join(rw_context.config['artifact_dir'], 'public', 'cot', "audit.log")
+    with open(audit_path, "r") as fh:
+        contents = fh.read().splitlines()
+    assert len(contents) == 1
+    assert contents[0].endswith("foo")
