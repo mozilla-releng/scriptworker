@@ -804,3 +804,13 @@ def test_check_num_tasks(chain, num, raises):
             cotverify.check_num_tasks(chain, {'decision': num})
     else:
         cotverify.check_num_tasks(chain, {'decision': num})
+
+
+# verify_task_types {{{1
+@pytest.mark.asyncio
+async def test_verify_task_types(chain, decision_link, build_link, docker_image_link, mocker):
+    chain.links = [decision_link, build_link, docker_image_link]
+    for func in cotverify.get_valid_task_types().values():
+        mocker.patch.object(cotverify, func.__name__, new=noop_async)
+    expected = {'decision': 1, 'build': 1, 'docker-image': 1, 'signing': 1}
+    assert expected == await cotverify.verify_task_types(chain)
