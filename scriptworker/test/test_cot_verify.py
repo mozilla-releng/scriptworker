@@ -638,7 +638,7 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
         '--',
         'bash',
         '-cx',
-        'cd foo && -s x y && bad command',
+        'cd foo && -s x y && ./mach bad command',
     ], True
 )))
 def test_verify_firefox_decision_command(decision_link, command, raises):
@@ -648,3 +648,75 @@ def test_verify_firefox_decision_command(decision_link, command, raises):
             cotverify.verify_firefox_decision_command(decision_link)
     else:
         cotverify.verify_firefox_decision_command(decision_link)
+
+
+# verify_decision_task {{{1
+@pytest.mark.asyncio
+async def test_verify_decision_task(chain, decision_link, build_link, mocker):
+
+    def task_graph(*args, **kwargs):
+        return {
+            build_link.task_id: {
+                'task': deepcopy(build_link.task)
+            },
+        }
+
+    path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
+    makedirs(os.path.dirname(path))
+    touch(path)
+    chain.links = [decision_link, build_link]
+    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+    mocker.patch.object(cotverify, 'load_json', new=task_graph)
+    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
+    await cotverify.verify_decision_task(chain, decision_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_decision_task_worker_type(chain, decision_link, build_link, mocker):
+
+    def task_graph(*args, **kwargs):
+        return {
+            build_link.task_id: {
+                'task': deepcopy(build_link.task)
+            },
+        }
+
+    path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
+    makedirs(os.path.dirname(path))
+    touch(path)
+    chain.links = [decision_link, build_link]
+    decision_link.task['workerType'] = 'bad-worker-type'
+    mocker.patch.object(cotverify, 'load_json', new=task_graph)
+    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
+    with pytest.raises(CoTError):
+        await cotverify.verify_decision_task(chain, decision_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_decision_task_missing_graph(chain, decision_link, build_link, mocker):
+    chain.links = [decision_link, build_link]
+    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+    with pytest.raises(CoTError):
+        await cotverify.verify_decision_task(chain, decision_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_decision_task_bad_env(chain, decision_link, build_link, mocker):
+
+    def task_graph(*args, **kwargs):
+        return {
+            build_link.task_id: {
+                'task': deepcopy(build_link.task)
+            },
+        }
+
+    path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
+    makedirs(os.path.dirname(path))
+    touch(path)
+    chain.links = [decision_link, build_link]
+    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+    decision_link.task['payload']['env'] = {'GECKO_HEAD_REF': 'foo', 'illegal_var': 'blah'}
+    mocker.patch.object(cotverify, 'load_json', new=task_graph)
+    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
+    with pytest.raises(CoTError):
+        await cotverify.verify_decision_task(chain, decision_link)
