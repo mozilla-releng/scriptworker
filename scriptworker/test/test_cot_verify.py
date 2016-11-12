@@ -814,3 +814,33 @@ async def test_verify_task_types(chain, decision_link, build_link, docker_image_
         mocker.patch.object(cotverify, func.__name__, new=noop_async)
     expected = {'decision': 1, 'build': 1, 'docker-image': 1, 'signing': 1}
     assert expected == await cotverify.verify_task_types(chain)
+
+
+# verify_docker_worker_task {{{1
+@pytest.mark.asyncio
+async def test_verify_docker_worker_task(mocker):
+    mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=noop_sync)
+    mocker.patch.object(cotverify, 'verify_docker_image_sha', new=noop_sync)
+    await cotverify.verify_docker_worker_task(mock.MagicMock(), mock.MagicMock())
+
+
+# verify_scriptworker_task {{{1
+@pytest.mark.asyncio
+async def test_verify_scriptworker_task():
+    await cotverify.verify_scriptworker_task(mock.MagicMock(), mock.MagicMock())
+
+
+# verify_worker_impls {{{1
+@pytest.mark.parametrize("raises", (True, False))
+@pytest.mark.asyncio
+async def test_verify_worker_impls(chain, decision_link, build_link,
+                                   docker_image_link, raises, mocker):
+    chain.links = [decision_link, build_link, docker_image_link]
+    for func in cotverify.get_valid_worker_impls().values():
+        mocker.patch.object(cotverify, func.__name__, new=noop_async)
+    if raises:
+        chain.worker_impl = 'docker-worker'
+        with pytest.raises(CoTError):
+            await cotverify.verify_worker_impls(chain)
+    else:
+        await cotverify.verify_worker_impls(chain)
