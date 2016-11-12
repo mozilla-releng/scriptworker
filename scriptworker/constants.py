@@ -223,7 +223,7 @@ DEFAULT_CONFIG = frozendict({
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
             'project:releng:signing:cert:nightly-signing': (
-                "/releases/mozilla-central",
+                "/mozilla-central",
                 "/releases/mozilla-unified",
                 "/releases/mozilla-aurora",
                 "/releases/mozilla-beta",

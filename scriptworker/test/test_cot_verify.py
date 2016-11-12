@@ -41,19 +41,22 @@ def chain(rw_context):
         "docker-image": ["sha256:docker_image_sha"],
     }
     rw_context.task = {
-        'scopes': [],
+        'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
+        'dependencies': [],
         'provisionerId': rw_context.config['provisioner_id'],
         'schedulerId': 'schedulerId',
         'workerType': rw_context.config['worker_type'],
-        'taskGroupId': 'groupid',
+        'taskGroupId': 'decision_task_id',
         'payload': {
             'image': None,
         },
-        'metadata': {},
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central/foo'
+        },
     }
     # decision_task_id
     chain_ = cotverify.ChainOfTrust(
-        rw_context, 'signing', task_id='taskid'
+        rw_context, 'signing', task_id='my_task_id'
     )
     yield chain_
 
@@ -73,7 +76,9 @@ def build_link(chain):
         'workerType': 'workerType',
         'scopes': [],
         'dependencies': [],
-        'metadata': {},
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central',
+        },
         'payload': {
             'artifacts': {
                 'foo': {
@@ -117,7 +122,9 @@ def decision_link(chain):
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
         'scopes': [],
-        'metadata': {},
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central',
+        },
         'payload': {
             'image': "blah",
         },
@@ -145,7 +152,9 @@ def docker_image_link(chain):
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
         'scopes': [],
-        'metadata': {},
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central',
+        },
         'payload': {
             'image': "blah",
             'env': {
@@ -595,6 +604,9 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
         build_link.task_id: {
             'task': deepcopy(build_link.task)
         },
+        chain.task_id: {
+            'task': deepcopy(chain.task)
+        }
     }
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
@@ -608,6 +620,9 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
     decision_link.task_graph = {
         build_link.task_id: {
             'task': bad_task
+        },
+        chain.task_id: {
+            'task': deepcopy(chain.task)
         },
     }
     with pytest.raises(CoTError):
@@ -670,6 +685,9 @@ async def test_verify_decision_task(chain, decision_link, build_link, mocker):
             build_link.task_id: {
                 'task': deepcopy(build_link.task)
             },
+            chain.task_id: {
+                'task': deepcopy(chain.task)
+            },
         }
 
     path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
@@ -689,6 +707,9 @@ async def test_verify_decision_task_worker_type(chain, decision_link, build_link
         return {
             build_link.task_id: {
                 'task': deepcopy(build_link.task)
+            },
+            chain.task_id: {
+                'task': deepcopy(chain.task)
             },
         }
 
@@ -718,6 +739,9 @@ async def test_verify_decision_task_bad_env(chain, decision_link, build_link, mo
         return {
             build_link.task_id: {
                 'task': deepcopy(build_link.task)
+            },
+            chain.task_id: {
+                'task': deepcopy(chain.task)
             },
         }
 
@@ -879,7 +903,48 @@ def test_get_firefox_source_url(task, expected):
     assert expected == cotverify.get_firefox_source_url(obj)
 
 
-# TODO trace_back_to_firefox_tree {{{1
+# trace_back_to_firefox_tree {{{1
+@pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree(chain, decision_link, build_link, docker_image_link):
+    chain.links = [decision_link, build_link, docker_image_link]
+    await cotverify.trace_back_to_firefox_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree_bad_repo(chain):
+    chain.task['metadata']['source'] = "https://hg.mozilla.org/try"
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_firefox_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree_unknown_repo(chain, decision_link,
+                                                       build_link, docker_image_link):
+    docker_image_link.decision_task_id = 'other'
+    docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/unknown/repo"
+    chain.links = [decision_link, build_link, docker_image_link]
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_firefox_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree_docker_unknown_repo(chain, decision_link,
+                                                              build_link, docker_image_link):
+    build_link.task['metadata']['source'] = "https://hg.mozilla.org/unknown/repo"
+    chain.links = [decision_link, build_link, docker_image_link]
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_firefox_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree_diff_repo(chain, decision_link,
+                                                    build_link, docker_image_link):
+    docker_image_link.decision_task_id = 'other'
+    docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-aurora"
+    chain.links = [decision_link, build_link, docker_image_link]
+    await cotverify.trace_back_to_firefox_tree(chain)
+
+
 # verify_chain_of_trust {{{1
 @pytest.mark.parametrize("exc", (None, KeyError, CoTError))
 @pytest.mark.asyncio

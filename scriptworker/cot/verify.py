@@ -1025,8 +1025,7 @@ async def trace_back_to_firefox_tree(chain):
 
     def callback(match):
         path_info = match.groupdict()
-        if 'path' in path_info:
-            return path_info['path']
+        return path_info['path']
 
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
