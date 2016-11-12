@@ -844,3 +844,36 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
             await cotverify.verify_worker_impls(chain)
     else:
         await cotverify.verify_worker_impls(chain)
+
+
+# get_firefox_source_url {{{1
+@pytest.mark.parametrize("task,expected", ((
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': 'https://example.com/blah',
+            },
+        },
+        'metadata': {'source': 'https://example.com/blah/blah'}
+    }, "https://example.com/blah/blah"
+), (
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': 'https://example.com/blah/blah',
+            },
+        },
+        'metadata': {'source': 'https://task/blah'}
+    }, "https://example.com/blah/blah"
+), (
+    {
+        'payload': {
+            'env': {},
+        },
+        'metadata': {'source': 'https://example.com/blah'}
+    }, "https://example.com/blah"
+)))
+def test_get_firefox_source_url(task, expected):
+    obj = mock.MagicMock()
+    obj.task = task
+    assert expected == cotverify.get_firefox_source_url(obj)
