@@ -780,3 +780,27 @@ async def test_verify_docker_image_task_command(chain, docker_image_link):
     docker_image_link.task['payload']['command'] = ["illegal", "command!"]
     with pytest.raises(CoTError):
         await cotverify.verify_docker_image_task(chain, docker_image_link)
+
+
+# verify_signing_task {{{1
+@pytest.mark.asyncio
+async def test_verify_signing_task(chain, build_link):
+    build_link.worker_impl = 'scriptworker'
+    await cotverify.verify_signing_task(chain, build_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_signing_task_worker_impl(chain, build_link):
+    build_link.worker_impl = 'bad_impl'
+    with pytest.raises(CoTError):
+        await cotverify.verify_signing_task(chain, build_link)
+
+
+# check_num_tasks {{{1
+@pytest.mark.parametrize("num,raises", ((1, False), (2, False), (3, True), (0, True)))
+def test_check_num_tasks(chain, num, raises):
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.check_num_tasks(chain, {'decision': num})
+    else:
+        cotverify.check_num_tasks(chain, {'decision': num})
