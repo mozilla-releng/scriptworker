@@ -94,6 +94,9 @@ def test_cleanup(context):
         path = context.config[name]
         assert os.path.exists(path)
         assert not os.path.exists(os.path.join(path, "tempfile"))
+    # 2nd pass
+    utils.rm(context.config['work_dir'])
+    utils.cleanup(context)
 
 
 # request and retry_request {{{1
