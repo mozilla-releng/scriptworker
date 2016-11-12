@@ -605,3 +605,46 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
     }
     with pytest.raises(CoTError):
         cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
+
+
+# verify_firefox_decision_command {{{1
+@pytest.mark.parametrize("command,raises", (([
+        '/home/worker/bin/run-task',
+        '--vcs-checkout=foo',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], False
+), ([
+        '/bad/worker/bin/run-task',
+        '--vcs-checkout=foo',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], True
+), ([
+        '/home/worker/bin/run-task',
+        '--bad-option=foo',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], True
+), ([
+        '/home/worker/bin/run-task',
+        '--bad-option=foo',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && -s x y && bad command',
+    ], True
+)))
+def test_verify_firefox_decision_command(decision_link, command, raises):
+    decision_link.task['payload']['command'] = command
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.verify_firefox_decision_command(decision_link)
+    else:
+        cotverify.verify_firefox_decision_command(decision_link)

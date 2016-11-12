@@ -760,7 +760,7 @@ def verify_firefox_decision_command(decision_link):
         if item.startswith('--vcs-checkout='):
             continue
         errors.append("{} {} illegal option {} in the command!".format(
-            decision_link.name, decision_link.task_id
+            decision_link.name, decision_link.task_id, item
         ))
     bash_commands = command[-1].split('&&')
     allowed_commands = ('cd', 'ln')
