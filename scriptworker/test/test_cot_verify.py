@@ -148,6 +148,10 @@ def docker_image_link(chain):
         'metadata': {},
         'payload': {
             'image': "blah",
+            'env': {
+                "HEAD_REF": "x",
+            },
+            'command': ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"],
         },
         'extra': {},
     }
@@ -749,5 +753,30 @@ async def test_verify_build_task_bad_env(chain, build_link):
 
 
 # verify_docker_image_task {{{1
-def test_verify_docker_image_task():
-    pass
+@pytest.mark.asyncio
+async def test_verify_docker_image_task(chain, docker_image_link):
+    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
+    await cotverify.verify_docker_image_task(chain, docker_image_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_docker_image_task_worker_type(chain, docker_image_link):
+    docker_image_link.task['workerType'] = 'bad-worker-type'
+    with pytest.raises(CoTError):
+        await cotverify.verify_docker_image_task(chain, docker_image_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_docker_image_task_env(chain, docker_image_link):
+    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
+    docker_image_link.task['payload']['env']['blah'] = 'foo'
+    with pytest.raises(CoTError):
+        await cotverify.verify_docker_image_task(chain, docker_image_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_docker_image_task_command(chain, docker_image_link):
+    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
+    docker_image_link.task['payload']['command'] = ["illegal", "command!"]
+    with pytest.raises(CoTError):
+        await cotverify.verify_docker_image_task(chain, docker_image_link)
