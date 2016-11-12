@@ -608,7 +608,8 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
 
 
 # verify_firefox_decision_command {{{1
-@pytest.mark.parametrize("command,raises", (([
+@pytest.mark.parametrize("command,raises", ((
+    [
         '/home/worker/bin/run-task',
         '--vcs-checkout=foo',
         '--',
@@ -616,7 +617,8 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
     ], False
-), ([
+), (
+    [
         '/bad/worker/bin/run-task',
         '--vcs-checkout=foo',
         '--',
@@ -624,7 +626,8 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
     ], True
-), ([
+), (
+    [
         '/home/worker/bin/run-task',
         '--bad-option=foo',
         '--',
@@ -632,7 +635,8 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
     ], True
-), ([
+), (
+    [
         '/home/worker/bin/run-task',
         '--bad-option=foo',
         '--',
@@ -720,3 +724,9 @@ async def test_verify_decision_task_bad_env(chain, decision_link, build_link, mo
     mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
     with pytest.raises(CoTError):
         await cotverify.verify_decision_task(chain, decision_link)
+
+
+# verify_build_task {{{1
+@pytest.mark.asyncio
+async def test_verify_build_task(chain, build_link, mocker):
+    pass
