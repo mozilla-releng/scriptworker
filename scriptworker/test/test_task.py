@@ -7,6 +7,7 @@ import asyncio
 import glob
 import mock
 import os
+import pprint
 import pytest
 from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
@@ -161,6 +162,21 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
         event_loop.run_until_complete(
             task.reclaim_task(context, context.task)
         )
+
+
+@pytest.mark.asyncio
+async def test_reclaim_task_mock(context, mocker, event_loop):
+
+    async def fake_reclaim(*args, **kwargs):
+        return {'credentials': context.credentials}
+
+    def die(*args):
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
+
+    context.temp_queue = mock.MagicMock()
+    context.temp_queue.reclaimTask = fake_reclaim
+    mocker.patch.object(pprint, 'pformat', new=die)
+    await task.reclaim_task(context, context.task)
 
 
 # upload_artifacts {{{1
