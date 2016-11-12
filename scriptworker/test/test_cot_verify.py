@@ -88,6 +88,9 @@ def build_link(chain):
                 'taskId': 'docker_image_task_id',
                 'path': 'path/image',
             },
+            'env': {
+                'HG_STORE_PATH': 'foo',
+            },
         },
         'extra': {
             'chainOfTrust': {
@@ -728,5 +731,23 @@ async def test_verify_decision_task_bad_env(chain, decision_link, build_link, mo
 
 # verify_build_task {{{1
 @pytest.mark.asyncio
-async def test_verify_build_task(chain, build_link, mocker):
+async def test_verify_build_task(chain, build_link):
+    await cotverify.verify_build_task(chain, build_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_build_task_noop(chain, build_link):
+    build_link.worker_impl = 'unknown'
+    await cotverify.verify_build_task(chain, build_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_build_task_bad_env(chain, build_link):
+    build_link.task['payload']['env']['bad_key'] = 'bad_val'
+    with pytest.raises(CoTError):
+        await cotverify.verify_build_task(chain, build_link)
+
+
+# verify_docker_image_task {{{1
+def test_verify_docker_image_task():
     pass
