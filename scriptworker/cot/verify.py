@@ -864,7 +864,7 @@ async def verify_docker_image_task(chain, link):
         if key not in link.context.config['valid_docker_image_env_vars']:
             errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
     # command
-    if link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
+    if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
         errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
 
