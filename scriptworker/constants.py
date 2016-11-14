@@ -100,6 +100,7 @@ DEFAULT_CONFIG = frozendict({
         ],
         "docker-image": [
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
+            "sha256:d438d7818b6a47a0b1d49943ab12b5c504b65161806658e4c28f5f2aac821b9e",
         ]
     }),
 
