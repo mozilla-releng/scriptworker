@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module
 """
 import aiohttp.hdrs
+import aiohttp.errors
 import arrow
 import asyncio
 from asyncio.subprocess import PIPE
@@ -259,7 +260,11 @@ async def retry_create_artifact(*args, **kwargs):
     """
     await retry_async(
         create_artifact,
-        retry_exceptions=(ScriptWorkerRetryException, ),
+        retry_exceptions=(
+            ScriptWorkerRetryException,
+            aiohttp.errors.DisconnectedError,
+            aiohttp.errors.ClientError
+        ),
         args=args,
         kwargs=kwargs
     )
