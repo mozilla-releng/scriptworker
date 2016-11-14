@@ -321,15 +321,16 @@ async def complete_task(context, result):
     try:
         if result == 0:
             log.info("Reporting task complete...")
-            await context.temp_queue.reportCompleted(*args)
+            response = await context.temp_queue.reportCompleted(*args)
         elif result in list(range(2, 7)):
             reason = REVERSED_STATUSES[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
-            await context.temp_queue.reportException(*args, payload)
+            response = await context.temp_queue.reportException(*args, payload)
         else:
             log.info("Reporting task failed...")
-            await context.temp_queue.reportFailed(*args)
+            response = await context.temp_queue.reportFailed(*args)
+        log.debug("Task status response:\n{}".format(pprint.pformat(response)))
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.info("409: not reporting complete/failed.")
