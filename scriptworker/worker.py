@@ -91,7 +91,7 @@ def main():
     """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
-    conn = aiohttp.TCPConnector()
+    conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
