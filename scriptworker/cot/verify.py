@@ -5,7 +5,6 @@ Attributes:
     log (logging.Logger): the log object for this module.
 """
 import asyncio
-from contextlib import contextmanager
 from copy import deepcopy
 from frozendict import frozendict
 import logging
@@ -15,6 +14,7 @@ import shlex
 from urllib.parse import unquote, urlparse
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
+from scriptworker.log import contextual_log_handler
 from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
 from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions
 from taskcluster.exceptions import TaskclusterFailure
@@ -176,30 +176,6 @@ def raise_on_errors(errors):
     if errors:
         log.critical("\n".join(errors))
         raise CoTError("\n".join(errors))
-
-
-# audit_log_handler {{{1
-@contextmanager
-def audit_log_handler(context):
-    """Add an audit.log for `scriptworker.cot.verify` with a contextmanager for cleanup.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context
-
-    Yields:
-        None: but cleans up the handler afterwards.
-    """
-    parent_path = os.path.join(context.config['artifact_dir'], 'public', 'cot')
-    makedirs(parent_path)
-    log_path = os.path.join(parent_path, 'audit.log')
-    audit_handler = logging.FileHandler(log_path, encoding='utf-8')
-    audit_handler.setLevel(logging.DEBUG)
-    audit_handler.setFormatter(
-        logging.Formatter(fmt='%(asctime)s %(levelname)8s - %(message)s')
-    )
-    log.addHandler(audit_handler)
-    yield
-    log.removeHandler(audit_handler)
 
 
 # guess_worker_impl {{{1
@@ -1076,7 +1052,8 @@ async def verify_chain_of_trust(chain):
     Raises:
         CoTError: on failure
     """
-    with audit_log_handler(chain.context):
+    log_path = os.path.join(chain.context.config["artifact_dir"], "public", "cot", "audit.log")
+    with contextual_log_handler(chain.context, path=log_path, log_obj=log):
         try:
             # build LinkOfTrust objects
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)

@@ -109,3 +109,32 @@ def get_log_fhs(context):
     with open(log_file, "w") as log_fh:
         with open(error_file, "w") as error_fh:
             yield (log_fh, error_fh)
+
+
+@contextmanager
+def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
+                           fmt='%(asctime)s %(levelname)8s - %(message)s'):
+    """Add a short-lived log with a contextmanager for cleanup.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        path (str): the path to the log file to create
+        log_obj (logging.Logger): the log object to modify.  If None, use
+            `scriptworker.log.log`.  Defaults to None.
+        level (int, optional): the logging level.  Defaults to logging.DEBUG.
+        fmt (str, optional): the logging format.  Defaults to '%(asctime)s %(levelname)8s - %(message)s'
+
+    Yields:
+        None: but cleans up the handler afterwards.
+    """
+    log_obj = log_obj or log
+    parent_path = os.path.dirname(path)
+    makedirs(parent_path)
+    contextual_handler = logging.FileHandler(path, encoding='utf-8')
+    contextual_handler.setLevel(level)
+    contextual_handler.setFormatter(
+        logging.Formatter(fmt=fmt)
+    )
+    log_obj.addHandler(contextual_handler)
+    yield
+    log_obj.removeHandler(contextual_handler)

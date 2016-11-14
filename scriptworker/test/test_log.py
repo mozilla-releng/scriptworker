@@ -82,3 +82,15 @@ def test_update_logging_config_not_verbose(context):
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.INFO
     assert len(log.handlers) == 2
+
+
+def test_contextual_log_handler(context, mocker):
+    contextual_path = os.path.join(context.config['artifact_dir'], "test.log")
+    swlog.log.setLevel(logging.DEBUG)
+    with swlog.contextual_log_handler(context, path=contextual_path):
+        swlog.log.info("foo")
+    swlog.log.info("bar")
+    with open(contextual_path, "r") as fh:
+        contents = fh.read().splitlines()
+    assert len(contents) == 1
+    assert contents[0].endswith("foo")
