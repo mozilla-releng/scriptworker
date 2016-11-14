@@ -175,7 +175,12 @@ DEFAULT_CONFIG = frozendict({
     ),
 
     "valid_docker_image_env_vars": (
+        "GECKO_BASE_REPOSITORY",
+        "GECKO_HEAD_REV",
+        "GECKO_HEAD_REPOSITORY",
         "HEAD_REF",
+        "HG_STORE_PATH",
+        "IMAGE_NAME",
         "PROJECT",
         "CONTEXT_URL",
         "HEAD_REPOSITORY",
