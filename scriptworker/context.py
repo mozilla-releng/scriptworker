@@ -30,7 +30,7 @@ class Context(object):
             FrozenDict.
         credentials_timestamp (int): the unix timestamp when we last updated
             our credentials.
-        poll_task_urls (dict): contains the Azure `queues` urls and an `expires`
+        poll_task_urls (dict): contains the Azure ``queues`` urls and an ``expires``
             datestring.
         proc (asyncio.subprocess.Process): when launching the script, this is
             the process object.
@@ -61,8 +61,8 @@ class Context(object):
         This contains the task definition, as well as other task-specific
         info.
 
-        When setting `claim_task`, we also set `self.task` and
-        `self.temp_credentails`, zero out `self.reclaim_task` and `self.proc`,
+        When setting ``claim_task``, we also set ``self.task`` and
+        ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
         then write a task.json to disk.
         """
         return self._claim_task
@@ -86,7 +86,7 @@ class Context(object):
         """dict: The current scriptworker credentials, from the config or CREDS_FILES
         or environment.
 
-        When setting credentials, also create a new `self.queue` and
+        When setting credentials, also create a new ``self.queue`` and
         update self.credentials_timestamp.
         """
         if self._credentials:
@@ -115,9 +115,9 @@ class Context(object):
 
         This contains the newest expiration time and the newest temp credentials.
 
-        When setting reclaim_task, we also set self.temp_credentials.
+        When setting ``reclaim_task``, we also set ``self.temp_credentials``.
 
-        reclaim_task will be None if there hasn't been a claimed task yet,
+        ``reclaim_task`` will be ``None`` if there hasn't been a claimed task yet,
         or if a task has been claimed more recently than the most recent
         reclaimTask call.
         """
@@ -134,7 +134,7 @@ class Context(object):
         """dict: The latest temp credentials, or None if we haven't claimed a
             task yet.
 
-        When setting, create `self.temp_queue` from the temp taskcluster creds.
+        When setting, create ``self.temp_queue`` from the temp taskcluster creds.
         """
         if self._temp_credentials:
             return dict(deepcopy(self._temp_credentials))

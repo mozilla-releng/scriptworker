@@ -64,13 +64,13 @@ def gpg_default_args(gpg_home):
 
 
 def guess_gpg_home(obj, gpg_home=None):
-    """Guess gpg_home.  If `gpg_home` is specified, return that.
+    """Guess gpg_home.  If ``gpg_home`` is specified, return that.
 
     Args:
-        obj (object): If gpg_home is set, return that. Otherwise, if `obj` is a
-            context object and `context.config['gpg_home']` is not None, return
-            that. If `obj` is a GPG object and `obj.gnupghome` is not None,
-            return that.  Otherwise look in `~/.gnupg`.
+        obj (object): If gpg_home is set, return that. Otherwise, if ``obj`` is a
+            context object and ``context.config['gpg_home']`` is not None, return
+            that. If ``obj`` is a GPG object and ``obj.gnupghome`` is not None,
+            return that.  Otherwise look in ``~/.gnupg``.
         gpg_home (str, optional): The path to the gpg homedir.  gpg will look for
             the gpg.conf, trustdb.gpg, and keyring files in here.  Defaults to None.
 
@@ -99,16 +99,16 @@ def guess_gpg_path(context):
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        str: either `context.config['gpg_path']` or 'gpg' if that's not defined.
+        str: either ``context.config['gpg_path']`` or 'gpg' if that's not defined.
     """
     return context.config['gpg_path'] or 'gpg'
 
 
 def keyid_to_fingerprint(gpg, keyid, private=False):
-    """Return the fingerprint of the key that corresponds to `keyid`.
+    """Return the fingerprint of the key that corresponds to ``keyid``.
 
     Keyids should default to long keyids; this will happen once
-    `create_gpg_conf()` is called.
+    ``create_gpg_conf()`` is called.
 
     Args:
         gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
@@ -118,10 +118,10 @@ def keyid_to_fingerprint(gpg, keyid, private=False):
             of the public keyring.  Defaults to False.
 
     Returns:
-        fingerprint (str): the fingerprint of the key with keyid `keyid`
+        fingerprint (str): the fingerprint of the key with keyid ``keyid``
 
     Raises:
-        ScriptworkerGPGException: if we can't find `keyid` in this keyring.
+        ScriptworkerGPGException: if we can't find ``keyid`` in this keyring.
     """
     for key in gpg.list_keys(private):
         if key['keyid'] == keyid:
@@ -135,10 +135,10 @@ def keyid_to_fingerprint(gpg, keyid, private=False):
 
 
 def fingerprint_to_keyid(gpg, fingerprint, private=False):
-    """Return the keyid of the key that corresponds to `fingerprint`.
+    """Return the keyid of the key that corresponds to ``fingerprint``.
 
     Keyids should default to long keyids; this will happen once
-    `create_gpg_conf()` is called.
+    ``create_gpg_conf()`` is called.
 
     Args:
         gpg (gnupg.GPG): gpg object for the appropriate gpg_home / keyring
@@ -147,10 +147,10 @@ def fingerprint_to_keyid(gpg, fingerprint, private=False):
             of the public keyring.  Defaults to False.
 
     Returns:
-        keyid (str): the keyid of the key with fingerprint `fingerprint`
+        keyid (str): the keyid of the key with fingerprint ``fingerprint``
 
     Raises:
-        ScriptworkerGPGException: if we can't find `fingerprint` in this keyring.
+        ScriptworkerGPGException: if we can't find ``fingerprint`` in this keyring.
     """
     for key in gpg.list_keys(private):
         if key['fingerprint'] == fingerprint:
@@ -170,8 +170,8 @@ def create_gpg_conf(gpg_home, keyserver=None, my_fingerprint=None):
     Args:
         gpg_home (str): the homedir for this keyring.
         keyserver (str, optional): The gpg keyserver to specify, e.g.
-            `hkp://gpg.mozilla.org` or `hkp://keys.gnupg.net`.  If set, we also
-            enable `auto-key-retrieve`.  Defaults to None.
+            ``hkp://gpg.mozilla.org`` or ``hkp://keys.gnupg.net``.  If set, we also
+            enable ``auto-key-retrieve``.  Defaults to None.
         my_fingerprint (str, optional): the fingerprint of the default key.
             Once set, gpg will use it by default, unless a different key is
             specified.  Defaults to None.
@@ -197,11 +197,11 @@ def create_gpg_conf(gpg_home, keyserver=None, my_fingerprint=None):
 
 # GPG {{{1
 def GPG(context, gpg_home=None):
-    """Get a python-gnupg GPG instance based on the settings in `context`.
+    """Get a python-gnupg GPG instance based on the settings in ``context``.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        gpg_home (str, optional): override `context.config['gpg_home']` if
+        gpg_home (str, optional): override ``context.config['gpg_home']`` if
             desired.  Defaults to None.
 
     Returns:
@@ -278,7 +278,7 @@ def import_key(gpg, key_data, return_type='fingerprints'):
 
 
 def export_key(gpg, fingerprint, private=False):
-    """Return the ascii armored key identified by `fingerprint`.
+    """Return the ascii armored key identified by ``fingerprint``.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -287,7 +287,7 @@ def export_key(gpg, fingerprint, private=False):
             of the public key.  Defaults to False.
 
     Returns:
-        str: the ascii armored key identified by `fingerprint`.
+        str: the ascii armored key identified by ``fingerprint``.
 
     Raises:
         ScriptworkerGPGException: if the key isn't found.
@@ -302,7 +302,7 @@ def export_key(gpg, fingerprint, private=False):
 
 def sign_key(context, target_fingerprint, signing_key=None,
              exportable=False, gpg_home=None):
-    """Sign the `target_fingerprint` key with the `signing_key` or default key
+    """Sign the ``target_fingerprint`` key with the ``signing_key`` or default key
 
     This signs the target key with the signing key, which adds to the web of trust.
 
@@ -463,7 +463,7 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 
 # data signatures and verification {{{1
 def sign(gpg, data, **kwargs):
-    """Sign `data` with the key `kwargs['keyid']`, or the default key if not specified
+    """Sign ``data`` with the key ``kwargs['keyid']``, or the default key if not specified
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -479,7 +479,7 @@ def sign(gpg, data, **kwargs):
 
 
 def verify_signature(gpg, signed_data, **kwargs):
-    """Verify `signed_data` with the key `kwargs['keyid']`, or the default key
+    """Verify ``signed_data`` with the key ``kwargs['keyid']``, or the default key
     if not specified.
 
     Args:
@@ -504,14 +504,16 @@ def verify_signature(gpg, signed_data, **kwargs):
     return verified
 
 
-def get_body(gpg, signed_data, gpg_home=None, **kwargs):
-    """Verifies the signature, then returns the unsigned data from `signed_data`.
+def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
+    """Verifies the signature, then returns the unsigned data from ``signed_data``.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
         signed_data (str): The ascii armored signed data.
         gpg_home (str, optional): override the gpg_home with a different
             gnupg home directory here.  Defaults to None.
+        verify_sig (bool, optional): verify the signature before decrypting.
+            Defaults to True.
         kwargs (dict, optional): These are passed directly to gpg.decrypt().
             Defaults to {}.
             https://pythonhosted.org/python-gnupg/#decryption
@@ -522,14 +524,16 @@ def get_body(gpg, signed_data, gpg_home=None, **kwargs):
     Raises:
         ScriptWorkerGPGException: on signature verification failure.
     """
-    verify_signature(gpg, signed_data)
+    # XXX remove verify_sig kwarg when pubkeys are in git repo
+    if verify_sig:
+        verify_signature(gpg, signed_data)
     body = gpg.decrypt(signed_data, **kwargs)
     return str(body)
 
 
 # key signature verification {{{1
 def _parse_trust_line(trust_line, desc):
-    """parse `gpg --list-sigs --with-colons` `tru` line
+    """parse ``gpg --list-sigs --with-colons`` ``tru`` line
 
        https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
 
@@ -588,7 +592,7 @@ def _parse_trust_line(trust_line, desc):
 
 
 def _parse_pub_line(pub_line, desc):
-    """parse `gpg --list-sigs --with-colons` `pub` line
+    """parse ``gpg --list-sigs --with-colons`` ``pub`` line
     https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
      2. Field:  A letter describing the calculated validity. This is a single
                 letter, but be prepared that additional information may follow
@@ -806,12 +810,12 @@ def parse_list_sigs_output(output, desc, expected=None):
             message purposes.
         expected (dict, optional): expected outputs.  If specified and
             the expected doesn't match the real, raise an exception.
-            Expected takes `keyid`, `fingerprint`, `uid`, `sig_keyids` (list),
-            and `sig_uids` (list), all optional.  Defaults to None.
+            Expected takes ``keyid``, ``fingerprint``, ``uid``, ``sig_keyids`` (list),
+            and ``sig_uids`` (list), all optional.  Defaults to None.
 
     Returns:
         real (dict): the real values from the key.  This specifies
-            `keyid`, `fingerprint`, `uid`, `sig_keyids`, and `sig_uids`.
+            ``keyid``, ``fingerprint``, ``uid``, ``sig_keyids``, and ``sig_uids``.
 
     Raises:
         ScriptWorkerGPGException: on mismatched expectations, or if we found
@@ -1017,9 +1021,9 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
 def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
                           my_priv_key_path, consume_path, ignore_suffixes=(),
                           consume_function=consume_valid_keys):
-    """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
+    """Rebuild ``real_gpg_home`` with new trustdb, pub+secrings, gpg.conf.
 
-    In this 'flat' model, import all the pubkeys in `consume_path` and sign
+    In this 'flat' model, import all the pubkeys in ``consume_path`` and sign
     them directly.  This makes them valid but not trusted.
 
     Args:
@@ -1059,12 +1063,12 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
                             my_priv_key_path, trusted_path,
                             untrusted_path=None, ignore_suffixes=(),
                             consume_function=consume_valid_keys):
-    """Rebuild `real_gpg_home` with new trustdb, pub+secrings, gpg.conf.
+    """Rebuild ``real_gpg_home`` with new trustdb, pub+secrings, gpg.conf.
 
-    In this 'signed' model, import all the pubkeys in `trusted_path`, sign
+    In this 'signed' model, import all the pubkeys in ``trusted_path``, sign
     them directly, and trust them.  Then import all the pubkeys in
-    `untrusted_path` with no signing.  The intention is that one of the keys
-    in `trusted_path` has already signed the keys in `untrusted_path`, making
+    ``untrusted_path`` with no signing.  The intention is that one of the keys
+    in ``trusted_path`` has already signed the keys in ``untrusted_path``, making
     them valid.
 
     Args:
@@ -1131,10 +1135,10 @@ def verify_signed_git_commit_output(output):
     If the key is missing, output looks like::
 
         commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
-        gpg: directory `/Users/asasaki/.gnupg' created
-        gpg: new configuration file `/Users/asasaki/.gnupg/gpg.conf' created
-        gpg: WARNING: options in `/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
-        gpg: keyring `/Users/asasaki/.gnupg/pubring.gpg' created
+        gpg: directory ``/Users/asasaki/.gnupg' created
+        gpg: new configuration file ``/Users/asasaki/.gnupg/gpg.conf' created
+        gpg: WARNING: options in ``/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
+        gpg: keyring ``/Users/asasaki/.gnupg/pubring.gpg' created
         gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
         gpg:                using RSA key FC829B7FFAA9AC38
         gpg: Can't check signature: No public key
@@ -1195,7 +1199,7 @@ def verify_signed_git_commit_output(output):
 
 
     Args:
-        output (str): the output from `git log --no-merges -n 1 --show-signature`
+        output (str): the output from ``git log --no-merges -n 1 --show-signature``
 
     Raises:
         ScriptWorkerGPGException: on error.
@@ -1227,7 +1231,7 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
     """Get the git revision of path.
 
     Args:
-        path (str): the path to run `git rev-parse HEAD` in.
+        path (str): the path to run ``git rev-parse HEAD`` in.
 
     Returns:
         str: the revision.
@@ -1265,7 +1269,7 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
 
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
-        ScriptWorkerRetryException: on `git pull` failure.
+        ScriptWorkerRetryException: on ``git pull`` failure.
     """
     path = context.config['git_key_repo_dir']
     proc = await exec_function(
@@ -1284,11 +1288,11 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
 
 async def verify_signed_git_commit(context, path=None,
                                    exec_function=asyncio.create_subprocess_exec):
-    """Verify `context.config['git_key_repo_dir']` is on a valid signed commit.
+    """Verify ``context.config['git_key_repo_dir']`` is on a valid signed commit.
 
-    This function calls `verify_signed_git_commit_output` to make sure the
+    This function calls ``verify_signed_git_commit_output`` to make sure the
     latest non-merge-commit commit is signed with a key that lives in
-    `context.config['git_commit_signing_pubkey_dir']`.
+    ``context.config['git_commit_signing_pubkey_dir']``.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1332,7 +1336,7 @@ def get_last_good_git_revision(context):
 
 
 def write_last_good_git_revision(context, revision):
-    """This writes `revision` to config['last_good_git_revision_file'].
+    """This writes ``revision`` to config['last_good_git_revision_file'].
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1352,13 +1356,13 @@ def build_gpg_homedirs_from_repo(
     context, basedir=None, verify_function=verify_signed_git_commit,
     flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
 ):
-    """Build gpg homedirs in `basedir`, from the context-defined git repo.
+    """Build gpg homedirs in ``basedir``, from the context-defined git repo.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         basedir (str, optional): the path to the base directory to create the
             gpg homedirs in.  This directory will be wiped if it exists.
-            If None, use `context.config['base_gpg_home_dir']`.  Defaults to None.
+            If None, use ``context.config['base_gpg_home_dir']``.  Defaults to None.
 
     Returns:
         str: on success.
@@ -1375,9 +1379,9 @@ def build_gpg_homedirs_from_repo(
     rm(basedir)
     makedirs(basedir)
     # create gpg homedirs
-    for worker_class, worker_config in context.config['gpg_homedirs'].items():
-        source_path = os.path.join(repo_path, worker_class)
-        real_gpg_home = os.path.join(basedir, worker_class)
+    for worker_impl, worker_config in context.config['gpg_homedirs'].items():
+        source_path = os.path.join(repo_path, worker_impl)
+        real_gpg_home = os.path.join(basedir, worker_impl)
         my_pub_key_path = context.config['pubkey_path']
         my_priv_key_path = context.config['privkey_path']
         if worker_config['type'] == 'flat':

@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 import aiohttp
-import arrow
 import asyncio
 import logging
 import os
 import sys
-import traceback
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
-from scriptworker.config import get_context_from_cmdln, read_worker_creds
-from scriptworker.cot import generate_cot
+from scriptworker.config import get_context_from_cmdln
+from scriptworker.cot.generate import generate_cot
+from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, overwrite_gpg_home
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
@@ -48,10 +47,9 @@ async def run_loop(context, creds_key="credentials"):
             context.claim_task = claim_task_defn
             loop.create_task(reclaim_task(context, context.task))
             try:
-                # TODO download and verify chain of trust artifacts if
-                # context.config['verify_chain_of_trust']
-                # write an audit logfile to task_log_dir; copy cot into
-                # artifact_dir/cot ?
+                if context.config['verify_chain_of_trust']:
+                    chain = ChainOfTrust(context, context.config['cot_job_type'])
+                    await verify_chain_of_trust(chain)
                 status = await run_task(context)
                 generate_cot(context)
             except ScriptWorkerException as e:
@@ -68,10 +66,6 @@ async def run_loop(context, creds_key="credentials"):
             return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
-        if arrow.utcnow().timestamp - context.credentials_timestamp > context.config['credential_update_interval']:  # pragma: no branch
-            credentials = read_worker_creds(key=creds_key)
-            if credentials and credentials != context.credentials:
-                context.credentials = credentials
 
 
 async def async_main(context):
@@ -97,7 +91,7 @@ def main():
     """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
-    conn = aiohttp.TCPConnector(limit=context.config["max_connections"])
+    conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
@@ -105,6 +99,6 @@ def main():
         while True:
             try:
                 loop.run_until_complete(async_main(context))
-            except Exception as exc:
-                log.warning(traceback.format_exc())
+            except Exception:
+                log.critical("Fatal exception", exc_info=1)
                 raise

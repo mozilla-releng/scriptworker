@@ -5,11 +5,22 @@
 import aiohttp
 import arrow
 import asyncio
+from copy import deepcopy
+from frozendict import frozendict
 import json
 import mock
+import os
 import pytest
 import tempfile
 import taskcluster.exceptions
+from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.context import Context
+from scriptworker.utils import makedirs
+try:
+    import yarl
+    YARL = True
+except ImportError:
+    YARL = False
 
 
 GOOD_GPG_KEYS = {
@@ -110,7 +121,6 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
     the aiohttp session's _request method return a FakeResponse.
     """
     def __init__(self, *args, status=200, payload=None, **kwargs):
-        super(FakeResponse, self).__init__(*args, **kwargs)
         self._connection = mock.MagicMock()
         self._payload = payload or {}
         self.status = status
@@ -118,6 +128,9 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
+        if YARL:
+            # fix aiohttp 1.1.0
+            self._url_obj = yarl.URL(args[1])
 
     @asyncio.coroutine
     def text(self, *args, **kwargs):
@@ -242,6 +255,24 @@ def tmpdir2():
     """
     with tempfile.TemporaryDirectory() as tmp:
         yield tmp
+
+
+@pytest.yield_fixture(scope='function')
+def rw_context():
+    with tempfile.TemporaryDirectory() as tmp:
+        context = Context()
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
+        context.config['cot_job_type'] = "signing"
+        for key, value in context.config.items():
+            if key.endswith("_dir"):
+                context.config[key] = os.path.join(tmp, key)
+                makedirs(context.config[key])
+            if key.endswith("key_path") or key in ("gpg_home", ):
+                context.config[key] = os.path.join(tmp, key)
+            if isinstance(value, frozendict):
+                context.config[key] = dict(value)
+        yield context
 
 
 async def noop_async(*args, **kwargs):

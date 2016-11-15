@@ -4,7 +4,6 @@
 """
 import arrow
 from contextlib import contextmanager
-from copy import deepcopy
 import glob
 import json
 import mock
@@ -13,14 +12,13 @@ import pexpect
 import pytest
 import shutil
 import subprocess
-from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, tmpdir2, touch
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, touch
+from . import rw_context as context
 
 assert event_loop, tmpdir  # silence pyflakes
-assert tmpdir2  # silence pyflakes
+assert context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -201,20 +199,6 @@ def check_sigs(context, manifest, pubkey_dir, trusted_emails=None):
     return messages
 
 
-@pytest.yield_fixture(scope='function')
-def context(tmpdir2):
-    """Use this function to get a context obj pointing at any directory as
-    gnupghome.
-    """
-    context_ = Context()
-    context_.config = dict(deepcopy(DEFAULT_CONFIG))
-    context_.config['gpg_lockfile'] = os.path.join(tmpdir2, 'gpg_lockfile')
-    for key, value in context_.config.items():
-        if key.endswith("_dir") or key in ("gpg_home", ):
-            context_.config[key] = os.path.join(tmpdir2, key)
-    yield context_
-
-
 class PexpectChild():
     """Pretend to be a pexpect child proc for sign_key failures
     """
@@ -335,12 +319,13 @@ def test_verify_bad_signatures(base_context, params):
 
 @pytest.mark.parametrize("text", [v for _, v in sorted(TEXT.items())])
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
-def test_get_body(base_context, text, params):
+@pytest.mark.parametrize("verify_sig", (True, False))
+def test_get_body(base_context, text, params, verify_sig):
     gpg = sgpg.GPG(base_context)
     data = sgpg.sign(gpg, text, keyid=params[1]["fingerprint"])
     if not text.endswith('\n'):
         text = "{}\n".format(text)
-    assert sgpg.get_body(gpg, data) == text
+    assert sgpg.get_body(gpg, data, verify_sig=verify_sig) == text
 
 
 # create_gpg_conf {{{1

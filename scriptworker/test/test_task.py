@@ -7,8 +7,8 @@ import asyncio
 import glob
 import mock
 import os
+import pprint
 import pytest
-from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerRetryException
 import scriptworker.task as task
 import scriptworker.log as log
@@ -16,38 +16,15 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import event_loop, fake_session, fake_session_500, successful_queue, \
-    tmpdir, touch, unsuccessful_queue, read
+from . import event_loop, fake_session, fake_session_500, rw_context, successful_queue, \
+    touch, unsuccessful_queue, read
 
-assert event_loop, tmpdir  # silence flake8
+assert event_loop, rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 # constants helpers and fixtures {{{1
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
-
-
-@pytest.fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        'log_dir': os.path.join(tmpdir, "log"),
-        'artifact_dir': os.path.join(tmpdir, "artifact"),
-        'task_log_dir': os.path.join(tmpdir, "artifact", "public", "logs"),
-        'work_dir': os.path.join(tmpdir, "work"),
-        'artifact_upload_timeout': 200,
-        'artifact_expiration_hours': 1,
-        'reclaim_interval': 0.001,
-        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && exit 1'),
-        'task_max_timeout': .1,
-    }
-    context.claim_task = {
-        'credentials': {'a': 'b'},
-        'status': {'taskId': 'taskId'},
-        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
-        'runId': 'runId',
-    }
-    return context
 
 mimetypes = {
     "/foo/bar/test.txt": "text/plain",
@@ -56,6 +33,21 @@ mimetypes = {
     "/foo/bar/blah.log": "text/plain",
     "/totally/unknown": "application/binary",
 }
+
+
+@pytest.yield_fixture(scope='function')
+def context(rw_context):
+    rw_context.config['artifact_expiration_hours'] = 1
+    rw_context.config['reclaim_interval'] = 0.001
+    rw_context.config['task_max_timeout'] = .1
+    rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
+    rw_context.claim_task = {
+        'credentials': {'a': 'b'},
+        'status': {'taskId': 'taskId'},
+        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
+        'runId': 'runId',
+    }
+    yield rw_context
 
 
 # worst_level {{{1
@@ -81,6 +73,18 @@ def test_expiration_arrow(context):
 def test_guess_content_type(mimetypes):
     path, mimetype = mimetypes
     assert task.guess_content_type(path) == mimetype
+
+
+# get_decision_task_id {{{1
+@pytest.mark.parametrize("defn,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
+def test_get_decision_task_id(defn, result):
+    assert task.get_decision_task_id(defn) == result
+
+
+# get_worker_type {{{1
+@pytest.mark.parametrize("defn,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
+def test_get_worker_type(defn, result):
+    assert task.get_worker_type(defn) == result
 
 
 # run_task {{{1
@@ -160,6 +164,21 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
         )
 
 
+@pytest.mark.asyncio
+async def test_reclaim_task_mock(context, mocker, event_loop):
+
+    async def fake_reclaim(*args, **kwargs):
+        return {'credentials': context.credentials}
+
+    def die(*args):
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
+
+    context.temp_queue = mock.MagicMock()
+    context.temp_queue.reclaimTask = fake_reclaim
+    mocker.patch.object(pprint, 'pformat', new=die)
+    await task.reclaim_task(context, context.task)
+
+
 # upload_artifacts {{{1
 def test_upload_artifacts(context, event_loop):
     args = []
@@ -185,7 +204,6 @@ def test_upload_artifacts(context, event_loop):
 # create_artifact {{{1
 def test_create_artifact(context, fake_session, successful_queue, event_loop):
     path = os.path.join(context.config['artifact_dir'], "one.txt")
-    os.makedirs(context.config['artifact_dir'])
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
@@ -206,7 +224,6 @@ def test_create_artifact(context, fake_session, successful_queue, event_loop):
 def test_create_artifact_retry(context, fake_session_500, successful_queue,
                                event_loop):
     path = os.path.join(context.config['artifact_dir'], "one.log")
-    os.makedirs(context.config['artifact_dir'])
     touch(path)
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
@@ -244,6 +261,19 @@ def test_max_timeout(context, event_loop):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(files.keys()) == 6
+
+
+# get_artifact_url {{{1
+def test_get_artifact_url():
+
+    def makeRoute(*args, **kwargs):
+        return "rel/path"
+
+    context = mock.MagicMock()
+    context.queue = mock.MagicMock()
+    context.queue.options = {'baseUrl': 'https://netloc/'}
+    context.queue.makeRoute = makeRoute
+    assert task.get_artifact_url(context, "x", "y") == "https://netloc/v1/rel/path"
 
 
 # download_artifacts {{{1

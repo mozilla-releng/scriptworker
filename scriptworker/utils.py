@@ -12,14 +12,17 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
+from urllib.parse import unquote, urlparse
 from taskcluster.utils import calculateSleepTime
 from taskcluster.client import createTemporaryCredentials
-from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerException
+from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
 log = logging.getLogger(__name__)
 
 
+# request {{{1
 async def request(context, url, timeout=60, method='get', good=(200, ),
                   retry=tuple(range(500, 512)), return_type='text', **kwargs):
     """Async aiohttp request wrapper.
@@ -65,9 +68,10 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
                 return resp
 
 
+# retry_request {{{1
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
                         **kwargs):
-    """Retry the `request` function
+    """Retry the ``request`` function
 
     Args:
         *args: the args to send to request() through retry_async().
@@ -82,6 +86,7 @@ async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
                              args=args, kwargs=kwargs)
 
 
+# datestring_to_timestamp {{{1
 def datestring_to_timestamp(datestring):
     """ Create a timetamp from a taskcluster datestring
 
@@ -95,15 +100,16 @@ def datestring_to_timestamp(datestring):
     return arrow.get(datestring).timestamp
 
 
+# to_unicode {{{1
 def to_unicode(line):
-    """Avoid ``|b'line'|`` type messages in the logs
+    """Avoid ``b'line'`` type messages in the logs
 
     Args:
         line (str): The bytecode or unicode string.
 
     Returns:
-        str: the unicode-decoded string, if `line` was a bytecode string.
-            Otherwise return `line` unmodified.
+        str: the unicode-decoded string, if ``line`` was a bytecode string.
+            Otherwise return ``line`` unmodified.
     """
     try:
         line = line.decode('utf-8')
@@ -112,6 +118,7 @@ def to_unicode(line):
     return line
 
 
+# makedirs {{{1
 def makedirs(path):
     """mkdir -p
 
@@ -133,10 +140,11 @@ def makedirs(path):
                 )
 
 
+# rm {{{1
 def rm(path):
     """rm -rf
 
-    Make sure `path` doesn't exist after this call.  If it's a dir,
+    Make sure ``path`` doesn't exist after this call.  If it's a dir,
     shutil.rmtree(); if it's a file, os.remove(); if it doesn't exist,
     ignore.
 
@@ -150,6 +158,7 @@ def rm(path):
             os.remove(path)
 
 
+# cleanup {{{1
 def cleanup(context):
     """Clean up the work_dir and artifact_dir between task runs, then recreate.
 
@@ -164,28 +173,29 @@ def cleanup(context):
         makedirs(path)
 
 
+# retry_async {{{1
 async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
                       retry_exceptions=(Exception, ), args=(), kwargs=None):
-    """Retry `func`, where `func` is an awaitable.
+    """Retry ``func``, where ``func`` is an awaitable.
 
     Args:
         func (function): an awaitable function.
         attempts (int, optional): the number of attempts to make.  Default is 5.
         sleeptime_callback (function, optional): the function to use to determine
-            how long to sleep after each attempt.  Defaults to `calculateSleepTime`.
+            how long to sleep after each attempt.  Defaults to ``calculateSleepTime``.
         retry_exceptions (list, optional): the exceptions to retry on.  Defaults
             to (Exception, )
-        args (list, optional): the args to pass to `function`.  Defaults to ()
-        kwargs (dict, optional): the kwargs to pass to `function`.  Defaults to
+        args (list, optional): the args to pass to ``function``.  Defaults to ()
+        kwargs (dict, optional): the kwargs to pass to ``function``.  Defaults to
             {}.
 
     Returns:
-        object: the value from a successful `function` call
+        object: the value from a successful ``function`` call
 
     Raises:
-        Exception: the exception from a failed `function` call, either outside
+        Exception: the exception from a failed ``function`` call, either outside
             of the retry_exceptions, or one of those if we pass the max
-            `attempts`.
+            ``attempts``.
     """
     kwargs = kwargs or {}
     attempt = 1
@@ -202,6 +212,7 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
             await asyncio.sleep(sleeptime_callback(attempt))
 
 
+# create_temp_creds {{{1
 def create_temp_creds(client_id, access_token, start=None, expires=None,
                       scopes=None, name=None):
     """Request temp TC creds with our permanent creds.
@@ -234,6 +245,7 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
     return creds
 
 
+# raise_future_exceptions {{{1
 async def raise_future_exceptions(tasks):
     """Given a list of futures, await them, then raise their exceptions if any.
 
@@ -246,18 +258,26 @@ async def raise_future_exceptions(tasks):
     Args:
         tasks (list): the list of futures to await and check for exceptions.
 
+    Returns:
+        list: the list of result()s from the futures.
+
     Raises:
-        Exception: any exceptions in task.exception()
+        Exception: any exceptions in task.exception(), or CancelledError if
+            the task was cancelled
     """
     if not tasks:
         return
+    result = []
     await asyncio.wait(tasks)
     for task in tasks:
         exc = task.exception()
         if exc is not None:
             raise exc
+        result.append(task.result())
+    return result
 
 
+# filepaths_in_dir {{{1
 def filepaths_in_dir(path):
     """Find all files in a directory, and return the relative paths to those files.
 
@@ -265,7 +285,7 @@ def filepaths_in_dir(path):
         path (str): the directory path to walk
 
     Returns:
-        list: the list of relative paths to all files inside of `path` or its
+        list: the list of relative paths to all files inside of ``path`` or its
             subdirectories.
     """
     filepaths = []
@@ -277,8 +297,9 @@ def filepaths_in_dir(path):
     return filepaths
 
 
+# get_hash {{{1
 def get_hash(path, hash_alg="sha256"):
-    """Get the hash of the file at `path`.
+    """Get the hash of the file at ``path``.
 
     I'd love to make this async, but evidently file i/o is always ready
 
@@ -296,6 +317,7 @@ def get_hash(path, hash_alg="sha256"):
     return h.hexdigest()
 
 
+# format_json {{{1
 def format_json(data):
     """Format json as a sorted string (indents of 2)
 
@@ -308,6 +330,39 @@ def format_json(data):
     return json.dumps(data, indent=2, sort_keys=True)
 
 
+# load_json {{{1
+def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
+              message="Failed to load json: %(exc)s"):
+    """Load json from a filehandle or string, and raise a custom exception on failure
+
+    Args:
+        string (str): json body or a path to open
+        is_path (bool, optional): if ``string`` is a path. Defaults to False.
+        exception (exception, optional): the exception to raise on failure.
+            If None, don't raise an exception.  Defaults to ScriptWorkerTaskException.
+        message (str, optional): the message to use for the exception.
+            Defaults to "Failed to load json: %(exc)s"
+
+    Returns:
+        dict: the json contents
+
+    Raises:
+        Exception: as specified, on failure
+    """
+    try:
+        if is_path:
+            with open(string, "r") as fh:
+                contents = json.load(fh)
+        else:
+            contents = json.loads(string)
+        return contents
+    except (OSError, ValueError) as exc:
+        if exception is not None:
+            repl_dict = {'exc': str(exc)}
+            raise exception(message % repl_dict)
+
+
+# download_file {{{1
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):
     """Download a file, async.
 
@@ -334,3 +389,47 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
                     break
                 fd.write(chunk)
     log.info("Done")
+
+
+# match_url_regex {{{1
+def match_url_regex(rules, url, callback):
+    """Given rules and a callback, find the rule that matches the url.
+
+    Rules look like::
+
+        (
+            {
+                'schemes: ['https', 'ssh'],
+                'netlocs': ['hg.mozilla.org'],
+                'path_regexes': [
+                    "^(?P<path>/mozilla-(central|unified))(/|$)",
+                ]
+            },
+            ...
+        )
+
+    Args:
+        rules (list): a list of dictionaries specifying lists of ``schemes``,
+            ``netlocs``, and ``path_regexes``.
+        url (str): the url to test
+        callback (function): a callback that takes an ``re.MatchObject``.
+            If it returns None, continue searching.  Otherwise, return the
+            value from the callback.
+
+    Returns:
+        value: the value from the callback, or None if no match.
+    """
+    parts = urlparse(url)
+    path = unquote(parts.path)
+    for rule in rules:
+        if parts.scheme not in rule['schemes']:
+            continue
+        if parts.netloc not in rule['netlocs']:
+            continue
+        for regex in rule['path_regexes']:
+            m = re.search(regex, path)
+            if m is None:
+                continue
+            result = callback(m)
+            if result is not None:
+                return result

@@ -7,13 +7,14 @@ import mock
 import os
 import pytest
 import tempfile
-from scriptworker.context import Context
 from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
 from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
     touch
+from . import rw_context as context
 
 assert event_loop, tmpdir  # silence flake8
+assert context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1
@@ -65,18 +66,6 @@ async def fake_sleep(*args, **kwargs):
     pass
 
 
-@pytest.fixture(scope='function')
-def context(tmpdir):
-    context = Context()
-    context.config = {
-        'log_dir': os.path.join(tmpdir, 'log'),
-        'task_log_dir': os.path.join(tmpdir, 'artifact', 'public', 'logs'),
-        'artifact_dir': os.path.join(tmpdir, 'artifact'),
-        'work_dir': os.path.join(tmpdir, 'work'),
-    }
-    return context
-
-
 # to_unicode {{{1
 @pytest.mark.parametrize("text", [v for _, v in sorted(text.items())])
 def test_text_to_unicode(text):
@@ -98,7 +87,6 @@ def test_datestring_to_timestamp(datestring):
 def test_cleanup(context):
     for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
-        os.makedirs(path)
         open(os.path.join(path, 'tempfile'), "w").close()
         assert os.path.exists(os.path.join(path, "tempfile"))
     utils.cleanup(context)
@@ -106,6 +94,9 @@ def test_cleanup(context):
         path = context.config[name]
         assert os.path.exists(path)
         assert not os.path.exists(os.path.join(path, "tempfile"))
+    # 2nd pass
+    utils.rm(context.config['work_dir'])
+    utils.cleanup(context)
 
 
 # request and retry_request {{{1
@@ -297,3 +288,22 @@ def test_download_file_exception(context, fake_session_500, tmpdir, event_loop):
         event_loop.run_until_complete(
             utils.download_file(context, "url", path, session=fake_session_500)
         )
+
+
+# load_json {{{1
+@pytest.mark.parametrize("string,is_path,exception,raises,result", ((
+    os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
+    True, None, False, {"credentials": ["blah"]}
+), (
+    '{"a": "b"}', False, None, False, {"a": "b"}
+), (
+    '{"a": "b}', False, None, False, None
+), (
+    '{"a": "b}', False, ScriptWorkerException, True, None
+)))
+def test_load_json(string, is_path, exception, raises, result):
+    if raises:
+        with pytest.raises(exception):
+            utils.load_json(string, is_path=is_path, exception=exception)
+    else:
+        assert result == utils.load_json(string, is_path=is_path, exception=exception)

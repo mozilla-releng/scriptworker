@@ -5,14 +5,12 @@ This module should be largely standalone.  This should only depend on
 scriptworker.exceptions and scriptworker.constants, or other standalone
 modules, to avoid circular imports.
 """
-import json
 import jsonschema
 import os
-import re
-from urllib.parse import urlparse, unquote
 
-from scriptworker.constants import DEFAULT_CONFIG, STATUSES
+from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.utils import load_json, match_url_regex
 
 
 def get_task(config):
@@ -27,16 +25,10 @@ def get_task(config):
     Raises:
         ScriptWorkerTaskException: on error.
     """
-    try:
-        path = os.path.join(config['work_dir'], "task.json")
-        with open(path, "r") as fh:
-            contents = json.load(fh)
-            return contents
-    except (OSError, ValueError) as exc:
-        raise ScriptWorkerTaskException(
-            "Can't read task from {}!\n{}".format(path, str(exc)),
-            exit_code=STATUSES['internal-error']
-        )
+    path = os.path.join(config['work_dir'], "task.json")
+    message = "Can't read task from {}!\n%(exc)s".format(path)
+    contents = load_json(path, is_path=True, message=message)
+    return contents
 
 
 def validate_json_schema(data, schema, name="task"):
@@ -62,79 +54,39 @@ def validate_json_schema(data, schema, name="task"):
         )
 
 
-def validate_artifact_url(config, url):
+def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     """Ensure a URL fits in given scheme, netloc, and path restrictions.
 
-    If `valid_artifact_schemes`, `valid_artifact_netlocs`, and/or
-    `valid_artifact_path_regexes` are defined in `config` but are `None`,
-    skip that check.
-
-    If any are missing from `config`, fall back to the values in
-    `DEFAULT_CONFIG`.
-
-    If `valid_artifact_path_regexes` is not None, the url path should
-    match one.  Each regex should define a `filepath`, which is what we'll
-    return.
-
-    Otherwise, if we pass all checks, return the unmodified path.
-
     If we fail any checks, raise a ScriptWorkerTaskException with
-    `malformed-payload`.
+    ``malformed-payload``.
 
     Args:
-        config (dict): the running config.
+        valid_artifact_rules (tuple): the tests to run, with ``schemas``, ``netlocs``,
+            and ``path_regexes``.
+        valid_artifact_task_ids (list): the list of valid task IDs to download from.
         url (str): the url of the artifact.
 
     Returns:
-        str: the `filepath` of the path regex.
+        str: the ``filepath`` of the path regex.
 
     Raises:
         ScriptWorkerTaskException: on failure to validate.
     """
-    messages = []
-    validate_config = {}
-    for key in (
-        'valid_artifact_schemes', 'valid_artifact_netlocs',
-        'valid_artifact_path_regexes', 'valid_artifact_task_ids',
-    ):
-        if key in config:
-            validate_config[key] = config[key]
-        else:
-            validate_config[key] = DEFAULT_CONFIG[key]
-    parts = urlparse(url)
-    path = unquote(parts.path)
-    return_value = path
-    # scheme whitelisted?
-    if validate_config['valid_artifact_schemes'] is not None and \
-            parts.scheme not in validate_config['valid_artifact_schemes']:
-        messages.append('Invalid scheme: {}!'.format(parts.scheme))
-    # netloc whitelisted?
-    if validate_config['valid_artifact_netlocs'] is not None and \
-            parts.netloc not in validate_config['valid_artifact_netlocs']:
-        messages.append('Invalid netloc: {}!'.format(parts.netloc))
-    # check the paths
-    for regex in validate_config.get('valid_artifact_path_regexes') or []:
-        m = re.search(regex, path)
-        if m is None:
-            continue
-        path_info = m.groupdict()
+
+    def callback(match):
+        path_info = match.groupdict()
         # make sure we're pointing at a valid task ID
         if 'taskId' in path_info and \
-                path_info['taskId'] not in validate_config['valid_artifact_task_ids']:
-            messages.append('Invalid taskId: {}!'.format(path_info['taskId']))
-            break
+                path_info['taskId'] not in valid_artifact_task_ids:
+            return
         if 'filepath' not in path_info:
-            messages.append('Invalid regex {}!'.format(regex))
-            break
-        return_value = path_info['filepath']
-        break
-    else:
-        if validate_config.get('valid_artifact_path_regexes'):
-            messages.append('Invalid path: {}!'.format(path))
+            return
+        return path_info['filepath']
 
-    if messages:
+    filepath = match_url_regex(valid_artifact_rules, url, callback)
+    if filepath is None:
         raise ScriptWorkerTaskException(
-            "Can't validate url {}\n{}".format(url, messages),
+            "Can't validate url {}".format(url),
             exit_code=STATUSES['malformed-payload']
         )
-    return return_value.lstrip('/')
+    return filepath.lstrip('/')

@@ -9,7 +9,6 @@ Attributes:
 import argparse
 from copy import deepcopy
 from frozendict import frozendict
-import json
 import logging
 import os
 import re
@@ -19,6 +18,7 @@ from yaml import safe_load
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.log import update_logging_config
+from scriptworker.utils import load_json
 
 log = logging.getLogger(__name__)
 
@@ -64,12 +64,9 @@ def read_worker_creds(key="credentials"):
     for path in CREDS_FILES:
         if not os.path.exists(path):
             continue
-        with open(path, "r") as fh:
-            try:
-                contents = json.load(fh)
-                return contents[key]
-            except (json.decoder.JSONDecodeError, KeyError):
-                pass
+        contents = load_json(path, is_path=True, exception=None)
+        if contents.get(key):
+            return contents[key]
     else:
         if key == "credentials" and os.environ.get("TASKCLUSTER_ACCESS_TOKEN") and \
                 os.environ.get("TASKCLUSTER_CLIENT_ID"):
@@ -162,13 +159,13 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
     """Create a Context object from args.
 
     This was originally part of main(), but we use it in
-    `scriptworker.gpg.create_initial_gpg_homedirs` too.
+    ``scriptworker.gpg.create_initial_gpg_homedirs`` too.
 
     Args:
         args (list): the commandline args.  Generally sys.argv
 
     Returns:
-        tuple: `scriptworker.context.Context` with populated config, and
+        tuple: ``scriptworker.context.Context`` with populated config, and
             credentials frozendict
     """
     context = Context()

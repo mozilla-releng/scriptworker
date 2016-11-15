@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module
 """
 import aiohttp.hdrs
+import aiohttp.errors
 import arrow
 import asyncio
 from asyncio.subprocess import PIPE
@@ -12,7 +13,9 @@ from copy import deepcopy
 import logging
 import mimetypes
 import os
+import pprint
 import signal
+from urllib.parse import unquote, urljoin
 
 import taskcluster
 import taskcluster.exceptions
@@ -26,6 +29,7 @@ from scriptworker.utils import filepaths_in_dir, raise_future_exceptions, retry_
 log = logging.getLogger(__name__)
 
 
+# worst_level {{{1
 def worst_level(level1, level2):
     """Given two int levels, return the larger.
 
@@ -39,6 +43,58 @@ def worst_level(level1, level2):
     return level1 if level1 > level2 else level2
 
 
+# get_task_id {{{1
+def get_task_id(claim_task):
+    """Given a claim_task json dict, return the taskId.
+
+    Args:
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        str: the taskId.
+    """
+    return claim_task['status']['taskId']
+
+
+# get_run_id {{{1
+def get_run_id(claim_task):
+    """Given a claim_task json dict, return the runId.
+
+    Args:
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        int: the runId.
+    """
+    return claim_task['runId']
+
+
+# get_decision_task_id {{{1
+def get_decision_task_id(task):
+    """Given a task dict, return the decision taskId.
+
+    Args:
+        task (dict): the task dict.
+
+    Returns:
+        str: the taskId.
+    """
+    return task['taskGroupId']
+
+
+def get_worker_type(task):
+    """Given a task dict, return the workerType.
+
+    Args:
+        task (dict): the task dict.
+
+    Returns:
+        str: the workerType.
+    """
+    return task['workerType']
+
+
+# run_task {{{1
 async def run_task(context):
     """Run the task, sending stdout+stderr to files.
 
@@ -75,6 +131,7 @@ async def run_task(context):
     return exitcode
 
 
+# reclaim_task {{{1
 async def reclaim_task(context, task):
     """Try to reclaim a task from the queue.
 
@@ -98,9 +155,12 @@ async def reclaim_task(context, task):
         log.debug("Reclaiming task...")
         try:
             context.reclaim_task = await context.temp_queue.reclaimTask(
-                context.claim_task['status']['taskId'],
-                context.claim_task['runId']
+                get_task_id(context.claim_task),
+                get_run_id(context.claim_task),
             )
+            clean_response = deepcopy(context.reclaim_task)
+            clean_response['credentials'] = "{********}"
+            log.debug("Reclaim task response:\n{}".format(pprint.pformat(clean_response)))
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
@@ -109,8 +169,9 @@ async def reclaim_task(context, task):
                 raise
 
 
+# get_expiration_arrow {{{1
 def get_expiration_arrow(context):
-    """Return an arrow, `artifact_expiration_hours` in the future from now.
+    """Return an arrow, ``artifact_expiration_hours`` in the future from now.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
@@ -122,8 +183,9 @@ def get_expiration_arrow(context):
     return now.replace(hours=context.config['artifact_expiration_hours'])
 
 
+# guess_content_type {{{1
 def guess_content_type(path):
-    """Guess the content type of a path, using `mimetypes`
+    """Guess the content type of a path, using ``mimetypes``
 
     Args:
         path (str): the path to guess the mimetype of
@@ -138,6 +200,7 @@ def guess_content_type(path):
     return content_type or "application/binary"
 
 
+# create_artifact {{{1
 async def create_artifact(context, path, target_path, storage_type='s3',
                           expires=None, content_type=None):
     """Create an artifact and upload it.
@@ -164,7 +227,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
         "expires": expires or get_expiration_arrow(context).isoformat(),
         "contentType": content_type or guess_content_type(path),
     }
-    args = [context.claim_task['status']['taskId'], context.claim_task['runId'],
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task),
             target_path, payload]
     tc_response = await context.temp_queue.createArtifact(*args)
     headers = {
@@ -187,6 +250,7 @@ async def create_artifact(context, path, target_path, storage_type='s3',
                     )
 
 
+# retry_create_artifact {{{1
 async def retry_create_artifact(*args, **kwargs):
     """Retry create_artifact() calls.
 
@@ -196,18 +260,23 @@ async def retry_create_artifact(*args, **kwargs):
     """
     await retry_async(
         create_artifact,
-        retry_exceptions=(ScriptWorkerRetryException, ),
+        retry_exceptions=(
+            ScriptWorkerRetryException,
+            aiohttp.errors.DisconnectedError,
+            aiohttp.errors.ClientError
+        ),
         args=args,
         kwargs=kwargs
     )
 
 
+# upload_artifacts {{{1
 async def upload_artifacts(context):
-    """Upload the files in `artifact_dir`, preserving relative paths.
+    """Upload the files in ``artifact_dir``, preserving relative paths.
 
-    This function expects the directory structure in `artifact_dir` to remain
-    the same.  So if we want the files in `public/...`, create an
-    `artifact_dir/public` and put the files in there.
+    This function expects the directory structure in ``artifact_dir`` to remain
+    the same.  So if we want the files in ``public/...``, create an
+    ``artifact_dir/public`` and put the files in there.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -238,6 +307,7 @@ async def upload_artifacts(context):
     await raise_future_exceptions(tasks)
 
 
+# complete_task {{{1
 async def complete_task(context, result):
     """Mark the task as completed in the queue.
 
@@ -252,19 +322,20 @@ async def complete_task(context, result):
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
     """
-    args = [context.claim_task['status']['taskId'], context.claim_task['runId']]
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task)]
     try:
         if result == 0:
             log.info("Reporting task complete...")
-            await context.temp_queue.reportCompleted(*args)
+            response = await context.temp_queue.reportCompleted(*args)
         elif result in list(range(2, 7)):
             reason = REVERSED_STATUSES[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
-            await context.temp_queue.reportException(*args, payload)
+            response = await context.temp_queue.reportException(*args, payload)
         else:
             log.info("Reporting task failed...")
-            await context.temp_queue.reportFailed(*args)
+            response = await context.temp_queue.reportFailed(*args)
+        log.debug("Task status response:\n{}".format(pprint.pformat(response)))
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
             log.info("409: not reporting complete/failed.")
@@ -272,8 +343,9 @@ async def complete_task(context, result):
             raise
 
 
+# kill {{{1
 async def kill(pid, sleep_time=1):
-    """Kill `pid` with various signals.
+    """Kill ``pid`` with various signals.
 
     Args:
         pid (int): the process id to kill.
@@ -293,6 +365,7 @@ async def kill(pid, sleep_time=1):
             return
 
 
+# max_timeout {{{1
 def max_timeout(context, proc, timeout):
     """Make sure the proc pid's process and process group are killed.
 
@@ -318,26 +391,56 @@ def max_timeout(context, proc, timeout):
     ]))
 
 
+# get_artifact_url {{{1
+def get_artifact_url(context, task_id, path):
+    """Get a TaskCluster artifact url.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        task_id (str): the task id of the task that published the artifact
+        path (str): the relative path of the artifact
+
+    Returns:
+        str: the artifact url
+
+    Raises:
+        TaskClusterFailure: on failure.
+    """
+    url = urljoin(
+        context.queue.options['baseUrl'],
+        'v1/' +
+        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
+            'taskId': task_id,
+            'name': path
+        }))
+    )
+    return url
+
+
+# download_artifacts {{{1
 async def download_artifacts(context, file_urls, parent_dir=None, session=None,
-                             download_func=download_file):
+                             download_func=download_file, valid_artifact_task_ids=None):
     """Download artifacts in parallel after validating their URLs.
 
-    Valid `taskId`s for download include the task's dependencies and the
-    `taskGroupId`, which by convention is the `taskId` of the decision task.
+    Valid ``taskId``s for download include the task's dependencies and the
+    ``taskGroupId``, which by convention is the ``taskId`` of the decision task.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         file_urls (list): the list of artifact urls to download.
         parent_dir (str, optional): the path of the directory to download the
-            artifacts into.  If None, defaults to `work_dir`.  Default is None.
+            artifacts into.  If None, defaults to ``work_dir``.  Default is None.
         session (aiohttp.ClientSession, optional): the session to use to download.
             If None, defaults to context.session.  Default is None.
         download_func (function, optional): the function to call to download the files.
-            default is `download_file`.
+            default is ``download_file``.
+        valid_artifact_task_ids (list, optional): the list of task ids that are
+            valid to download from.  If None, defaults to all task dependencies
+            plus the decision taskId.  Defaults to None.
 
     Returns:
         list: the relative paths to the files downloaded, relative to
-            `parent_dir`.
+            ``parent_dir``.
 
     Raises:
         scriptworker.exceptions.DownloadError: on download failure after
@@ -348,13 +451,11 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
 
     tasks = []
     files = []
-    download_config = deepcopy(context.config)
-    download_config.setdefault(
-        'valid_artifact_task_ids',
-        context.task['dependencies'] + [context.task['taskGroupId']]
-    )
+    valid_artifact_rules = context.config['valid_artifact_rules']
+    # XXX when chain of trust is on everywhere, hardcode the chain of trust task list
+    valid_artifact_task_ids = valid_artifact_task_ids or list(context.task['dependencies'] + [get_decision_task_id(context.task)])
     for file_url in file_urls:
-        rel_path = validate_artifact_url(download_config, file_url)
+        rel_path = validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
         files.append(rel_path)
         tasks.append(

@@ -122,6 +122,12 @@ def test_bad_worker_creds():
         assert config.read_worker_creds(key="nonexistent_key") is None
 
 
+def test_good_worker_creds(mocker):
+    path = os.path.join(os.path.dirname(__file__), "data", "client_credentials.json")
+    mocker.patch.object(config, 'CREDS_FILES', new=(path, ))
+    assert config.read_worker_creds()
+
+
 def test_no_creds_in_config():
     fake_creds = {"foo": "bar"}
 

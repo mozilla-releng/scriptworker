@@ -61,6 +61,7 @@ target/
 
 # Vim
 *.swp
+*.swo
 
 # TODO cleanup
 secrets.json
