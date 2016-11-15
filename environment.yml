@@ -14,3 +14,5 @@ dependencies:
 - pip:
   - Sphinx==1.4.3
   - sphinx_rtd_theme
+  - commonmark==0.5.5
+  - recommonmark

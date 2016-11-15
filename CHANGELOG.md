@@ -172,7 +172,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Tweaked the config defaults to be a bit more sane.
 - Fixed an exception where automated processes without HOME set would fail to launch scriptworker
 
-## Removed
+### Removed
 - Removed `scheduler_id` from config; it's only used to schedule integration tests.
 
 ## [0.2.1] - 2016-06-27

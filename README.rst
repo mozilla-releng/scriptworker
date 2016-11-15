@@ -1,5 +1,5 @@
 ===============================
-scriptworker
+Scriptworker Readme
 ===============================
 
 .. image:: https://travis-ci.org/mozilla-releng/scriptworker.svg?branch=master
