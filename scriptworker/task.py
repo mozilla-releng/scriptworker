@@ -171,7 +171,7 @@ async def reclaim_task(context, task):
 
 # get_expiration_arrow {{{1
 def get_expiration_arrow(context):
-    """Return an arrow, `artifact_expiration_hours` in the future from now.
+    """Return an arrow, ``artifact_expiration_hours`` in the future from now.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
@@ -185,7 +185,7 @@ def get_expiration_arrow(context):
 
 # guess_content_type {{{1
 def guess_content_type(path):
-    """Guess the content type of a path, using `mimetypes`
+    """Guess the content type of a path, using ``mimetypes``
 
     Args:
         path (str): the path to guess the mimetype of
@@ -272,11 +272,11 @@ async def retry_create_artifact(*args, **kwargs):
 
 # upload_artifacts {{{1
 async def upload_artifacts(context):
-    """Upload the files in `artifact_dir`, preserving relative paths.
+    """Upload the files in ``artifact_dir``, preserving relative paths.
 
-    This function expects the directory structure in `artifact_dir` to remain
-    the same.  So if we want the files in `public/...`, create an
-    `artifact_dir/public` and put the files in there.
+    This function expects the directory structure in ``artifact_dir`` to remain
+    the same.  So if we want the files in ``public/...``, create an
+    ``artifact_dir/public`` and put the files in there.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -345,7 +345,7 @@ async def complete_task(context, result):
 
 # kill {{{1
 async def kill(pid, sleep_time=1):
-    """Kill `pid` with various signals.
+    """Kill ``pid`` with various signals.
 
     Args:
         pid (int): the process id to kill.
@@ -422,25 +422,25 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
                              download_func=download_file, valid_artifact_task_ids=None):
     """Download artifacts in parallel after validating their URLs.
 
-    Valid `taskId`s for download include the task's dependencies and the
-    `taskGroupId`, which by convention is the `taskId` of the decision task.
+    Valid ``taskId``s for download include the task's dependencies and the
+    ``taskGroupId``, which by convention is the ``taskId`` of the decision task.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         file_urls (list): the list of artifact urls to download.
         parent_dir (str, optional): the path of the directory to download the
-            artifacts into.  If None, defaults to `work_dir`.  Default is None.
+            artifacts into.  If None, defaults to ``work_dir``.  Default is None.
         session (aiohttp.ClientSession, optional): the session to use to download.
             If None, defaults to context.session.  Default is None.
         download_func (function, optional): the function to call to download the files.
-            default is `download_file`.
+            default is ``download_file``.
         valid_artifact_task_ids (list, optional): the list of task ids that are
             valid to download from.  If None, defaults to all task dependencies
             plus the decision taskId.  Defaults to None.
 
     Returns:
         list: the relative paths to the files downloaded, relative to
-            `parent_dir`.
+            ``parent_dir``.
 
     Raises:
         scriptworker.exceptions.DownloadError: on download failure after

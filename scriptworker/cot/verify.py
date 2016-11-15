@@ -24,13 +24,13 @@ log = logging.getLogger(__name__)
 
 # ChainOfTrust {{{1
 class ChainOfTrust(object):
-    """The master Chain of Trust, tracking all the various `LinkOfTrust`s.
+    """The master Chain of Trust, tracking all the various ``LinkOfTrust``s.
 
     Attributes:
         context (scriptworker.context.Context): the scriptworker context
         cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
-        links (list): the list of `LinkOfTrust`s
+        links (list): the list of ``LinkOfTrust``s
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
         task_type (str): the task type of the task (e.g., decision, build)
@@ -47,10 +47,10 @@ class ChainOfTrust(object):
         self.links = []
 
     def dependent_task_ids(self):
-        """Helper method to get all `task_id`s for all `LinkOfTrust` tasks.
+        """Helper method to get all ``task_id``s for all ``LinkOfTrust`` tasks.
 
         Returns:
-            list: the list of `task_id`s
+            list: the list of ``task_id``s
         """
         return [x.task_id for x in self.links]
 
@@ -68,7 +68,7 @@ class ChainOfTrust(object):
         return result
 
     def get_link(self, task_id):
-        """Get a `LinkOfTrust` by task id.
+        """Get a ``LinkOfTrust`` by task id.
 
         Args:
             task_id (str): the task id to find.
@@ -77,7 +77,7 @@ class ChainOfTrust(object):
             LinkOfTrust: the link matching the task id.
 
         Raises:
-            CoTError: if no `LinkOfTrust` matches.
+            CoTError: if no ``LinkOfTrust`` matches.
         """
         links = [x for x in self.links if x.task_id == task_id]
         if len(links) != 1:
@@ -128,8 +128,8 @@ class LinkOfTrust(object):
     def task(self):
         """dict: the task definition.
 
-        When set, we also set `self.decision_task_id`, `self.worker_impl`,
-        and `self.is_try` based on the task definition.
+        When set, we also set ``self.decision_task_id``, ``self.worker_impl``,
+        and ``self.is_try`` based on the task definition.
         """
         return self._task
 
@@ -186,7 +186,7 @@ def guess_worker_impl(link):
     taskcluster-worker hasn't been rolled out.  Those need to be populated here
     once they're ready.
 
-    * docker-worker: `task.payload.image` is not None
+    * docker-worker: ``task.payload.image`` is not None
     * check for scopes beginning with the worker type name.
 
     Args:
@@ -298,10 +298,10 @@ def is_try(task):
 
     This checks for the following things::
 
-        * `task.payload.env.GECKO_HEAD_REPOSITORY` == "https://hg.mozilla.org/try/"
-        * `task.payload.env.MH_BRANCH` == "try"
-        * `task.metadata.source` == "https://hg.mozilla.org/try/..."
-        * `task.schedulerId` in ("gecko-level-1", )
+        * ``task.payload.env.GECKO_HEAD_REPOSITORY`` == "https://hg.mozilla.org/try/"
+        * ``task.payload.env.MH_BRANCH`` == "try"
+        * ``task.metadata.source`` == "https://hg.mozilla.org/try/..."
+        * ``task.schedulerId`` in ("gecko-level-1", )
 
     Args:
         task (dict): the task definition to check
@@ -325,8 +325,8 @@ def is_try(task):
 def check_interactive_docker_worker(link):
     """Given a task, make sure the task was not defined as interactive.
 
-    * `task.payload.features.interactive` must be absent or False.
-    * `task.payload.env.TASKCLUSTER_INTERACTIVE` must be absent or False.
+    * ``task.payload.features.interactive`` must be absent or False.
+    * ``task.payload.env.TASKCLUSTER_INTERACTIVE`` must be absent or False.
 
     Args:
         link (LinkOfTrust): the task link we're checking.
@@ -412,7 +412,7 @@ def find_task_dependencies(task, name, task_id):
         task_id (str): the taskId of the task.
 
     Returns:
-        dict: mapping dependent task `name` to dependent task `taskId`.
+        dict: mapping dependent task ``name`` to dependent task ``taskId``.
     """
     log.info("find_task_dependencies {}".format(name))
     decision_task_id = get_decision_task_id(task)
@@ -486,7 +486,7 @@ async def download_cot(chain):
     """
     async_tasks = []
     # only deal with chain.links, which are previously finished tasks with
-    # signed chain of trust artifacts.  `chain.task` is the current running
+    # signed chain of trust artifacts.  ``chain.task`` is the current running
     # task, and will not have a signed chain of trust artifact yet.
     for link in chain.links:
         task_id = link.task_id
@@ -539,7 +539,7 @@ async def download_cot_artifact(chain, task_id, path):
 
 # download_cot_artifacts {{{1
 async def download_cot_artifacts(chain, artifact_dict):
-    """Call `download_cot_artifact` in parallel for each key/value in `artifact_dict`
+    """Call ``download_cot_artifact`` in parallel for each key/value in ``artifact_dict``
 
     Args:
         chain (ChainOfTrust): the chain of trust object
@@ -598,7 +598,7 @@ async def download_firefox_cot_artifacts(chain):
 
 # verify_cot_signatures {{{1
 def verify_cot_signatures(chain):
-    """Verify the signatures of the chain of trust artifacts populated in `download_cot`.
+    """Verify the signatures of the chain of trust artifacts populated in ``download_cot``.
 
     Populate each link.cot with the chain of trust json body.
 
@@ -749,7 +749,7 @@ def verify_firefox_decision_command(decision_link):
             if part.startswith('--'):
                 continue
             if not allowed_mach_args or part != allowed_mach_args.pop(0):
-                errors.append("{} {} Illegal command `{}`".format(
+                errors.append("{} {} Illegal command ``{}``".format(
                     decision_link.name, decision_link.task_id, bash_command
                 ))
     raise_on_errors(errors)
@@ -1059,7 +1059,7 @@ async def verify_chain_of_trust(chain):
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
-            # verify the signatures and populate the `link.cot`s
+            # verify the signatures and populate the ``link.cot``s
             verify_cot_signatures(chain)
             # download all other artifacts needed to verify chain of trust
             await download_firefox_cot_artifacts(chain)

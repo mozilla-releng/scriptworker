@@ -58,16 +58,16 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     """Ensure a URL fits in given scheme, netloc, and path restrictions.
 
     If we fail any checks, raise a ScriptWorkerTaskException with
-    `malformed-payload`.
+    ``malformed-payload``.
 
     Args:
-        valid_artifact_rules (tuple): the tests to run, with `schemas`, `netlocs`,
-            and `path_regexes`.
+        valid_artifact_rules (tuple): the tests to run, with ``schemas``, ``netlocs``,
+            and ``path_regexes``.
         valid_artifact_task_ids (list): the list of valid task IDs to download from.
         url (str): the url of the artifact.
 
     Returns:
-        str: the `filepath` of the path regex.
+        str: the ``filepath`` of the path regex.
 
     Raises:
         ScriptWorkerTaskException: on failure to validate.

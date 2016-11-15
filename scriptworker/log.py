@@ -18,11 +18,11 @@ log = logging.getLogger(__name__)
 def update_logging_config(context, log_name=None, file_name='worker.log'):
     """Update python logging settings from config.
 
-    By default, this sets the `scriptworker` log settings, but this will
-    change if some other package calls this function or specifies the `log_name`.
+    By default, this sets the ``scriptworker`` log settings, but this will
+    change if some other package calls this function or specifies the ``log_name``.
 
     * Use formatting from config settings.
-    * Log to screen if `verbose`
+    * Log to screen if ``verbose``
     * Add a rotating logfile from config settings.
 
     Args:
@@ -66,7 +66,7 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
         pipe (filehandle): subprocess process STDOUT or STDERR
         filehandles (list of filehandles, optional): the filehandle(s) to write
             to.  If empty, don't write to a separate file.  Defaults to ().
-        level (int, optional): the level to log to.  Defaults to `logging.INFO`.
+        level (int, optional): the level to log to.  Defaults to ``logging.INFO``.
     """
     while True:
         line = await pipe.readline()
@@ -120,7 +120,7 @@ def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
         context (scriptworker.context.Context): the scriptworker context
         path (str): the path to the log file to create
         log_obj (logging.Logger): the log object to modify.  If None, use
-            `scriptworker.log.log`.  Defaults to None.
+            ``scriptworker.log.log``.  Defaults to None.
         level (int, optional): the logging level.  Defaults to logging.DEBUG.
         fmt (str, optional): the logging format.  Defaults to '%(asctime)s %(levelname)8s - %(message)s'
 

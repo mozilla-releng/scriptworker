@@ -159,13 +159,13 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
     """Create a Context object from args.
 
     This was originally part of main(), but we use it in
-    `scriptworker.gpg.create_initial_gpg_homedirs` too.
+    ``scriptworker.gpg.create_initial_gpg_homedirs`` too.
 
     Args:
         args (list): the commandline args.  Generally sys.argv
 
     Returns:
-        tuple: `scriptworker.context.Context` with populated config, and
+        tuple: ``scriptworker.context.Context`` with populated config, and
             credentials frozendict
     """
     context = Context()

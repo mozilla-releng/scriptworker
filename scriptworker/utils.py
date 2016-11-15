@@ -71,7 +71,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 # retry_request {{{1
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
                         **kwargs):
-    """Retry the `request` function
+    """Retry the ``request`` function
 
     Args:
         *args: the args to send to request() through retry_async().
@@ -102,14 +102,14 @@ def datestring_to_timestamp(datestring):
 
 # to_unicode {{{1
 def to_unicode(line):
-    """Avoid ``|b'line'|`` type messages in the logs
+    """Avoid ``b'line'`` type messages in the logs
 
     Args:
         line (str): The bytecode or unicode string.
 
     Returns:
-        str: the unicode-decoded string, if `line` was a bytecode string.
-            Otherwise return `line` unmodified.
+        str: the unicode-decoded string, if ``line`` was a bytecode string.
+            Otherwise return ``line`` unmodified.
     """
     try:
         line = line.decode('utf-8')
@@ -144,7 +144,7 @@ def makedirs(path):
 def rm(path):
     """rm -rf
 
-    Make sure `path` doesn't exist after this call.  If it's a dir,
+    Make sure ``path`` doesn't exist after this call.  If it's a dir,
     shutil.rmtree(); if it's a file, os.remove(); if it doesn't exist,
     ignore.
 
@@ -176,26 +176,26 @@ def cleanup(context):
 # retry_async {{{1
 async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
                       retry_exceptions=(Exception, ), args=(), kwargs=None):
-    """Retry `func`, where `func` is an awaitable.
+    """Retry ``func``, where ``func`` is an awaitable.
 
     Args:
         func (function): an awaitable function.
         attempts (int, optional): the number of attempts to make.  Default is 5.
         sleeptime_callback (function, optional): the function to use to determine
-            how long to sleep after each attempt.  Defaults to `calculateSleepTime`.
+            how long to sleep after each attempt.  Defaults to ``calculateSleepTime``.
         retry_exceptions (list, optional): the exceptions to retry on.  Defaults
             to (Exception, )
-        args (list, optional): the args to pass to `function`.  Defaults to ()
-        kwargs (dict, optional): the kwargs to pass to `function`.  Defaults to
+        args (list, optional): the args to pass to ``function``.  Defaults to ()
+        kwargs (dict, optional): the kwargs to pass to ``function``.  Defaults to
             {}.
 
     Returns:
-        object: the value from a successful `function` call
+        object: the value from a successful ``function`` call
 
     Raises:
-        Exception: the exception from a failed `function` call, either outside
+        Exception: the exception from a failed ``function`` call, either outside
             of the retry_exceptions, or one of those if we pass the max
-            `attempts`.
+            ``attempts``.
     """
     kwargs = kwargs or {}
     attempt = 1
@@ -285,7 +285,7 @@ def filepaths_in_dir(path):
         path (str): the directory path to walk
 
     Returns:
-        list: the list of relative paths to all files inside of `path` or its
+        list: the list of relative paths to all files inside of ``path`` or its
             subdirectories.
     """
     filepaths = []
@@ -299,7 +299,7 @@ def filepaths_in_dir(path):
 
 # get_hash {{{1
 def get_hash(path, hash_alg="sha256"):
-    """Get the hash of the file at `path`.
+    """Get the hash of the file at ``path``.
 
     I'd love to make this async, but evidently file i/o is always ready
 
@@ -337,7 +337,7 @@ def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
 
     Args:
         string (str): json body or a path to open
-        is_path (bool, optional): if `string` is a path. Defaults to False.
+        is_path (bool, optional): if ``string`` is a path. Defaults to False.
         exception (exception, optional): the exception to raise on failure.
             If None, don't raise an exception.  Defaults to ScriptWorkerTaskException.
         message (str, optional): the message to use for the exception.
@@ -409,10 +409,10 @@ def match_url_regex(rules, url, callback):
         )
 
     Args:
-        rules (list): a list of dictionaries specifying lists of `schemes`,
-            `netlocs`, and `path_regexes`.
+        rules (list): a list of dictionaries specifying lists of ``schemes``,
+            ``netlocs``, and ``path_regexes``.
         url (str): the url to test
-        callback (function): a callback that takes an `re.MatchObject`.
+        callback (function): a callback that takes an ``re.MatchObject``.
             If it returns None, continue searching.  Otherwise, return the
             value from the callback.
 

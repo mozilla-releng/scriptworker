@@ -7,7 +7,7 @@ class ScriptWorkerException(Exception):
     """The base exception in scriptworker.
 
     When raised inside of the run_loop loop, set the taskcluster task
-    status to at least `self.exit_code`.
+    status to at least ``self.exit_code``.
 
     Attributes:
         exit_code (int): this is set to 5 (internal-error).
@@ -58,7 +58,7 @@ class ScriptWorkerTaskException(ScriptWorkerException):
 
 
 class DownloadError(ScriptWorkerTaskException):
-    """Failure in `scriptworker.utils.download_file`.
+    """Failure in ``scriptworker.utils.download_file``.
 
     Attributes:
         exit_code (int): this is set to 4 (resource-unavailable).
