@@ -1,9 +1,9 @@
 {
     "version": [
+        1,
         0,
-        10,
         0,
-        "alpha10"
+        "beta1"
     ],
-    "version_string": "0.10.0-alpha10"
+    "version_string": "1.0.0-beta1"
 }
