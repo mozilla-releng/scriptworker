@@ -17,6 +17,9 @@ import json
 import sys
 import os
 from recommonmark.parser import CommonMarkParser
+from recommonmark.transform import AutoStructify
+
+github_doc_root = "https://github.com/mozilla-releng/scriptworker/tree/master/docs"
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -312,3 +315,10 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+def setup(app):
+    app.add_config_value('recommonmark_config', {
+            'url_resolver': lambda url: github_doc_root + url,
+            'auto_toc_tree_section': 'Contents',
+            }, True)
+    app.add_transform(AutoStructify)
