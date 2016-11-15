@@ -10,6 +10,11 @@
    :caption: Table of Contents
    :maxdepth: 3
 
+   overview
+   maintenance
+   chain_of_trust
+   new_instance_types
+
 
 Indices and tables
 ==================
