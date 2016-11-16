@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify
 """
+import asyncio
 from copy import deepcopy
 from frozendict import frozendict
 import json
@@ -9,13 +10,14 @@ import logging
 import mock
 import os
 import pytest
+import tempfile
 from taskcluster.exceptions import TaskclusterFailure
 import scriptworker.cot.verify as cotverify
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
 from scriptworker.utils import makedirs
-from . import noop_async, noop_sync, rw_context, touch
+from . import noop_async, noop_sync, rw_context, tmpdir, touch
 
-assert rw_context  # silence pyflakes
+assert rw_context, tmpdir  # silence pyflakes
 
 log = logging.getLogger(__name__)
 
@@ -983,3 +985,37 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
             await cotverify.verify_chain_of_trust(chain)
     else:
         await cotverify.verify_chain_of_trust(chain)
+
+
+# verify_cot_cmdln {{{1
+@pytest.mark.parametrize("args", (("x", "--cleanup"), ("x", )))
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
+    context = mock.MagicMock()
+    context.queue = mock.MagicMock()
+    context.queue.task = noop_async
+    path = os.path.join(tmpdir, 'x')
+    makedirs(path)
+
+    def eloop():
+        return event_loop
+
+    def get_context():
+        return context
+
+    def mkdtemp():
+        return path
+
+    def cot(*args, **kwargs):
+        m = mock.MagicMock()
+        m.links = [mock.MagicMock()]
+        m.dependent_task_ids = noop_sync
+        return m
+
+    mocker.patch.object(tempfile, 'mkdtemp', new=mkdtemp)
+    mocker.patch.object(asyncio, 'get_event_loop', new=eloop)
+    mocker.patch.object(cotverify, 'read_worker_creds', new=noop_sync)
+    mocker.patch.object(cotverify, 'Context', new=get_context)
+    mocker.patch.object(cotverify, 'ChainOfTrust', new=cot)
+    mocker.patch.object(cotverify, 'verify_chain_of_trust', new=noop_async)
+
+    cotverify.verify_cot_cmdln(args=args)

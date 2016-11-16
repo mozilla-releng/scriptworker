@@ -4,6 +4,8 @@
 Attributes:
     log (logging.Logger): the log object for this module.
 """
+import aiohttp
+import argparse
 import asyncio
 from copy import deepcopy
 from frozendict import frozendict
@@ -11,12 +13,17 @@ import logging
 import os
 import pprint
 import shlex
+import sys
+import tempfile
 from urllib.parse import unquote, urlparse
+from scriptworker.config import read_worker_creds
+from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions
+from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -1117,3 +1124,61 @@ async def verify_chain_of_trust(chain):
             else:
                 raise CoTError(str(exc))
         log.info("Good.")
+
+
+# verify_cot_cmdln {{{1
+def verify_cot_cmdln(args=None):
+    """Test the chain of trust from the commandline, for debugging purposes.
+
+    Args:
+        args (list, optional): the commandline args to parse.  If None, use
+            ``sys.argv[1:]`` .  Defaults to None.
+    """
+    args = args or sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="""Verify a given task's chain of trust.
+
+Given a task's `task_id`, get its task definition, then trace its chain of
+trust back to the tree.  This doesn't verify chain of trust artifact signatures,
+but does run the other tests in `scriptworker.cot.verify.verify_chain_of_trust`.
+
+This is helpful in debugging chain of trust changes or issues.
+
+To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6N
+or in the CREDS_FILES http://bit.ly/2fVMu0A""")
+    parser.add_argument('task_id', help='the task id to test')
+    parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
+                        dest='cleanup', action='store_true', default=False)
+    opts = parser.parse_args(args)
+    tmp = tempfile.mkdtemp()
+    log = logging.getLogger('scriptworker')
+    log.setLevel(logging.DEBUG)
+    logging.basicConfig()
+    loop = asyncio.get_event_loop()
+    conn = aiohttp.TCPConnector()
+    try:
+        with aiohttp.ClientSession(connector=conn) as session:
+            context = Context()
+            context.session = session
+            context.credentials = read_worker_creds()
+            context.task = loop.run_until_complete(context.queue.task(opts.task_id))
+            context.config = dict(deepcopy(DEFAULT_CONFIG))
+            context.config.update({
+                'artifact_dir': os.path.join(tmp, 'artifacts'),
+                'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
+                'verify_cot_signature': False,
+            })
+            cot = ChainOfTrust(context, 'signing', task_id=opts.task_id)
+            loop.run_until_complete(verify_chain_of_trust(cot))
+            pprint.pprint(cot.dependent_task_ids())
+            print("Cot task_id: {}".format(cot.task_id))
+            for link in cot.links:
+                print("task_id: {}".format(link.task_id))
+            context.session.close()
+        context.queue.session.close()
+        loop.close()
+    finally:
+        if opts.cleanup:
+            rm(tmp)
+        else:
+            log.info("Artifacts are in {}".format(tmp))
