@@ -598,6 +598,19 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
 
+def test_verify_link_in_task_graph_fuzzy_match(chain, decision_link, build_link):
+    chain.links = [decision_link, build_link]
+    decision_link.task_graph = {
+        'bogus-task-id': {
+            'task': deepcopy(build_link.task)
+        },
+        'bogus-task-id2': {
+            'task': deepcopy(chain.task)
+        }
+    }
+    cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
+
+
 def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
     chain.links = [decision_link, build_link]
     bad_task = deepcopy(build_link.task)
@@ -609,6 +622,24 @@ def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
             'task': bad_task
         },
         chain.task_id: {
+            'task': deepcopy(chain.task)
+        },
+    }
+    with pytest.raises(CoTError):
+        cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
+
+
+def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, build_link):
+    chain.links = [decision_link, build_link]
+    bad_task = deepcopy(build_link.task)
+    bad_task['dependencies'].append("foo")
+    bad_task['x'] = 'y'
+    build_link.task['x'] = 'z'
+    decision_link.task_graph = {
+        'bogus-task-id': {
+            'task': bad_task
+        },
+        'bogus-task-id2': {
             'task': deepcopy(chain.task)
         },
     }

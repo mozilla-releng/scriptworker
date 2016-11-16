@@ -162,19 +162,20 @@ class LinkOfTrust(object):
 
 
 # raise_on_errors {{{1
-def raise_on_errors(errors):
+def raise_on_errors(errors, level=logging.CRITICAL):
     """Raise a CoTError if errors.
 
     Helper function because I had this code block everywhere.
 
     Args:
         errors (list): the error errors
+        level (int, optional): the log level to use.  Defaults to logging.CRITICAL
 
     Raises:
         CoTError: if errors is non-empty
     """
     if errors:
-        log.critical("\n".join(errors))
+        log.log(level, "\n".join(errors))
         raise CoTError("\n".join(errors))
 
 
@@ -639,24 +640,25 @@ def verify_cot_signatures(chain):
             fh.write(format_json(link.cot))
 
 
-# verify_link_in_task_graph {{{1
-def verify_link_in_task_graph(chain, decision_link, task_link):
-    """Compare the runtime task definition against the decision task graph.
+# verify_task_in_task_graph {{{1
+def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
+    """Verify a given task_link's task against a given graph task definition.
+
+    This is a helper function for ``verify_link_in_task_graph``; this is split
+    out so we can call it multiple times when we fuzzy match.
 
     Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        decision_link (LinkOfTrust):
+        task_link (LinkOfTrust): the link to try to match
+        graph_defn (dict): the task definition from the task-graph.json to match
+            ``task_link`` against
+        level (int, optional): the logging level to use on errors. Defaults to logging.CRITICAL
 
     Raises:
-        CoTError: on failure.
+        CoTError: on failure
     """
-    log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
-        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
-    ))
     ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
     errors = []
-    runtime_defn = deepcopy(task_link.task)
-    graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
+    runtime_defn = task_link.task
     # dependencies
     bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
     if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
@@ -678,7 +680,46 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
                 task_link.name, task_link.task_id, key,
                 pprint.pformat(value), pprint.pformat(runtime_defn[key])
             ))
-    raise_on_errors(errors)
+    raise_on_errors(errors, level=level)
+
+
+# verify_link_in_task_graph {{{1
+def verify_link_in_task_graph(chain, decision_link, task_link):
+    """Compare the runtime task definition against the decision task graph.
+
+    If the ``task_link.task_id`` is in the task graph, match directly against
+    that task definition.  Otherwise, "fuzzy match" by trying to match against
+    any definition in the task graph.  This is to support retriggers, where
+    the task definition stays the same, but the datestrings and taskIds change.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        decision_link (LinkOfTrust): the decision task link
+        task_link (LinkOfTrust): the task link we're testing
+
+    Raises:
+        CoTError: on failure.
+    """
+    log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
+        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+    ))
+    if task_link.task_id in decision_link.task_graph:
+        graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
+        verify_task_in_task_graph(task_link, graph_defn)
+        return
+    # Fall back to fuzzy matching to support retriggers: the taskId and
+    # datestrings will change but the task definition shouldn't.
+    for task_id, graph_defn in decision_link.task_graph.items():
+        log.debug("Fuzzy matching against {} ...".format(task_id))
+        try:
+            verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
+            return
+        except CoTError:
+            pass
+    else:
+        raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
+            task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+        )])
 
 
 # verify_firefox_decision_command {{{1
