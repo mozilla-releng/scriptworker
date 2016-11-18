@@ -11,6 +11,11 @@ include version.json
 include requirements*.txt
 include tox.ini
 
+include scriptworker/docs/Makefile
+include scriptworker/docs/conf.py
+include scriptworker/docs/*.rst
+include scriptworker/docs/*.md
+
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
 recursive-exclude * 1000pubkeys

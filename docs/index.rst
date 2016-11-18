@@ -11,10 +11,12 @@
    :maxdepth: 3
 
    maintenance
+   releases
    new_instance_types
    new_instance
    chain_of_trust
    README
+   scriptworker
 
 
 Indices and tables

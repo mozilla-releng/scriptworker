@@ -17,9 +17,9 @@ import json
 import sys
 import os
 from recommonmark.parser import CommonMarkParser
-from recommonmark.transform import AutoStructify
+# from recommonmark.transform import AutoStructify
 
-github_doc_root = "https://github.com/mozilla-releng/scriptworker/tree/master/docs"
+github_doc_root = "https://github.com/mozilla-releng/scriptworker/tree/master/docs/"
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -62,6 +62,8 @@ templates_path = ['_templates']
 source_parsers = {
     '.md': CommonMarkParser,
 }
+
+suppress_warnings = ['image.nonlocal_uri']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -316,9 +318,9 @@ texinfo_documents = [
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
 
-def setup(app):
-    app.add_config_value('recommonmark_config', {
-            'url_resolver': lambda url: github_doc_root + url,
-            'auto_toc_tree_section': 'Contents',
-            }, True)
-    app.add_transform(AutoStructify)
+# def setup(app):
+#     app.add_config_value('recommonmark_config', {
+#             'url_resolver': lambda url: github_doc_root + url,
+#             'auto_toc_tree_section': 'Contents',
+#             }, True)
+#     app.add_transform(AutoStructify)
