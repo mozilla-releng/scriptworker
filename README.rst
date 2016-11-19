@@ -63,3 +63,7 @@ Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 then
 
 ``python setup.py test``
+
+It's also possible to create a ``./secrets.json`` as above, then::
+
+    docker build -t scriptworker . && docker run scriptworker tox

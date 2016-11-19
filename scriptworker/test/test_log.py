@@ -34,9 +34,9 @@ def test_get_log_filenames(context):
 def test_get_log_fhs(context, text):
     log_file, error_file = swlog.get_log_filenames(context)
     with swlog.get_log_fhs(context) as (log_fh, error_fh):
-        print(text, file=log_fh, end="")
-        print(text, file=error_fh, end="")
-        print(text, file=error_fh, end="")
+        log_fh.write(text)
+        error_fh.write(text)
+        error_fh.write(text)
     assert read(log_file) == text
     assert read(error_file) == text + text
 
