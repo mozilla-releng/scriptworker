@@ -73,9 +73,6 @@ def query_pending_task_count():
         except Exception as excp:
             nagios_message(
                 'UNKNOWN', 'Unable to query pending tasks: {0}'.format(excp))
-            #log.critical("Fatal exception", exc_info=1)
-            # raise
-        # {'provisionerId': 'test-dummy-provisioner', 'pendingTasks': 0, 'workerType': 'dummy-worker-myname'}
 
         template = '{pending}/{max} pending tasks for {provisioner}:{worker}'
 
