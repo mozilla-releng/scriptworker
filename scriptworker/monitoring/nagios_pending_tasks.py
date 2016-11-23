@@ -7,7 +7,6 @@ Entrypoint for pending tasks monitoring.
 import asyncio
 import aiohttp
 import sys
-import json
 import argparse
 
 

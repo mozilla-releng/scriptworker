@@ -4,7 +4,7 @@
 Checks for the existence and age of specific files, and that they are not
 too old.
 
-Allow 'old' to be defined as warning and critical arguments. 
+Allow 'old' to be defined as warning and critical arguments.
 
 You can either:
 - Specify one file to check
@@ -70,7 +70,7 @@ def file_age_check(filename, warning, critical, optional):
         return STATUS_CODE['CRITICAL'], msg
     else:
         msg = "{0} is ok, {1}/{2} seconds old".format(
-            filename, int(age), max_age)
+            filename, int(age), critical)
         return STATUS_CODE['OK'], msg
 
 
