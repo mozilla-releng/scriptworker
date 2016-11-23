@@ -6,6 +6,13 @@ too old.
 
 Allow 'old' to be defined as warning and critical arguments. 
 
+You can either:
+- Specify one file to check
+- Give the path to a file, that contains a newline-separated list
+  of the files to check.
+
+This script will produce a multi-line nagios report in either case.
+
 """
 import os
 import sys
