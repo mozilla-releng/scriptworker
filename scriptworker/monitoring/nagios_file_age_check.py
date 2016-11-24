@@ -143,6 +143,3 @@ def run_file_age_checks():
 
     print("{0}\n{1}\n".format(service_output, "\n".join(sorted(messages))))
     sys.exit(exit_code)
-
-if __name__ == '__main__':
-    run_file_age_checks()
