@@ -67,6 +67,8 @@ setup(
             "scriptworker = scriptworker.worker:main",
             "create_initial_gpg_homedirs = scriptworker.gpg:create_initial_gpg_homedirs",
             "rebuild_gpg_homedirs = scriptworker.gpg:rebuild_gpg_homedirs",
+            "nagios_check_pending_tasks = scriptworker.monitoring.nagios_pending_tasks:query_pending_task_count",
+            "nagios_check_file_ages = scriptworker.monitoring.nagios_file_age_check:run_file_age_checks",
         ],
     },
     zip_safe=False,
