@@ -720,6 +720,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         log.debug("Fuzzy matching against {} ...".format(task_id))
         try:
             verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
+            log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
             return
         except CoTError:
             pass
@@ -1170,10 +1171,10 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             })
             cot = ChainOfTrust(context, 'signing', task_id=opts.task_id)
             loop.run_until_complete(verify_chain_of_trust(cot))
-            pprint.pprint(cot.dependent_task_ids())
-            print("Cot task_id: {}".format(cot.task_id))
+            log.info(pprint.pformat(cot.dependent_task_ids()))
+            log.info("Cot task_id: {}".format(cot.task_id))
             for link in cot.links:
-                print("task_id: {}".format(link.task_id))
+                log.info("task_id: {}".format(link.task_id))
             context.session.close()
         context.queue.session.close()
         loop.close()
