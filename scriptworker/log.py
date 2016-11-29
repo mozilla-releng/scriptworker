@@ -106,8 +106,8 @@ def get_log_fhs(context):
     """
     log_file, error_file = get_log_filenames(context)
     makedirs(context.config['task_log_dir'])
-    with open(log_file, "w") as log_fh:
-        with open(error_file, "w") as error_fh:
+    with open(log_file, "w", encoding="utf-8") as log_fh:
+        with open(error_file, "w", encoding="utf-8") as error_fh:
             yield (log_fh, error_fh)
 
 

@@ -55,7 +55,7 @@ ARTIFACT_SHAS = {
 def read(path):
     """Return the contents of a file.
     """
-    with open(path, "r") as fh:
+    with open(path, "r", encoding="utf-8") as fh:
         return fh.read()
 
 
