@@ -4,6 +4,8 @@
 Attributes:
     log (logging.Logger): the log object for this module.
 """
+import aiohttp
+import argparse
 import asyncio
 from copy import deepcopy
 from frozendict import frozendict
@@ -11,12 +13,17 @@ import logging
 import os
 import pprint
 import shlex
+import sys
+import tempfile
 from urllib.parse import unquote, urlparse
+from scriptworker.config import read_worker_creds
+from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions
+from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -162,19 +169,20 @@ class LinkOfTrust(object):
 
 
 # raise_on_errors {{{1
-def raise_on_errors(errors):
+def raise_on_errors(errors, level=logging.CRITICAL):
     """Raise a CoTError if errors.
 
     Helper function because I had this code block everywhere.
 
     Args:
         errors (list): the error errors
+        level (int, optional): the log level to use.  Defaults to logging.CRITICAL
 
     Raises:
         CoTError: if errors is non-empty
     """
     if errors:
-        log.critical("\n".join(errors))
+        log.log(level, "\n".join(errors))
         raise CoTError("\n".join(errors))
 
 
@@ -639,24 +647,25 @@ def verify_cot_signatures(chain):
             fh.write(format_json(link.cot))
 
 
-# verify_link_in_task_graph {{{1
-def verify_link_in_task_graph(chain, decision_link, task_link):
-    """Compare the runtime task definition against the decision task graph.
+# verify_task_in_task_graph {{{1
+def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
+    """Verify a given task_link's task against a given graph task definition.
+
+    This is a helper function for ``verify_link_in_task_graph``; this is split
+    out so we can call it multiple times when we fuzzy match.
 
     Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        decision_link (LinkOfTrust):
+        task_link (LinkOfTrust): the link to try to match
+        graph_defn (dict): the task definition from the task-graph.json to match
+            ``task_link`` against
+        level (int, optional): the logging level to use on errors. Defaults to logging.CRITICAL
 
     Raises:
-        CoTError: on failure.
+        CoTError: on failure
     """
-    log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
-        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
-    ))
     ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
     errors = []
-    runtime_defn = deepcopy(task_link.task)
-    graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
+    runtime_defn = task_link.task
     # dependencies
     bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
     if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
@@ -678,7 +687,47 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
                 task_link.name, task_link.task_id, key,
                 pprint.pformat(value), pprint.pformat(runtime_defn[key])
             ))
-    raise_on_errors(errors)
+    raise_on_errors(errors, level=level)
+
+
+# verify_link_in_task_graph {{{1
+def verify_link_in_task_graph(chain, decision_link, task_link):
+    """Compare the runtime task definition against the decision task graph.
+
+    If the ``task_link.task_id`` is in the task graph, match directly against
+    that task definition.  Otherwise, "fuzzy match" by trying to match against
+    any definition in the task graph.  This is to support retriggers, where
+    the task definition stays the same, but the datestrings and taskIds change.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        decision_link (LinkOfTrust): the decision task link
+        task_link (LinkOfTrust): the task link we're testing
+
+    Raises:
+        CoTError: on failure.
+    """
+    log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
+        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+    ))
+    if task_link.task_id in decision_link.task_graph:
+        graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
+        verify_task_in_task_graph(task_link, graph_defn)
+        return
+    # Fall back to fuzzy matching to support retriggers: the taskId and
+    # datestrings will change but the task definition shouldn't.
+    for task_id, graph_defn in decision_link.task_graph.items():
+        log.debug("Fuzzy matching against {} ...".format(task_id))
+        try:
+            verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
+            log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
+            return
+        except CoTError:
+            pass
+    else:
+        raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
+            task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+        )])
 
 
 # verify_firefox_decision_command {{{1
@@ -1076,3 +1125,61 @@ async def verify_chain_of_trust(chain):
             else:
                 raise CoTError(str(exc))
         log.info("Good.")
+
+
+# verify_cot_cmdln {{{1
+def verify_cot_cmdln(args=None):
+    """Test the chain of trust from the commandline, for debugging purposes.
+
+    Args:
+        args (list, optional): the commandline args to parse.  If None, use
+            ``sys.argv[1:]`` .  Defaults to None.
+    """
+    args = args or sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="""Verify a given task's chain of trust.
+
+Given a task's `task_id`, get its task definition, then trace its chain of
+trust back to the tree.  This doesn't verify chain of trust artifact signatures,
+but does run the other tests in `scriptworker.cot.verify.verify_chain_of_trust`.
+
+This is helpful in debugging chain of trust changes or issues.
+
+To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6N
+or in the CREDS_FILES http://bit.ly/2fVMu0A""")
+    parser.add_argument('task_id', help='the task id to test')
+    parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
+                        dest='cleanup', action='store_true', default=False)
+    opts = parser.parse_args(args)
+    tmp = tempfile.mkdtemp()
+    log = logging.getLogger('scriptworker')
+    log.setLevel(logging.DEBUG)
+    logging.basicConfig()
+    loop = asyncio.get_event_loop()
+    conn = aiohttp.TCPConnector()
+    try:
+        with aiohttp.ClientSession(connector=conn) as session:
+            context = Context()
+            context.session = session
+            context.credentials = read_worker_creds()
+            context.task = loop.run_until_complete(context.queue.task(opts.task_id))
+            context.config = dict(deepcopy(DEFAULT_CONFIG))
+            context.config.update({
+                'artifact_dir': os.path.join(tmp, 'artifacts'),
+                'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
+                'verify_cot_signature': False,
+            })
+            cot = ChainOfTrust(context, 'signing', task_id=opts.task_id)
+            loop.run_until_complete(verify_chain_of_trust(cot))
+            log.info(pprint.pformat(cot.dependent_task_ids()))
+            log.info("Cot task_id: {}".format(cot.task_id))
+            for link in cot.links:
+                log.info("task_id: {}".format(link.task_id))
+            context.session.close()
+        context.queue.session.close()
+        loop.close()
+    finally:
+        if opts.cleanup:
+            rm(tmp)
+        else:
+            log.info("Artifacts are in {}".format(tmp))

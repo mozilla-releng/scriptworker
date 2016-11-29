@@ -169,6 +169,7 @@ DEFAULT_CONFIG = frozendict({
         "TOOLTOOL_CACHE",
         "TOOLTOOL_REPO",
         "TOOLTOOL_REV",
+        "USE_SCCACHE",
     ),
 
     # docker-image cot

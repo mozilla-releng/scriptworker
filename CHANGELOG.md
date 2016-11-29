@@ -2,7 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [1.0.0b2] - 2016-11-28
+### Changed
+- `scriptworker.cot.verify.raise_on_errors` now takes a kwarg of `level`, which defaults to `logging.CRITICAL`.  This is to support fuzzy task matching, where not matching a task is non-critical.
+- `scriptworker.cot.verify.verify_link_in_task_graph` now supports fuzzy task matching.  If the Link's `task_id` isn't in the task graph, try to match the task definition against the task graph definitions, and throw `CoTError` on failure.  This is to support Taskcluster retriggers.
+- `verify_cot` is now an entry point, rather than a helper script in `scriptworker/test/data/`.
+
+### Fixed
+- allowed for `USE_SCCACHE` as a build env var
 
 ## [1.0.0b1] - 2016-11-14
 ### Added
