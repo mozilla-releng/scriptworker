@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-"""Most functions need access to a similar set of objects.  Rather than
+"""scriptworker context.
+
+Most functions need access to a similar set of objects.  Rather than
 having to pass them all around individually or create a monolithic 'self'
 object, let's point to them from a single context object.
-
 
 Attributes:
     log (logging.Logger): the log object for the module.
@@ -20,7 +21,7 @@ log = logging.getLogger(__name__)
 
 
 class Context(object):
-    """ Basic config holding object.
+    """Basic config holding object.
 
     Avoids putting everything in single monolithic object, but allows for
     passing around config and easier overriding in tests.
@@ -41,6 +42,7 @@ class Context(object):
         temp_queue (taskcluster.async.Queue): the taskcluster Queue object
             containing the task-specific temporary credentials.
     """
+
     config = None
     credentials_timestamp = None
     poll_task_urls = None
@@ -83,8 +85,9 @@ class Context(object):
 
     @property
     def credentials(self):
-        """dict: The current scriptworker credentials, from the config or CREDS_FILES
-        or environment.
+        """dict: The current scriptworker credentials.
+
+        These come from the config or CREDS_FILES or environment.
 
         When setting credentials, also create a new ``self.queue`` and
         update self.credentials_timestamp.
@@ -131,8 +134,7 @@ class Context(object):
 
     @property
     def temp_credentials(self):
-        """dict: The latest temp credentials, or None if we haven't claimed a
-            task yet.
+        """dict: The latest temp credentials, or None if we haven't claimed a task yet.
 
         When setting, create ``self.temp_queue`` from the temp taskcluster creds.
         """

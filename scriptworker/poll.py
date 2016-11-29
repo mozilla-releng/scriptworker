@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""Deal with the multi-step queue polling.  At some point we may be able to
+"""Scriptworker polling.
+
+Deal with the multi-step queue polling.  At some point we may be able to
 just claimTask through Taskcluster; until that point we have these functions.
 
 Attributes:
@@ -49,7 +51,7 @@ def parse_azure_message(message):
 
 
 def parse_azure_xml(xml):
-    """Generator: parse the Azure xml and pass through parse_azure_message()
+    """Generator: parse the Azure xml and pass through parse_azure_message().
 
     Args:
         xml (str): the contents of the xml document

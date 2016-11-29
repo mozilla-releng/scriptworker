@@ -38,12 +38,21 @@ class ChainOfTrust(object):
         cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
         links (list): the list of ``LinkOfTrust``s
-        name (str): the name of the task (e.g., signing.decision)
+        name (str): the name of the task (e.g., signing)
         task_id (str): the taskId of the task
         task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
+
     def __init__(self, context, name, task_id=None):
+        """Initialize ChainOfTrust.
+
+        Args:
+            context (scriptworker.context.Context): the scriptworker context
+            name (str): the name of the task (e.g., signing)
+            task_id (str, optional): the task_id of the task.  If None, use
+                ``get_task_id(context.claim_task)``.  Defaults to None.
+        """
         self.name = name
         self.task_type = guess_task_type(name)
         self.context = context
@@ -107,12 +116,20 @@ class LinkOfTrust(object):
         task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
     """
+
     _task = None
     _cot = None
     _task_graph = None
     status = None
 
     def __init__(self, context, name, task_id):
+        """Initialize ChainOfTrust.
+
+        Args:
+            context (scriptworker.context.Context): the scriptworker context
+            name (str): the name of the task (e.g., signing)
+            task_id (str): the task_id of the task
+        """
         self.name = name
         self.task_type = guess_task_type(name)
         self.context = context
@@ -149,8 +166,7 @@ class LinkOfTrust(object):
 
     @property
     def cot(self):
-        """dict: the chain of trust json body.
-        """
+        """dict: the chain of trust json body."""
         return self._cot
 
     @cot.setter
@@ -159,8 +175,7 @@ class LinkOfTrust(object):
 
     @property
     def task_graph(self):
-        """dict: the decision task graph, if this is a decision task.
-        """
+        """dict: the decision task graph, if this is a decision task."""
         return self._task_graph
 
     @task_graph.setter
@@ -547,7 +562,7 @@ async def download_cot_artifact(chain, task_id, path):
 
 # download_cot_artifacts {{{1
 async def download_cot_artifacts(chain, artifact_dict):
-    """Call ``download_cot_artifact`` in parallel for each key/value in ``artifact_dict``
+    """Call ``download_cot_artifact`` in parallel for each key/value in ``artifact_dict``.
 
     Args:
         chain (ChainOfTrust): the chain of trust object
@@ -732,7 +747,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 
 # verify_firefox_decision_command {{{1
 def verify_firefox_decision_command(decision_link):
-    """Verify the decision command for a firefox decision task.
+    r"""Verify the decision command for a firefox decision task.
 
     Some example commands::
 
@@ -1039,9 +1054,16 @@ def get_firefox_source_url(obj):
 
 # trace_back_to_firefox_tree {{{1
 async def trace_back_to_firefox_tree(chain):
-    """
+    """Trace the chain back to the firefox tree.
+
     task.metadata.source: "https://hg.mozilla.org/projects/date//file/a80373508881bfbff67a2a49297c328ff8052572/taskcluster/ci/build"
     task.payload.env.GECKO_HEAD_REPOSITORY "https://hg.mozilla.org/projects/date/"
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+
+    Raises:
+        CoTError: on error.
     """
     errors = []
     repos = {}

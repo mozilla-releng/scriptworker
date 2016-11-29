@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Deal with the scriptworker version in semver format.
+
 Copied from scriptharness.
 
 However, since writing this I've discovered that setuptools and sphinx don't
@@ -55,7 +56,7 @@ __version_string__ = get_version_string(__version__)
 
 # write_version {{{1
 def write_version(name=None, path=None):
-    """Write the version info to ../version.json, for setup.py
+    """Write the version info to ../version.json, for setup.py.
 
     Args:
       name (Optional[str]): this is for the ``write_version(name=__name__)``

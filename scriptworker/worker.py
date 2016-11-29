@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Scriptworker worker functions.
+
+Attributes:
+    log (logging.Logger): the log object for the module.
+"""
 import aiohttp
 import asyncio
 import logging
@@ -69,8 +74,7 @@ async def run_loop(context, creds_key="credentials"):
 
 
 async def async_main(context):
-    """Main async loop, following the drawing at
-    http://docs.taskcluster.net/queue/worker-interaction/
+    """Main async loop, following http://docs.taskcluster.net/queue/worker-interaction/ .
 
     This is a simple loop, mainly to keep each function more testable.
 
@@ -87,8 +91,7 @@ async def async_main(context):
 
 
 def main():
-    """Scriptworker entry point: get everything set up, then enter the main loop
-    """
+    """Scriptworker entry point: get everything set up, then enter the main loop."""
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])

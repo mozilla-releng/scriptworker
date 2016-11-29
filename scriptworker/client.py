@@ -72,7 +72,6 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     Raises:
         ScriptWorkerTaskException: on failure to validate.
     """
-
     def callback(match):
         path_info = match.groupdict()
         # make sure we're pointing at a valid task ID

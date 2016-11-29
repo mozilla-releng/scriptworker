@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""scriptworker logging
+"""Scriptworker logging.
 
 Attributes:
     log (logging.Logger): the log object for this module.
@@ -95,8 +95,7 @@ def get_log_filenames(context):
 
 @contextmanager
 def get_log_fhs(context):
-    """Helper contextmanager function to open the log and error
-    filehandles.
+    """Helper contextmanager function to open the log and error filehandles.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.

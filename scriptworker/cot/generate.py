@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 # get_cot_artifacts {{{1
 def get_cot_artifacts(context):
-    """Generate the artifact relative paths and shas for the chain of trust
+    """Generate the artifact relative paths and shas for the chain of trust.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -84,7 +84,7 @@ def generate_cot_body(context):
 
 # generate_cot {{{1
 def generate_cot(context, path=None):
-    """Format and sign the cot body, and write to disk
+    """Format and sign the cot body, and write to disk.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
