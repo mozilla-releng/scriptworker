@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""scriptworker exceptions
-"""
+"""scriptworker exceptions."""
 
 
 class ScriptWorkerException(Exception):
@@ -12,6 +11,7 @@ class ScriptWorkerException(Exception):
     Attributes:
         exit_code (int): this is set to 5 (internal-error).
     """
+
     exit_code = 5
 
 
@@ -21,20 +21,23 @@ class ScriptWorkerGPGException(ScriptWorkerException):
     Attributes:
         exit_code (int): this is set to 5 (internal-error).
     """
+
     exit_code = 5
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
-    """ScriptWorkerRetryException.
+    """Scriptworker retry error.
 
     Attributes:
         exit_code (int): this is set to 4 (resource-unavailable)
     """
+
     exit_code = 4
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
-    """
+    """Scriptworker task error.
+
     To use::
 
         import sys
@@ -45,14 +48,19 @@ class ScriptWorkerTaskException(ScriptWorkerException):
             traceback.print_exc()
             sys.exit(exc.exit_code)
 
-    Args:
-        exit_code (int, optional): The exit_code we should exit with when
-            this exception is raised.  Defaults to 1 (failure).
-
     Attributes:
         exit_code (int): this is 1 by default (failure)
     """
+
     def __init__(self, *args, exit_code=1, **kwargs):
+        """Initialize ScriptWorkerTaskException.
+
+        Args:
+            *args: These are passed on via super().
+            exit_code (int, optional): The exit_code we should exit with when
+                this exception is raised.  Defaults to 1 (failure).
+            **kwargs: These are passed on via super().
+        """
         self.exit_code = exit_code
         super(ScriptWorkerTaskException, self).__init__(*args, **kwargs)
 
@@ -63,7 +71,13 @@ class DownloadError(ScriptWorkerTaskException):
     Attributes:
         exit_code (int): this is set to 4 (resource-unavailable).
     """
+
     def __init__(self, msg):
+        """Initialize DownloadError.
+
+        Args:
+            msg (string): the error message
+        """
         super(DownloadError, self).__init__(
             msg, exit_code=4
         )
@@ -75,7 +89,13 @@ class CoTError(ScriptWorkerTaskException, KeyError):
     Attributes:
         exit_code (int): this is set to 3 (malformed-payload).
     """
+
     def __init__(self, msg):
+        """Initialize CoTError.
+
+        Args:
+            msg (string): the error message
+        """
         super(CoTError, self).__init__(
             msg, exit_code=3
         )

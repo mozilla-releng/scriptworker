@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Added
+- Dockerfile for testing, with readme updates
+- `flake8_docstrings` in tox.ini
+
+### Fixed
+- updated all docstrings to pass `flake8_docstrings`
+
 ## [1.0.0b2] - 2016-11-28
 ### Changed
 - `scriptworker.cot.verify.raise_on_errors` now takes a kwarg of `level`, which defaults to `logging.CRITICAL`.  This is to support fuzzy task matching, where not matching a task is non-critical.

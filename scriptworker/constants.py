@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""scriptworker constants
+"""scriptworker constants.
 
 Attributes:
     DEFAULT_CONFIG (frozendict): the default config for scriptworker.  Running configs

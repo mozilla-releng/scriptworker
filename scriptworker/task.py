@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Scriptworker task execution
+"""Scriptworker task execution.
 
 Attributes:
     log (logging.Logger): the log object for the module
@@ -185,7 +185,7 @@ def get_expiration_arrow(context):
 
 # guess_content_type {{{1
 def guess_content_type(path):
-    """Guess the content type of a path, using ``mimetypes``
+    """Guess the content type of a path, using ``mimetypes``.
 
     Args:
         path (str): the path to guess the mimetype of

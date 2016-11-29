@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Generic utils for scriptworker
+"""Generic utils for scriptworker.
 
 Attributes:
     log (logging.Logger): the log object for the module
@@ -71,7 +71,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 # retry_request {{{1
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
                         **kwargs):
-    """Retry the ``request`` function
+    """Retry the ``request`` function.
 
     Args:
         *args: the args to send to request() through retry_async().
@@ -88,7 +88,7 @@ async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
 
 # datestring_to_timestamp {{{1
 def datestring_to_timestamp(datestring):
-    """ Create a timetamp from a taskcluster datestring
+    """Create a timetamp from a taskcluster datestring.
 
     Args:
         datestring (str): the datestring to convert. isoformat, like
@@ -102,7 +102,7 @@ def datestring_to_timestamp(datestring):
 
 # to_unicode {{{1
 def to_unicode(line):
-    """Avoid ``b'line'`` type messages in the logs
+    """Avoid ``b'line'`` type messages in the logs.
 
     Args:
         line (str): The bytecode or unicode string.
@@ -120,7 +120,7 @@ def to_unicode(line):
 
 # makedirs {{{1
 def makedirs(path):
-    """mkdir -p
+    """Equivalent to mkdir -p.
 
     Args:
         path (str): the path to mkdir -p
@@ -142,7 +142,7 @@ def makedirs(path):
 
 # rm {{{1
 def rm(path):
-    """rm -rf
+    """Equivalent to rm -rf.
 
     Make sure ``path`` doesn't exist after this call.  If it's a dir,
     shutil.rmtree(); if it's a file, os.remove(); if it doesn't exist,
@@ -319,7 +319,7 @@ def get_hash(path, hash_alg="sha256"):
 
 # format_json {{{1
 def format_json(data):
-    """Format json as a sorted string (indents of 2)
+    """Format json as a sorted string (indents of 2).
 
     Args:
         data (dict): the json to format.
@@ -333,7 +333,7 @@ def format_json(data):
 # load_json {{{1
 def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
               message="Failed to load json: %(exc)s"):
-    """Load json from a filehandle or string, and raise a custom exception on failure
+    """Load json from a filehandle or string, and raise a custom exception on failure.
 
     Args:
         string (str): json body or a path to open

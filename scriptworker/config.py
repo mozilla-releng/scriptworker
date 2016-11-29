@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Config for scriptworker
+"""Config for scriptworker.
 
 Attributes:
     log (logging.Logger): the log object for the module.

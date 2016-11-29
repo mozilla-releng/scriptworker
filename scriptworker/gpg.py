@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""GPG functions.  These currently assume gpg 2.0.x
+"""GPG support.
+
+These currently assume gpg 2.0.x
 
 These GPG functions expose considerable functionality over gpg key management,
 data signatures, and validation, but by no means are they intended to cover all
@@ -302,7 +304,7 @@ def export_key(gpg, fingerprint, private=False):
 
 def sign_key(context, target_fingerprint, signing_key=None,
              exportable=False, gpg_home=None):
-    """Sign the ``target_fingerprint`` key with the ``signing_key`` or default key
+    """Sign the ``target_fingerprint`` key with ``signing_key`` or default key.
 
     This signs the target key with the signing key, which adds to the web of trust.
 
@@ -374,7 +376,7 @@ def check_ownertrust(context, gpg_home=None):
 
 
 def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_home=None):
-    """ Trust my key ultimately; trusted_fingerprints fully
+    """Trust my key ultimately; trusted_fingerprints fully.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -463,7 +465,7 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 
 # data signatures and verification {{{1
 def sign(gpg, data, **kwargs):
-    """Sign ``data`` with the key ``kwargs['keyid']``, or the default key if not specified
+    """Sign ``data`` with the key ``kwargs['keyid']``, or the default key if not specified.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -479,8 +481,7 @@ def sign(gpg, data, **kwargs):
 
 
 def verify_signature(gpg, signed_data, **kwargs):
-    """Verify ``signed_data`` with the key ``kwargs['keyid']``, or the default key
-    if not specified.
+    """Verify ``signed_data`` with the key ``kwargs['keyid']``, or the default key if not specified.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -505,7 +506,7 @@ def verify_signature(gpg, signed_data, **kwargs):
 
 
 def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
-    """Verifies the signature, then returns the unsigned data from ``signed_data``.
+    """Verify the signature, then return the unsigned data from ``signed_data``.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -533,15 +534,15 @@ def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
 
 # key signature verification {{{1
 def _parse_trust_line(trust_line, desc):
-    """parse ``gpg --list-sigs --with-colons`` ``tru`` line
+    """Parse ``gpg --list-sigs --with-colons`` ``tru`` line.
 
-       https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
+    https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
 
-       Example for a "tru" trust base record:
+    Example for a "tru" trust base record:
 
-          tru:o:0:1166697654:1:3:1:5
+        tru:o:0:1166697654:1:3:1:5
 
-        The fields are:
+    The fields are:
 
         2: Reason for staleness of trust.  If this field is empty, then the
            trustdb is not stale.  This field may have multiple flags in it:
@@ -592,8 +593,10 @@ def _parse_trust_line(trust_line, desc):
 
 
 def _parse_pub_line(pub_line, desc):
-    """parse ``gpg --list-sigs --with-colons`` ``pub`` line
+    r"""Parse ``gpg --list-sigs --with-colons`` ``pub`` line.
+
     https://git.gnupg.org/cgi-bin/gitweb.cgi?p=gnupg.git;a=blob;f=doc/DETAILS;h=645814a4c1fa8e8e735850f0f93b17617f60d4c8;hb=refs/heads/STABLE-BRANCH-2-0
+
      2. Field:  A letter describing the calculated validity. This is a single
                 letter, but be prepared that additional information may follow
                 in some future versions. (not used for secret keys)
@@ -733,15 +736,16 @@ def _parse_pub_line(pub_line, desc):
 
 
 def _parse_fpr_line(fpr_line, desc, expected=None):
-    """
-     10. Field:  User-ID.  The value is quoted like a C string to avoid
-                 control characters (the colon is quoted "\x3a").
-                 For a "pub" record this field is not used on --fixed-list-mode.
-                 A UAT record puts the attribute subpacket count here, a
-                 space, and then the total attribute subpacket size.
-                 In gpgsm the issuer name comes here
-                 An FPR record stores the fingerprint here.
-                 The fingerprint of an revocation key is stored here.
+    r"""Parse fingerprint line.
+
+    10. Field:  User-ID.  The value is quoted like a C string to avoid
+                control characters (the colon is quoted "\x3a").
+                For a "pub" record this field is not used on --fixed-list-mode.
+                A UAT record puts the attribute subpacket count here, a
+                space, and then the total attribute subpacket size.
+                In gpgsm the issuer name comes here
+                An FPR record stores the fingerprint here.
+                The fingerprint of an revocation key is stored here.
     """
     parts = fpr_line.split(':')
     fingerprint = parts[9]
@@ -749,8 +753,9 @@ def _parse_fpr_line(fpr_line, desc, expected=None):
 
 
 def _parse_sig_line(sig_line, desc):
-    """
-sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
+    """Parse signature line.
+
+    sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
     """
     parts = sig_line.split(':')
     keyid = parts[4]
@@ -759,8 +764,9 @@ sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptwor
 
 
 def _parse_uid_line(uid_line, desc):
-    """
-sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
+    """Parse UID line.
+
+    sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
     """
     parts = uid_line.split(':')
     uid = parts[9]
@@ -877,7 +883,9 @@ def parse_list_sigs_output(output, desc, expected=None):
 
 
 def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=True, expected=None):
-    """gpg --list-sigs, with machine parsable output, for gpg 2.0.x
+    """Get output from gpg --list-sigs.
+
+    This will be machine parsable output, for gpg 2.0.x.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -968,7 +976,7 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
 
 
 def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
-    """import my key and create gpg.conf and trustdb.gpg
+    """Import my key and create gpg.conf and trustdb.gpg.
 
     Args:
         gpg (gnupg.GPG): the GPG instance.
@@ -1319,7 +1327,7 @@ async def verify_signed_git_commit(context, path=None,
 
 # last_good_git_revision_file functions {{{1
 def get_last_good_git_revision(context):
-    """This returns the contents of the config['last_good_git_revision_file'], if it exists.
+    """Return the contents of the config['last_good_git_revision_file'], if it exists.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -1336,7 +1344,7 @@ def get_last_good_git_revision(context):
 
 
 def write_last_good_git_revision(context, revision):
-    """This writes ``revision`` to config['last_good_git_revision_file'].
+    """Write ``revision`` to config['last_good_git_revision_file'].
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
