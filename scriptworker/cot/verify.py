@@ -293,8 +293,9 @@ def get_valid_task_types():
     Returns:
         frozendict: maps the valid task types (e.g., signing) to their validation functions.
     """
-    # TODO support the rest of the task types... balrog, apkpush, beetmover, hgpush, etc.
     return frozendict({
+        'scriptworker': verify_scriptworker_task,
+        'beetmover': verify_beetmover_task,
         'build': verify_build_task,
         'l10n': verify_build_task,
         'decision': verify_decision_task,
@@ -925,6 +926,38 @@ async def verify_docker_image_task(chain, link):
     raise_on_errors(errors)
 
 
+# verify_balrog_task {{{1
+async def verify_balrog_task(chain, obj):
+    """Verify the balrog trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the balrog task.
+
+    Raises:
+        CoTError: on error.
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+# verify_beetmover_task {{{1
+async def verify_beetmover_task(chain, obj):
+    """Verify the beetmover trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
+
+    Raises:
+        CoTError: on error.
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
 # verify_signing_task {{{1
 async def verify_signing_task(chain, obj):
     """Verify the signing trust object.
@@ -934,11 +967,11 @@ async def verify_signing_task(chain, obj):
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+
+    Raises:
+        CoTError: on error.
     """
-    errors = []
-    if obj.worker_impl != "scriptworker":
-        errors.append("{} {} must be run from scriptworker!".format(obj.name, obj.task_id))
-    raise_on_errors(errors)
+    return await verify_scriptworker_task(chain, obj)
 
 
 # check_num_tasks {{{1
@@ -1011,15 +1044,18 @@ async def verify_docker_worker_task(chain, link):
 
 # verify_scriptworker_task {{{1
 async def verify_scriptworker_task(chain, obj):
-    """Verify the scriptworker object.
+    """Verify the signing trust object.
 
-    Noop for now.
+    Currently the only check is to make sure it was run on a scriptworker.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
     """
-    pass
+    errors = []
+    if obj.worker_impl != "scriptworker":
+        errors.append("{} {} must be run from scriptworker!".format(obj.name, obj.task_id))
+    raise_on_errors(errors)
 
 
 # verify_worker_impls {{{1
@@ -1205,6 +1241,8 @@ This is helpful in debugging chain of trust changes or issues.
 To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6N
 or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     parser.add_argument('task_id', help='the task id to test')
+    parser.add_argument('--task-type', help='the task type to test',
+                        choices=["signing", "balrog", "beetmover"], required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
     opts = parser.parse_args(args)
@@ -1228,7 +1266,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
                 'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
                 'verify_cot_signature': False,
             })
-            cot = ChainOfTrust(context, 'signing', task_id=opts.task_id)
+            cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
             loop.run_until_complete(verify_chain_of_trust(cot))
             log.info(pprint.pformat(cot.dependent_task_ids()))
             log.info("Cot task_id: {}".format(cot.task_id))

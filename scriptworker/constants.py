@@ -123,6 +123,8 @@ DEFAULT_CONFIG = frozendict({
 
     # scriptworker identification
     "scriptworker_worker_types": (
+        "balrogworker-v1",
+        "beetmoverworker-v1",
         "signing-linux-v1",
     ),
     "scriptworker_provisioners": (

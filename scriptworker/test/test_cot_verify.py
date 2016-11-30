@@ -833,18 +833,22 @@ async def test_verify_docker_image_task_command(chain, docker_image_link):
         await cotverify.verify_docker_image_task(chain, docker_image_link)
 
 
-# verify_signing_task {{{1
+# verify_scriptworker_task {{{1
+@pytest.mark.parametrize("func", ["verify_balrog_task", "verify_beetmover_task",
+                                  "verify_signing_task", "verify_scriptworker_task"])
 @pytest.mark.asyncio
-async def test_verify_signing_task(chain, build_link):
+async def test_verify_scriptworker_task(chain, build_link, func):
     build_link.worker_impl = 'scriptworker'
-    await cotverify.verify_signing_task(chain, build_link)
+    await getattr(cotverify, func)(chain, build_link)
 
 
+@pytest.mark.parametrize("func", ["verify_balrog_task", "verify_beetmover_task",
+                                  "verify_signing_task", "verify_scriptworker_task"])
 @pytest.mark.asyncio
-async def test_verify_signing_task_worker_impl(chain, build_link):
+async def test_verify_scriptworker_task_worker_impl(chain, build_link, func):
     build_link.worker_impl = 'bad_impl'
     with pytest.raises(CoTError):
-        await cotverify.verify_signing_task(chain, build_link)
+        await getattr(cotverify, func)(chain, build_link)
 
 
 # check_num_tasks {{{1
@@ -873,12 +877,6 @@ async def test_verify_docker_worker_task(mocker):
     mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=noop_sync)
     mocker.patch.object(cotverify, 'verify_docker_image_sha', new=noop_sync)
     await cotverify.verify_docker_worker_task(mock.MagicMock(), mock.MagicMock())
-
-
-# verify_scriptworker_task {{{1
-@pytest.mark.asyncio
-async def test_verify_scriptworker_task():
-    await cotverify.verify_scriptworker_task(mock.MagicMock(), mock.MagicMock())
 
 
 # verify_worker_impls {{{1
@@ -995,7 +993,7 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 
 
 # verify_cot_cmdln {{{1
-@pytest.mark.parametrize("args", (("x", "--cleanup"), ("x", )))
+@pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
 def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
     context = mock.MagicMock()
     context.queue = mock.MagicMock()
