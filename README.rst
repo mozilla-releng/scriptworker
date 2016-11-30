@@ -66,4 +66,5 @@ then
 
 It's also possible to create a ``./secrets.json`` as above, then::
 
+    cp docker/Dockerfile.test Dockerfile
     docker build -t scriptworker . && docker run scriptworker tox
