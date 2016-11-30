@@ -14,6 +14,7 @@ import shutil
 import subprocess
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
+from scriptworker.utils import rm
 from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, touch
 from . import rw_context as context
 
@@ -812,10 +813,14 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found)
     sgpg.create_initial_gpg_homedirs()
 
 
-def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop):
+@pytest.mark.parametrize("nuke_dir", (True, False))
+def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop, nuke_dir):
 
     def fake_context(*args):
         return (context, None)
+
+    if nuke_dir:
+        rm(context.config['git_key_repo_dir'])
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
     mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
@@ -844,14 +849,17 @@ def test_create_initial_gpg_homedirs_lockfile(context, mocker, event_loop):
 
 
 # rebuild_gpg_homedirs {{{1
-def test_rebuild_gpg_homedirs(context, mocker, event_loop):
+@pytest.mark.parametrize("new_revision", [None, "blah"])
+def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_revision):
+    def new_rev(*args, **kwargs):
+        return new_revision
 
     def fake_context(*args):
         return (context, None)
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
     mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
-    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=noop_sync)
+    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=new_rev)
 
     sgpg.rebuild_gpg_homedirs()
 

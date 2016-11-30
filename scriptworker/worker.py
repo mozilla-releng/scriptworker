@@ -14,7 +14,7 @@ from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
-from scriptworker.gpg import get_tmp_base_gpg_home_dir, overwrite_gpg_home
+from scriptworker.gpg import get_tmp_base_gpg_home_dir, is_lockfile_present, overwrite_gpg_home, rm_lockfile
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
 from scriptworker.utils import cleanup, retry_request, rm
@@ -82,12 +82,13 @@ async def async_main(context):
         context (scriptworker.context.Context): the scriptworker context.
     """
     tmp_gpg_home = get_tmp_base_gpg_home_dir(context)
-    lockfile = context.config['gpg_lockfile']
     await run_loop(context)
     await asyncio.sleep(context.config['poll_interval'])
-    if os.path.exists(tmp_gpg_home) and not os.path.exists(lockfile):
+    state = is_lockfile_present(context, "scriptworker", logging.DEBUG)
+    if os.path.exists(tmp_gpg_home) and state == "ready":
         overwrite_gpg_home(tmp_gpg_home, context.config['base_gpg_home_dir'])
         rm(tmp_gpg_home)
+        rm_lockfile(context)
 
 
 def main():
