@@ -1444,7 +1444,6 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         # called from non-scriptworker entry points, this shouldn't have any
         # negative effects.
         return new_revision
-    event_loop.close()
 
 
 def get_tmp_base_gpg_home_dir(context):
@@ -1528,3 +1527,5 @@ def rebuild_gpg_homedirs():
             create_lockfile(context, message="ready")
         else:
             rm_lockfile(context)
+        event_loop = asyncio.get_event_loop()
+        event_loop.close()
