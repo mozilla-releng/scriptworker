@@ -6,6 +6,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Dockerfiles: one for general testing and one for gpg homedir testing, with readme updates
 - `flake8_docstrings` in tox.ini
+- log chain of trust verification more verbosely, since we no longer have real artifacts uploaded alongside
+
+### Changed
+- download cot artifacts into `work_dir/cot` instead of `artifact_dir/public/cot`, to avoid massive storage dups
+- `download_artifacts` now returns a list of full paths instead of relative paths. Since `upstreamArtifacts` contains the relative paths, this should be more helpful.
 
 ### Changed
 - check for a new gpg homedir before `run_loop`, because puppet will now use `rebuild_gpg_homedirs`

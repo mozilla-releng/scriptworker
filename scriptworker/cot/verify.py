@@ -35,7 +35,6 @@ class ChainOfTrust(object):
 
     Attributes:
         context (scriptworker.context.Context): the scriptworker context
-        cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
         links (list): the list of ``LinkOfTrust``s
         name (str): the name of the task (e.g., signing)
@@ -135,7 +134,7 @@ class LinkOfTrust(object):
         self.context = context
         self.task_id = task_id
         self.cot_dir = os.path.join(
-            context.config['artifact_dir'], 'public', 'cot', self.task_id
+            context.config['work_dir'], 'cot', self.task_id
         )
 
     def _set(self, prop_name, value):
@@ -242,6 +241,7 @@ def guess_worker_impl(link):
     if len(set(worker_impls)) > 1:
         errors.append("guess_worker_impl: too many matches for {}: {}!\n{}".format(name, set(worker_impls), task))
     raise_on_errors(errors)
+    log.debug(" {} {} is {}".format(name, link.task_id, worker_impls[0]))
     return worker_impls[0]
 
 
@@ -358,6 +358,7 @@ def check_interactive_docker_worker(link):
         list: the list of error errors.  Success is an empty list.
     """
     errors = []
+    log.info("Checking for {} {} interactive docker-worker".format(link.name, link.task_id))
     try:
         if link.task['payload']['features'].get('interactive'):
             errors.append("{} is interactive: task.payload.features.interactive!".format(link.name))
@@ -388,6 +389,9 @@ def verify_docker_image_sha(chain, link):
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
+        log.debug(" Verifying {} {} against docker-image {}".format(
+            link.name, link.task_id, docker_image_task_id
+        ))
         if docker_image_task_id != task['payload']['image']['taskId']:
             errors.append("{} {} docker-image taskId isn't consistent!: {} vs {}".format(
                 link.name, link.task_id, docker_image_task_id,
@@ -410,6 +414,8 @@ def verify_docker_image_sha(chain, link):
                 errors.append("{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
                     link.name, link.task_id, alg, sha, upstream_sha
                 ))
+            else:
+                log.debug(" Found matching docker-image sha {}".format(upstream_sha))
     else:
         # Using downloaded image from docker hub
         task_type = link.task_type
@@ -420,6 +426,8 @@ def verify_docker_image_sha(chain, link):
             errors.append("{} {} docker imageHash {} not in the allowlist!\n{}".format(
                 link.name, link.task_id, image_hash, cot
             ))
+        else:
+            log.debug(" Found allowlisted image_hash {}".format(image_hash))
     raise_on_errors(errors)
 
 
@@ -435,7 +443,7 @@ def find_task_dependencies(task, name, task_id):
     Returns:
         dict: mapping dependent task ``name`` to dependent task ``taskId``.
     """
-    log.info("find_task_dependencies {}".format(name))
+    log.info("find_task_dependencies {} {}".format(name, task_id))
     decision_task_id = get_decision_task_id(task)
     decision_key = '{}:decision'.format(name)
     dep_dict = {}
@@ -467,7 +475,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
     Raises:
         CoTError: on failure.
     """
-    log.info("build_task_dependencies {}".format(name))
+    log.info("build_task_dependencies {} {}".format(name, my_task_id))
     if name.count(':') > 5:
         raise CoTError("Too deep recursion!\n{}".format(name))
     deps = find_task_dependencies(task, name, my_task_id)
@@ -521,7 +529,10 @@ async def download_cot(chain):
                 )
             )
         )
-        await raise_future_exceptions(async_tasks)
+    paths = await raise_future_exceptions(async_tasks)
+    for path in paths:
+        sha = get_hash(path[0])
+        log.debug(" {} downloaded; hash is {}".format(path[0], sha))
 
 
 # download_cot_artifact {{{1
@@ -540,7 +551,7 @@ async def download_cot_artifact(chain, task_id, path):
         CoTError: on failure.
     """
     link = chain.get_link(task_id)
-    log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
+    log.debug(" Verifying {} is in {} cot artifacts...".format(path, task_id))
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
     url = get_artifact_url(chain.context, task_id, path)
@@ -555,6 +566,7 @@ async def download_cot_artifact(chain, task_id, path):
         real_sha = get_hash(full_path, hash_alg=alg)
         if expected_sha != real_sha:
             raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
+        log.debug(" {} matches the expected {} {}".format(full_path, alg, expected_sha))
     return full_path
 
 
@@ -631,12 +643,11 @@ def verify_cot_signatures(chain):
     """
     for link in chain.links:
         path = os.path.join(link.cot_dir, 'public/chainOfTrust.json.asc')
-        gpg = GPG(
-            chain.context,
-            gpg_home=os.path.join(
-                chain.context.config['base_gpg_home_dir'], link.worker_impl
-            )
-        )
+        gpg_home = os.path.join(chain.context.config['base_gpg_home_dir'], link.worker_impl)
+        gpg = GPG(chain.context, gpg_home=gpg_home)
+        log.debug(" Verifying the {} {} chain of trust signature against {}".format(
+            link.name, link.task_id, gpg_home
+        ))
         try:
             with open(path, "r") as fh:
                 contents = fh.read()
@@ -656,6 +667,7 @@ def verify_cot_signatures(chain):
             message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
         )
         unsigned_path = os.path.join(link.cot_dir, 'chainOfTrust.json')
+        log.debug(" Good.  Writing json contents to {}".format(unsigned_path))
         with open(unsigned_path, "w") as fh:
             fh.write(format_json(link.cot))
 
@@ -726,11 +738,12 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
     if task_link.task_id in decision_link.task_graph:
         graph_defn = deepcopy(decision_link.task_graph[task_link.task_id])
         verify_task_in_task_graph(task_link, graph_defn)
+        log.info("Found {} in the graph; it's a match".format(task_link.task_id))
         return
     # Fall back to fuzzy matching to support retriggers: the taskId and
     # datestrings will change but the task definition shouldn't.
     for task_id, graph_defn in decision_link.task_graph.items():
-        log.debug("Fuzzy matching against {} ...".format(task_id))
+        log.debug(" Fuzzy matching against {} ...".format(task_id))
         try:
             verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
             log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
@@ -844,6 +857,8 @@ async def verify_decision_task(chain, link):
         if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
             verify_link_in_task_graph(chain, link, target_link)
     # limit what can be in payload.env
+    # XXX replace this and the command check with downloading the decision yaml from hgweb and
+    # comparing the task.  This new check will also have to deal with hooks
     for key in link.task['payload'].get('env', {}).keys():
         if key not in link.context.config['valid_decision_env_vars']:
             errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
@@ -877,6 +892,7 @@ async def verify_build_task(chain, link):
         link (LinkOfTrust): the task link we're checking.
     """
     errors = []
+    # XXX remove this check once we have the decision task vetted from the in-tree yaml
     if link.worker_impl == 'docker-worker':
         for key in link.task['payload'].get('env', {}).keys():
             if key not in link.context.config['valid_docker_worker_build_env_vars']:
@@ -897,6 +913,8 @@ async def verify_docker_image_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_docker_image_worker_types']:
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
+    # XXX remove the env and command checks once we have a vetted decision task
+    # from in-tree yaml
     # env
     for key in link.task['payload'].get('env', {}).keys():
         if key not in link.context.config['valid_docker_image_env_vars']:
@@ -923,6 +941,7 @@ async def verify_signing_task(chain, obj):
     raise_on_errors(errors)
 
 
+# check_num_tasks {{{1
 def check_num_tasks(chain, task_count):
     """Make sure there are a specific number of specific task types.
 
@@ -1038,15 +1057,16 @@ def get_firefox_source_url(obj):
         CoTError: if repo and source are defined and don't match
     """
     task = obj.task
-    log.debug("Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
+    log.debug(" Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
     repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
     source = task['metadata']['source']
     # We hit this for hooks.
     if repo and not source.startswith(repo):
-        log.info("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}... returning {}".format(
+        log.warning("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}... returning {}".format(
             obj.name, obj.task_id, repo, source, repo
         ))
         return repo
+    log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
     return source
 
 
@@ -1121,7 +1141,7 @@ async def verify_chain_of_trust(chain):
     Raises:
         CoTError: on failure
     """
-    log_path = os.path.join(chain.context.config["artifact_dir"], "public", "cot", "audit.log")
+    log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
     with contextual_log_handler(chain.context, path=log_path, log_obj=log):
         try:
             # build LinkOfTrust objects
@@ -1185,7 +1205,9 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             context.task = loop.run_until_complete(context.queue.task(opts.task_id))
             context.config = dict(deepcopy(DEFAULT_CONFIG))
             context.config.update({
+                'work_dir': os.path.join(tmp, 'work'),
                 'artifact_dir': os.path.join(tmp, 'artifacts'),
+                'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
                 'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
                 'verify_cot_signature': False,
             })
