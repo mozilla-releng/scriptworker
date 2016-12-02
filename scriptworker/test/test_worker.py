@@ -89,9 +89,8 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         mocker.patch.object(worker, 'overwrite_gpg_home', new=noop_sync)
         mocker.patch.object(worker, 'rm', new=noop_sync)
         mocker.patch.object(worker, 'rm_lockfile', new=exit)
-        event_loop.run_until_complete(
-            worker.async_main(context)
-        )
+        event_loop.run_until_complete(worker.async_main(context))
+        event_loop.run_until_complete(worker.async_main(context))
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
                 worker.async_main(context)

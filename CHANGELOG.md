@@ -7,8 +7,15 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Dockerfile for testing, with readme updates
 - `flake8_docstrings` in tox.ini
 
+### Changed
+- check for a new gpg homedir before `run_loop`, because puppet will now use `rebuild_gpg_homedirs`
+
 ### Fixed
 - updated all docstrings to pass `flake8_docstrings`
+- switched to a three-phase lockfile for gpg homedir creation to avoid race conditions (locked, ready, unlocked)
+
+### Removed
+- the `create_initial_gpg_homedirs` entry point has been removed in favor of `rebuild_gpg_homedirs`.
 
 ## [1.0.0b2] - 2016-11-28
 ### Changed

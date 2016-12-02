@@ -1408,7 +1408,7 @@ def build_gpg_homedirs_from_repo(
     return basedir
 
 
-# create_initial_gpg_homedirs and rebuild_gpg_homedirs {{{1
+# rebuild_gpg_homedirs {{{1
 def _update_git_and_rebuild_homedirs(context, basedir=None):
     log.info("Updating git repo")
     basedir = basedir or context.config['base_gpg_home_dir']
@@ -1445,29 +1445,6 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         # negative effects.
         return new_revision
     event_loop.close()
-
-
-def create_initial_gpg_homedirs():
-    """Create the gpg homedirs before scriptworker is launched.
-
-    This is an entry point, and should be called before scriptworker is run.
-
-    Raises:
-        SystemExit: on failure.
-    """
-    context, _ = get_context_from_cmdln(sys.argv[1:])
-    update_logging_config(context, file_name='create_initial_gpg_homedirs.log')
-    log.info("create_initial_gpg_homedirs()...")
-    if is_lockfile_present(context, "create_initial_gpg_homedirs"):
-        return
-    create_lockfile(context)
-    try:
-        _update_git_and_rebuild_homedirs(context)
-    except ScriptWorkerException as exc:
-        traceback.print_exc()
-        sys.exit(exc.exit_code)
-    finally:
-        rm_lockfile(context)
 
 
 def get_tmp_base_gpg_home_dir(context):

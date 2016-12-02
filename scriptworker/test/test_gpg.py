@@ -787,10 +787,9 @@ def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
     assert homedirs == expected
 
 
-# create_initial_gpg_homedirs {{{1
-@pytest.mark.parametrize("new_rev_found", (True, False))
-def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found):
-
+# rebuild_gpg_homedirs {{{1
+@pytest.mark.parametrize("new_rev_found", [True, False])
+def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_rev_found):
     def fake_context(*args):
         return (context, None)
 
@@ -810,11 +809,11 @@ def test_create_initial_gpg_homedirs(context, mocker, event_loop, new_rev_found)
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
     mocker.patch.object(sgpg, "write_last_good_git_revision", new=noop_sync)
 
-    sgpg.create_initial_gpg_homedirs()
+    sgpg.rebuild_gpg_homedirs()
 
 
 @pytest.mark.parametrize("nuke_dir", (True, False))
-def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop, nuke_dir):
+def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop, nuke_dir):
 
     def fake_context(*args):
         return (context, None)
@@ -832,46 +831,6 @@ def test_create_initial_gpg_homedirs_exception(context, mocker, event_loop, nuke
     mocker.patch.object(sgpg, "update_signed_git_repo", new=noop_async)
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
 
-    with pytest.raises(SystemExit):
-        sgpg.create_initial_gpg_homedirs()
-
-
-def test_create_initial_gpg_homedirs_lockfile(context, mocker, event_loop):
-
-    def fake_context(*args):
-        return (context, None)
-
-    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
-
-    touch(context.config['gpg_lockfile'])
-    sgpg.create_initial_gpg_homedirs()
-
-
-# rebuild_gpg_homedirs {{{1
-@pytest.mark.parametrize("new_revision", [None, "blah"])
-def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_revision):
-    def new_rev(*args, **kwargs):
-        return new_revision
-
-    def fake_context(*args):
-        return (context, None)
-
-    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
-    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=new_rev)
-
-    sgpg.rebuild_gpg_homedirs()
-
-
-def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop):
-
-    def fake_context(*args):
-        return (context, None)
-
-    mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
-    mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
-    mocker.patch.object(sgpg, "_update_git_and_rebuild_homedirs", new=die_sync)
 
     with pytest.raises(SystemExit):
         sgpg.rebuild_gpg_homedirs()
