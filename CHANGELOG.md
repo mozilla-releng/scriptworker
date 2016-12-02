@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 ### Added
-- Dockerfile for testing, with readme updates
+- Dockerfiles: one for general testing and one for gpg homedir testing, with readme updates
 - `flake8_docstrings` in tox.ini
 
 ### Changed
