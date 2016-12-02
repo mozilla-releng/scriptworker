@@ -19,6 +19,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - updated all docstrings to pass `flake8_docstrings`
 - switched to a three-phase lockfile for gpg homedir creation to avoid race conditions (locked, ready, unlocked)
+- catch `aiohttp.errors.DisconnectedError` and `aiohttp.errors.ClientError` in `run_loop` during `upload_artifacts`
+- compare the built docker-image tarball hash against `imageArtifactHash`
 
 ### Removed
 - the `create_initial_gpg_homedirs` entry point has been removed in favor of `rebuild_gpg_homedirs`.

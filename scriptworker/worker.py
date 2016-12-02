@@ -12,6 +12,7 @@ import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.config import get_context_from_cmdln
+from scriptworker.constants import STATUSES
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, is_lockfile_present, overwrite_gpg_home, rm_lockfile
@@ -65,6 +66,9 @@ async def run_loop(context, creds_key="credentials"):
             except ScriptWorkerException as e:
                 status = worst_level(status, e.exit_code)
                 log.error("Hit ScriptWorkerException: {}".format(str(e)))
+            except (aiohttp.errors.DisconnectedError, aiohttp.errors.ClientError) as e:
+                status = worst_level(status, STATUSES['resource-unavailable'])
+                log.error("Hit aiohttp error: {}".format(str(e)))
             await complete_task(context, status)
             cleanup(context)
             await asyncio.sleep(1)
