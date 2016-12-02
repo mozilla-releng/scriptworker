@@ -385,7 +385,6 @@ def verify_docker_image_sha(chain, link):
     cot = link.cot
     task = link.task
     errors = []
-    image_hash = cot['environment']['imageHash']
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
@@ -398,24 +397,23 @@ def verify_docker_image_sha(chain, link):
             path = task['payload']['image']['path']
             # we need change the hash alg everywhere if we change, and recreate
             # the docker images...
+            image_hash = cot['environment']['imageArtifactHash']
             alg, sha = image_hash.split(':')
             docker_image_link = chain.get_link(docker_image_task_id)
-            upstream_sha = docker_image_link.cot['artifacts'][path].get(alg)
+            upstream_sha = docker_image_link.cot['artifacts'].get(path, {}).get(alg)
             if upstream_sha is None:
                 errors.append("{} {} docker-image docker sha {} is missing! {}".format(
                     link.name, link.task_id, alg,
                     docker_image_link.cot['artifacts'][path]
                 ))
             elif upstream_sha != sha:
-                # TODO make this an error once we fix bug 1315415
-                message = "{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
+                errors.append("{} {} docker-image docker sha doesn't match! {} {} vs {}".format(
                     link.name, link.task_id, alg, sha, upstream_sha
-                )
-                log.warning("Known issue:\n{}".format(message))
-                # errors.append(message)
+                ))
     else:
         # Using downloaded image from docker hub
         task_type = link.task_type
+        image_hash = cot['environment']['imageHash']
         # XXX we will need some way to allow trusted developers to update these
         # allowlists
         if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
