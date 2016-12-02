@@ -68,7 +68,7 @@ def build_link(chain):
     link = cotverify.LinkOfTrust(chain.context, 'build', 'build_task_id')
     link.cot = {
         'environment': {
-            'imageHash': "sha256:built_docker_image_sha",
+            'imageArtifactHash': "sha256:built_docker_image_sha",
         },
     }
     link.task = {
@@ -319,9 +319,9 @@ def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_
 
 def test_verify_docker_image_sha_wrong_built_sha(chain, build_link, decision_link, docker_image_link):
     chain.links = [build_link, decision_link, docker_image_link]
-    # wrong built sha: for now this will only warn
     docker_image_link.cot['artifacts']['path/image']['sha256'] = "wrong_sha"
-    cotverify.verify_docker_image_sha(chain, build_link)
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, build_link)
 
 
 def test_verify_docker_image_sha_missing(chain, build_link, decision_link, docker_image_link):
