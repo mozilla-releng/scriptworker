@@ -1408,11 +1408,13 @@ def build_gpg_homedirs_from_repo(
     return basedir
 
 
-# create_initial_gpg_homedirs and rebuild_gpg_homedirs {{{1
+# rebuild_gpg_homedirs {{{1
 def _update_git_and_rebuild_homedirs(context, basedir=None):
     log.info("Updating git repo")
     basedir = basedir or context.config['base_gpg_home_dir']
-    makedirs(context.config['git_key_repo_dir'])
+    if not os.path.exists(context.config['git_key_repo_dir']):
+        log.critical("{} doesn't exist to update!".format(context.config['git_key_repo_dir']))
+        sys.exit(1)
     trusted_path = context.config['git_commit_signing_pubkey_dir']
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
         rebuild_gpg_home_signed(
@@ -1438,34 +1440,7 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         build_gpg_homedirs_from_repo(context, basedir=basedir)
         log.info("Writing last_good_git_revision...")
         write_last_good_git_revision(context, new_revision)
-        # Get rid of spurious event_loop errors.  Since this function is only
-        # called from non-scriptworker entry points, this shouldn't have any
-        # negative effects.
-        event_loop.close()
-
-
-def create_initial_gpg_homedirs():
-    """Create the gpg homedirs before scriptworker is launched.
-
-    This is an entry point, and should be called before scriptworker is run.
-
-    Raises:
-        SystemExit: on failure.
-    """
-    context, _ = get_context_from_cmdln(sys.argv[1:])
-    update_logging_config(context, file_name='create_initial_gpg_homedirs.log')
-    log.info("create_initial_gpg_homedirs()...")
-    if is_lockfile_present(context, "create_initial_gpg_homedirs"):
-        return
-    makedirs(context.config['git_key_repo_dir'])
-    create_lockfile(context)
-    try:
-        _update_git_and_rebuild_homedirs(context)
-    except ScriptWorkerException as exc:
-        traceback.print_exc()
-        sys.exit(exc.exit_code)
-    finally:
-        rm_lockfile(context)
+        return new_revision
 
 
 def get_tmp_base_gpg_home_dir(context):
@@ -1483,24 +1458,27 @@ def get_tmp_base_gpg_home_dir(context):
     return '{}.tmp'.format(context.config['base_gpg_home_dir'])
 
 
-def is_lockfile_present(context, name):
+def is_lockfile_present(context, name, level=logging.WARNING):
     """Check for the lockfile.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
         name (str): the name of the calling function
+        level (int, optional): the level to log to. Defaults to ``logging.WARNING``
 
     Returns:
-        bool: True if lockfile exists.
+        str: "locked" on r/w lock; "ready" if ready to copy.
+        None: if lockfile is not present
     """
     lockfile = context.config['gpg_lockfile']
     if os.path.exists(lockfile):
-        log.warning("Skipping {}: lockfile {} exists!".format(name, lockfile))
-        return True
-    return False
+        with open(lockfile, "r") as fh:
+            message = fh.read().split(':')[0]
+        log.log(level, "{}: lockfile {} exists: {}".format(name, lockfile, message))
+        return message
 
 
-def create_lockfile(context):
+def create_lockfile(context, message="locked"):
     """Create the lockfile.
 
     Args:
@@ -1508,7 +1486,7 @@ def create_lockfile(context):
     """
     lockfile = context.config['gpg_lockfile']
     with open(lockfile, "w") as fh:
-        print(str(arrow.utcnow().timestamp), file=fh, end="")
+        print("{}:{}".format(message, str(arrow.utcnow().timestamp)), file=fh, end="")
 
 
 def rm_lockfile(context):
@@ -1535,10 +1513,17 @@ def rebuild_gpg_homedirs():
     if is_lockfile_present(context, "rebuild_gpg_homedirs"):
         return
     create_lockfile(context)
+    new_revision = None
     try:
-        _update_git_and_rebuild_homedirs(context, basedir=basedir)
+        new_revision = _update_git_and_rebuild_homedirs(context, basedir=basedir)
     except ScriptWorkerException as exc:
         traceback.print_exc()
         sys.exit(exc.exit_code)
     finally:
-        rm_lockfile(context)
+        if new_revision:
+            create_lockfile(context, message="ready")
+        else:
+            rm_lockfile(context)
+        event_loop = asyncio.get_event_loop()
+        # Get rid of spurious event_loop errors.
+        event_loop.close()

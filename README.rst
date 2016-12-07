@@ -66,4 +66,15 @@ then
 
 It's also possible to create a ``./secrets.json`` as above, then::
 
-    docker build -t scriptworker . && docker run scriptworker tox
+    cp docker/Dockerfile.test Dockerfile
+    docker build -t scriptworker-test . && docker run scriptworker-test tox
+
+GPG Homedir testing
+^^^^^^^^^^^^^^^^^^^
+
+Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so::
+
+    cp docker/Dockerfile.gnupg Dockerfile
+    docker build -t scriptworker-gpg . && docker run -i scriptworker-gpg bash -il
+    # in the docker shell,
+    rebuild_gpg_homedirs scriptworker.yaml

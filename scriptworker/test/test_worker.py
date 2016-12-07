@@ -74,10 +74,11 @@ def test_async_main(context, event_loop, mocker, tmpdir):
             pass
         lockfile = context.config['gpg_lockfile']
         if os.path.exists(lockfile):
-            os.remove(lockfile)
+            with open(lockfile, "w") as fh:
+                print("ready:", file=fh)
         else:
             with open(lockfile, "w") as fh:
-                print(" ", file=fh)
+                print("locked:", file=fh)
 
     def exit(*args, **kwargs):
         sys.exit()
@@ -86,10 +87,10 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
         mocker.patch.object(asyncio, 'sleep', new=noop_async)
         mocker.patch.object(worker, 'overwrite_gpg_home', new=noop_sync)
-        mocker.patch.object(worker, 'rm', new=exit)
-        event_loop.run_until_complete(
-            worker.async_main(context)
-        )
+        mocker.patch.object(worker, 'rm', new=noop_sync)
+        mocker.patch.object(worker, 'rm_lockfile', new=exit)
+        event_loop.run_until_complete(worker.async_main(context))
+        event_loop.run_until_complete(worker.async_main(context))
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
                 worker.async_main(context)
