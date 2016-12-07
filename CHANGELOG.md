@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - download cot artifacts into `work_dir/cot` instead of `artifact_dir/public/cot`, to avoid massive storage dups
 - `download_artifacts` now returns a list of full paths instead of relative paths. Since `upstreamArtifacts` contains the relative paths, this should be more helpful.
+- `contextual_log_handler` now takes a `logging.Formatter` kwarg rather than a log format string.
 
 ### Changed
 - check for a new gpg homedir before `run_loop`, because puppet will now use `rebuild_gpg_homedirs`

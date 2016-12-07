@@ -241,7 +241,7 @@ def guess_worker_impl(link):
     if len(set(worker_impls)) > 1:
         errors.append("guess_worker_impl: too many matches for {}: {}!\n{}".format(name, set(worker_impls), task))
     raise_on_errors(errors)
-    log.debug(" {} {} is {}".format(name, link.task_id, worker_impls[0]))
+    log.debug("{} {} is {}".format(name, link.task_id, worker_impls[0]))
     return worker_impls[0]
 
 
@@ -389,7 +389,7 @@ def verify_docker_image_sha(chain, link):
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
-        log.debug(" Verifying {} {} against docker-image {}".format(
+        log.debug("Verifying {} {} against docker-image {}".format(
             link.name, link.task_id, docker_image_task_id
         ))
         if docker_image_task_id != task['payload']['image']['taskId']:
@@ -415,7 +415,7 @@ def verify_docker_image_sha(chain, link):
                     link.name, link.task_id, alg, sha, upstream_sha
                 ))
             else:
-                log.debug(" Found matching docker-image sha {}".format(upstream_sha))
+                log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
         # Using downloaded image from docker hub
         task_type = link.task_type
@@ -427,7 +427,7 @@ def verify_docker_image_sha(chain, link):
                 link.name, link.task_id, image_hash, cot
             ))
         else:
-            log.debug(" Found allowlisted image_hash {}".format(image_hash))
+            log.debug("Found allowlisted image_hash {}".format(image_hash))
     raise_on_errors(errors)
 
 
@@ -532,7 +532,7 @@ async def download_cot(chain):
     paths = await raise_future_exceptions(async_tasks)
     for path in paths:
         sha = get_hash(path[0])
-        log.debug(" {} downloaded; hash is {}".format(path[0], sha))
+        log.debug("{} downloaded; hash is {}".format(path[0], sha))
 
 
 # download_cot_artifact {{{1
@@ -551,7 +551,7 @@ async def download_cot_artifact(chain, task_id, path):
         CoTError: on failure.
     """
     link = chain.get_link(task_id)
-    log.debug(" Verifying {} is in {} cot artifacts...".format(path, task_id))
+    log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
     url = get_artifact_url(chain.context, task_id, path)
@@ -566,7 +566,7 @@ async def download_cot_artifact(chain, task_id, path):
         real_sha = get_hash(full_path, hash_alg=alg)
         if expected_sha != real_sha:
             raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
-        log.debug(" {} matches the expected {} {}".format(full_path, alg, expected_sha))
+        log.debug("{} matches the expected {} {}".format(full_path, alg, expected_sha))
     return full_path
 
 
@@ -645,7 +645,7 @@ def verify_cot_signatures(chain):
         path = os.path.join(link.cot_dir, 'public/chainOfTrust.json.asc')
         gpg_home = os.path.join(chain.context.config['base_gpg_home_dir'], link.worker_impl)
         gpg = GPG(chain.context, gpg_home=gpg_home)
-        log.debug(" Verifying the {} {} chain of trust signature against {}".format(
+        log.debug("Verifying the {} {} chain of trust signature against {}".format(
             link.name, link.task_id, gpg_home
         ))
         try:
@@ -667,7 +667,7 @@ def verify_cot_signatures(chain):
             message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
         )
         unsigned_path = os.path.join(link.cot_dir, 'chainOfTrust.json')
-        log.debug(" Good.  Writing json contents to {}".format(unsigned_path))
+        log.debug("Good.  Writing json contents to {}".format(unsigned_path))
         with open(unsigned_path, "w") as fh:
             fh.write(format_json(link.cot))
 
@@ -743,7 +743,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
     # Fall back to fuzzy matching to support retriggers: the taskId and
     # datestrings will change but the task definition shouldn't.
     for task_id, graph_defn in decision_link.task_graph.items():
-        log.debug(" Fuzzy matching against {} ...".format(task_id))
+        log.debug("Fuzzy matching against {} ...".format(task_id))
         try:
             verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
             log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
@@ -1057,7 +1057,7 @@ def get_firefox_source_url(obj):
         CoTError: if repo and source are defined and don't match
     """
     task = obj.task
-    log.debug(" Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
+    log.debug("Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
     repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
     source = task['metadata']['source']
     # We hit this for hooks.
@@ -1131,6 +1131,17 @@ async def trace_back_to_firefox_tree(chain):
     raise_on_errors(errors)
 
 
+# AuditLogFormatter {{{1
+class AuditLogFormatter(logging.Formatter):
+    """Format the chain of trust log."""
+
+    def format(self, record):
+        """Space debug messages for more legibility."""
+        if record.levelno == logging.DEBUG:
+            record.msg = ' {}'.format(record.msg)
+        return super(AuditLogFormatter, self).format(record)
+
+
 # verify_chain_of_trust {{{1
 async def verify_chain_of_trust(chain):
     """Build and verify the chain of trust.
@@ -1142,7 +1153,13 @@ async def verify_chain_of_trust(chain):
         CoTError: on failure
     """
     log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
-    with contextual_log_handler(chain.context, path=log_path, log_obj=log):
+    with contextual_log_handler(
+        chain.context, path=log_path, log_obj=log,
+        formatter=AuditLogFormatter(
+            fmt=chain.context.config['log_fmt'],
+            datefmt=chain.context.config['log_datefmt'],
+        )
+    ):
         try:
             # build LinkOfTrust objects
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
