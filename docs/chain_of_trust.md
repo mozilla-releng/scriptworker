@@ -71,7 +71,7 @@ The chain of trust is a second factor that isn't automatically compromised if sc
 - Download the chain of trust artifacts and verify their signatures
   - Using the above gpg homedirs
 - Download upstreamArtifacts and verify their shas against the chain of trust artifact shas
-  - These live in `$artifact_dir/public/cot/$upstream-task-id/$path` , so the script doesn't have to re-download and re-verify
+  - These live in `$work_dir/cot/$upstream-task-id/$path` , so the script doesn't have to re-download and re-verify
 - Verify the chain of trust
   - verify each task type:
     - [decision](https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L759)

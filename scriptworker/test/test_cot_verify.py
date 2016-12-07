@@ -438,6 +438,12 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
 @pytest.mark.parametrize("raises", (True, False))
 @pytest.mark.asyncio
 async def test_download_cot(chain, mocker, raises, event_loop):
+    async def down(*args, **kwargs):
+        return ['x']
+
+    def sha(*args, **kwargs):
+        return "sha"
+
     m = mock.MagicMock()
     m.task_id = "x"
     m.cot_dir = "y"
@@ -448,7 +454,8 @@ async def test_download_cot(chain, mocker, raises, event_loop):
         with pytest.raises(CoTError):
             await cotverify.download_cot(chain)
     else:
-        mocker.patch.object(cotverify, 'download_artifacts', new=noop_async)
+        mocker.patch.object(cotverify, 'download_artifacts', new=down)
+        mocker.patch.object(cotverify, 'get_hash', new=sha)
         await cotverify.download_cot(chain)
 
 

@@ -289,9 +289,6 @@ def test_download_artifacts(context, event_loop):
         os.path.join(context.config['work_dir'], "foo", "bar"),
         os.path.join(context.config['work_dir'], "baz"),
     ]
-    expected_result = [
-        "foo/bar", "baz"
-    ]
 
     async def foo(_, url, path, **kwargs):
         urls.append(url)
@@ -301,6 +298,6 @@ def test_download_artifacts(context, event_loop):
         task.download_artifacts(context, expected_urls, download_func=foo)
     )
 
-    assert sorted(result) == sorted(expected_result)
+    assert sorted(result) == sorted(expected_paths)
     assert sorted(paths) == sorted(expected_paths)
     assert sorted(urls) == sorted(expected_urls)

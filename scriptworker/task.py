@@ -439,8 +439,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             plus the decision taskId.  Defaults to None.
 
     Returns:
-        list: the relative paths to the files downloaded, relative to
-            ``parent_dir``.
+        list: the full paths to the files downloaded
 
     Raises:
         scriptworker.exceptions.DownloadError: on download failure after
@@ -457,7 +456,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     for file_url in file_urls:
         rel_path = validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
-        files.append(rel_path)
+        files.append(abs_file_path)
         tasks.append(
             asyncio.ensure_future(
                 retry_async(
