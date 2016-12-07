@@ -84,9 +84,11 @@ async def async_main(context):
     tmp_gpg_home = get_tmp_base_gpg_home_dir(context)
     state = is_lockfile_present(context, "scriptworker", logging.DEBUG)
     if os.path.exists(tmp_gpg_home) and state == "ready":
-        overwrite_gpg_home(tmp_gpg_home, context.config['base_gpg_home_dir'])
-        rm(tmp_gpg_home)
-        rm_lockfile(context)
+        try:
+            overwrite_gpg_home(tmp_gpg_home, context.config['base_gpg_home_dir'])
+            rm(tmp_gpg_home)
+        finally:
+            rm_lockfile(context)
     await run_loop(context)
     await asyncio.sleep(context.config['poll_interval'])
 

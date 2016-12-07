@@ -1,9 +1,6 @@
-FROM ubuntu:16.04
+FROM python:3.5
 
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-dev \
-    python3-pip \
     git \
     curl
 
@@ -18,7 +15,6 @@ COPY tox.ini /data/
 COPY MANIFEST.in /data/
 COPY version.json /data/
 COPY secrets.json /data/
-# COPY * /data/
 COPY docker/gnupg.yaml /data/scriptworker.yaml
 COPY scriptworker/test/data/gpg/keys/scriptworker@example.com.pub /data/my_pubkey.asc
 COPY scriptworker/test/data/gpg/keys/scriptworker@example.com.sec /data/my_privkey.asc
@@ -28,5 +24,3 @@ RUN curl https://hg.mozilla.org/build/puppet/archive/tip.tar.gz/modules/scriptwo
 
 RUN pip3 install -r requirements-test-dev.txt
 RUN python3 setup.py develop
-
-#ENTRYPOINT ["/bin/bash"]

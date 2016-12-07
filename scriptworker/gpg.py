@@ -1440,9 +1440,6 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         build_gpg_homedirs_from_repo(context, basedir=basedir)
         log.info("Writing last_good_git_revision...")
         write_last_good_git_revision(context, new_revision)
-        # Get rid of spurious event_loop errors.  Since this function is only
-        # called from non-scriptworker entry points, this shouldn't have any
-        # negative effects.
         return new_revision
 
 
@@ -1528,4 +1525,5 @@ def rebuild_gpg_homedirs():
         else:
             rm_lockfile(context)
         event_loop = asyncio.get_event_loop()
+        # Get rid of spurious event_loop errors.
         event_loop.close()
