@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.worker
 """
+import aiohttp
 import arrow
 import asyncio
 from copy import deepcopy
@@ -12,6 +13,7 @@ import pytest
 import tempfile
 import shutil
 import sys
+from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
 from . import event_loop, noop_async, noop_sync, rw_context, successful_queue, tmpdir
@@ -150,9 +152,17 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     assert status is None
 
 
-@pytest.mark.parametrize("func_to_raise", ['run_task', 'upload_artifacts'])
-def test_mocker_run_loop_exception(context, successful_queue,
-                                   event_loop, mocker, func_to_raise):
+@pytest.mark.parametrize("func_to_raise,exc,expected", ((
+    'run_task', ScriptWorkerException, ScriptWorkerException.exit_code
+), (
+    'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code
+), (
+    'upload_artifacts', aiohttp.errors.DisconnectedError, STATUSES['resource-unavailable']
+), (
+    'upload_artifacts', aiohttp.errors.ClientError, STATUSES['resource-unavailable']
+)))
+def test_mocker_run_loop_exception(context, successful_queue, event_loop,
+                                   mocker, func_to_raise, exc, expected):
     """Raise an exception within the run_loop try/excepts and make sure the
     status is changed
     """
@@ -161,8 +171,8 @@ def test_mocker_run_loop_exception(context, successful_queue,
     async def find_task(*args, **kwargs):
         return task
 
-    async def exc(*args, **kwargs):
-        raise ScriptWorkerException("foo")
+    async def fail(*args, **kwargs):
+        raise exc("foo")
 
     async def run_task(*args, **kwargs):
         return 0
@@ -171,14 +181,14 @@ def test_mocker_run_loop_exception(context, successful_queue,
     mocker.patch.object(worker, "find_task", new=find_task)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     if func_to_raise == "run_task":
-        mocker.patch.object(worker, "run_task", new=exc)
+        mocker.patch.object(worker, "run_task", new=fail)
     else:
         mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     if func_to_raise == "upload_artifacts":
-        mocker.patch.object(worker, "upload_artifacts", new=exc)
+        mocker.patch.object(worker, "upload_artifacts", new=fail)
     else:
         mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = event_loop.run_until_complete(worker.run_loop(context))
-    assert status == ScriptWorkerException.exit_code
+    assert status == expected
