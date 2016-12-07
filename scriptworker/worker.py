@@ -60,15 +60,15 @@ async def run_loop(context, creds_key="credentials"):
                 generate_cot(context)
             except ScriptWorkerException as e:
                 status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(str(e)))
+                log.error("Hit ScriptWorkerException: {}".format(e))
             try:
                 await upload_artifacts(context)
             except ScriptWorkerException as e:
                 status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(str(e)))
+                log.error("Hit ScriptWorkerException: {}".format(e))
             except (aiohttp.errors.DisconnectedError, aiohttp.errors.ClientError) as e:
                 status = worst_level(status, STATUSES['resource-unavailable'])
-                log.error("Hit aiohttp error: {}".format(str(e)))
+                log.error("Hit aiohttp error: {}".format(e))
             await complete_task(context, status)
             cleanup(context)
             await asyncio.sleep(1)
