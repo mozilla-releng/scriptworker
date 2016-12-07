@@ -1122,7 +1122,15 @@ async def trace_back_to_firefox_tree(chain):
     errors = []
     repos = {}
     restricted_privs = None
-    scope_rules = chain.context.config['cot_restricted_scopes'][chain.name]
+    rules = {}
+    cot_product = chain.context.config['cot_product']
+    for my_key, config_key in {
+        'scopes': 'cot_restricted_scopes',
+        'trees': 'cot_restricted_trees'
+    }.items():
+        rules[my_key] = chain.context.config[config_key].get(cot_product)
+        if not isinstance(rules[my_key], (dict, frozendict)):
+            raise_on_errors(["{} invalid for {}: {}!".format(config_key, cot_product, rules[my_key])])
 
     def callback(match):
         path_info = match.groupdict()
@@ -1137,10 +1145,11 @@ async def trace_back_to_firefox_tree(chain):
     # check for restricted scopes.
     my_repo = repos[chain]
     for scope in chain.task['scopes']:
-        if scope in scope_rules:
+        if scope in rules['scopes']:
             log.info("Found privileged scope {}".format(scope))
             restricted_privs = True
-            if my_repo not in scope_rules[scope]:
+            level = rules['scopes'][scope]
+            if my_repo not in rules['trees'][level]:
                 errors.append("{} {}: repo {} not allowlisted for scope {}!".format(
                     chain.name, chain.task_id, my_repo, scope
                 ))

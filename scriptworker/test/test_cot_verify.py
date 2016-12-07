@@ -943,6 +943,13 @@ async def test_trace_back_to_firefox_tree_bad_repo(chain):
 
 
 @pytest.mark.asyncio
+async def test_trace_back_to_firefox_tree_bad_cot_product(chain):
+    chain.context.config['cot_product'] = 'invalid-product!!!111'
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_firefox_tree(chain)
+
+
+@pytest.mark.asyncio
 async def test_trace_back_to_firefox_tree_unknown_repo(chain, decision_link,
                                                        build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
