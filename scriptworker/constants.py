@@ -59,6 +59,7 @@ DEFAULT_CONFIG = frozendict({
     "verify_chain_of_trust": False,  # TODO True
     "verify_cot_signature": False,
     "cot_job_type": "unknown",  # e.g., signing
+    "cot_product": "firefox",
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
@@ -123,6 +124,8 @@ DEFAULT_CONFIG = frozendict({
 
     # scriptworker identification
     "scriptworker_worker_types": (
+        "balrogworker-v1",
+        "beetmoverworker-v1",
         "signing-linux-v1",
     ),
     "scriptworker_provisioners": (
@@ -210,14 +213,25 @@ DEFAULT_CONFIG = frozendict({
         ],
     }, ),
 
-    # Scopes, restricted by task type and repo
+    # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
-        'signing': {
-            # Which repos can do release signing?
+        'firefox': {
+            'project:releng:beetmover:release': 'release',
+            'project:releng:balrog:release': 'release',
+            'project:releng:signing:cert:release-signing': 'release',
+            'project:releng:balrog:nightly': 'nightly',
+            'project:releng:beetmover:nightly': 'nightly',
+            'project:releng:signing:cert:nightly-signing': 'nightly',
+        }
+    }),
+    # Map restricted-level to trees
+    'cot_restricted_trees': frozendict({
+        'firefox': {
+            # Which repos can perform release actions?
             # Allow aurora for staging betas.
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            'project:releng:signing:cert:release-signing': (
+            'release': (
                 "/releases/mozilla-aurora",
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
@@ -230,7 +244,7 @@ DEFAULT_CONFIG = frozendict({
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            'project:releng:signing:cert:nightly-signing': (
+            'nightly': (
                 "/mozilla-central",
                 "/releases/mozilla-unified",
                 "/releases/mozilla-aurora",
@@ -242,7 +256,6 @@ DEFAULT_CONFIG = frozendict({
                 "/projects/date",
             ),
         },
-        # TODO other scriptworker instance types
     }),
 })
 
