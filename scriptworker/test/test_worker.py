@@ -88,8 +88,8 @@ def test_async_main(context, event_loop, mocker, tmpdir):
     try:
         mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
         mocker.patch.object(asyncio, 'sleep', new=noop_async)
-        mocker.patch.object(worker, 'overwrite_gpg_home', new=noop_sync)
         mocker.patch.object(worker, 'rm', new=noop_sync)
+        mocker.patch.object(os, 'rename', new=noop_sync)
         mocker.patch.object(worker, 'rm_lockfile', new=exit)
         event_loop.run_until_complete(worker.async_main(context))
         event_loop.run_until_complete(worker.async_main(context))
