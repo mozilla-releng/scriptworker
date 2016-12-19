@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0b4] - 2016-12-19
+### Added
+- beetmover and balrog scriptworker support in chain of trust verification
+- `cot_restricted_trees` config, which maps branch-nick to branches
+
+### Changed
+- Changed `cot_restricted_scopes` to be a scope to branch-nick dict, indexed by `cot_product`
+
+### Fixed
+- nuke then move the tmp gpg homedir, rather than trying to [wrongly] use `overwrite_gpg_home` on a parent dir
+
 ## [1.0.0b3] - 2016-12-07
 ### Added
 - Dockerfiles: one for general testing and one for gpg homedir testing, with readme updates

@@ -105,16 +105,14 @@ Push!
 
 ## Pypi
 
-Currently, scriptworker is on `pypi.python.org` under Aki's personal account.  We should change that.
-
-Once that's changed, you would
+Someone with access to the scriptworker package on `pypi.python.org` needs to do the following:
 
 ```bash
-    # Using the local venv python>=3.5,
-    python setup.py register
+    # Using the local venv python>=3.5, and after updating to the tag,
+    python setup.py register sdist upload
 ```
 
-That creates the new version in pypi.  We don't run `python setup.py upload` because there appears to be a bug between setuptools and async code.  Instead, go to [pypi](https://pypi.python.org/pypi?%3Aaction=pkg_edit&name=scriptworker), click the 'files' link next to the new version, and upload the new tarball.
+That creates the new version in pypi, creates the source tarball, and uploads it.
 
 ## Puppet
 

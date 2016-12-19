@@ -199,6 +199,7 @@ DEFAULT_CONFIG = frozendict({
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
     # all other repos are relegated to CI scopes.
     'valid_vcs_rules': ({
+        # TODO index by cot_product
         "schemes": ["https", "ssh"],
         "netlocs": ["hg.mozilla.org"],
         "path_regexes": [
