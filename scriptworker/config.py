@@ -30,6 +30,7 @@ CREDS_FILES = (
 # Based on
 # https://github.com/taskcluster/taskcluster-queue/blob/ced3b7bd824b445fd33ce0deb5de87a65f02b8b3/src/api.js#L94
 _GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
+_VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
 # freeze_values {{{1
@@ -98,14 +99,17 @@ def check_config(config, path):
             messages.append("Unknown key {} in {}!".format(key, path))
             continue
         if DEFAULT_CONFIG[key] is not None:
-            value_type = type(value)
-            default_type = type(DEFAULT_CONFIG[key])
-            if value_type != default_type:
-                messages.append(
-                    "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
-                )
+            if value is None:
+                messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
+            else:
+                value_type = type(value)
+                default_type = type(DEFAULT_CONFIG[key])
+                if value_type is not default_type:
+                    messages.append(
+                        "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
+                    )
         if value in ("...", b"..."):
-            messages.append("{} {} needs to be defined!".format(path, key))
+            messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
         if key in ("gpg_public_keyring", "gpg_secret_keyring") and not value.startswith('%(gpg_home)s/'):
             messages.append("{} needs to start with %(gpg_home)s/ to be portable!".format(key))
         if key in ("provisioner_id", "worker_group", "worker_type", "worker_id") and not _is_id_valid(value):
