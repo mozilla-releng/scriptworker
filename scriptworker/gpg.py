@@ -21,7 +21,6 @@ import logging
 import os
 import pexpect
 import pprint
-import re
 import subprocess
 import sys
 import tempfile
@@ -1137,112 +1136,16 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def verify_signed_git_commit_output(output):
-    """Verify the latest non-merge-commit is signed by a trusted fingerprint.
-
-    If the key is missing, output looks like::
-
-        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
-        gpg: directory ``/Users/asasaki/.gnupg' created
-        gpg: new configuration file ``/Users/asasaki/.gnupg/gpg.conf' created
-        gpg: WARNING: options in ``/Users/asasaki/.gnupg/gpg.conf' are not yet active during this run
-        gpg: keyring ``/Users/asasaki/.gnupg/pubring.gpg' created
-        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
-        gpg:                using RSA key FC829B7FFAA9AC38
-        gpg: Can't check signature: No public key
-        Author: Aki Sasaki <aki@escapewindow.com>
-        Date:   Mon Sep 19 21:50:35 2016 -0700
-
-            add another check + small fixes + comments
-
-    If the key is in the keyring but not trusted, the output looks like::
-
-        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
-        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
-        gpg:                using RSA key FC829B7FFAA9AC38
-        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [unknown]
-        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [unknown]
-        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [unknown]
-        gpg:                 aka "[jpeg image of size 5283]" [unknown]
-        gpg: WARNING: This key is not certified with a trusted signature!
-        gpg:          There is no indication that the signature belongs to the owner.
-        Primary key fingerprint: 83A4 B550 BC68 2F0B 0601  57B0 4654 904B B484 B6B2
-             Subkey fingerprint: CC62 C097 98FD EFBB 4CC9  4D9C FC82 9B7F FAA9 AC38
-        Author: Aki Sasaki <aki@escapewindow.com>
-        Date:   Mon Sep 19 21:50:35 2016 -0700
-
-            add another check + small fixes + comments
-
-    If the key is in the keyring and trusted, the output looks like::
-
-        commit 6efb4ebe8900ad1920f6eaaf64b615fe6e6e839a
-        gpg: Signature made Mon Sep 19 21:50:53 2016 PDT
-        gpg:                using RSA key FC829B7FFAA9AC38
-        gpg: checking the trustdb
-        gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
-        gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
-        gpg: next trustdb check due at 2018-09-17
-        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>" [ultimate]
-        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>" [ultimate]
-        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>" [ultimate]
-        gpg:                 aka "[jpeg image of size 5283]" [ultimate]
-        Author: Aki Sasaki <aki@escapewindow.com>
-        Date:   Mon Sep 19 21:50:35 2016 -0700
-
-            add another check + small fixes + comments
-
-    or::
-
-        commit 02dc29251021519ebac4508545477a7b23efea49
-        gpg: Signature made Tue Sep 20 04:22:57 2016 UTC
-        gpg:                using RSA key 0xFC829B7FFAA9AC38
-        gpg: Good signature from "Aki Sasaki (2016.09.16) <aki@escapewindow.com>"
-        gpg:                 aka "Aki Sasaki (2016.09.16) <aki@mozilla.com>"
-        gpg:                 aka "Aki Sasaki (2016.09.16) <asasaki@mozilla.com>"
-        gpg:                 aka "[jpeg image of size 5283]"
-        Author: Aki Sasaki <aki@escapewindow.com>
-        Date:   Mon Sep 19 21:22:40 2016 -0700
-
-            add travis tests for commit signatures.
-
-
-    Args:
-        output (str): the output from ``git log --no-merges -n 1 --show-signature``
-
-    Raises:
-        ScriptWorkerGPGException: on error.
-    """
-    BAD = {
-        "gpg: Can't check signature:": "",
-        "gpg: WARNING: This key is not certified with a trusted signature!": "",
-    }
-    GOOD = re.compile(r"""^gpg: Good signature from ".*"( \[(ultimate|trusted)\])?$""")
-    messages = []
-    lines = output.splitlines()
-    status = False
-    for line in lines:
-        m = GOOD.match(line)
-        if m is not None:
-            status = True
-            continue
-        for k, v in BAD.items():
-            if line.startswith(k):
-                messages.append(v)
-                continue
-    if not status:
-        messages.append("No trusted signature!")
-    if messages:
-        raise ScriptWorkerGPGException("\n".join(messages + ["output:", output]))
-
-
-async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
+async def get_git_revision(path, ref="HEAD",
+                           exec_function=asyncio.create_subprocess_exec):
     """Get the git revision of path.
 
     Args:
-        path (str): the path to run ``git rev-parse HEAD`` in.
+        path (str): the path to run ``git rev-parse REF`` in.
+        ref (str, optional): the ref to find the revision for.  Defaults to "HEAD"
 
     Returns:
-        str: the revision.
+        str: the revision found.
 
     Raises:
         ScriptWorkerRetryException: on failure.
@@ -1260,7 +1163,7 @@ async def get_git_revision(path, exec_function=asyncio.create_subprocess_exec):
     return revision.decode('utf-8').rstrip()
 
 
-async def update_signed_git_repo(context, repo="origin", revision="master",
+async def update_signed_git_repo(context, repo="origin", ref="master",
                                  exec_function=asyncio.create_subprocess_exec,
                                  log_function=pipe_to_log):
     """Update a git repo with signed git commits, and verify the signature.
@@ -1270,7 +1173,7 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         repo (str, optional): the repo to update from.  Defaults to 'origin'.
-        revision (str, optional): the revision to update to.  Defaults to 'master'.
+        ref (str, optional): the ref to update to.  Defaults to 'master'.
 
     Returns:
         str: the current git revision.
@@ -1280,49 +1183,58 @@ async def update_signed_git_repo(context, repo="origin", revision="master",
         ScriptWorkerRetryException: on ``git pull`` failure.
     """
     path = context.config['git_key_repo_dir']
-    proc = await exec_function(
-        "git", "pull", "--ff-only", repo, revision, cwd=path,
-        stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
-    )
-    await log_function(proc.stdout)
-    exitcode = await proc.wait()
-    if exitcode:
-        raise ScriptWorkerRetryException(
-            "Can't update repo at {}!".format(path)
+    tag = context.config['git_key_repo_tag']
+
+    async def _run_git_cmd(cmd):
+        proc = await exec_function(
+            *cmd, cwd=path,
+            stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
         )
-    revision = await get_git_revision(path)
+        await log_function(proc.stdout)
+        exitcode = await proc.wait()
+        if exitcode:
+            raise ScriptWorkerRetryException(
+                "Failed running git command {} at {}!".format(cmd, path)
+            )
+
+    for cmd in (
+        ["git", "checkout", ref],
+        ["git", "pull", "--ff-only", "--tags", repo],
+    ):
+        await _run_git_cmd(cmd)
+    await _run_git_cmd(["git", "checkout", tag])
+    await verify_signed_tag(context)
+    revision = await get_git_revision(path, tag)
     return revision
 
 
-async def verify_signed_git_commit(context, path=None,
-                                   exec_function=asyncio.create_subprocess_exec):
-    """Verify ``context.config['git_key_repo_dir']`` is on a valid signed commit.
-
-    This function calls ``verify_signed_git_commit_output`` to make sure the
-    latest non-merge-commit commit is signed with a key that lives in
-    ``context.config['git_commit_signing_pubkey_dir']``.
+async def verify_signed_tag(context, exec_function=subprocess.check_call):
+    """Verify ``git_key_repo_dir`` is at the valid signed ``git_key_repo_tag``.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        path (str, optional): the path to the git repo to verify.  If None,
-            use context.config['git_key_repo_dir'].  Defaults to None.
+        exec_function (function, optional): the function to use to run ``git tag -v``
+            Defaults to subprocess.check_call
 
     Raises:
-        ScriptWorkerGPGException: on bad verification.
+        ScriptWorkerGPGException: if we're not updated to ``git_key_repo_tag``
     """
-    path = path or context.config['git_key_repo_dir']
-    proc = await exec_function(
-        "git", "log", "--no-merges", "-n", "1", "--show-signature", cwd=path,
-        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
-    )
-    output = ""
-    while True:
-        line = await proc.stdout.readline()
-        if line:
-            output += line.decode('utf-8')
-        else:
-            break
-    verify_signed_git_commit_output(output)
+    path = context.config['git_key_repo_dir']
+    tag = context.config['git_key_repo_tag']
+    try:
+        exec_function(["git", "tag", "-v", tag], cwd=path)
+    except subprocess.CalledProcessError as exc:
+        raise ScriptWorkerGPGException(
+            "Can't verify tag {} signature at {}!".format(tag, path)
+        )
+    tag_revision = await get_git_revision(path, tag)
+    head_revision = await get_git_revision(path, "HEAD")
+    if tag_revision != head_revision:
+        raise ScriptWorkerGPGException(
+            "{}: Tag {} revision {} != current revision {}!".format(
+                path, tag, tag_revision, head_revision
+            )
+        )
 
 
 # last_good_git_revision_file functions {{{1
@@ -1361,7 +1273,7 @@ def write_last_good_git_revision(context, revision):
 
 # build gpg homedirs from repo {{{1
 def build_gpg_homedirs_from_repo(
-    context, basedir=None, verify_function=verify_signed_git_commit,
+    context, basedir=None, verify_function=verify_signed_tag,
     flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
 ):
     """Build gpg homedirs in ``basedir``, from the context-defined git repo.
@@ -1383,6 +1295,9 @@ def build_gpg_homedirs_from_repo(
     event_loop = asyncio.get_event_loop()
     # verify our input.  Hardcoding the check before importing, as opposed
     # to expecting something else to run the check for us.
+    # This currently runs twice, once to update to the tag and once before
+    # we build the homedirs, in case we ever call this function without calling
+    # ``update_signed_git_repo`` first.
     event_loop.run_until_complete(verify_function(context))
     rm(basedir)
     makedirs(basedir)
@@ -1434,8 +1349,6 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
     )
     if new_revision != old_revision:
         log.info("Found new git revision {}!".format(new_revision))
-        # XXX at some point, verify signatures on all non-merge git commits up to old_revision
-        event_loop.run_until_complete(verify_signed_git_commit(context))
         log.info("Updating gpg homedirs...")
         build_gpg_homedirs_from_repo(context, basedir=basedir)
         log.info("Writing last_good_git_revision...")

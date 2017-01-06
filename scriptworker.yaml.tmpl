@@ -78,9 +78,10 @@ gpg_lockfile: "/tmp/gpg_homedir.lock"
 # the git_key_repo_url is cloned into git_key_repo_dir.
 git_key_repo_dir: "/tmp/key_repo"
 
-# Uncomment and edit to override the default url.  This shouldn't be necessary unless you're
-# testing changes to the chain of trust.
+# Uncomment and edit to override the default url and/or tag name.  This shouldn't be necessary
+# unless you're testing changes to the chain of trust.
 # git_key_repo_url: "https://github.com/mozilla-releng/cot-gpg-keys.git"
+# git_key_repo_tag: "production"
 
 # this directory holds pubkeys that are allowed to sign git commits in the git_key_repo_url
 git_commit_signing_pubkey_dir: "/tmp/valid_git_fingerprints/"
