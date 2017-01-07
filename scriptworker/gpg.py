@@ -1201,9 +1201,9 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
     for cmd in (
         ["git", "checkout", ref],
         ["git", "pull", "--ff-only", "--tags", repo],
+        ["git", "checkout", tag],
     ):
         await _run_git_cmd(cmd)
-    await _run_git_cmd(["git", "checkout", tag])
     await verify_signed_tag(context)
     revision = await get_git_revision(path, tag)
     return revision
