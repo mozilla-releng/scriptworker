@@ -1186,6 +1186,7 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
     tag = context.config['git_key_repo_tag']
 
     async def _run_git_cmd(cmd):
+        log.info("Running {} in {}".format(cmd, path))
         proc = await exec_function(
             *cmd, cwd=path,
             stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, close_fds=True,
