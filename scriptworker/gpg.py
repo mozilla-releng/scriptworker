@@ -1141,7 +1141,7 @@ async def get_git_revision(path, ref="HEAD",
     """Get the git revision of path.
 
     Args:
-        path (str): the path to run ``git rev-parse REF`` in.
+        path (str): the path to run ``git log -n1 --format=format:%H REF`` in.
         ref (str, optional): the ref to find the revision for.  Defaults to "HEAD"
 
     Returns:
@@ -1151,7 +1151,7 @@ async def get_git_revision(path, ref="HEAD",
         ScriptWorkerRetryException: on failure.
     """
     proc = await exec_function(
-        'git', "rev-parse", "HEAD", cwd=path,
+        'git', "log", "-n1", "--format=format:%H", ref, cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     revision, err = await proc.communicate()
