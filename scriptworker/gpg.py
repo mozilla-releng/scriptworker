@@ -1355,6 +1355,8 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         log.info("Writing last_good_git_revision...")
         write_last_good_git_revision(context, new_revision)
         return new_revision
+    else:
+        log.info("Git revision {} is unchanged.".format(new_revision))
 
 
 def get_tmp_base_gpg_home_dir(context):
