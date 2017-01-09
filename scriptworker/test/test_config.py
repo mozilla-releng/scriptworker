@@ -62,6 +62,23 @@ def test_check_config_invalid_key(t_config):
     assert "Unknown key" in "\n".join(messages)
 
 
+def test_check_config_missing_key(t_config):
+    t_config = _fill_missing_values(t_config)
+
+    # The current implementation of create_config() doesn't delete t_config['credentials']
+    # if no secrets are present in any file.
+    t_config['credentials'] = None
+    messages = config.check_config(t_config, "test_path")
+    assert "credentials needs to be defined!" in "\n".join(messages)
+
+
+def _fill_missing_values(config):
+    return {
+        key: 'filled_in' if value == '...' else value
+        for key, value in config.items()
+    }
+
+
 def test_check_config_invalid_type(t_config):
     t_config['log_dir'] = tuple(t_config['log_dir'])
     messages = config.check_config(t_config, "test_path")
@@ -82,9 +99,7 @@ def test_check_config_invalid_ids(params, t_config):
 
 
 def test_check_config_good(t_config):
-    for key, value in t_config.items():
-        if value == "...":
-            t_config[key] = "filled_in"
+    t_config = _fill_missing_values(t_config)
     messages = config.check_config(t_config, "test_path")
     assert messages == []
 
