@@ -94,6 +94,11 @@ def check_config(config, path):
         list: the error messages found when validating the config.
     """
     messages = []
+
+    missing_keys = set(DEFAULT_CONFIG.keys()) - set(config.keys())
+    if missing_keys:
+        messages.append("Missing config keys {}!".format(missing_keys))
+
     for key, value in config.items():
         if key not in DEFAULT_CONFIG:
             messages.append("Unknown key {} in {}!".format(key, path))
