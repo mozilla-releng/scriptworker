@@ -50,7 +50,7 @@ def get_version_string(version):
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (1, 0, 0, "beta4")
+__version__ = (1, 0, 0, "beta5")
 __version_string__ = get_version_string(__version__)
 
 
