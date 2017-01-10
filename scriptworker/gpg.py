@@ -1163,6 +1163,32 @@ async def get_git_revision(path, ref="HEAD",
     return revision.decode('utf-8').rstrip()
 
 
+async def get_latest_tag(path,
+                         exec_function=asyncio.create_subprocess_exec):
+    """Get the latest tag in path.
+
+    Args:
+        path (str): the path to run ``git describe --abbrev=0`` in.
+
+    Returns:
+        str: the tag name found.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
+    """
+    proc = await exec_function(
+        'git', "describe", "--abbrev=0", cwd=path,
+        stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
+    )
+    tag, err = await proc.communicate()
+    exitcode = await proc.wait()
+    if exitcode:
+        raise ScriptWorkerRetryException(
+            "Can't get tag at {}: {}!".format(path, err)
+        )
+    return tag.decode('utf-8').rstrip()
+
+
 async def update_signed_git_repo(context, repo="origin", ref="master",
                                  exec_function=asyncio.create_subprocess_exec,
                                  log_function=pipe_to_log):
@@ -1183,7 +1209,6 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
         ScriptWorkerRetryException: on ``git pull`` failure.
     """
     path = context.config['git_key_repo_dir']
-    tag = context.config['git_key_repo_tag']
 
     async def _run_git_cmd(cmd):
         log.info("Running {} in {}".format(cmd, path))
@@ -1201,27 +1226,27 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
     for cmd in (
         ["git", "checkout", ref],
         ["git", "pull", "--ff-only", "--tags", repo],
-        ["git", "checkout", tag],
     ):
         await _run_git_cmd(cmd)
-    await verify_signed_tag(context)
+
+    tag = await get_latest_tag(path)
+    await _run_git_cmd(["git", "checkout", tag])
+    await verify_signed_tag(context, tag)
     revision = await get_git_revision(path, tag)
     return revision
 
 
-async def verify_signed_tag(context, exec_function=subprocess.check_call):
-    """Verify ``git_key_repo_dir`` is at the valid signed ``git_key_repo_tag``.
+async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
+    """Verify ``git_key_repo_dir`` is at the valid signed ``tag``.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        exec_function (function, optional): the function to use to run ``git tag -v``
-            Defaults to subprocess.check_call
+        tag (str): the tag to verify.
 
     Raises:
-        ScriptWorkerGPGException: if we're not updated to ``git_key_repo_tag``
+        ScriptWorkerGPGException: if we're not updated to ``tag``
     """
     path = context.config['git_key_repo_dir']
-    tag = context.config['git_key_repo_tag']
     try:
         exec_function(["git", "tag", "-v", tag], cwd=path)
     except subprocess.CalledProcessError as exc:

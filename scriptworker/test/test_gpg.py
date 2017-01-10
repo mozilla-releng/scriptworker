@@ -589,7 +589,8 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
     assert messages == []
 
 
-# get_git_revision {{{1
+# get_git_revision, get_latest_tag {{{1
+# TODO these two tests should use a tarball with a test git repo inside
 @pytest.mark.asyncio
 async def test_get_git_revision():
     parent_dir = os.path.dirname(__file__)
@@ -598,7 +599,15 @@ async def test_get_git_revision():
 
 
 @pytest.mark.asyncio
-async def test_get_git_revision_exception(mocker):
+async def test_get_latest_tag():
+    parent_dir = os.path.dirname(__file__)
+    expected = subprocess.check_output(["git", "describe", "--abbrev=0"], cwd=parent_dir)
+    assert await sgpg.get_latest_tag(parent_dir) == expected.decode('utf-8').rstrip()
+
+
+@pytest.mark.parametrize("func", (sgpg.get_git_revision, sgpg.get_latest_tag))
+@pytest.mark.asyncio
+async def test_get_git_revision_exception(mocker, func):
     x = mock.MagicMock()
 
     async def fake(*args, **kwargs):
@@ -615,7 +624,7 @@ async def test_get_git_revision_exception(mocker):
 
     parent_dir = os.path.dirname(__file__)
     with pytest.raises(ScriptWorkerRetryException):
-        await sgpg.get_git_revision(parent_dir, exec_function=fake)
+        await func(parent_dir, exec_function=fake)
 
 
 # update_signed_git_repo {{{1
@@ -643,6 +652,7 @@ async def test_update_signed_git_repo(context, mocker, result1, result2, expecte
         return value
 
     mocker.patch.object(sgpg, "get_git_revision", new=fake_revision)
+    mocker.patch.object(sgpg, "get_latest_tag", new=noop_async)
     mocker.patch.object(sgpg, "verify_signed_tag", new=noop_async)
     if return_value:
         with pytest.raises(ScriptWorkerRetryException):
@@ -675,9 +685,9 @@ async def test_verify_signed_tag(context, mocker, valid_signed, head_rev, tag_re
     mocker.patch.object(sgpg, "get_git_revision", new=fake_revision)
     if raises:
         with pytest.raises(ScriptWorkerGPGException):
-            await sgpg.verify_signed_tag(context, exec_function=fake_exec)
+            await sgpg.verify_signed_tag(context, "foo", exec_function=fake_exec)
     else:
-        await sgpg.verify_signed_tag(context, exec_function=fake_exec)
+        await sgpg.verify_signed_tag(context, "foo", exec_function=fake_exec)
 
 
 # build_gpg_homedirs_from_repo {{{1

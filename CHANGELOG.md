@@ -4,7 +4,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 ### Added
-- `git_key_repo_tag` config option
 - `verify_signed_tag`, which verifies the tag's signature and makes sure we're updated to it.
 
 ### Changed
