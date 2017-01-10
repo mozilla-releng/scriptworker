@@ -659,7 +659,7 @@ async def test_update_signed_git_repo(context, mocker, result1, result2, expecte
             await sgpg.update_signed_git_repo(
                 context, exec_function=fake_exec, log_function=noop_async)
     else:
-        result = await sgpg.update_signed_git_repo(
+        result, tag = await sgpg.update_signed_git_repo(
             context, exec_function=fake_exec, log_function=noop_async)
         assert result == expected
 
@@ -707,7 +707,7 @@ def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
         homedirs[key] = sorted(homedirs[key])
 
     sgpg.build_gpg_homedirs_from_repo(
-        context, verify_function=noop_async, flat_function=counter, signed_function=counter
+        context, "tag", verify_function=noop_async, flat_function=counter, signed_function=counter
     )
     assert homedirs == expected
 
@@ -720,7 +720,9 @@ def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_rev_found):
 
     async def new_revision(*args, **kwargs):
         if new_rev_found:
-            return "NEW REVISION!!!"
+            return ("NEW REVISION!!!", "tag")
+        else:
+            return (None, "tag")
 
     mocker.patch.object(sgpg, "get_context_from_cmdln", new=fake_context)
     mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)

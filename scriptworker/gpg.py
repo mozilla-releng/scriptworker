@@ -1202,7 +1202,7 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
         ref (str, optional): the ref to update to.  Defaults to 'master'.
 
     Returns:
-        str: the current git revision.
+        tuple (str, str): the current git revision, and the latest tag name.
 
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
@@ -1233,7 +1233,7 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
     await _run_git_cmd(["git", "checkout", tag])
     await verify_signed_tag(context, tag)
     revision = await get_git_revision(path, tag)
-    return revision
+    return revision, tag
 
 
 async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
@@ -1299,13 +1299,14 @@ def write_last_good_git_revision(context, revision):
 
 # build gpg homedirs from repo {{{1
 def build_gpg_homedirs_from_repo(
-    context, basedir=None, verify_function=verify_signed_tag,
+    context, tag, basedir=None, verify_function=verify_signed_tag,
     flat_function=rebuild_gpg_home_flat, signed_function=rebuild_gpg_home_signed,
 ):
     """Build gpg homedirs in ``basedir``, from the context-defined git repo.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+        tag (str): the tag name to verify
         basedir (str, optional): the path to the base directory to create the
             gpg homedirs in.  This directory will be wiped if it exists.
             If None, use ``context.config['base_gpg_home_dir']``.  Defaults to None.
@@ -1324,7 +1325,7 @@ def build_gpg_homedirs_from_repo(
     # This currently runs twice, once to update to the tag and once before
     # we build the homedirs, in case we ever call this function without calling
     # ``update_signed_git_repo`` first.
-    event_loop.run_until_complete(verify_function(context))
+    event_loop.run_until_complete(verify_function(context, tag))
     rm(basedir)
     makedirs(basedir)
     # create gpg homedirs
@@ -1367,7 +1368,7 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
         overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
     event_loop = asyncio.get_event_loop()
     old_revision = get_last_good_git_revision(context)
-    new_revision = event_loop.run_until_complete(
+    new_revision, tag = event_loop.run_until_complete(
         retry_async(
             update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
             args=(context, )
@@ -1376,7 +1377,7 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
     if new_revision != old_revision:
         log.info("Found new git revision {}!".format(new_revision))
         log.info("Updating gpg homedirs...")
-        build_gpg_homedirs_from_repo(context, basedir=basedir)
+        build_gpg_homedirs_from_repo(context, tag, basedir=basedir)
         log.info("Writing last_good_git_revision...")
         write_last_good_git_revision(context, new_revision)
         return new_revision

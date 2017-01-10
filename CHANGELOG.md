@@ -9,7 +9,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - `get_git_revision` now takes a `ref` kwarg; it finds the revision for that ref (e.g., tag, branch).
 - `update_signed_git_repo` `revision` kwarg is now named `ref`.  It also verifies and updates to the signed git tag instead of `ref`.
-- `build_gpg_homedirs_from_repo` now uses `verify_signed_tag` instead of `verify_signed_git_commit`
+- `update_signed_git_repo` now returns a tuple (revision, tag)
+- `build_gpg_homedirs_from_repo` now uses `verify_signed_tag` instead of `verify_signed_git_commit`, and takes a new `tag` arg.
+
+### Fixed
+- the curl command in `Dockerfile.gnupg` now retries on failure.
 
 ### Removed
 - `verify_signed_git_commit_output`
