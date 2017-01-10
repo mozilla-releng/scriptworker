@@ -60,6 +60,9 @@ GENERATE_KEY_EXPIRATION = ((
     "2017-10-1", "2017-10-1"
 ))
 
+# Used to improve speed of test runs
+GENERATE_KEY_SMALLER_KEY_SIZE = 1024
+
 EXPORT_KEY_PARAMS = ((
     "4ACA2B25224905DA", False, os.path.join(GPG_HOME, "keys", "unknown@example.com.pub")
 ), (
@@ -420,13 +423,13 @@ sig:::1:BC76BF8F77D1B3F5:1472876457::::three (three) <three>:13x:::::8:
     """
     gpg = sgpg.GPG(context)
     # create my key, get fingerprint + keyid
-    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     my_keyid = sgpg.fingerprint_to_keyid(gpg, my_fingerprint)
     # create signed key, get fingerprint + keyid
-    signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two")
+    signed_fingerprint = sgpg.generate_key(gpg, "two", "two", "two", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     signed_keyid = sgpg.fingerprint_to_keyid(gpg, signed_fingerprint)
     # create unsigned key, get fingerprint + keyid
-    unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three")
+    unsigned_fingerprint = sgpg.generate_key(gpg, "three", "three", "three", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     unsigned_keyid = sgpg.fingerprint_to_keyid(gpg, unsigned_fingerprint)
     # update gpg configs, sign signed key
     sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
@@ -491,7 +494,7 @@ def test_sign_key_exportable(context, exportable):
     sgpg.check_ownertrust(context)
     sgpg.check_ownertrust(context, gpg_home=gpg_home2)
     # generate a new key
-    fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    fingerprint = sgpg.generate_key(gpg, "one", "one", "one", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     # sign it, exportable signature is `exportable`
     sgpg.sign_key(context, fingerprint, signing_key=my_fingerprint, exportable=exportable)
     # export my privkey and import it in gpg_home2
@@ -580,15 +583,15 @@ def test_ownertrust(context, trusted_names):
     ScriptWorkerGPGException.
     """
     gpg = sgpg.GPG(context)
-    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one")
+    my_fingerprint = sgpg.generate_key(gpg, "one", "one", "one", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     sgpg.create_gpg_conf(context.config['gpg_home'], my_fingerprint=my_fingerprint)
     trusted_fingerprints = []
     for name in trusted_names:
-        trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name))
+        trusted_fingerprints.append(sgpg.generate_key(gpg, name, name, name, key_length=GENERATE_KEY_SMALLER_KEY_SIZE))
     # append my fingerprint to get more coverage
     if trusted_fingerprints:
         trusted_fingerprints.append(my_fingerprint)
-    unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four")
+    unsigned_fingerprint = sgpg.generate_key(gpg, "four", "four", "four", key_length=GENERATE_KEY_SMALLER_KEY_SIZE)
     sgpg.update_ownertrust(context, my_fingerprint, trusted_fingerprints=trusted_fingerprints)
     with pytest.raises(ScriptWorkerGPGException):
         sgpg.verify_ownertrust(context, my_fingerprint, trusted_fingerprints + [unsigned_fingerprint])
