@@ -32,8 +32,54 @@ CREDS_FILES = (
 _GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
 _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
+def freeze_values(d):
+    """Convert a dictionary's list values into tuples, and dicts into frozendicts.
+    A recursive function(bottom up conversion)
+    Args: The current value in the dictionary- can be a dictionary or list
+    ( or any other data type)"""
+
+    if isinstance(d,dict):
+        for k,v in d.items():
+            if isinstance(v,list):
+                freeze(v)
+                d[k]=tuple(v)
+            elif isinstance(v,dict):
+                freeze(v)
+                d[k]=frozendict(v)
+    elif isinstance(d,list):
+        for v in range(len(d)):
+            if isinstance(d[v],list):
+                freeze(v)
+                d[v]=tuple(d[v])
+            elif isinstance(d[v],dict):
+                freeze(d[v])
+                d[v]=frozendict(d[v])
+
+def unfreeze_values(d):
+    """Convert a dictionary's tuple values into lists, and frozendicts into dicts.
+    A recursive function(top down conversion)
+    Args: The current value in the dictionary- can be a dictionary or list
+    (that has been converted from a frozendict or tuple respectively)"""
+
+    if isinstance(d,dict):
+        for k,v in d.items():
+            if isinstance(v,tuple):
+                d[k]=list(v)
+                unfreeze(d[k])
+            elif isinstance(v,frozendict):
+                d[k]=v.__dict__['_dict']
+                unfreeze(d[k])
+    elif isinstance(d,list):
+        for v in range(len(d)):
+            if isinstance(d[v],tuple):
+                d[v]=list(d[v])
+                unfreeze(d[v])
+            elif isinstance(d[v],frozendict):
+                d[v]=d[v].__dict__['_dict']
+                unfreeze(d[v])
 
 # freeze_values {{{1
+""""""
 def freeze_values(dictionary):
     """Convert a dictionary's list values into tuples, and dicts into frozendicts.
 
@@ -47,6 +93,7 @@ def freeze_values(dictionary):
             dictionary[key] = tuple(value)
         elif isinstance(value, dict):
             dictionary[key] = frozendict(value)
+""""""
 
 
 # read_worker_creds {{{1
