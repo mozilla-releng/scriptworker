@@ -10,6 +10,7 @@ import arrow
 import asyncio
 from asyncio.subprocess import PIPE
 from copy import deepcopy
+import gzip
 import logging
 import mimetypes
 import os
@@ -229,16 +230,15 @@ async def create_artifact(context, path, target_path, storage_type='s3',
     }
     args = [get_task_id(context.claim_task), get_run_id(context.claim_task),
             target_path, payload]
+    _compress_if_text_plain(path, payload['contentType'])
+
     tc_response = await context.temp_queue.createArtifact(*args)
-    headers = {
-        aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
-    }
     skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
     log.info("uploading {path} to {url}...".format(path=path, url=tc_response['putUrl']))
     with open(path, "rb") as fh:
         with aiohttp.Timeout(context.config['artifact_upload_timeout']):
             async with context.session.put(
-                tc_response['putUrl'], data=fh, headers=headers,
+                tc_response['putUrl'], data=fh, headers=_craft_artifact_put_hearders(tc_response),
                 skip_auto_headers=skip_auto_headers, compress=False
             ) as resp:
                 log.info(resp.status)
@@ -248,6 +248,29 @@ async def create_artifact(context, path, target_path, storage_type='s3',
                     raise ScriptWorkerRetryException(
                         "Bad status {}".format(resp.status),
                     )
+
+
+def _compress_if_text_plain(artifact_path, content_type):
+    if content_type == 'text/plain':
+        log.debug('"{}" is a plain text file. Compressing...'.format(artifact_path))
+        with open(artifact_path, 'rb') as f_in:
+            text_content = f_in.read()
+
+        with gzip.open(artifact_path, 'wb') as f_out:
+            f_out.write(text_content)
+        log.info('Compressed "{}" with gzip'.format(artifact_path))
+    else:
+        log.debug('"{}" is NOT a plain text file, nothing to compress.'.format(artifact_path))
+
+
+def _craft_artifact_put_hearders(tc_response):
+    headers = {
+        aiohttp.hdrs.CONTENT_TYPE: tc_response['contentType'],
+    }
+    if tc_response['contentType'] == 'text/plain':
+        headers[aiohttp.hdrs.CONTENT_ENCODING] = 'gzip'
+
+    return headers
 
 
 # retry_create_artifact {{{1
