@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.0b6] - 2017-01-12
+### Fixed
+- balrog tasks are now verifiable in chain of trust.
+
 ## [1.0.0b5] - 2017-01-10
 ### Added
 - `verify_signed_tag`, which verifies the tag's signature and makes sure we're updated to it.
