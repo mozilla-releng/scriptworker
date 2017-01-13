@@ -11,13 +11,14 @@ import os
 import sys
 
 from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
+from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, is_lockfile_present, rm_lockfile
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.task import complete_task, reclaim_task, run_task, upload_artifacts, worst_level
+from scriptworker.task import complete_task, reclaim_task, run_task, worst_level
 from scriptworker.utils import cleanup, retry_request, rm
 
 log = logging.getLogger(__name__)
