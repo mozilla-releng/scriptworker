@@ -295,6 +295,7 @@ def get_valid_task_types():
     """
     return frozendict({
         'scriptworker': verify_scriptworker_task,
+        'balrog': verify_balrog_task,
         'beetmover': verify_beetmover_task,
         'build': verify_build_task,
         'l10n': verify_build_task,
