@@ -35,6 +35,7 @@ _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 def freeze_values(dictionary):
     """Convert a dictioanry's list values into tuples, and dicts into frozendicts.
+
     A recursive function(bottom-up conversion)
 
     Args:
