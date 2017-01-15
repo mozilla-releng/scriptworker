@@ -50,9 +50,17 @@ def t_env():
 
 # freeze_values {{{1
 def test_freeze_values():
-    d = {'a': [1, 2, 3], 'b': {'c': 'd'}}
+    d = {'a': [1, 2, 3, {'z': 'y'}], 'b': {1: 2, 4: [1, 2, ['a', 'b']]}, 'c': [4, 5, 6], 'd': [7, 8, 9], 'e': {9: 10, 11: {1: 2}}}
     config.freeze_values(d)
-    assert d == {'a': (1, 2, 3), 'b': frozendict({'c': 'd'})}
+    assert d == {'a': (1, 2, 3, frozendict({'z': 'y'})), 'b': frozendict({1: 2, 4: (1, 2, ('a', 'b'))}), 'c': (4, 5, 6), 'd': (7, 8, 9),
+                 'e': frozendict({9: 10, 11: frozendict({1: 2})})}
+
+
+def test_unfreeze_values():
+    d = {'a': (1, 2, 3, frozendict({'z': 'y'})), 'b': frozendict({1: 2, 4: (1, 2, ('a', 'b'))}), 'c': (4, 5, 6), 'd': (7, 8, 9),
+         'e': frozendict({9: 10, 11: frozendict({1: 2})})}
+    config.unfreeze_values(d)
+    assert d == {'a': [1, 2, 3, {'z': 'y'}], 'b': {1: 2, 4: [1, 2, ['a', 'b']]}, 'c': [4, 5, 6], 'd': [7, 8, 9], 'e': {9: 10, 11: {1: 2}}}
 
 
 # check_config {{{1
@@ -70,6 +78,7 @@ def test_check_config_none_key(t_config):
     t_config['credentials'] = None
     messages = config.check_config(t_config, "test_path")
     assert "credentials needs to be defined!" in "\n".join(messages)
+
 
 def test_check_config_missing_key(t_config):
     t_config = _fill_missing_values(t_config)
