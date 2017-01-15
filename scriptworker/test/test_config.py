@@ -49,18 +49,16 @@ def t_env():
 
 
 # freeze_values {{{1
-def test_freeze_values():
-    d = {'a': [1, 2, 3, {'z': 'y'}], 'b': {1: 2, 4: [1, 2, ['a', 'b']]}, 'c': [4, 5, 6], 'd': [7, 8, 9], 'e': {9: 10, 11: {1: 2}}}
-    config.freeze_values(d)
-    assert d == {'a': (1, 2, 3, frozendict({'z': 'y'})), 'b': frozendict({1: 2, 4: (1, 2, ('a', 'b'))}), 'c': (4, 5, 6), 'd': (7, 8, 9),
-                 'e': frozendict({9: 10, 11: frozendict({1: 2})})}
+@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: [1, 2]}, {1: (1, 2)}), ({1: {2: 3}}, {1: frozendict({2: 3})}),
+                                                      ({1: [{2: 3}, [4, 5, 6]]}, {1: (frozendict({2: 3}), (4, 5, 6))})))
+def test_freeze_values(input_dict, expected_dict):
+    assert config.freeze_values(input_dict) == expected_dict
 
 
-def test_unfreeze_values():
-    d = {'a': (1, 2, 3, frozendict({'z': 'y'})), 'b': frozendict({1: 2, 4: (1, 2, ('a', 'b'))}), 'c': (4, 5, 6), 'd': (7, 8, 9),
-         'e': frozendict({9: 10, 11: frozendict({1: 2})})}
-    config.unfreeze_values(d)
-    assert d == {'a': [1, 2, 3, {'z': 'y'}], 'b': {1: 2, 4: [1, 2, ['a', 'b']]}, 'c': [4, 5, 6], 'd': [7, 8, 9], 'e': {9: 10, 11: {1: 2}}}
+@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: (1, 2)}, {1: [1, 2]}), ({1: frozendict({2: 3})}, {1: {2: 3}}),
+                                                      ({1: (frozendict({2: 3}), (4, 5, 6))}, {1: [{2: 3}, [4, 5, 6]]})))
+def test_unfreeze_values(input_dict, expected_dict):
+    assert config.unfreeze_values(input_dict) == expected_dict
 
 
 # check_config {{{1
