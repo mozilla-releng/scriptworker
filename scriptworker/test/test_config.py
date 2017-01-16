@@ -49,10 +49,19 @@ def t_env():
 
 
 # freeze_values {{{1
-def test_freeze_values():
-    d = {'a': [1, 2, 3], 'b': {'c': 'd'}}
-    config.freeze_values(d)
-    assert d == {'a': (1, 2, 3), 'b': frozendict({'c': 'd'})}
+@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: [1, 2]}, {1: (1, 2)}), ({1: {2: 3}}, {1: frozendict({2: 3})}),
+                                                      ({1: [{2: 3}, [4, 5, 6]]}, {1: (frozendict({2: 3}), (4, 5, 6))})))
+def test_freeze_values(input_dict, expected_dict):
+    config.freeze_values(input_dict)
+    assert input_dict == expected_dict
+
+
+@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: (1, 2)}, {1: [1, 2]}), ({1: frozendict({2: 3})}, {1: {2: 3}}),
+                                                      ({1: (frozendict({2: 3}), (4, 5, 6))}, {1: [{2: 3}, [4, 5, 6]]}),
+                                                      ({1: (1, (2, 3), frozendict({4: 5}))}, {1: [1, [2, 3], {4: 5}]}), ((1, 2), (1, 2))))
+def test_unfreeze_values(input_dict, expected_dict):
+    config.unfreeze_values(input_dict)
+    assert input_dict == expected_dict
 
 
 # check_config {{{1
@@ -70,6 +79,7 @@ def test_check_config_none_key(t_config):
     t_config['credentials'] = None
     messages = config.check_config(t_config, "test_path")
     assert "credentials needs to be defined!" in "\n".join(messages)
+
 
 def test_check_config_missing_key(t_config):
     t_config = _fill_missing_values(t_config)

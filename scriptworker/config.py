@@ -33,20 +33,56 @@ _GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
 _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
-# freeze_values {{{1
 def freeze_values(dictionary):
     """Convert a dictionary's list values into tuples, and dicts into frozendicts.
 
-    This won't recurse; it's best for relatively flat data structures.
+    A recursive function(bottom-up conversion)
 
     Args:
-        dictionary (dict): the dictionary to modify in-place.
+        dictionary(dict/list): the dictionary/list to be modified in-place.
     """
-    for key, value in dictionary.items():
-        if isinstance(value, list):
-            dictionary[key] = tuple(value)
-        elif isinstance(value, dict):
-            dictionary[key] = frozendict(value)
+    if isinstance(dictionary, dict):
+        for key, value in dictionary.items():
+            if isinstance(value, list):
+                freeze_values(value)
+                dictionary[key] = tuple(value)
+            elif isinstance(value, dict):
+                freeze_values(value)
+                dictionary[key] = frozendict(value)
+    elif isinstance(dictionary, list):
+        for idx in range(len(dictionary)):
+            if isinstance(dictionary[idx], list):
+                freeze_values(idx)
+                dictionary[idx] = tuple(dictionary[idx])
+            elif isinstance(dictionary[idx], dict):
+                freeze_values(dictionary[idx])
+                dictionary[idx] = frozendict(dictionary[idx])
+
+
+def unfreeze_values(dictionary):
+    """Convert a dictionary's tuple values into lists, and frozendicts into dicts.
+
+    A recursive function(top-down conversion)
+
+    Args:
+        dictionary(frozendict/tuple): the frozendict/tuple to modify in-place.
+    """
+    if isinstance(dictionary, dict):
+        for key, value in dictionary.items():
+            if isinstance(value, tuple):
+                dictionary[key] = list(value)
+                unfreeze_values(dictionary[key])
+            elif isinstance(value, frozendict):
+                dictionary[key] = value.__dict__['_dict']
+                unfreeze_values(dictionary[key])
+    elif isinstance(dictionary, list):
+        for idx in range(len(dictionary)):
+            if isinstance(dictionary[idx], tuple):
+                dictionary[idx] = list(dictionary[idx])
+                unfreeze_values(dictionary[idx])
+            elif isinstance(dictionary[idx], frozendict):
+                dictionary[idx] = dictionary[idx].__dict__['_dict']
+                unfreeze_values(dictionary[idx])
 
 
 # read_worker_creds {{{1
