@@ -115,8 +115,11 @@ async def find_task(context, poll_url, delete_url, request_function):
 
     For a given poll_url/delete_url pair, get the xml from the poll_url.
     For each message in the xml, parse and try to claim the task.
-    Delete the message from the Azure queue whether the claim was successful
-    or not (error 409 on claim means the task was cancelled/expired/claimed).
+
+    Make a best effort to delete the message from the Azure queue if the task
+    was claimed, or if `claim_task` returns None (the task was
+    cancelled/expired/claimed).  If retrying this deletion fails, proceed and
+    clean it up the next round of polling.
 
     If the claim was successful, return the task json.
 
@@ -129,9 +132,8 @@ async def find_task(context, poll_url, delete_url, request_function):
         dict: the claimTask json
 
     Raises:
-        ScriptWorkerException: on failure of request_function
+        ScriptWorkerException: on polling failure
     """
-    # this can raise a ScriptWorkerException on failure
     xml = await request_function(context, poll_url)
     for message_info in parse_azure_xml(xml):
         try:
