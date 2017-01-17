@@ -86,7 +86,7 @@ async def upload_artifacts(context):
 def compress_artifact_if_supported(artifact_path):
     """Compress artifacts with GZip if they're known to be supported.
 
-    This replaces the artifact given by a gzip binary. Nothing happens if the artifact is already zip'd
+    This replaces the artifact given by a gzip binary.
 
     Args:
         artifact_path (str): the path to compress

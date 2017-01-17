@@ -1,10 +1,16 @@
 import arrow
+import gzip
+import json
+import operator
 import os
+import mimetypes
 import mock
 import pytest
+import tempfile
 
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
-    create_artifact, get_artifact_url, download_artifacts
+    create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
+    _force_mimetypes_to_plain_text, _craft_artifact_put_headers
 from scriptworker.exceptions import ScriptWorkerRetryException
 
 
@@ -27,13 +33,27 @@ def context(rw_context):
     yield rw_context
 
 
+@pytest.mark.parametrize("extension", ('foo.log', 'bar.asc'))
+def test_force_mimetypes_to_plain_text(extension):
+    # Function is not called explicitly here, because it should have occured at import time
+    assert mimetypes.guess_type(extension)[0] == 'text/plain'
+
+
 MIME_TYPES = {
-    "/foo/bar/test.txt": "text/plain",
-    "/tmp/blah.tgz": "application/x-tar",
-    "~/Firefox.dmg": "application/x-apple-diskimage",
-    "/foo/bar/blah.log": "text/plain",
-    "/totally/unknown": "application/binary",
+    '/foo/bar/test.txt': ('text/plain', None),
+    '/tmp/blah.tgz': ('application/x-tar', 'gzip'),
+    '~/Firefox.dmg': ('application/x-apple-diskimage', None),
+    '/foo/bar/blah.log': ('text/plain', None),
+    '/foo/bar/chainOfTrust.asc': ('text/plain', None),
+    '/totally/unknown': ('application/binary', None),
 }
+
+
+# guess_content_type {{{1
+@pytest.mark.parametrize("mime_types", [(k, v) for k, v in sorted(MIME_TYPES.items())])
+def test_guess_content_type(mime_types):
+    path, (mimetype, encoding) = mime_types
+    assert guess_content_type_and_encoding(path) == (mimetype, encoding)
 
 
 # get_expiration_arrow {{{1
@@ -46,13 +66,6 @@ def test_expiration_arrow(context):
         expiration = get_expiration_arrow(context)
         diff = expiration.timestamp - now.timestamp
         assert diff == 3600
-
-
-# guess_content_type {{{1
-@pytest.mark.parametrize("mime_types", [(k, v) for k, v in sorted(MIME_TYPES.items())])
-def test_guess_content_type(mime_types):
-    path, mimetype = mime_types
-    assert guess_content_type_and_encoding(path)[0] == mimetype
 
 
 # upload_artifacts {{{1
@@ -76,6 +89,34 @@ def test_upload_artifacts(context, event_loop):
 
     assert sorted(args) == sorted(paths)
 
+@pytest.mark.parametrize('filename, original_content, expected_content_type, expected_encoding', (
+    ('file.txt', 'Foo bar', 'text/plain', 'gzip'),
+    ('file.log',  '12:00:00 Foo bar', 'text/plain', 'gzip'),
+    ('file.json', json.dumps({'foo': 'bar'}), 'application/json', 'gzip'),
+    ('file.html', '<html><h1>foo</h1>bar</html>', 'text/html', 'gzip'),
+    ('file.xml',  '<foo>bar</foo>', 'text/xml', 'gzip'),
+    ('file.unknown',  'Unknown foo bar', 'application/binary', None),
+))
+def test_compress_artifact_if_supported(filename, original_content, expected_content_type, expected_encoding):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        absolute_path = os.path.join(temp_dir, filename)
+        with open(absolute_path, 'w') as f:
+            f.write(original_content)
+
+        old_number_of_files = _get_number_of_children_in_directory(temp_dir)
+
+        content_type, encoding = compress_artifact_if_supported(absolute_path)
+        assert content_type, encoding == (expected_content_type, expected_encoding)
+        # compress_artifact_if_supported() should replace the existing file
+        assert _get_number_of_children_in_directory(temp_dir) == old_number_of_files
+
+        open_function = gzip.open if expected_encoding == 'gzip' else open
+        with open_function(absolute_path, 'rt') as f:
+            assert f.read() == original_content
+
+
+def _get_number_of_children_in_directory(directory):
+    return len([name for name in os.listdir(directory)])
 
 # create_artifact {{{1
 def test_create_artifact(context, fake_session, successful_queue, event_loop):
@@ -94,6 +135,9 @@ def test_create_artifact(context, fake_session, successful_queue, event_loop):
             "contentType": "text/plain",
         }), {}
     ]
+
+    # TODO: Assert the content of the PUT request is valid. This can easily be done once MagicMock supports async
+    # context managers. See http://bugs.python.org/issue26467 and https://github.com/Martiusweb/asynctest/issues/29.
     context.session.close()
 
 
@@ -109,6 +153,12 @@ def test_create_artifact_retry(context, fake_session_500, successful_queue,
             create_artifact(context, path, "public/env/one.log", content_type='text/plain', content_encoding=None, expires=expires)
         )
     context.session.close()
+
+
+def test_craft_artifact_put_headers():
+    assert _craft_artifact_put_headers('text/plain') == {'Content-Type': 'text/plain'}
+    assert _craft_artifact_put_headers('text/plain', encoding=None) == {'Content-Type': 'text/plain'}
+    assert _craft_artifact_put_headers('text/plain', 'gzip') == {'Content-Type': 'text/plain', 'Content-Encoding': 'gzip'}
 
 
 # get_artifact_url {{{1
