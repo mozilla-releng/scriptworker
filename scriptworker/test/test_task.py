@@ -92,9 +92,8 @@ def test_run_task(context, event_loop):
     status = event_loop.run_until_complete(
         task.run_task(context)
     )
-    log_file, error_file = log.get_log_filenames(context)
+    log_file = log.get_log_filename(context)
     assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
-    assert read(error_file) == "bar\n"
     assert status == 1
 
 

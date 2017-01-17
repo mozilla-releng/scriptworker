@@ -25,20 +25,17 @@ of text
 
 
 # tests {{{1
-def test_get_log_filenames(context):
-    log_file, error_file = swlog.get_log_filenames(context)
-    assert log_file == os.path.join(context.config['task_log_dir'], 'task_output.log')
-    assert error_file == os.path.join(context.config['task_log_dir'], 'task_error.log')
+def test_get_log_filename(context):
+    log_file = swlog.get_log_filename(context)
+    assert log_file == os.path.join(context.config['task_log_dir'], 'live_backing.log')
 
 
-def test_get_log_fhs(context, text):
-    log_file, error_file = swlog.get_log_filenames(context)
-    with swlog.get_log_fhs(context) as (log_fh, error_fh):
+def test_get_log_filehandle(context, text):
+    log_file = swlog.get_log_filename(context)
+    with swlog.get_log_filehandle(context) as log_fh:
         log_fh.write(text)
-        error_fh.write(text)
-        error_fh.write(text)
-    assert read(log_file) == text
-    assert read(error_file) == text + text
+        log_fh.write(text)
+    assert read(log_file) == text + text
 
 
 def test_pipe_to_log(context, event_loop):
@@ -50,14 +47,13 @@ def test_pipe_to_log(context, event_loop):
         )
     )
     tasks = []
-    with swlog.get_log_fhs(context) as (log_fh, error_fh):
-        tasks.append(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh, error_fh]))
+    with swlog.get_log_filehandle(context) as log_fh:
+        tasks.append(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh]))
         tasks.append(swlog.pipe_to_log(proc.stdout, filehandles=[log_fh]))
         event_loop.run_until_complete(asyncio.wait(tasks))
         event_loop.run_until_complete(proc.wait())
-    log_file, error_file = swlog.get_log_filenames(context)
+    log_file = swlog.get_log_filename(context)
     assert read(log_file) in ("foo\nbar\n", "bar\nfoo\n")
-    assert read(error_file) == "foo\n"
 
 
 def test_update_logging_config_verbose(context):
