@@ -106,7 +106,7 @@ class UnsuccessfulQueue(object):
     status = 409
 
     async def claimTask(self, *args, **kwargs):
-        raise taskcluster.exceptions.TaskclusterFailure("foo")
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
     async def reportCompleted(self, *args, **kwargs):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)

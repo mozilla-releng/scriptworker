@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+### Fixed
+- delete azure queue entries on status code 409 (already claimed or cancelled).  This allows us to clean up cancelled tasks from the queue, speeding up future polling.
+- more retries and catches in `find_task`, making it more robust.
+
 ## [1.0.0b6] - 2017-01-12
 ### Fixed
 - balrog tasks are now verifiable in chain of trust.

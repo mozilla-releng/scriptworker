@@ -14,8 +14,8 @@ import time
 import urllib.parse
 
 import taskcluster.exceptions
-from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.utils import datestring_to_timestamp, load_json
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerRetryException
+from scriptworker.utils import datestring_to_timestamp, load_json, retry_async
 
 log = logging.getLogger(__name__)
 
@@ -83,9 +83,15 @@ async def claim_task(context, taskId, runId):
         result = await context.queue.claimTask(taskId, runId, payload)
         return result
     except taskcluster.exceptions.TaskclusterFailure as exc:
-        # TODO 409 is expected.  Not sure if we should ignore other errors?
         log.debug("Got %s" % exc)
-        return None
+        if hasattr(exc, 'status_code') and exc.status_code == 409:
+            # 409 means we found a task that's claimed by another worker
+            # or cancelled.  Let's return None and delete it from Azure
+            # so we don't get a backlog of bogus tasks in the queue.
+            log.debug("Got %s" % exc)
+            return None
+        else:
+            raise ScriptWorkerRetryException(str(exc))
 
 
 def get_azure_urls(context):
@@ -109,8 +115,11 @@ async def find_task(context, poll_url, delete_url, request_function):
 
     For a given poll_url/delete_url pair, get the xml from the poll_url.
     For each message in the xml, parse and try to claim the task.
-    Delete the message from the Azure queue whether the claim was successful
-    or not (error 409 on claim means the task was cancelled/expired/claimed).
+
+    Make a best effort to delete the message from the Azure queue if the task
+    was claimed, or if `claim_task` returns None (the task was
+    cancelled/expired/claimed).  If retrying this deletion fails, proceed and
+    clean it up the next round of polling.
 
     If the claim was successful, return the task json.
 
@@ -121,15 +130,32 @@ async def find_task(context, poll_url, delete_url, request_function):
 
     Returns:
         dict: the claimTask json
+
+    Raises:
+        ScriptWorkerException: on polling failure
     """
     xml = await request_function(context, poll_url)
     for message_info in parse_azure_xml(xml):
-        task = await claim_task(context, message_info['task_info']['taskId'], message_info['task_info']['runId'])
-        if task is not None:
-            log.info("Found task! Deleting from azure...")
-            delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
+        try:
+            task = await retry_async(
+                claim_task,
+                retry_exceptions=(ScriptWorkerRetryException, ),
+                args=(
+                    context, message_info['task_info']['taskId'],
+                    message_info['task_info']['runId']
+                )
+            )
+        except ScriptWorkerRetryException:
+            continue
+        log.debug("Deleting from azure...")
+        delete_url = delete_url.replace("{{", "{").replace("}}", "}").format(**message_info)
+        try:
             response = await request_function(context, delete_url, method='delete', good=[200, 204])
             log.debug(response)
+        except ScriptWorkerException as exc:
+            log.error("Unable to delete from Azure: {}".format(exc))
+            pass
+        if task is not None:
             return task
 
 
