@@ -2,7 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [1.0.0b7] - 2017-01-18
+### Added
+- `unfreeze_values`, to unfreeze a `freeze_values` frozendict.
+
+### Changed
+- `freeze_values` now recurses.
+
 ### Fixed
 - delete azure queue entries on status code 409 (already claimed or cancelled).  This allows us to clean up cancelled tasks from the queue, speeding up future polling.
 - more retries and catches in `find_task`, making it more robust.
