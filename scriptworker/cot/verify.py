@@ -301,6 +301,7 @@ def get_valid_task_types():
         'l10n': verify_build_task,
         'decision': verify_decision_task,
         'docker-image': verify_docker_image_task,
+        'pushapk': verify_pushapk_task,
         'signing': verify_signing_task,
     })
 
@@ -952,6 +953,22 @@ async def verify_beetmover_task(chain, obj):
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
+
+    Raises:
+        CoTError: on error.
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+# verify_pushapk_task {{{1
+async def verify_pushapk_task(chain, obj):
+    """Verify the pushapk trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the pushapk task.
 
     Raises:
         CoTError: on error.
