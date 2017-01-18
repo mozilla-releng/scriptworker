@@ -6,13 +6,13 @@ import aiohttp
 import arrow
 import asyncio
 from copy import deepcopy
-from frozendict import frozendict
 import json
 import mock
 import os
 import pytest
 import tempfile
 import taskcluster.exceptions
+from scriptworker.config import unfreeze_values
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.utils import makedirs
@@ -261,7 +261,7 @@ def tmpdir2():
 def rw_context():
     with tempfile.TemporaryDirectory() as tmp:
         context = Context()
-        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.config = unfreeze_values(DEFAULT_CONFIG)
         context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
         context.config['cot_job_type'] = "signing"
         for key, value in context.config.items():
@@ -270,8 +270,6 @@ def rw_context():
                 makedirs(context.config[key])
             if key.endswith("key_path") or key in ("gpg_home", ):
                 context.config[key] = os.path.join(tmp, key)
-            if isinstance(value, frozendict):
-                context.config[key] = dict(value)
         yield context
 
 
