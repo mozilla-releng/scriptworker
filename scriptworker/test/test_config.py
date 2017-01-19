@@ -56,12 +56,23 @@ def test_freeze_values(input_dict, expected_dict):
     assert input_dict == expected_dict
 
 
-@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: (1, 2)}, {1: [1, 2]}), ({1: frozendict({2: 3})}, {1: {2: 3}}),
-                                                      ({1: (frozendict({2: 3}), (4, 5, 6))}, {1: [{2: 3}, [4, 5, 6]]}),
-                                                      ({1: (1, (2, 3), frozendict({4: 5}))}, {1: [1, [2, 3], {4: 5}]}), ((1, 2), (1, 2))))
+@pytest.mark.parametrize("input_dict,expected_dict", ((
+    {1: 2}, {1: 2}
+), (
+    {1: (1, 2)}, {1: [1, 2]}
+), (
+    {1: frozendict({2: 3})}, {1: {2: 3}}
+), (
+    {1: (frozendict({2: 3}), (4, 5, 6))}, {1: [{2: 3}, [4, 5, 6]]}
+), (
+    {1: (1, (2, 3), frozendict({4: 5}))}, {1: [1, [2, 3], {4: 5}]}
+), (
+    (1, 2), [1, 2]
+), (
+    1, 1
+)))
 def test_unfreeze_values(input_dict, expected_dict):
-    config.unfreeze_values(input_dict)
-    assert input_dict == expected_dict
+    assert config.unfreeze_values(input_dict) == expected_dict
 
 
 # check_config {{{1

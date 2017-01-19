@@ -65,24 +65,27 @@ def unfreeze_values(dictionary):
     A recursive function(top-down conversion)
 
     Args:
-        dictionary(frozendict/tuple): the frozendict/tuple to modify in-place.
+        dictionary(frozendict/tuple): the frozendict/tuple.
+
+    Returns:
+        dictionary (dict/list): the unfrozen copy.
     """
-    if isinstance(dictionary, dict):
+    if isinstance(dictionary, (frozendict, dict)):
+        dictionary = dict(deepcopy(dictionary))
         for key, value in dictionary.items():
             if isinstance(value, tuple):
-                dictionary[key] = list(value)
-                unfreeze_values(dictionary[key])
+                dictionary[key] = unfreeze_values(dictionary[key])
             elif isinstance(value, frozendict):
-                dictionary[key] = value.__dict__['_dict']
-                unfreeze_values(dictionary[key])
-    elif isinstance(dictionary, list):
+                dictionary[key] = unfreeze_values(dictionary[key])
+    elif isinstance(dictionary, (list, tuple)):
+        dictionary = list(dictionary)
         for idx in range(len(dictionary)):
             if isinstance(dictionary[idx], tuple):
-                dictionary[idx] = list(dictionary[idx])
-                unfreeze_values(dictionary[idx])
+                dictionary[idx] = unfreeze_values(dictionary[idx])
             elif isinstance(dictionary[idx], frozendict):
-                dictionary[idx] = dictionary[idx].__dict__['_dict']
-                unfreeze_values(dictionary[idx])
+                dictionary[idx] = unfreeze_values(dictionary[idx])
+
+    return dictionary
 
 
 # read_worker_creds {{{1
