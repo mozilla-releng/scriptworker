@@ -98,7 +98,7 @@ def compress_artifact_if_supported(artifact_path):
     log.debug('"{}" is encoded with "{}" and has mime/type "{}"'.format(artifact_path, encoding, content_type))
 
     if encoding is None and content_type in _GZIP_SUPPORTED_CONTENT_TYPE:
-        log.debug('"{}" can be gzip\'d. Compressing...'.format(artifact_path))
+        log.info('"{}" can be gzip\'d. Compressing...'.format(artifact_path))
         with open(artifact_path, 'rb') as f_in:
             text_content = f_in.read()
 
@@ -106,7 +106,7 @@ def compress_artifact_if_supported(artifact_path):
             f_out.write(text_content)
 
         encoding = 'gzip'
-        log.info('Compressed "{}" with gzip'.format(artifact_path))
+        log.info('"{}" compressed'.format(artifact_path))
     else:
         log.debug('"{}" is not supported for compression.'.format(artifact_path))
 
