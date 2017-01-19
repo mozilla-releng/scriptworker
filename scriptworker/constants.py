@@ -125,6 +125,7 @@ DEFAULT_CONFIG = frozendict({
 
     # scriptworker identification
     "scriptworker_worker_types": (
+        "pushapk-v1",
         "balrogworker-v1",
         "beetmoverworker-v1",
         "signing-linux-v1",
@@ -218,11 +219,13 @@ DEFAULT_CONFIG = frozendict({
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': {
-            'project:releng:beetmover:release': 'release',
             'project:releng:balrog:release': 'release',
+            'project:releng:beetmover:release': 'release',
+            'project:releng:pushapk:release': 'release',
             'project:releng:signing:cert:release-signing': 'release',
             'project:releng:balrog:nightly': 'nightly',
             'project:releng:beetmover:nightly': 'nightly',
+            'project:releng:pushapk:nightly': 'nightly',
             'project:releng:signing:cert:nightly-signing': 'nightly',
         }
     }),
