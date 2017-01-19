@@ -16,13 +16,14 @@ import shlex
 import sys
 import tempfile
 from urllib.parse import unquote, urlparse
+from scriptworker.artifacts import download_artifacts, get_artifact_url
 from scriptworker.config import read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
-from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
+from scriptworker.task import get_decision_task_id, get_worker_type, get_task_id
 from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
 from taskcluster.exceptions import TaskclusterFailure
 
@@ -301,6 +302,7 @@ def get_valid_task_types():
         'l10n': verify_build_task,
         'decision': verify_decision_task,
         'docker-image': verify_docker_image_task,
+        'pushapk': verify_pushapk_task,
         'signing': verify_signing_task,
     })
 
@@ -952,6 +954,22 @@ async def verify_beetmover_task(chain, obj):
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
+
+    Raises:
+        CoTError: on error.
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+# verify_pushapk_task {{{1
+async def verify_pushapk_task(chain, obj):
+    """Verify the pushapk trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the pushapk task.
 
     Raises:
         CoTError: on error.
