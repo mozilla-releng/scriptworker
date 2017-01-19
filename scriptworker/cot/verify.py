@@ -16,13 +16,14 @@ import shlex
 import sys
 import tempfile
 from urllib.parse import unquote, urlparse
+from scriptworker.artifacts import download_artifacts, get_artifact_url
 from scriptworker.config import read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
-from scriptworker.task import download_artifacts, get_artifact_url, get_decision_task_id, get_worker_type, get_task_id
+from scriptworker.task import get_decision_task_id, get_worker_type, get_task_id
 from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
 from taskcluster.exceptions import TaskclusterFailure
 

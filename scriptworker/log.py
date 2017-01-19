@@ -79,35 +79,33 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
             break
 
 
-def get_log_filenames(context):
+def get_log_filename(context):
     """Helper function to get the task log/error file paths.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        tuple: log file path, error log file path
+        string: log file path
     """
-    log_file = os.path.join(context.config['task_log_dir'], 'task_output.log')
-    error_file = os.path.join(context.config['task_log_dir'], 'task_error.log')
-    return log_file, error_file
+    # XXX Even though our logs aren't live, Treeherder looks for live_backing.log to show errors in failures summary
+    return os.path.join(context.config['task_log_dir'], 'live_backing.log')
 
 
 @contextmanager
-def get_log_fhs(context):
+def get_log_filehandle(context):
     """Helper contextmanager function to open the log and error filehandles.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Yields:
-        tuple: log filehandle, error log filehandle
+        log filehandle
     """
-    log_file, error_file = get_log_filenames(context)
+    log_file_name = get_log_filename(context)
     makedirs(context.config['task_log_dir'])
-    with open(log_file, "w", encoding="utf-8") as log_fh:
-        with open(error_file, "w", encoding="utf-8") as error_fh:
-            yield (log_fh, error_fh)
+    with open(log_file_name, "w", encoding="utf-8") as filehandle:
+        yield filehandle
 
 
 @contextmanager
