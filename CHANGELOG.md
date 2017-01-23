@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Changed
+- `freeze_values` is now `get_frozen_copy`, and now returns a frozen copy instead of modifying the object in place.
+- `unfreeze_values` is now `get_unfrozen_copy`
+- `check_config` now calls `get_frozen_copy` on the `config` before comparing against `DEFAULT_CONFIG`
+- `create_config` calls `get_unfrozen_copy`, resulting in a recursively frozen config
+- `DEFAULT_CONFIG` now uses `frozendict`s and `tuple`s in nested config items.
+
 ## [1.0.0b7] - 2017-01-18
 ### Added
 - `unfreeze_values`, to unfreeze a `freeze_values` frozendict.

@@ -12,7 +12,7 @@ import os
 import pytest
 import tempfile
 import taskcluster.exceptions
-from scriptworker.config import unfreeze_values
+from scriptworker.config import get_unfrozen_copy
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.utils import makedirs
@@ -261,7 +261,7 @@ def tmpdir2():
 def rw_context():
     with tempfile.TemporaryDirectory() as tmp:
         context = Context()
-        context.config = unfreeze_values(DEFAULT_CONFIG)
+        context.config = get_unfrozen_copy(DEFAULT_CONFIG)
         context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
         context.config['cot_job_type'] = "signing"
         for key, value in context.config.items():
