@@ -48,31 +48,40 @@ def t_env():
     return env
 
 
-# freeze_values {{{1
-@pytest.mark.parametrize("input_dict,expected_dict", (({1: 2}, {1: 2}), ({1: [1, 2]}, {1: (1, 2)}), ({1: {2: 3}}, {1: frozendict({2: 3})}),
-                                                      ({1: [{2: 3}, [4, 5, 6]]}, {1: (frozendict({2: 3}), (4, 5, 6))})))
-def test_freeze_values(input_dict, expected_dict):
-    config.freeze_values(input_dict)
-    assert input_dict == expected_dict
+# get_frozen_copy {{{1
+@pytest.mark.parametrize("input_dict,expected_dict", ((
+    {1: 2}, frozendict({1: 2})
+), (
+    {'a': [1.0, 2.5]}, frozendict({'a': (1.0, 2.5)})
+), (
+    frozendict({1: {'a': True}}), frozendict({1: frozendict({'a': True})})
+), (
+    {1: [{'a': None}, ['A', 'B', 'C']]}, frozendict({1: (frozendict({'a': None}), ('A', 'B', 'C'))})
+), (
+    {1: [1, [2, 3], {}]}, frozendict({1: (1, (2, 3), frozendict({}))})
+), (
+    [1, []], (1, ())
+)))
+def test_get_frozen_copy(input_dict, expected_dict):
+    assert config.get_frozen_copy(input_dict) == expected_dict
 
 
+# get_unfrozen_copy {{{1
 @pytest.mark.parametrize("input_dict,expected_dict", ((
     {1: 2}, {1: 2}
 ), (
-    {1: (1, 2)}, {1: [1, 2]}
+    {'a': (1.0, 2.5)}, {'a': [1.0, 2.5]}
 ), (
-    {1: frozendict({2: 3})}, {1: {2: 3}}
+    frozendict({1: frozendict({'a': True})}), {1: {'a': True}}
 ), (
-    {1: (frozendict({2: 3}), (4, 5, 6))}, {1: [{2: 3}, [4, 5, 6]]}
+    {1: (frozendict({'a': None}), ('A', 'B', 'C'))}, {1: [{'a': None}, ['A', 'B', 'C']]}
 ), (
-    {1: (1, (2, 3), frozendict({4: 5}))}, {1: [1, [2, 3], {4: 5}]}
+    {1: (1, [2, 3], frozendict({}))}, {1: [1, [2, 3], {}]}
 ), (
-    (1, 2), [1, 2]
-), (
-    1, 1
+    (1, ()), [1, []]
 )))
-def test_unfreeze_values(input_dict, expected_dict):
-    assert config.unfreeze_values(input_dict) == expected_dict
+def test_get_unfrozen_copy(input_dict, expected_dict):
+    assert config.get_unfrozen_copy(input_dict) == expected_dict
 
 
 # check_config {{{1

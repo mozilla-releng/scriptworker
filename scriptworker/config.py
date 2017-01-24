@@ -33,59 +33,39 @@ _GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
 _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
-def freeze_values(dictionary):
-    """Convert a dictionary's list values into tuples, and dicts into frozendicts.
+def get_frozen_copy(values):
+    """Convert `values`'s list values into tuples, and dicts into frozendicts.
 
     A recursive function(bottom-up conversion)
 
     Args:
-        dictionary(dict/list): the dictionary/list to be modified in-place.
+        values (dict/list): the values/list to be modified in-place.
     """
-    if isinstance(dictionary, dict):
-        for key, value in dictionary.items():
-            if isinstance(value, list):
-                freeze_values(value)
-                dictionary[key] = tuple(value)
-            elif isinstance(value, dict):
-                freeze_values(value)
-                dictionary[key] = frozendict(value)
-    elif isinstance(dictionary, list):
-        for idx in range(len(dictionary)):
-            if isinstance(dictionary[idx], list):
-                freeze_values(idx)
-                dictionary[idx] = tuple(dictionary[idx])
-            elif isinstance(dictionary[idx], dict):
-                freeze_values(dictionary[idx])
-                dictionary[idx] = frozendict(dictionary[idx])
+    if isinstance(values, (frozendict, dict)):
+        return frozendict({key: get_frozen_copy(value) for key, value in values.items()})
+    elif isinstance(values, (list, tuple)):
+        return tuple([get_frozen_copy(value) for value in values])
+
+    # Nothing to freeze.
+    return values
 
 
-def unfreeze_values(dictionary):
-    """Convert a dictionary's tuple values into lists, and frozendicts into dicts.
-
-    A recursive function(top-down conversion)
+def get_unfrozen_copy(values):
+    """Recursively convert `value`'s tuple values into lists, and frozendicts into dicts.
 
     Args:
-        dictionary(frozendict/tuple): the frozendict/tuple.
+        values (frozendict/tuple): the frozendict/tuple.
 
     Returns:
-        dictionary (dict/list): the unfrozen copy.
+        values (dict/list): the unfrozen copy.
     """
-    if isinstance(dictionary, (frozendict, dict)):
-        dictionary = dict(deepcopy(dictionary))
-        for key, value in dictionary.items():
-            if isinstance(value, tuple):
-                dictionary[key] = unfreeze_values(dictionary[key])
-            elif isinstance(value, frozendict):
-                dictionary[key] = unfreeze_values(dictionary[key])
-    elif isinstance(dictionary, (list, tuple)):
-        dictionary = list(dictionary)
-        for idx in range(len(dictionary)):
-            if isinstance(dictionary[idx], tuple):
-                dictionary[idx] = unfreeze_values(dictionary[idx])
-            elif isinstance(dictionary[idx], frozendict):
-                dictionary[idx] = unfreeze_values(dictionary[idx])
+    if isinstance(values, (frozendict, dict)):
+        return {key: get_unfrozen_copy(value) for key, value in values.items()}
+    elif isinstance(values, (list, tuple)):
+        return [get_unfrozen_copy(value) for value in values]
 
-    return dictionary
+    # Nothing to unfreeze.
+    return values
 
 
 # read_worker_creds {{{1
@@ -134,11 +114,12 @@ def check_config(config, path):
     """
     messages = []
 
-    missing_keys = set(DEFAULT_CONFIG.keys()) - set(config.keys())
+    config_copy = get_frozen_copy(config)
+    missing_keys = set(DEFAULT_CONFIG.keys()) - set(config_copy.keys())
     if missing_keys:
         messages.append("Missing config keys {}!".format(missing_keys))
 
-    for key, value in config.items():
+    for key, value in config_copy.items():
         if key not in DEFAULT_CONFIG:
             messages.append("Unknown key {} in {}!".format(key, path))
             continue
@@ -189,16 +170,15 @@ def create_config(config_path="scriptworker.yaml"):
     config = dict(deepcopy(DEFAULT_CONFIG))
     if not secrets.get("credentials"):
         secrets['credentials'] = read_worker_creds()
-    freeze_values(secrets)
     config.update(secrets)
     messages = check_config(config, config_path)
     if messages:
         print('\n'.join(messages), file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
-    credentials = frozendict(secrets['credentials'])
+    credentials = get_frozen_copy(secrets['credentials'])
     del(config['credentials'])
-    config = frozendict(config)
+    config = get_frozen_copy(config)
     return config, credentials
 
 

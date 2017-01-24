@@ -14,7 +14,11 @@ import os
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
 # instance maintainers, also make changes to ``scriptworker.yaml.tmpl``.
+#
 # Often DEFAULT_CONFIG changes will require test changes as well.
+#
+# When adding new complex config, make sure all `list`s are `tuple`s, and all
+# `dict`s are `frozendict`s!  (This should get caught by config tests.)
 DEFAULT_CONFIG = frozendict({
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
@@ -87,40 +91,40 @@ DEFAULT_CONFIG = frozendict({
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
 
     # for download url validation.  The regexes need to define a 'filepath'.
-    'valid_artifact_rules': ({
-        "schemes": ["https"],
-        "netlocs": ["queue.taskcluster.net"],
-        "path_regexes": ["^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$"]
-    }, ),
+    'valid_artifact_rules': (frozendict({
+        "schemes": ("https", ),
+        "netlocs": ("queue.taskcluster.net", ),
+        "path_regexes": ("^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
+    }), ),
 
     # docker image shas
     "docker_image_allowlists": frozendict({
-        "decision": [
+        "decision": (
             "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9",
             "sha256:7320c720c770e9f93df26f7da742db72b334b7ded77539fb240fc4a28363de5a",
             "sha256:9db282317340838f0015335d74ed56c4ee0dbad588be33e6999928a181548587",
-        ],
-        "docker-image": [
+        ),
+        "docker-image": (
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
             "sha256:d438d7818b6a47a0b1d49943ab12b5c504b65161806658e4c28f5f2aac821b9e",
             "sha256:13b80a7a6b8e10c6096aba5a435529fbc99b405f56012e57cc6835facf4b40fb",
-        ]
+        )
     }),
 
     # git gpg homedir layout
     "gpg_homedirs": frozendict({
-        "docker-worker": {
+        "docker-worker": frozendict({
             "type": "flat",
-            "ignore_suffixes": [".md"]
-        },
-        "generic-worker": {
+            "ignore_suffixes": (".md", )
+        }),
+        "generic-worker": frozendict({
             "type": "flat",
-            "ignore_suffixes": [".md"]
-        },
-        "scriptworker": {
+            "ignore_suffixes": (".md", )
+        }),
+        "scriptworker": frozendict({
             "type": "signed",
-            "ignore_suffixes": [".md"]
-        }
+            "ignore_suffixes": (".md", )
+        }),
     }),
 
     # scriptworker identification
@@ -201,11 +205,11 @@ DEFAULT_CONFIG = frozendict({
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
     # all other repos are relegated to CI scopes.
-    'valid_vcs_rules': ({
+    'valid_vcs_rules': (frozendict({
         # TODO index by cot_product
-        "schemes": ["https", "ssh"],
-        "netlocs": ["hg.mozilla.org"],
-        "path_regexes": [
+        "schemes": ("https", "ssh", ),
+        "netlocs": ("hg.mozilla.org", ),
+        "path_regexes": (
             "^(?P<path>/mozilla-(central|unified))(/|$)",
             "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
             "^(?P<path>/releases/mozilla-(aurora|beta|release|esr45|esr52))(/|$)",
@@ -214,12 +218,12 @@ DEFAULT_CONFIG = frozendict({
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
             "^(?P<path>/projects/(date|jamun))(/|$)",
-        ],
-    }, ),
+        ),
+    }), ),
 
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
-        'firefox': {
+        'firefox': frozendict({
             'project:releng:balrog:release': 'release',
             'project:releng:beetmover:release': 'release',
             'project:releng:pushapk:release': 'release',
@@ -228,11 +232,11 @@ DEFAULT_CONFIG = frozendict({
             'project:releng:beetmover:nightly': 'nightly',
             'project:releng:pushapk:nightly': 'nightly',
             'project:releng:signing:cert:nightly-signing': 'nightly',
-        }
+        })
     }),
     # Map restricted-level to trees
     'cot_restricted_trees': frozendict({
-        'firefox': {
+        'firefox': frozendict({
             # Which repos can perform release actions?
             # Allow aurora for staging betas.
             # XXX remove /projects/jamun when we no longer release firefox
@@ -261,7 +265,7 @@ DEFAULT_CONFIG = frozendict({
                 "/projects/jamun",
                 "/projects/date",
             ),
-        },
+        }),
     }),
 })
 
