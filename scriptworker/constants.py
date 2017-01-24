@@ -178,7 +178,8 @@ DEFAULT_CONFIG = frozendict({
 
     # docker-image cot
     "valid_docker_image_worker_types": (
-        "taskcluster-images",
+        "taskcluster-images",   # TODO: Remove this image once docker-images is the only valid worker type
+        "gecko-images",
     ),
 
     "valid_docker_image_env_vars": (
