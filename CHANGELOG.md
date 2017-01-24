@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [1.0.0b8] - 2017-01-24
 
 ### Fixed
 - CoT failed because of the new names of docker images. See [bug 1333394](https://bugzilla.mozilla.org/show_bug.cgi?id=1333394).
