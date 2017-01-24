@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+### Fixed
+- CoT failed because of the new names of docker images. See [bug 1333394](https://bugzilla.mozilla.org/show_bug.cgi?id=1333394).
+
 ## [1.0.0b7] - 2017-01-18
 ### Added
 - `unfreeze_values`, to unfreeze a `freeze_values` frozendict.
