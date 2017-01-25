@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [2.0.0] - 2017-01-25
 ### Added
 - `scriptworker.artifacts` is a new submodule that defines artifact behavior
 - we now support `pushapk` scriptworker instance types in `cot.verify`
@@ -16,6 +16,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `.asc` files are now forced to `text/plain`
 - all `text/plain` artifacts are now gzipped, including .log, .asc, .json, .html, .xml
 - we no longer have `task_output.log` and `task_error.log`.  Instead, we have `live_backing.log`, for more treeherder-friendliness
+
+### Removed
+- stop testing for task environment variables.  This is fragile and provides little benefit; let's push on [bug 1328719](https://bugzilla.mozilla.org/show_bug.cgi?id=1328719) instead.
 
 ## [1.0.0b7] - 2017-01-18
 ### Added
