@@ -148,59 +148,11 @@ DEFAULT_CONFIG = frozendict({
     "valid_decision_worker_types": (
         "gecko-decision",
     ),
-    "valid_decision_env_vars": (
-        "GECKO_BASE_REPOSITORY",
-        "GECKO_HEAD_REPOSITORY",
-        "GECKO_HEAD_REF",
-        "GECKO_HEAD_REV",
-        "HG_STORE_PATH",
-    ),
-
-    # docker-worker build/l10n cot
-    "valid_docker_worker_build_env_vars": (
-        "EN_US_BINARY_URL",
-        "EN_US_PACKAGE_NAME",
-        "GECKO_BASE_REPOSITORY",
-        "GECKO_HEAD_REPOSITORY",
-        "GECKO_HEAD_REV",
-        "HG_STORE_PATH",
-        "JOB_SCRIPT",
-        "MH_BRANCH",
-        "MH_BUILD_POOL",
-        "MH_CUSTOM_BUILD_VARIANT_CFG",
-        "MOZHARNESS_ACTIONS",
-        "MOZHARNESS_CONFIG",
-        "MOZHARNESS_OPTIONS",
-        "MOZHARNESS_SCRIPT",
-        "MOZ_BUILD_DATE",
-        "MOZ_SCM_LEVEL",
-        "NEED_XVFB",
-        "TOOLTOOL_CACHE",
-        "TOOLTOOL_REPO",
-        "TOOLTOOL_REV",
-        "USE_SCCACHE",
-    ),
 
     # docker-image cot
     "valid_docker_image_worker_types": (
         "taskcluster-images",   # TODO: Remove this image once docker-images is the only valid worker type
         "gecko-images",
-    ),
-
-    "valid_docker_image_env_vars": (
-        "GECKO_BASE_REPOSITORY",
-        "GECKO_HEAD_REV",
-        "GECKO_HEAD_REPOSITORY",
-        "HEAD_REF",
-        "HG_STORE_PATH",
-        "IMAGE_NAME",
-        "PROJECT",
-        "CONTEXT_URL",
-        "HEAD_REPOSITORY",
-        "CONTEXT_PATH",
-        "HEAD_REV",
-        "BASE_REPOSITORY",
-        "HASH",
     ),
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;

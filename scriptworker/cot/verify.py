@@ -860,12 +860,6 @@ async def verify_decision_task(chain, link):
     for target_link in [chain] + chain.links:
         if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
             verify_link_in_task_graph(chain, link, target_link)
-    # limit what can be in payload.env
-    # XXX replace this and the command check with downloading the decision yaml from hgweb and
-    # comparing the task.  This new check will also have to deal with hooks
-    for key in link.task['payload'].get('env', {}).keys():
-        if key not in link.context.config['valid_decision_env_vars']:
-            errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
     verify_firefox_decision_command(link)
     raise_on_errors(errors)
 
@@ -878,30 +872,11 @@ async def verify_build_task(chain, link):
     The task is the same as the task graph task; the command;
     the docker-image for docker-worker builds; the revision and repo.
 
-    TODO verify / limit what can go in command?
-    "/home/worker/bin/run-task",
-    "--chown-recursive",
-    "/home/worker/workspace",
-    "--chown-recursive",
-    "/home/worker/tooltool-cache",
-    "--vcs-checkout",
-    "/home/worker/workspace/build/src",
-    "--tools-checkout",
-    "/home/worker/workspace/build/tools",
-    "--",
-    "/home/worker/workspace/build/src/taskcluster/scripts/builder/build-linux.sh"
-
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
     """
-    errors = []
-    # XXX remove this check once we have the decision task vetted from the in-tree yaml
-    if link.worker_impl == 'docker-worker':
-        for key in link.task['payload'].get('env', {}).keys():
-            if key not in link.context.config['valid_docker_worker_build_env_vars']:
-                errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
-    raise_on_errors(errors)
+    pass
 
 
 # verify_docker_image_task {{{1
@@ -917,13 +892,8 @@ async def verify_docker_image_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_docker_image_worker_types']:
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
-    # XXX remove the env and command checks once we have a vetted decision task
+    # XXX remove the command checks once we have a vetted decision task
     # from in-tree yaml
-    # env
-    for key in link.task['payload'].get('env', {}).keys():
-        if key not in link.context.config['valid_docker_image_env_vars']:
-            errors.append("{} {} illegal env var {}!".format(link.name, link.task_id, key))
-    # command
     if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
         errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
