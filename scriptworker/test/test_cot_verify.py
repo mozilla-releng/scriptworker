@@ -759,31 +759,6 @@ async def test_verify_decision_task_missing_graph(chain, decision_link, build_li
         await cotverify.verify_decision_task(chain, decision_link)
 
 
-@pytest.mark.asyncio
-async def test_verify_decision_task_bad_env(chain, decision_link, build_link, mocker):
-
-    def task_graph(*args, **kwargs):
-        return {
-            build_link.task_id: {
-                'task': deepcopy(build_link.task)
-            },
-            chain.task_id: {
-                'task': deepcopy(chain.task)
-            },
-        }
-
-    path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
-    makedirs(os.path.dirname(path))
-    touch(path)
-    chain.links = [decision_link, build_link]
-    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
-    decision_link.task['payload']['env'] = {'GECKO_HEAD_REF': 'foo', 'illegal_var': 'blah'}
-    mocker.patch.object(cotverify, 'load_json', new=task_graph)
-    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
-    with pytest.raises(CoTError):
-        await cotverify.verify_decision_task(chain, decision_link)
-
-
 # verify_build_task {{{1
 @pytest.mark.asyncio
 async def test_verify_build_task(chain, build_link):
@@ -796,13 +771,6 @@ async def test_verify_build_task_noop(chain, build_link):
     await cotverify.verify_build_task(chain, build_link)
 
 
-@pytest.mark.asyncio
-async def test_verify_build_task_bad_env(chain, build_link):
-    build_link.task['payload']['env']['bad_key'] = 'bad_val'
-    with pytest.raises(CoTError):
-        await cotverify.verify_build_task(chain, build_link)
-
-
 # verify_docker_image_task {{{1
 @pytest.mark.asyncio
 async def test_verify_docker_image_task(chain, docker_image_link):
@@ -813,14 +781,6 @@ async def test_verify_docker_image_task(chain, docker_image_link):
 @pytest.mark.asyncio
 async def test_verify_docker_image_task_worker_type(chain, docker_image_link):
     docker_image_link.task['workerType'] = 'bad-worker-type'
-    with pytest.raises(CoTError):
-        await cotverify.verify_docker_image_task(chain, docker_image_link)
-
-
-@pytest.mark.asyncio
-async def test_verify_docker_image_task_env(chain, docker_image_link):
-    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
-    docker_image_link.task['payload']['env']['blah'] = 'foo'
     with pytest.raises(CoTError):
         await cotverify.verify_docker_image_task(chain, docker_image_link)
 
