@@ -12,10 +12,10 @@ import hashlib
 import json
 import logging
 import os
+import random
 import re
 import shutil
 from urllib.parse import unquote, urlparse
-from taskcluster.utils import calculateSleepTime
 from taskcluster.client import createTemporaryCredentials
 from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
@@ -70,20 +70,23 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 
 # retry_request {{{1
 async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
-                        **kwargs):
+                        retry_async_kwargs=None, **kwargs):
     """Retry the ``request`` function.
 
     Args:
         *args: the args to send to request() through retry_async().
         retry_exceptions (list, optional): the exceptions to retry on.
             Defaults to (ScriptWorkerRetryException, ).
+        retry_async_kwargs (dict, optional): the kwargs for retry_async.
+            If None, use {}.  Defaults to None.
         **kwargs: the kwargs to send to request() through retry_async().
 
     Returns:
         object: the value from request().
     """
+    retry_async_kwargs = retry_async_kwargs or {}
     return await retry_async(request, retry_exceptions=retry_exceptions,
-                             args=args, kwargs=kwargs)
+                             args=args, kwargs=kwargs, **retry_async_kwargs)
 
 
 # datestring_to_timestamp {{{1
@@ -173,9 +176,40 @@ def cleanup(context):
         makedirs(path)
 
 
+# calculate_sleep_time {{{1
+def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max_delay=120):
+    """Calculate the sleep time between retries.
+
+    Based off of `taskcluster.utils.calculateSleepTime`, but with kwargs instead
+    of constant `delay_factor`/`randomization_factor`/`max_delay`.  The taskcluster
+    function generally slept for less than a second, which didn't always get
+    past server issues.
+
+    Args:
+        attempt (int): the retry attempt number
+        delay_factor (float, optional): a multiplier for the delay time.  Defaults to 5.
+        randomization_factor (float, optional): a randomization multiplier for the
+            delay time.  Defaults to .25.
+        max_delay (float, optional): the max delay to sleep.  Defaults to 120.
+
+    Returns:
+        float: the time to sleep
+    """
+    if attempt <= 0:
+        return 0
+
+    # We subtract one to get exponents: 1, 2, 3, 4, 5, ..
+    delay = float(2 ** (attempt - 1)) * float(delay_factor)
+    # Apply randomization factor.  Only increase the delay here.
+    delay = delay * (randomization_factor * random.random() + 1)
+    # Always limit with a maximum delay
+    return min(delay, max_delay)
+
+
 # retry_async {{{1
-async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
-                      retry_exceptions=(Exception, ), args=(), kwargs=None):
+async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
+                      retry_exceptions=(Exception, ), args=(), kwargs=None,
+                      sleeptime_kwargs=None):
     """Retry ``func``, where ``func`` is an awaitable.
 
     Args:
@@ -188,6 +222,8 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
         args (list, optional): the args to pass to ``function``.  Defaults to ()
         kwargs (dict, optional): the kwargs to pass to ``function``.  Defaults to
             {}.
+        sleeptime_kwargs (dict, optional): the kwargs to pass to ``sleeptime_callback``.
+            If None, use {}.  Defaults to None.
 
     Returns:
         object: the value from a successful ``function`` call
@@ -208,8 +244,10 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculateSleepTime,
             if attempt > attempts:
                 log.warning("retry_async: {}: too many retries!".format(func))
                 raise
-            log.debug("retry_async: {}: sleeping before retry".format(func))
-            await asyncio.sleep(sleeptime_callback(attempt))
+            sleeptime_kwargs = sleeptime_kwargs or {}
+            sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
+            log.debug("retry_async: {}: sleeping {} before retry".format(func, sleep_time))
+            await asyncio.sleep(sleep_time)
 
 
 # create_temp_creds {{{1
@@ -399,7 +437,7 @@ def match_url_regex(rules, url, callback):
 
         (
             {
-                'schemes: ['https', 'ssh'],
+                'schemes': ['https', 'ssh'],
                 'netlocs': ['hg.mozilla.org'],
                 'path_regexes': [
                     "^(?P<path>/mozilla-(central|unified))(/|$)",

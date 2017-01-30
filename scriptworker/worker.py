@@ -68,7 +68,7 @@ async def run_loop(context, creds_key="credentials"):
                 status = worst_level(status, e.exit_code)
                 log.error("Hit ScriptWorkerException: {}".format(e))
             except (aiohttp.errors.DisconnectedError, aiohttp.errors.ClientError) as e:
-                status = worst_level(status, STATUSES['resource-unavailable'])
+                status = worst_level(status, STATUSES['intermittent-task'])
                 log.error("Hit aiohttp error: {}".format(e))
             await complete_task(context, status)
             cleanup(context)

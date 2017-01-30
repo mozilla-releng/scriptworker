@@ -154,12 +154,29 @@ def test_retry_request(context, fake_session, event_loop):
     context.session.close()
 
 
+# calculate_sleep_time {{{1
+@pytest.mark.parametrize("attempt", (-1, 0))
+def test_calculate_no_sleep_time(attempt):
+    assert utils.calculate_sleep_time(attempt) == 0
+
+
+@pytest.mark.parametrize("attempt,kwargs,min_expected,max_expected", ((
+1, {"delay_factor": 5.0, "randomization_factor": 0, "max_delay": 15}, 5.0, 5.0
+), (
+2, {"delay_factor": 5.0, "randomization_factor": .25, "max_delay": 15}, 10.0, 12.5
+), (
+3, {"delay_factor": 5.0, "randomization_factor": .25, "max_delay": 10}, 10.0, 10.0
+)))
+def test_calculate_sleep_time(attempt, kwargs, min_expected, max_expected):
+    assert min_expected <= utils.calculate_sleep_time(attempt, **kwargs) <= max_expected
+
+
 # retry_async {{{1
 def test_retry_async_fail_first(event_loop):
     global retry_count
     retry_count['fail_first'] = 0
     status = event_loop.run_until_complete(
-        utils.retry_async(fail_first)
+        utils.retry_async(fail_first, sleeptime_kwargs={'delay_factor': 0})
     )
     assert status == "yay"
     assert retry_count['fail_first'] == 2
@@ -171,7 +188,7 @@ def test_retry_async_always_fail(event_loop):
     with mock.patch('asyncio.sleep', new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
             status = event_loop.run_until_complete(
-                utils.retry_async(always_fail)
+                utils.retry_async(always_fail, sleeptime_kwargs={'delay_factor': 0})
             )
             assert status is None
     assert retry_count['always_fail'] == 5
@@ -193,16 +210,23 @@ def test_create_temp_creds():
 
 
 # raise_future_exceptions {{{1
-def test_raise_future_exceptions(event_loop):
+@pytest.mark.parametrize("exc", (IOError, SyntaxError, None))
+def test_raise_future_exceptions(event_loop, exc):
 
     async def one():
-        raise IOError("foo")
+        if exc is not None:
+            raise exc("foo")
 
     async def two():
         pass
 
     tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
-    with pytest.raises(IOError):
+    if exc is not None:
+        with pytest.raises(exc):
+            event_loop.run_until_complete(
+                utils.raise_future_exceptions(tasks)
+            )
+    else:
         event_loop.run_until_complete(
             utils.raise_future_exceptions(tasks)
         )
@@ -290,6 +314,25 @@ def test_download_file_exception(context, fake_session_500, tmpdir, event_loop):
         )
 
 
+# format_json {{{1
+def test_format_json():
+    expected = '\n'.join([
+        '{',
+        '  "a": 1,',
+        '  "b": [',
+        '    4,',
+        '    3,',
+        '    2',
+        '  ],',
+        '  "c": {',
+        '    "d": 5',
+        '  }',
+        '}'
+    ])
+    assert utils.format_json({'c': {'d': 5}, 'a': 1, 'b': [4, 3, 2]}) == expected
+
+
+
 # load_json {{{1
 @pytest.mark.parametrize("string,is_path,exception,raises,result", ((
     os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
@@ -307,3 +350,37 @@ def test_load_json(string, is_path, exception, raises, result):
             utils.load_json(string, is_path=is_path, exception=exception)
     else:
         assert result == utils.load_json(string, is_path=is_path, exception=exception)
+
+
+# match_url_regex {{{1
+def test_match_url_regex():
+    rules =  ({
+        'schemes': ['bad_scheme'],
+    }, {
+        'schemes': ['https'],
+        'netlocs': ['bad_netloc'],
+    }, {
+        'schemes': ['https'],
+        'netlocs': ['hg.mozilla.org'],
+        'path_regexes': [
+            "^bad_regex$",
+        ],
+    }, {
+        'schemes': ['https'],
+        'netlocs': ['hg.mozilla.org'],
+        'path_regexes': [
+            "^.*$",
+            "^/(?P<path>mozilla-(central|unified))(/|$)",
+        ],
+    })
+
+    def cb(m):
+        import logging
+        log = logging.getLogger()
+        log.error(m)
+        path_info = m.groupdict()
+        if 'path' in path_info:
+            return path_info['path']
+
+    assert utils.match_url_regex(rules, "https://hg.mozilla.org/mozilla-central", cb) == "mozilla-central"
+    assert utils.match_url_regex((), "https://hg.mozilla.org/mozilla-central", cb) is None
