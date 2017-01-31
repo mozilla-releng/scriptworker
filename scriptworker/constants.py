@@ -129,9 +129,9 @@ DEFAULT_CONFIG = frozendict({
 
     # scriptworker identification
     "scriptworker_worker_types": (
-        "pushapk-v1",
         "balrogworker-v1",
         "beetmoverworker-v1",
+        "pushapk-v1",
         "signing-linux-v1",
     ),
     "scriptworker_provisioners": (
@@ -176,14 +176,15 @@ DEFAULT_CONFIG = frozendict({
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
-            'project:releng:balrog:release': 'release',
-            'project:releng:beetmover:release': 'release',
-            'project:releng:pushapk:release': 'release',
-            'project:releng:signing:cert:release-signing': 'release',
-            'project:releng:balrog:nightly': 'nightly',
-            'project:releng:beetmover:nightly': 'nightly',
-            'project:releng:pushapk:nightly': 'nightly',
-            'project:releng:signing:cert:nightly-signing': 'nightly',
+            'project:releng:balrog:release': 'all-release-branches',
+            'project:releng:beetmover:release': 'all-release-branches',
+            'project:releng:googleplay:release': 'release',
+            'project:releng:signing:cert:release-signing': 'all-release-branches',
+            'project:releng:googleplay:beta': 'beta',
+            'project:releng:googleplay:aurora': 'aurora',
+            'project:releng:balrog:nightly': 'all-nightly-branches',
+            'project:releng:beetmover:nightly': 'all-nightly-branches',
+            'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
         })
     }),
     # Map restricted-level to trees
@@ -193,7 +194,7 @@ DEFAULT_CONFIG = frozendict({
             # Allow aurora for staging betas.
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            'release': (
+            'all-release-branches': (
                 "/releases/mozilla-aurora",
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
@@ -201,12 +202,22 @@ DEFAULT_CONFIG = frozendict({
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
             ),
+            # Limit things like pushapk to just these branches
+            'release': (
+                "/releases/mozilla-release",
+            ),
+            'beta': (
+                "/releases/mozilla-beta",
+            ),
+            'aurora': (
+                "/releases/mozilla-aurora",
+            ),
             # Which repos can do nightly signing?
             # XXX remove /projects/date when taskcluster nightly migration is
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            'nightly': (
+            'all-nightly-branches': (
                 "/mozilla-central",
                 "/releases/mozilla-unified",
                 "/releases/mozilla-aurora",
