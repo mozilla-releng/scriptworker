@@ -178,7 +178,7 @@ def cleanup(context):
 
 # calculate_sleep_time {{{1
 def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max_delay=120):
-    """Calculate the sleep time between retries.
+    """Calculate the sleep time between retries, in seconds.
 
     Based off of `taskcluster.utils.calculateSleepTime`, but with kwargs instead
     of constant `delay_factor`/`randomization_factor`/`max_delay`.  The taskcluster
@@ -189,11 +189,11 @@ def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max
         attempt (int): the retry attempt number
         delay_factor (float, optional): a multiplier for the delay time.  Defaults to 5.
         randomization_factor (float, optional): a randomization multiplier for the
-            delay time.  Defaults to .25.
-        max_delay (float, optional): the max delay to sleep.  Defaults to 120.
+            delay time.  Defaults to .5.
+        max_delay (float, optional): the max delay to sleep.  Defaults to 120 (seconds).
 
     Returns:
-        float: the time to sleep
+        float: the time to sleep, in seconds.
     """
     if attempt <= 0:
         return 0
@@ -246,7 +246,7 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
                 raise
             sleeptime_kwargs = sleeptime_kwargs or {}
             sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
-            log.debug("retry_async: {}: sleeping {} before retry".format(func, sleep_time))
+            log.debug("retry_async: {}: sleeping {} seconds before retry".format(func, sleep_time))
             await asyncio.sleep(sleep_time)
 
 
