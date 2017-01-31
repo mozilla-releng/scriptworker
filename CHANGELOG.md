@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.0] - 2017-01-31
+### Added
+- `intermittent-task` status
+- `scriptworker.utils.calculate_sleep_time`
+- added `retry_async_kwargs` kwarg to `retry_request`
+- added `sleeptime_kwargs` kwarg to `retry_async`
+
+### Changed
+- renamed `release` and `nightly` branch aliases to `all-release-branches` and `all-nightly-branches`
+- updated pushapk restricted scopes
+- reduced `aiohttp_max_connections` to 15
+- `aiohttp` exceptions now result in an `intermittent-task` status, rather than `resource-unavailable`
+
 ## [2.0.0] - 2017-01-25
 ### Added
 - `scriptworker.artifacts` is a new submodule that defines artifact behavior
