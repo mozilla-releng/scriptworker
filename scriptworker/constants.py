@@ -56,7 +56,7 @@ DEFAULT_CONFIG = frozendict({
     "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
     "git_commit_signing_pubkey_dir": "...",
     "artifact_upload_timeout": 60 * 20,
-    "aiohttp_max_connections": 30,
+    "aiohttp_max_connections": 15,
 
     # chain of trust settings
     "sign_chain_of_trust": True,
@@ -241,5 +241,6 @@ STATUSES = {
     'resource-unavailable': 4,
     'internal-error': 5,
     'superseded': 6,
+    'intermittent-task': 7,
 }
 REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
