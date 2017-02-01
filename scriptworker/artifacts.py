@@ -189,7 +189,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
                 tc_response['putUrl'], data=fh, headers=_craft_artifact_put_headers(content_type, content_encoding),
                 skip_auto_headers=skip_auto_headers, compress=False
             ) as resp:
-                log.info(resp.status)
+                log.info("create_artifact {}: {}".format(path, resp.status))
                 response_text = await resp.text()
                 log.info(response_text)
                 if resp.status not in (200, 204):
