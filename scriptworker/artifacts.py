@@ -225,14 +225,20 @@ def get_artifact_url(context, task_id, path):
     Raises:
         TaskClusterFailure: on failure.
     """
-    url = urljoin(
-        context.queue.options['baseUrl'],
-        'v1/' +
-        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
-            'taskId': task_id,
-            'name': path
-        }))
-    )
+    try:
+        url = unquote(context.queue.buildUrl('getLatestArtifact', task_id, path))
+    except AttributeError:
+        # taskcluster client 0.3.x
+        # XXX remove when we no longer want to support taskcluster<1.0.0
+        url = urljoin(
+            context.queue.options['baseUrl'],
+            'v1/' +
+            unquote(context.queue.makeRoute('getLatestArtifact', replDict={
+                'taskId': task_id,
+                'name': path
+            }))
+        )
+
     return url
 
 

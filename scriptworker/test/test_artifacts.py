@@ -17,7 +17,6 @@ from scriptworker.exceptions import ScriptWorkerRetryException
 from . import touch, rw_context, event_loop, fake_session, fake_session_500, successful_queue
 
 
-# TODO avoid copying this fixture
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
     rw_context.config['artifact_expiration_hours'] = 1
@@ -162,7 +161,14 @@ def test_craft_artifact_put_headers():
 
 
 # get_artifact_url {{{1
-def test_get_artifact_url():
+@pytest.mark.parametrize("tc03x", (True, False))
+def test_get_artifact_url(tc03x):
+
+    def buildUrl(*args, **kwargs):
+        if tc03x:
+            raise AttributeError("foo")
+        else:
+            return "https://netloc/v1/rel/path"
 
     def makeRoute(*args, **kwargs):
         return "rel/path"
@@ -171,6 +177,7 @@ def test_get_artifact_url():
     context.queue = mock.MagicMock()
     context.queue.options = {'baseUrl': 'https://netloc/'}
     context.queue.makeRoute = makeRoute
+    context.queue.buildUrl = buildUrl
     assert get_artifact_url(context, "x", "y") == "https://netloc/v1/rel/path"
 
 
