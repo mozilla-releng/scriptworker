@@ -189,7 +189,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
                 tc_response['putUrl'], data=fh, headers=_craft_artifact_put_headers(content_type, content_encoding),
                 skip_auto_headers=skip_auto_headers, compress=False
             ) as resp:
-                log.info(resp.status)
+                log.info("create_artifact {}: {}".format(path, resp.status))
                 response_text = await resp.text()
                 log.info(response_text)
                 if resp.status not in (200, 204):
@@ -225,14 +225,20 @@ def get_artifact_url(context, task_id, path):
     Raises:
         TaskClusterFailure: on failure.
     """
-    url = urljoin(
-        context.queue.options['baseUrl'],
-        'v1/' +
-        unquote(context.queue.makeRoute('getLatestArtifact', replDict={
-            'taskId': task_id,
-            'name': path
-        }))
-    )
+    try:
+        url = unquote(context.queue.buildUrl('getLatestArtifact', task_id, path))
+    except AttributeError:
+        # taskcluster client 0.3.x
+        # XXX remove when we no longer want to support taskcluster<1.0.0
+        url = urljoin(
+            context.queue.options['baseUrl'],
+            'v1/' +
+            unquote(context.queue.makeRoute('getLatestArtifact', replDict={
+                'taskId': task_id,
+                'name': path
+            }))
+        )
+
     return url
 
 
