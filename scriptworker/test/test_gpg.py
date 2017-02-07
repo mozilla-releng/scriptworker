@@ -12,6 +12,7 @@ import pexpect
 import pytest
 import shutil
 import subprocess
+import tarfile
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
 from scriptworker.utils import rm
@@ -590,19 +591,22 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
 
 
 # get_git_revision, get_latest_tag {{{1
-# TODO these two tests should use a tarball with a test git repo inside
 @pytest.mark.asyncio
-async def test_get_git_revision():
-    parent_dir = os.path.dirname(__file__)
-    expected = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=parent_dir)
-    assert await sgpg.get_git_revision(parent_dir) == expected.decode('utf-8').rstrip()
+async def test_get_git_revision(tmpdir):
+    tar = tarfile.open(os.path.join(os.path.dirname(__file__), "data", "test_git_repo.tgz"))
+    tar.extractall(tmpdir)
+    parent_dir = os.path.join(tmpdir, "testrepo")
+    expected = "3e9ed77c7a6de4f8103a742e1d03ce292cf65a13"
+    assert await sgpg.get_git_revision(parent_dir) == expected
 
 
 @pytest.mark.asyncio
-async def test_get_latest_tag():
-    parent_dir = os.path.dirname(__file__)
-    expected = subprocess.check_output(["git", "describe", "--abbrev=0"], cwd=parent_dir)
-    assert await sgpg.get_latest_tag(parent_dir) == expected.decode('utf-8').rstrip()
+async def test_get_latest_tag(tmpdir):
+    tar = tarfile.open(os.path.join(os.path.dirname(__file__), "data", "test_git_repo.tgz"))
+    tar.extractall(tmpdir)
+    parent_dir = os.path.join(tmpdir, "testrepo")
+    expected = "v2"
+    assert await sgpg.get_latest_tag(parent_dir) == expected
 
 
 @pytest.mark.parametrize("func", (sgpg.get_git_revision, sgpg.get_latest_tag))
