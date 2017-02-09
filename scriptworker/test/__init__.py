@@ -160,7 +160,7 @@ def unsuccessful_queue():
 
 
 @pytest.fixture(scope='function')
-def fake_session():
+def fake_session(event_loop):
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
         return FakeResponse(method, url)
@@ -171,7 +171,7 @@ def fake_session():
 
 
 @pytest.fixture(scope='function')
-def fake_session_500():
+def fake_session_500(event_loop):
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
         return FakeResponse(method, url, status=500)
