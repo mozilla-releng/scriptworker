@@ -1,12 +1,15 @@
 language: python
-python:
-  - 3.5.2
+
+matrix:
+  include:
+    - python: 3.5
+      env: TOXENV=py35 NO_TESTS_OVER_WIRE=1
+    - python: 3.6
+      env: TOXENV=py36 NO_TESTS_OVER_WIRE=1
 
 install:
-    - python -mpip install tox
-env:
-    NO_TESTS_OVER_WIRE=1
+  - python -mpip install tox
 script:
-    - tox
+  - tox
 after_success:
-    - tox -e py35-coveralls
+  - tox -e coveralls
