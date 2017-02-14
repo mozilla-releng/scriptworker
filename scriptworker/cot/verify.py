@@ -858,7 +858,12 @@ async def verify_decision_task(chain, link):
         path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
     )
     for target_link in [chain] + chain.links:
-        if target_link.decision_task_id == link.task_id and target_link.task_id != link.task_id:
+        # Verify the target's task is in the decision task's task graph, unless
+        # it's this task or another decision task.
+        # https://github.com/mozilla-releng/scriptworker/issues/77
+        if target_link.decision_task_id == link.task_id and \
+                target_link.task_id != link.task_id and \
+                target_link.task_type != 'decision':
             verify_link_in_task_graph(chain, link, target_link)
     verify_firefox_decision_command(link)
     raise_on_errors(errors)
@@ -980,14 +985,9 @@ def check_num_tasks(chain, task_count):
     # hardcode for now.  If we need a different set of constraints, either
     # go by cot_product settings or by task_count['docker-image'] + 1
     min_decision_tasks = 1
-    max_decision_tasks = 2
     if task_count['decision'] < min_decision_tasks:
         errors.append("{} decision tasks; we must have at least {}!".format(
             task_count['decision'], min_decision_tasks
-        ))
-    elif task_count['decision'] > max_decision_tasks:
-        errors.append("{} decision tasks; we must have at most {}!".format(
-            task_count['decision'], max_decision_tasks
         ))
     raise_on_errors(errors)
 

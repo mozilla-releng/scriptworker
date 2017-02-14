@@ -814,7 +814,7 @@ async def test_verify_scriptworker_task_worker_impl(chain, build_link, func):
 
 
 # check_num_tasks {{{1
-@pytest.mark.parametrize("num,raises", ((1, False), (2, False), (3, True), (0, True)))
+@pytest.mark.parametrize("num,raises", ((1, False), (2, False), (3, False), (0, True)))
 def test_check_num_tasks(chain, num, raises):
     if raises:
         with pytest.raises(CoTError):
