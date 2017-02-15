@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0] - 2017-02-15
+### Changed
+- decision tasks are no longer traced back to decision tasks, even if their `taskGroupId` doesn't match their `taskId`.
+
+### Fixed
+- tests now pass under python 3.6; we'll update the supported version list when taskcluster-client.py has full py36 support
+- fixed closed event loop errors from the new aiohttp
+- git tests now use a local git repo tarball, instead of running tests on the scriptworker repo
+
+### Removed
+- removed the check for max number of decision tasks per graph
+
 ## [2.1.1] - 2017-02-02
 ### Fixed
 - `get_artifact_url` now works with `taskcluster==1.0.2`, while keeping 0.3.x compatibility
