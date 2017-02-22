@@ -176,14 +176,17 @@ DEFAULT_CONFIG = frozendict({
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
-            'project:releng:balrog:server:release': 'all-release-branches',
+            'project:releng:balrog:server:release': 'release',
+            'project:releng:balrog:server:beta': 'beta',
+            'project:releng:balrog:server:aurora': 'aurora',
+            'project:releng:balrog:server:esr': 'esr',
             'project:releng:beetmover:bucket:release': 'all-release-branches',
             'project:releng:googleplay:release': 'release',
             'project:releng:signing:cert:release-signing': 'all-release-branches',
             'project:releng:googleplay:beta': 'beta',
             'project:releng:googleplay:aurora': 'aurora',
             'project:releng:balrog:nightly': 'all-nightly-branches',
-            'project:releng:balrog:server:nightly': 'all-nightly-branches',
+            'project:releng:balrog:server:nightly': 'nightly',
             'project:releng:beetmover:nightly': 'all-nightly-branches',
             'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
             'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
@@ -214,6 +217,14 @@ DEFAULT_CONFIG = frozendict({
             'aurora': (
                 "/releases/mozilla-aurora",
             ),
+            'esr': (
+                "/releases/mozilla-esr45",
+                "/releases/mozilla-esr52",
+            ),
+            'nightly': (
+                "/mozilla-central",
+            ),
+
             # Which repos can do nightly signing?
             # XXX remove /projects/date when taskcluster nightly migration is
             #     tier1 and landed on mozilla-central
