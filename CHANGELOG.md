@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.3.0] - 2017-02-22
+### Changed
+- updated balrog and beetmover restricted scopes
+
 ## [2.2.0] - 2017-02-15
 ### Changed
 - decision tasks are no longer traced back to decision tasks, even if their `taskGroupId` doesn't match their `taskId`.
