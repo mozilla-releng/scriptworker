@@ -187,7 +187,6 @@ DEFAULT_CONFIG = frozendict({
             'project:releng:googleplay:aurora': 'aurora',
             'project:releng:balrog:nightly': 'all-nightly-branches',
             'project:releng:balrog:server:nightly': 'nightly',
-            'project:releng:beetmover:nightly': 'all-nightly-branches',
             'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
             'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
         })
