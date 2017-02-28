@@ -176,17 +176,16 @@ DEFAULT_CONFIG = frozendict({
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
-            'project:releng:balrog:server:release': 'release',
-            'project:releng:balrog:server:beta': 'beta',
+            'project:releng:balrog:server:nightly': 'nightly',
             'project:releng:balrog:server:aurora': 'aurora',
+            'project:releng:balrog:server:beta': 'beta',
+            'project:releng:balrog:server:release': 'release',
             'project:releng:balrog:server:esr': 'esr',
             'project:releng:beetmover:bucket:release': 'all-release-branches',
             'project:releng:googleplay:release': 'release',
             'project:releng:signing:cert:release-signing': 'all-release-branches',
             'project:releng:googleplay:beta': 'beta',
             'project:releng:googleplay:aurora': 'aurora',
-            'project:releng:balrog:nightly': 'all-nightly-branches',
-            'project:releng:balrog:server:nightly': 'nightly',
             'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
             'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
         })
