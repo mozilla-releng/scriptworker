@@ -450,6 +450,7 @@ def find_task_dependencies(task, name, task_id):
     log.info("find_task_dependencies {} {}".format(name, task_id))
     decision_task_id = get_decision_task_id(task)
     decision_key = '{}:decision'.format(name)
+    task_type = guess_task_type(name)
     dep_dict = {}
     for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
         dep_dict['{}:{}'.format(name, key)] = val
@@ -460,7 +461,7 @@ def find_task_dependencies(task, name, task_id):
                 upstream_ids[artifact_dict['taskId']] = artifact_dict['taskType']
         for upstream_task_id, upstream_task_type in upstream_ids.items():
             dep_dict['{}:{}'.format(name, upstream_task_type)] = upstream_task_id
-    if decision_task_id != task_id:
+    if decision_task_id != task_id and task_type != 'decision':
         dep_dict[decision_key] = decision_task_id
     log.info(dep_dict)
     return dep_dict
@@ -804,7 +805,7 @@ def verify_firefox_decision_command(decision_link):
     log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
     errors = []
     command = decision_link.task['payload']['command']
-    allowed_args = ('--', 'bash', '-cx')
+    allowed_args = ('--', 'bash', '/bin/bash', '-cx')
     if command[0] != '/home/worker/bin/run-task':
         errors.append("{} {} command must start with /home/worker/bin/run-task!".format(
             decision_link.name, decision_link.task_id

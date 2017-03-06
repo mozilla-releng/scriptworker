@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.5.0] - 2017-03-06
+### Changed
+- allow for `/bin/bash` in decision task command line
+
+### Fixed
+- don't add a decision task's decision task to the dependency chain.  In 2.2.0 we stopped verifying that a decision task was part of its decision task's task graph, but still verified the decision task's decision task (if any).  This release stops tracing back to the original decision task altogether.
+
 ## [2.4.0] - 2017-02-28
 ### Changed
 - updated balrog restricted scopes
