@@ -116,7 +116,13 @@ The pubkeys for build, decision, and docker-image workerTypes should be added to
 
 First, you will need access to a trusted key (The trusted keys are in the [scriptworker/trusted dir](https://github.com/mozilla-releng/cot-gpg-keys/tree/master/scriptworker/trusted).  That may mean someone else needs to generate the keys, or you may petition for access to create and sign these keys.  (To do so, update the trusted keys with a new pubkey, sign that commit with a trusted git commit key, and merge.  If you don't have a trusted git key, see [adding new git commit signing gpg keys](#adding-new-git-commit-signing-gpg-keys).)
 
-Once you have access to a trusted key, generate new gpg keypairs for each host.  The email address will be `username`@`fqdn`, e.g. `cltsign@signing-linux-1.srv.releng.use1.mozilla.com`.  You can use a script like [this](https://bug1298553.bmoattachments.org/attachment.cgi?id=8792961)... (it may be a good idea to make that script generic and land it in the scriptworker repo).
+Once you have access to a trusted key, generate new gpg keypairs for each host.  The email address will be `username`@`fqdn`, e.g. `cltsign@signing-linux-1.srv.releng.use1.mozilla.com`.  You can use [this script](https://github.com/mozilla-releng/scriptworker/blob/master/helper_scripts/create_gpg_keys.py), like
+
+```bash
+scriptworker/helper_scripts/create_gpg_keys.py -u cltsign -s host1.fqdn.com host2.fqdn.com
+# This will generate a gpg homedir in ./gpg
+# Keys will be written to ./host{1,2}.fqdn.com.{pub,sec}
+```
 
 Next, sign the newly created gpg keys with your trusted gpg key.
 
