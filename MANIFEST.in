@@ -1,6 +1,7 @@
 recursive-include scriptworker/data *
 recursive-include scriptworker/test/data *
 recursive-include docker *
+recursive-include helper_scripts *
 
 include .coveragerc
 include CHANGELOG.md
