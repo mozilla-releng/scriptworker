@@ -1,4 +1,5 @@
 #!/bin/sh
+# Usage: $0 -b PATH_TO_GPG -h GPG_HOME -- GPG_ARGS
 OPTIND=1
 
 while getopts "b:h:" opt; do
