@@ -435,36 +435,49 @@ def verify_docker_image_sha(chain, link):
     raise_on_errors(errors)
 
 
-# find_task_dependencies {{{1
-def find_task_dependencies(task, name, task_id):
+def find_sorted_task_dependencies(task, task_name, task_id):
     """Find the taskIds of the chain of trust dependencies of a given task.
 
     Args:
         task (dict): the task definition to inspect.
-        name (str): the name of the task, for logging and naming children.
+        task_name (str): the name of the task, for logging and naming children.
         task_id (str): the taskId of the task.
 
     Returns:
-        dict: mapping dependent task ``name`` to dependent task ``taskId``.
+        list: tuples associating dependent task ``name`` to dependent task ``taskId``.
     """
-    log.info("find_task_dependencies {} {}".format(name, task_id))
+    log.info("find_sorted_task_dependencies {} {}".format(task_name, task_id))
+
+    cot_input_dependencies = [
+        _craft_dependency_tuple(task_name, task_type, task_id)
+        for task_type, task_id in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items()
+    ]
+
+    upstream_artifacts_dependencies = [
+        _craft_dependency_tuple(task_name, artifact_dict['taskType'], artifact_dict['taskId'])
+        for artifact_dict in task.get('payload', {}).get('upstreamArtifacts', [])
+    ]
+
+    dependencies = [*cot_input_dependencies, *upstream_artifacts_dependencies]
+    dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
+
     decision_task_id = get_decision_task_id(task)
-    decision_key = '{}:decision'.format(name)
-    task_type = guess_task_type(name)
-    dep_dict = {}
-    for key, val in task['extra'].get('chainOfTrust', {}).get('inputs', {}).items():
-        dep_dict['{}:{}'.format(name, key)] = val
-    if 'upstreamArtifacts' in task['payload']:
-        upstream_ids = {}
-        for artifact_dict in task['payload']['upstreamArtifacts']:
-            if artifact_dict['taskId'] not in upstream_ids:
-                upstream_ids[artifact_dict['taskId']] = artifact_dict['taskType']
-        for upstream_task_id, upstream_task_type in upstream_ids.items():
-            dep_dict['{}:{}'.format(name, upstream_task_type)] = upstream_task_id
+    task_type = guess_task_type(task_name)
     if decision_task_id != task_id and task_type != 'decision':
-        dep_dict[decision_key] = decision_task_id
-    log.info(dep_dict)
-    return dep_dict
+        # make sure we deal with the decision task first, or we may populate
+        # signing:build0:decision before signing:decision
+        dependencies.insert(0, _craft_dependency_tuple(task_name, 'decision', decision_task_id))
+
+    log.info('found dependencies: {}'.format(dependencies))
+    return dependencies
+
+
+def _craft_dependency_tuple(task_name, task_type, task_id):
+    return ('{}:{}'.format(task_name, task_type), task_id)
+
+
+def _sort_dependencies_by_name_then_task_id(dependencies):
+    return sorted(dependencies, key=lambda dep: '{}_{}'.format(dep[0], dep[1]))
 
 
 # build_task_dependencies {{{1
@@ -483,15 +496,9 @@ async def build_task_dependencies(chain, task, name, my_task_id):
     log.info("build_task_dependencies {} {}".format(name, my_task_id))
     if name.count(':') > 5:
         raise CoTError("Too deep recursion!\n{}".format(name))
-    deps = find_task_dependencies(task, name, my_task_id)
-    task_names = sorted(deps.keys())
-    # make sure we deal with the decision task first, or we may populate
-    # signing:build0:decision before signing:decision
-    decision_key = "{}:decision".format(name)
-    if decision_key in task_names:
-        task_names = [decision_key] + sorted([x for x in task_names if x != decision_key])
-    for task_name in task_names:
-        task_id = deps[task_name]
+    sorted_dependencies = find_sorted_task_dependencies(task, name, my_task_id)
+
+    for task_name, task_id in sorted_dependencies:
         if task_id not in chain.dependent_task_ids():
             link = LinkOfTrust(chain.context, task_name, task_id)
             json_path = os.path.join(link.cot_dir, 'task.json')
@@ -1241,7 +1248,7 @@ To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6
 or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     parser.add_argument('task_id', help='the task id to test')
     parser.add_argument('--task-type', help='the task type to test',
-                        choices=["signing", "balrog", "beetmover"], required=True)
+                        choices=['signing', 'balrog', 'beetmover', 'pushapk'], required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
     opts = parser.parse_args(args)

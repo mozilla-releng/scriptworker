@@ -348,13 +348,12 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, decision_link)
 
 
-# find_task_dependencies {{{1
 @pytest.mark.parametrize("task,expected", ((
     {'taskGroupId': 'task_id', 'extra': {}, 'payload': {}},
-    {}
+    []
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
-    {'build:decision': 'decision_task_id'}
+    [('build:decision', 'decision_task_id')]
 ), (
     {
         'taskGroupId': 'decision_task_id',
@@ -362,10 +361,10 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
             'chainOfTrust': {'inputs': {'docker-image': 'docker_image_task_id'}}
         },
         'payload': {},
-    }, {
-        'build:decision': 'decision_task_id',
-        'build:docker-image': 'docker_image_task_id'
-    }
+    }, [
+        ('build:decision', 'decision_task_id'),
+        ('build:docker-image', 'docker_image_task_id'),
+    ]
 ), (
     {
         'taskGroupId': 'decision_task_id',
@@ -381,14 +380,38 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
                 'taskType': "blah",
             }],
         },
-    }, {
-        'build:decision': 'decision_task_id',
-        'build:docker-image': 'docker_image_task_id',
-        'build:blah': 'blah_task_id',
-    }
+    }, [
+        ('build:decision', 'decision_task_id'),
+        ('build:blah', 'blah_task_id'),
+        ('build:blah', 'blah_task_id'),     # Duplicates aren't deleted
+        ('build:docker-image', 'docker_image_task_id'),
+    ]
+), (
+    # PushAPK-like definitions
+    {
+        'taskGroupId': 'decision_task_id',
+        'extra': {},
+        'payload': {
+            'upstreamArtifacts': [{
+                'taskId': 'platform_0_signing_task_id',
+                'taskType': 'signing',
+            }, {
+                'taskId': 'platform_1_signing_task_id',
+                'taskType': 'signing',
+            }, {
+                'taskId': 'platform_2_signing_task_id',
+                'taskType': 'signing',
+            }],
+        },
+    }, [
+        ('build:decision', 'decision_task_id'),
+        ('build:signing', 'platform_0_signing_task_id'),
+        ('build:signing', 'platform_1_signing_task_id'),
+        ('build:signing', 'platform_2_signing_task_id'),
+    ]
 )))
-def test_find_task_dependencies(task, expected):
-    assert expected == cotverify.find_task_dependencies(task, 'build', 'task_id')
+def test_find_sorted_task_dependencies(task, expected):
+    assert expected == cotverify.find_sorted_task_dependencies(task, 'build', 'task_id')
 
 
 # build_task_dependencies {{{1
@@ -413,12 +436,12 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
 
     def fake_find(task, name, _):
         if name.endswith('decision'):
-            return {}
-        return {
-            'build:decision': 'decision_task_id',
-            'build:a': 'already_exists',
-            'build:docker-image': 'die',
-        }
+            return []
+        return [
+            ('build:decision', 'decision_task_id'),
+            ('build:a', 'already_exists'),
+            ('build:docker-image', 'die'),
+        ]
 
     already_exists = mock.MagicMock()
     already_exists.task_id = 'already_exists'
@@ -427,7 +450,7 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
     chain.context.queue = mock.MagicMock()
     chain.context.queue.task = fake_task
 
-    mocker.patch.object(cotverify, 'find_task_dependencies', new=fake_find)
+    mocker.patch.object(cotverify, 'find_sorted_task_dependencies', new=fake_find)
     with pytest.raises(CoTError):
         await cotverify.build_task_dependencies(chain, {}, 'too:many:colons:in:this:name:z', 'task_id')
     with pytest.raises(CoTError):
