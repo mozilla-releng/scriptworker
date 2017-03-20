@@ -5,7 +5,7 @@ from setuptools.command.test import test as TestCommand
 import sys
 
 reqs = [
-    "aiohttp",
+    "aiohttp>=2.0.0",
     "arrow",
     "defusedxml",
     "frozendict",

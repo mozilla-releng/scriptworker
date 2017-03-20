@@ -157,9 +157,7 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
 ), (
     'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code
 ), (
-    'upload_artifacts', aiohttp.errors.DisconnectedError, STATUSES['intermittent-task']
-), (
-    'upload_artifacts', aiohttp.errors.ClientError, STATUSES['intermittent-task']
+    'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task']
 )))
 def test_mocker_run_loop_exception(context, successful_queue, event_loop,
                                    mocker, func_to_raise, exc, expected):
