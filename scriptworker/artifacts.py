@@ -141,8 +141,7 @@ async def retry_create_artifact(*args, **kwargs):
         create_artifact,
         retry_exceptions=(
             ScriptWorkerRetryException,
-            aiohttp.errors.DisconnectedError,
-            aiohttp.errors.ClientError
+            aiohttp.ClientError
         ),
         args=args,
         kwargs=kwargs

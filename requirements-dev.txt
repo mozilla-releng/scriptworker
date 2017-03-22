@@ -1,4 +1,4 @@
-aiohttp
+aiohttp>=2.0.0
 arrow
 defusedxml
 frozendict
