@@ -14,7 +14,7 @@ import os
 from urllib.parse import unquote, urljoin
 
 from scriptworker.client import validate_artifact_url
-from scriptworker.exceptions import ScriptWorkerRetryException
+from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
 from scriptworker.utils import download_file, filepaths_in_dir, raise_future_exceptions, retry_async
 
@@ -306,3 +306,39 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
 
     await raise_future_exceptions(tasks)
     return files
+
+
+def get_upstream_artifacts(context):
+    """List the downloaded upstream artifacts.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        dict: the paths of uploaded artifacts, sorted per task_id
+
+    Raises:
+        scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
+    """
+    task_ids_and_relative_paths = [
+        (artifact_definition['taskId'], artifact_definition['paths'])
+        for artifact_definition in context.task['payload']['upstreamArtifacts']
+    ]
+
+    return {
+        task_id: [
+            _get_single_upstream_artifact(context, task_id, path)
+            for path in paths
+        ]
+        for task_id, paths in task_ids_and_relative_paths
+    }
+
+
+def _get_single_upstream_artifact(context, task_id, path):
+    abs_path = os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
+    if not os.path.exists(abs_path):
+        raise ScriptWorkerTaskException(
+            'upstream artifact with path: {}, does not exist'.format(abs_path)
+        )
+
+    return abs_path
