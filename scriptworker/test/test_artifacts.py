@@ -10,8 +10,8 @@ import tempfile
 
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
     create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
-    _force_mimetypes_to_plain_text, _craft_artifact_put_headers, get_upstream_artifacts, \
-    _get_single_upstream_artifact
+    _force_mimetypes_to_plain_text, _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
+    get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
 
@@ -209,7 +209,7 @@ def test_download_artifacts(context, event_loop):
     assert sorted(urls) == sorted(expected_urls)
 
 
-def test_get_upstream_artifacts(context):
+def test_get_upstream_artifacts_full_paths_per_task_id(context):
     context.task['payload'] = {
         'upstreamArtifacts': [{
             'paths': ['public/file_a'],
@@ -227,22 +227,35 @@ def test_get_upstream_artifacts(context):
         os.makedirs(os.path.join(folder, 'public'))
         touch(os.path.join(folder, artifact['paths'][0]))
 
-    assert get_upstream_artifacts(context) == {
+    assert get_upstream_artifacts_full_paths_per_task_id(context) == {
         'dependency1': [os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')],
         'dependency2': [os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b')],
     }
 
 
-def test_get_single_upstream_artifact(context):
+def test_get_and_check_single_upstream_artifact_full_path(context):
     folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
     os.makedirs(os.path.join(folder, 'public'))
     touch(os.path.join(folder, 'public/file_a'))
 
-    assert _get_single_upstream_artifact(context, 'dependency1', 'public/file_a') == \
+    assert get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
         os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
 
     with pytest.raises(ScriptWorkerTaskException):
-        _get_single_upstream_artifact(context, 'dependency1', 'public/non_existing_file')
+        get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file')
 
     with pytest.raises(ScriptWorkerTaskException):
-        _get_single_upstream_artifact(context, 'non-existing-dep', 'public/file_a')
+        get_and_check_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a')
+
+
+def test_get_single_upstream_artifact_full_path(context):
+    folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
+
+    assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
+        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
+
+    assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file') == \
+        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'non_existing_file')
+
+    assert get_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a') == \
+        os.path.join(context.config['work_dir'], 'cot', 'non-existing-dep', 'public', 'file_a')

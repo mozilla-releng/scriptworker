@@ -308,14 +308,14 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     return files
 
 
-def get_upstream_artifacts(context):
+def get_upstream_artifacts_full_paths_per_task_id(context):
     """List the downloaded upstream artifacts.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        dict: the paths of uploaded artifacts, sorted per task_id
+        dict: lists of the paths to existing upstream artifacts, sorted by task_id
 
     Raises:
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
@@ -327,18 +327,50 @@ def get_upstream_artifacts(context):
 
     return {
         task_id: [
-            _get_single_upstream_artifact(context, task_id, path)
+            get_and_check_single_upstream_artifact_full_path(context, task_id, path)
             for path in paths
         ]
         for task_id, paths in task_ids_and_relative_paths
     }
 
 
-def _get_single_upstream_artifact(context, task_id, path):
-    abs_path = os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
+def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
+    """Return the full path where an upstream artifact is located on disk.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task_id (str): the task id of the task that published the artifact
+        path (str): the relative path of the artifact
+
+    Returns:
+        str: absolute path to the artifact
+
+    Raises:
+        scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
+    """
+    abs_path = get_single_upstream_artifact_full_path(context, task_id, path)
     if not os.path.exists(abs_path):
         raise ScriptWorkerTaskException(
             'upstream artifact with path: {}, does not exist'.format(abs_path)
         )
 
     return abs_path
+
+
+def get_single_upstream_artifact_full_path(context, task_id, path):
+    """Return the full path where an upstream artifact should be located.
+
+    Artifact may not exist. If you want to be sure if does, use
+    ``get_and_check_single_upstream_artifact_full_path()`` instead.
+
+    This function is mainly used to move artifacts to the expected location.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task_id (str): the task id of the task that published the artifact
+        path (str): the relative path of the artifact
+
+    Returns:
+        str: absolute path to the artifact should be.
+    """
+    return os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
