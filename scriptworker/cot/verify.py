@@ -16,7 +16,7 @@ import shlex
 import sys
 import tempfile
 from urllib.parse import unquote, urlparse
-from scriptworker.artifacts import download_artifacts, get_artifact_url
+from scriptworker.artifacts import download_artifacts, get_artifact_url, get_single_upstream_artifact_full_path
 from scriptworker.config import read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -107,7 +107,6 @@ class LinkOfTrust(object):
 
     Attributes:
         context (scriptworker.context.Context): the scriptworker context
-        cot_dir (str): the local path containing this link's artifacts
         decision_task_id (str): the task_id of self.task's decision task
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
@@ -134,9 +133,6 @@ class LinkOfTrust(object):
         self.task_type = guess_task_type(name)
         self.context = context
         self.task_id = task_id
-        self.cot_dir = os.path.join(
-            context.config['work_dir'], 'cot', self.task_id
-        )
 
     def _set(self, prop_name, value):
         prev = getattr(self, prop_name)
@@ -181,6 +177,15 @@ class LinkOfTrust(object):
     @task_graph.setter
     def task_graph(self, task_graph):
         self._set('_task_graph', task_graph)
+
+    @property
+    def cot_dir(self):
+        """str: the local path containing this link's artifacts."""
+        return self.get_artifact_full_path(path='.')
+
+    def get_artifact_full_path(self, path):
+        """str: the full path where an artifact should be located."""
+        return get_single_upstream_artifact_full_path(self.context, self.task_id, path)
 
 
 # raise_on_errors {{{1
@@ -501,7 +506,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
     for task_name, task_id in sorted_dependencies:
         if task_id not in chain.dependent_task_ids():
             link = LinkOfTrust(chain.context, task_name, task_id)
-            json_path = os.path.join(link.cot_dir, 'task.json')
+            json_path = link.get_artifact_full_path('task.json')
             try:
                 task_defn = await chain.context.queue.task(task_id)
                 link.task = task_defn
@@ -571,7 +576,7 @@ async def download_cot_artifact(chain, task_id, path):
     await download_artifacts(
         chain.context, [url], parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
     )
-    full_path = os.path.join(link.cot_dir, path)
+    full_path = link.get_artifact_full_path(path)
     for alg, expected_sha in link.cot['artifacts'][path].items():
         if alg not in chain.context.config['valid_hash_algorithms']:
             raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
@@ -654,7 +659,7 @@ def verify_cot_signatures(chain):
         CoTError: on failure.
     """
     for link in chain.links:
-        path = os.path.join(link.cot_dir, 'public/chainOfTrust.json.asc')
+        path = link.get_artifact_full_path('public/chainOfTrust.json.asc')
         gpg_home = os.path.join(chain.context.config['base_gpg_home_dir'], link.worker_impl)
         gpg = GPG(chain.context, gpg_home=gpg_home)
         log.debug("Verifying the {} {} chain of trust signature against {}".format(
@@ -678,7 +683,7 @@ def verify_cot_signatures(chain):
             body, exception=CoTError,
             message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
         )
-        unsigned_path = os.path.join(link.cot_dir, 'chainOfTrust.json')
+        unsigned_path = link.get_artifact_full_path('chainOfTrust.json')
         log.debug("Good.  Writing json contents to {}".format(unsigned_path))
         with open(unsigned_path, "w") as fh:
             fh.write(format_json(link.cot))
@@ -858,7 +863,7 @@ async def verify_decision_task(chain, link):
     if worker_type not in chain.context.config['valid_decision_worker_types']:
         errors.append("{} is not a valid decision workerType!".format(worker_type))
     # make sure all tasks generated from this decision task match the published task-graph.json
-    path = os.path.join(link.cot_dir, "public", "task-graph.json")
+    path = link.get_artifact_full_path('public/task-graph.json')
     if not os.path.exists(path):
         errors.append("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
         raise_on_errors(errors)
