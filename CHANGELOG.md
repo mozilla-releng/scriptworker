@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.0.0] - 2017-03-23
+## Added
+- `scriptworker.artifacts` now has new functions to deal with `upstreamArtifacts`: `get_upstream_artifacts_full_paths_per_task_id`, `get_and_check_single_upstream_artifact_full_path`, and `get_single_upstream_artifact_full_path`.
+- added a `LinkOfTrust.get_artifact_full_path` method
+- new `helper_scripts` directory: `gpg_helper.sh` is a wrapper to call gpg against a given gpg home directory.  `create_gpg_keys.py` is a script to create new scriptworker gpg keys.
+
+## Changed
+- updated support, and now require, `aiohttp>=2.0.0`
+- pointed the pushapk scopes at new `betatest` and `auroratest` `cot_restricted_trees` aliases
+- renamed `find_task_dependencies` to `find_sorted_task_dependencies`
+
+## Fixed
+- `aiohttp` 2.0.0 no longer burns travis jobs.
+
 ## [2.6.0] - 2017-03-06
 ### Changed
 - update balrog restricted scopes to include `project:releng:balrog:nightly` until we're done with it
