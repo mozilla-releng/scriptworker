@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module.
 """
 import aiohttp
+import arrow
 import asyncio
 import logging
 import os
@@ -101,6 +102,7 @@ async def async_main(context):
 def main():
     """Scriptworker entry point: get everything set up, then enter the main loop."""
     context, credentials = get_context_from_cmdln(sys.argv[1:])
+    log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
