@@ -178,7 +178,7 @@ DEFAULT_CONFIG = frozendict({
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
-            'project:releng:balrog:server:nightly': 'nightly',
+            'project:releng:balrog:server:nightly': 'all-nightly-branches',
             'project:releng:balrog:server:aurora': 'aurora',
             'project:releng:balrog:server:beta': 'beta',
             'project:releng:balrog:server:release': 'release',
