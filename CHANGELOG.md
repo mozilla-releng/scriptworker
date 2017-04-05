@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.1.0] - 2017-04-05
+### Added
+- added log message on startup.
+
+### Changed
+- updated docker image allowlists
+- changed balrog nightly branches to `all-nightly-branches`
+
 ## [3.0.0] - 2017-03-23
 ## Added
 - `scriptworker.artifacts` now has new functions to deal with `upstreamArtifacts`: `get_upstream_artifacts_full_paths_per_task_id`, `get_and_check_single_upstream_artifact_full_path`, and `get_single_upstream_artifact_full_path`.
