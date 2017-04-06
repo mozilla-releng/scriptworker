@@ -305,6 +305,7 @@ def get_valid_task_types():
         'beetmover': verify_beetmover_task,
         'build': verify_build_task,
         'l10n': verify_build_task,
+        'repackage': verify_build_task,
         'decision': verify_decision_task,
         'docker-image': verify_docker_image_task,
         'pushapk': verify_pushapk_task,
