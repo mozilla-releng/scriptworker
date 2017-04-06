@@ -93,18 +93,6 @@ def test_async_main(context, event_loop, mocker, tmpdir):
 
 
 # run_loop {{{1
-def test_run_loop_exception(context, successful_queue, event_loop):
-    context.queue = successful_queue
-
-    async def raise_swe(*args, **kwargs):
-        raise ScriptWorkerException("foo")
-
-    with mock.patch.object(worker, 'claim_work', new=raise_swe):
-        status = event_loop.run_until_complete(worker.run_loop(context))
-
-    assert status is None
-
-
 @pytest.mark.parametrize("verify_cot", (True, False))
 def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}

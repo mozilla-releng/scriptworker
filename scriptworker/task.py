@@ -246,7 +246,7 @@ def max_timeout(context, proc, timeout):
     ]))
 
 
-# claim_work
+# claim_work {{{1
 async def claim_work(context):
     """Find and claim the next pending task in the queue, if any.
 
@@ -259,7 +259,9 @@ async def claim_work(context):
     payload = {
         'workerGroup': context.config['worker_group'],
         'workerId': context.config['worker_id'],
-        'tasks': 1,  # scriptworker can only handle 1 concurrent task
+        # Hardcode one task at a time.  Make this a pref if we allow for
+        # parallel tasks in multiple `work_dir`s.
+        'tasks': 1,
     }
     try:
         return await context.queue.claimWork(
