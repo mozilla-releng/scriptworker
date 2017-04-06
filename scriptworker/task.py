@@ -4,6 +4,7 @@
 Attributes:
     log (logging.Logger): the log object for the module
 """
+import aiohttp
 import asyncio
 from asyncio.subprocess import PIPE
 from copy import deepcopy
@@ -243,3 +244,29 @@ def max_timeout(context, proc, timeout):
         asyncio.ensure_future(kill(-pid)),
         asyncio.ensure_future(kill(pid))
     ]))
+
+
+def claim_work(context):
+    """Find and claim the next pending task in the queue, if any.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        list of dicts: a list of the task definitions of the tasks claimed.
+            Because scriptworker only claims a single task, this will be
+            an array with zero or one dictionaries inside.
+    """
+    payload = {
+        'workerGroup': context.config['worker_group'],
+        'workerId': context.config['worker_id'],
+        'tasks': 1,  # scriptworker can only handle 1 concurrent task
+    }
+    try:
+        return await context.queue.claimWork(
+            context.config['provisioner_id'],
+            context.config['worker_type'],
+            payload
+        )
+    except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:
+        log.warning("{} {}".format(exc.__class__, exc))

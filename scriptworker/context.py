@@ -31,8 +31,6 @@ class Context(object):
             FrozenDict.
         credentials_timestamp (int): the unix timestamp when we last updated
             our credentials.
-        poll_task_urls (dict): contains the Azure ``queues`` urls and an ``expires``
-            datestring.
         proc (asyncio.subprocess.Process): when launching the script, this is
             the process object.
         queue (taskcluster.async.Queue): the taskcluster Queue object
@@ -45,7 +43,6 @@ class Context(object):
 
     config = None
     credentials_timestamp = None
-    poll_task_urls = None
     proc = None
     queue = None
     session = None

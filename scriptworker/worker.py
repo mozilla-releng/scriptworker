@@ -11,7 +11,6 @@ import logging
 import os
 import sys
 
-from scriptworker.poll import find_task, get_azure_urls, update_poll_task_urls
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
@@ -19,8 +18,8 @@ from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, is_lockfile_present, rm_lockfile
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.task import complete_task, reclaim_task, run_task, worst_level
-from scriptworker.utils import cleanup, retry_request, rm
+from scriptworker.task import claim_work, complete_task, reclaim_task, run_task, worst_level
+from scriptworker.utils import cleanup, rm
 
 log = logging.getLogger(__name__)
 
@@ -38,43 +37,37 @@ async def run_loop(context, creds_key="credentials"):
         int: status
     """
     loop = asyncio.get_event_loop()
-    await update_poll_task_urls(
-        context, context.queue.pollTaskUrls,
-        args=(context.config['provisioner_id'], context.config['worker_type']),
-    )
-    for poll_url, delete_url in get_azure_urls(context):
+    try:
+        tasks = await claim_work(context)
+    except ScriptWorkerException:
+        await asyncio.sleep(context.config['poll_interval'])
+        return
+    if tasks:
+        context.claim_task = tasks[0]  # scriptworker can only handle 1 concurrent task
+        log.info("Going to run task!")
+        status = 0
+        loop.create_task(reclaim_task(context, context.task))
         try:
-            claim_task_defn = await find_task(context, poll_url, delete_url,
-                                              retry_request)
-        except ScriptWorkerException:
-            await asyncio.sleep(context.config['poll_interval'])
-            break
-        if claim_task_defn:
-            log.info("Going to run task!")
-            status = 0
-            context.claim_task = claim_task_defn
-            loop.create_task(reclaim_task(context, context.task))
-            try:
-                if context.config['verify_chain_of_trust']:
-                    chain = ChainOfTrust(context, context.config['cot_job_type'])
-                    await verify_chain_of_trust(chain)
-                status = await run_task(context)
-                generate_cot(context)
-            except ScriptWorkerException as e:
-                status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(e))
-            try:
-                await upload_artifacts(context)
-            except ScriptWorkerException as e:
-                status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(e))
-            except aiohttp.ClientError as e:
-                status = worst_level(status, STATUSES['intermittent-task'])
-                log.error("Hit aiohttp error: {}".format(e))
-            await complete_task(context, status)
-            cleanup(context)
-            await asyncio.sleep(1)
-            return status
+            if context.config['verify_chain_of_trust']:
+                chain = ChainOfTrust(context, context.config['cot_job_type'])
+                await verify_chain_of_trust(chain)
+            status = await run_task(context)
+            generate_cot(context)
+        except ScriptWorkerException as e:
+            status = worst_level(status, e.exit_code)
+            log.error("Hit ScriptWorkerException: {}".format(e))
+        try:
+            await upload_artifacts(context)
+        except ScriptWorkerException as e:
+            status = worst_level(status, e.exit_code)
+            log.error("Hit ScriptWorkerException: {}".format(e))
+        except aiohttp.ClientError as e:
+            status = worst_level(status, STATUSES['intermittent-task'])
+            log.error("Hit aiohttp error: {}".format(e))
+        await complete_task(context, status)
+        cleanup(context)
+        await asyncio.sleep(1)
+        return status
     else:
         await asyncio.sleep(context.config['poll_interval'])
 

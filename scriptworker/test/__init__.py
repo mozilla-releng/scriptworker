@@ -98,9 +98,6 @@ class SuccessfulQueue(object):
             "putUrl": "url",
         }
 
-    async def pollTaskUrls(self, *args, **kwargs):
-        return
-
 
 class UnsuccessfulQueue(object):
     status = 409

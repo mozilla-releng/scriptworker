@@ -26,16 +26,6 @@ assert successful_queue, event_loop  # silence flake8
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
     rw_context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
-    rw_context.poll_task_urls = {
-        'queues': [{
-            "signedPollUrl": "poll0",
-            "signedDeleteUrl": "delete0",
-        }, {
-            "signedPollUrl": "poll1",
-            "signedDeleteUrl": "delete1",
-        }],
-        'expires': arrow.utcnow().replace(hours=10).isoformat(),
-    }
     yield rw_context
 
 
