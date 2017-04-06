@@ -71,8 +71,7 @@ class SuccessfulQueue(object):
     result = "yay"
     info = None
     status = 409
-    task = {
-    }
+    task = {}
     reclaim_task = {
         'credentials': {'a': 'b'},
     }
