@@ -99,7 +99,7 @@ def test_run_loop_exception(context, successful_queue, event_loop):
     async def raise_swe(*args, **kwargs):
         raise ScriptWorkerException("foo")
 
-    with mock.patch.object(worker, 'find_task', new=raise_swe):
+    with mock.patch.object(worker, 'claim_work', new=raise_swe):
         status = event_loop.run_until_complete(worker.run_loop(context))
 
     assert status is None
@@ -109,17 +109,20 @@ def test_run_loop_exception(context, successful_queue, event_loop):
 def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
-    async def find_task(*args, **kwargs):
-        return deepcopy(task)
+    async def claim_work(*args, **kwargs):
+        return [deepcopy(task)]
+
+    async def run_task(*args, **kwargs):
+        return 0
 
     fake_cot = mock.MagicMock
 
     context.config['verify_chain_of_trust'] = verify_cot
 
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
-    mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
     mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_async)

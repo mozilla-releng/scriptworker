@@ -246,16 +246,15 @@ def max_timeout(context, proc, timeout):
     ]))
 
 
-def claim_work(context):
+# claim_work
+async def claim_work(context):
     """Find and claim the next pending task in the queue, if any.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        list of dicts: a list of the task definitions of the tasks claimed.
-            Because scriptworker only claims a single task, this will be
-            an array with zero or one dictionaries inside.
+        dict: a dict containing a list of the task definitions of the tasks claimed.
     """
     payload = {
         'workerGroup': context.config['worker_group'],

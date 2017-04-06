@@ -71,6 +71,8 @@ class SuccessfulQueue(object):
     result = "yay"
     info = None
     status = 409
+    task = {
+    }
     reclaim_task = {
         'credentials': {'a': 'b'},
     }
@@ -97,6 +99,10 @@ class SuccessfulQueue(object):
             "contentType": "text/plain",
             "putUrl": "url",
         }
+
+    async def claimWork(self, *args, **kwargs):
+        self.info = ['claimWork', args, kwargs]
+        return {'tasks': [self.task]}
 
 
 class UnsuccessfulQueue(object):

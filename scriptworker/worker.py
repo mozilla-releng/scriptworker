@@ -42,8 +42,9 @@ async def run_loop(context, creds_key="credentials"):
     except ScriptWorkerException:
         await asyncio.sleep(context.config['poll_interval'])
         return
-    if tasks:
-        context.claim_task = tasks[0]  # scriptworker can only handle 1 concurrent task
+    if tasks and tasks.get('tasks', []):
+        log.info(tasks)
+        context.claim_task = tasks['tasks'][0]  # scriptworker can only handle 1 concurrent task
         log.info("Going to run task!")
         status = 0
         loop.create_task(reclaim_task(context, context.task))
