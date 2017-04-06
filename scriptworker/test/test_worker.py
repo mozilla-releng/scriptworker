@@ -109,11 +109,12 @@ def test_run_loop_exception(context, successful_queue, event_loop):
 def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
+    successful_queue.task = task
     async def claim_work(*args, **kwargs):
-        return [deepcopy(task)]
+        return {'tasks': [deepcopy(task)]}
 
     async def run_task(*args, **kwargs):
-        return 0
+        return task
 
     fake_cot = mock.MagicMock
 
@@ -134,7 +135,7 @@ def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mock
 
 def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=noop_async)
+    mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "run_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
@@ -159,8 +160,8 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
     """
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
-    async def find_task(*args, **kwargs):
-        return task
+    async def claim_work(*args, **kwargs):
+        return {'tasks': [task]}
 
     async def fail(*args, **kwargs):
         raise exc("foo")
@@ -169,7 +170,7 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
         return 0
 
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     if func_to_raise == "run_task":
         mocker.patch.object(worker, "run_task", new=fail)
