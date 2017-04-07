@@ -19,7 +19,7 @@ Scriptworker has [100% test coverage](http://escapewindow.dreamwidth.org/247980.
 Scriptworker follows [semver](http://semver.org/).  Essentially, increment the
 
 1. MAJOR version when you make incompatible API changes,
-2. MINOR version when you add functionality in a backwards-compatible manner, and
+2. MINOR version when you add API functionality in a backwards-compatible manner, and
 3. PATCH version when you make backwards-compatible bug fixes.
 
 ## Changelog
