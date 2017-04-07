@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.1.1] - 2017-04-07
+### Added
+- added oak to `all-nightly-branches`, for update testing.
+- added `repackage` as a valid, verifiable task type for cot.
+
 ## [3.1.0] - 2017-04-05
 ### Added
 - added log message on startup.
