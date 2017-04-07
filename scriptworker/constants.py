@@ -171,7 +171,8 @@ DEFAULT_CONFIG = frozendict({
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            "^(?P<path>/projects/(date|jamun))(/|$)",
+            # XXX remove /projects/oak when we no longer test updates against it
+            "^(?P<path>/projects/(date|jamun|oak))(/|$)",
         ),
     }), ),
 
@@ -241,6 +242,7 @@ DEFAULT_CONFIG = frozendict({
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
+            # XXX remove /projects/oak when we no longer test updates against it
             'all-nightly-branches': (
                 "/mozilla-central",
                 "/releases/mozilla-unified",
@@ -250,6 +252,7 @@ DEFAULT_CONFIG = frozendict({
                 "/releases/mozilla-esr45",
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
+                "/projects/oak",
                 "/projects/date",
             ),
         }),
