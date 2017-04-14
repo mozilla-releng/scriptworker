@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [3.1.2] - 2017-04-14
+### Changed
+- allowed for retriggering tasks with a subset of `task.dependencies`, specifically to get around expiration of the breakpoint dependency of pushapk tasks.
+
 ## [3.1.1] - 2017-04-07
 ### Added
 - added oak to `all-nightly-branches`, for update testing.
