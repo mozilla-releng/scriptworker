@@ -710,7 +710,12 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     errors = []
     runtime_defn = task_link.task
     # dependencies
-    bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
+    # Allow for a subset of dependencies in a retriggered task.  The current use case
+    # is release promotion: we may hit the expiration deadline for a task (e.g. pushapk),
+    # and a breakpoint task in the graph may also hit its expiration.  To kick off
+    # the pushapk task, we can clone the task, update timestamps, and remove the
+    # breakpoint dependency.
+    bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
     if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
         errors.append("{} {} dependencies don't line up!\n{}".format(
             task_link.name, task_link.task_id, bad_deps

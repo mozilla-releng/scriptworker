@@ -44,7 +44,7 @@ def chain(rw_context):
     }
     rw_context.task = {
         'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
-        'dependencies': [],
+        'dependencies': ['decision_task_id'],
         'provisionerId': rw_context.config['provisioner_id'],
         'schedulerId': 'schedulerId',
         'workerType': rw_context.config['worker_type'],
@@ -77,7 +77,7 @@ def build_link(chain):
         'provisionerId': 'provisioner',
         'workerType': 'workerType',
         'scopes': [],
-        'dependencies': [],
+        'dependencies': ['some_task_id'],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
         },
@@ -630,14 +630,20 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
 
-def test_verify_link_in_task_graph_fuzzy_match(chain, decision_link, build_link):
+@pytest.mark.parametrize("zero_deps", (True, False))
+def test_verify_link_in_task_graph_fuzzy_match(chain, decision_link, build_link, zero_deps):
     chain.links = [decision_link, build_link]
+    task_defn1 = deepcopy(build_link.task)
+    task_defn2 = deepcopy(chain.task)
+    if zero_deps:
+        build_link.task['dependencies'] = []
+        chain.task['dependencies'] = []
     decision_link.task_graph = {
         'bogus-task-id': {
-            'task': deepcopy(build_link.task)
+            'task': task_defn1
         },
         'bogus-task-id2': {
-            'task': deepcopy(chain.task)
+            'task': task_defn2
         }
     }
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
