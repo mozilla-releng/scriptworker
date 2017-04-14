@@ -710,7 +710,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     errors = []
     runtime_defn = task_link.task
     # dependencies
-    bad_deps = set(graph_defn['task']['dependencies']).symmetric_difference(set(runtime_defn['dependencies']))
+    bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
     if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
         errors.append("{} {} dependencies don't line up!\n{}".format(
             task_link.name, task_link.task_id, bad_deps
