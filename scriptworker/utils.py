@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for the module
+
 """
 import aiohttp
 import arrow
@@ -49,6 +50,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
         ScriptWorkerRetryException: if the status code is in the retry list.
         ScriptWorkerException: if the status code is not in the retry list or
             good list.
+
     """
     session = context.session
     with aiohttp.Timeout(timeout):
@@ -83,6 +85,7 @@ async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
 
     Returns:
         object: the value from request().
+
     """
     retry_async_kwargs = retry_async_kwargs or {}
     return await retry_async(request, retry_exceptions=retry_exceptions,
@@ -99,6 +102,7 @@ def datestring_to_timestamp(datestring):
 
     Returns:
         int: the corresponding timestamp.
+
     """
     return arrow.get(datestring).timestamp
 
@@ -113,6 +117,7 @@ def to_unicode(line):
     Returns:
         str: the unicode-decoded string, if ``line`` was a bytecode string.
             Otherwise return ``line`` unmodified.
+
     """
     try:
         line = line.decode('utf-8')
@@ -130,6 +135,7 @@ def makedirs(path):
 
     Raises:
         ScriptWorkerException: if path exists already and the realpath is not a dir.
+
     """
     if path:
         if not os.path.exists(path):
@@ -153,6 +159,7 @@ def rm(path):
 
     Args:
         path (str): the path to nuke.
+
     """
     if path and os.path.exists(path):
         if os.path.isdir(path):
@@ -167,6 +174,7 @@ def cleanup(context):
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+
     """
     for name in 'work_dir', 'artifact_dir', 'task_log_dir':
         path = context.config[name]
@@ -194,6 +202,7 @@ def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max
 
     Returns:
         float: the time to sleep, in seconds.
+
     """
     if attempt <= 0:
         return 0
@@ -232,6 +241,7 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
         Exception: the exception from a failed ``function`` call, either outside
             of the retry_exceptions, or one of those if we pass the max
             ``attempts``.
+
     """
     kwargs = kwargs or {}
     attempt = 1
@@ -268,6 +278,7 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
 
     Returns:
         dict: the temporary taskcluster credentials.
+
     """
     now = arrow.utcnow().replace(minutes=-10)
     start = start or now.datetime
@@ -302,6 +313,7 @@ async def raise_future_exceptions(tasks):
     Raises:
         Exception: any exceptions in task.exception(), or CancelledError if
             the task was cancelled
+
     """
     if not tasks:
         return
@@ -325,6 +337,7 @@ def filepaths_in_dir(path):
     Returns:
         list: the list of relative paths to all files inside of ``path`` or its
             subdirectories.
+
     """
     filepaths = []
     for root, directories, filenames in os.walk(path):
@@ -347,6 +360,7 @@ def get_hash(path, hash_alg="sha256"):
 
     Returns:
         str: the hexdigest of the hash.
+
     """
     h = hashlib.new(hash_alg)
     with open(path, "rb") as f:
@@ -364,6 +378,7 @@ def format_json(data):
 
     Returns:
         str: the formatted json.
+
     """
     return json.dumps(data, indent=2, sort_keys=True)
 
@@ -386,6 +401,7 @@ def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
 
     Raises:
         Exception: as specified, on failure
+
     """
     try:
         if is_path:
@@ -412,6 +428,7 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
             None, use context.session.  Defaults to None.
         chunk_size (int, optional): the chunk size to read from the response
             at a time.  Default is 128.
+
     """
     session = session or context.session
     log.info("Downloading %s", url)
@@ -456,6 +473,7 @@ def match_url_regex(rules, url, callback):
 
     Returns:
         value: the value from the callback, or None if no match.
+
     """
     parts = urlparse(url)
     path = unquote(parts.path)

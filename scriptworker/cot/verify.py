@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for this module.
+
 """
 import aiohttp
 import argparse
@@ -42,6 +43,7 @@ class ChainOfTrust(object):
         task_id (str): the taskId of the task
         task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
+
     """
 
     def __init__(self, context, name, task_id=None):
@@ -52,6 +54,7 @@ class ChainOfTrust(object):
             name (str): the name of the task (e.g., signing)
             task_id (str, optional): the task_id of the task.  If None, use
                 ``get_task_id(context.claim_task)``.  Defaults to None.
+
         """
         self.name = name
         self.task_type = guess_task_type(name)
@@ -63,18 +66,20 @@ class ChainOfTrust(object):
         self.links = []
 
     def dependent_task_ids(self):
-        """Helper method to get all ``task_id``s for all ``LinkOfTrust`` tasks.
+        """Get all ``task_id``s for all ``LinkOfTrust`` tasks.
 
         Returns:
             list: the list of ``task_id``s
+
         """
         return [x.task_id for x in self.links]
 
     def is_try(self):
-        """Helper method to determine if any task in the chain is a try task.
+        """Determine if any task in the chain is a try task.
 
         Returns:
             bool: True if a task is a try task.
+
         """
         result = is_try(self.task)
         for link in self.links:
@@ -94,6 +99,7 @@ class ChainOfTrust(object):
 
         Raises:
             CoTError: if no ``LinkOfTrust`` matches.
+
         """
         links = [x for x in self.links if x.task_id == task_id]
         if len(links) != 1:
@@ -114,6 +120,7 @@ class LinkOfTrust(object):
         task_graph (dict): the task graph of the task, if this is a decision task
         task_type (str): the task type of the task (e.g., decision, build)
         worker_impl (str): the taskcluster worker class (e.g., docker-worker) of the task
+
     """
 
     _task = None
@@ -128,6 +135,7 @@ class LinkOfTrust(object):
             context (scriptworker.context.Context): the scriptworker context
             name (str): the name of the task (e.g., signing)
             task_id (str): the task_id of the task
+
         """
         self.name = name
         self.task_type = guess_task_type(name)
@@ -150,6 +158,7 @@ class LinkOfTrust(object):
 
         When set, we also set ``self.decision_task_id``, ``self.worker_impl``,
         and ``self.is_try`` based on the task definition.
+
         """
         return self._task
 
@@ -200,6 +209,7 @@ def raise_on_errors(errors, level=logging.CRITICAL):
 
     Raises:
         CoTError: if errors is non-empty
+
     """
     if errors:
         log.log(level, "\n".join(errors))
@@ -225,6 +235,7 @@ def guess_worker_impl(link):
 
     Raises:
         CoTError: on inability to determine the worker implementation
+
     """
     worker_impls = []
     task = link.task
@@ -260,6 +271,7 @@ def get_valid_worker_impls():
     Returns:
         frozendict: maps the valid worker_impls (e.g., docker-worker) to their
             validation functions.
+
     """
     # TODO support the rest of the worker impls... generic worker, taskcluster worker
     return frozendict({
@@ -280,6 +292,7 @@ def guess_task_type(name):
 
     Raises:
         CoTError: on invalid task_type.
+
     """
     parts = name.split(':')
     task_type = parts[-1]
@@ -298,6 +311,7 @@ def get_valid_task_types():
 
     Returns:
         frozendict: maps the valid task types (e.g., signing) to their validation functions.
+
     """
     return frozendict({
         'scriptworker': verify_scriptworker_task,
@@ -341,6 +355,7 @@ def is_try(task):
 
     Returns:
         bool: True if it's try
+
     """
     result = False
     env = task['payload'].get('env', {})
@@ -366,6 +381,7 @@ def check_interactive_docker_worker(link):
 
     Returns:
         list: the list of error errors.  Success is an empty list.
+
     """
     errors = []
     log.info("Checking for {} {} interactive docker-worker".format(link.name, link.task_id))
@@ -392,6 +408,7 @@ def verify_docker_image_sha(chain, link):
 
     Raises:
         CoTError: on failure.
+
     """
     cot = link.cot
     task = link.task
@@ -451,6 +468,7 @@ def find_sorted_task_dependencies(task, task_name, task_id):
 
     Returns:
         list: tuples associating dependent task ``name`` to dependent task ``taskId``.
+
     """
     log.info("find_sorted_task_dependencies {} {}".format(task_name, task_id))
 
@@ -498,6 +516,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
     Raises:
         CoTError: on failure.
+
     """
     log.info("build_task_dependencies {} {}".format(name, my_task_id))
     if name.count(':') > 5:
@@ -530,6 +549,7 @@ async def download_cot(chain):
 
     Raises:
         DownloadError: on failure.
+
     """
     async_tasks = []
     # only deal with chain.links, which are previously finished tasks with
@@ -567,6 +587,7 @@ async def download_cot_artifact(chain, task_id, path):
 
     Raises:
         CoTError: on failure.
+
     """
     link = chain.get_link(task_id)
     log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
@@ -602,6 +623,7 @@ async def download_cot_artifacts(chain, artifact_dict):
     Raises:
         CoTError: on chain of trust sha validation error
         DownloadError: on download error
+
     """
     tasks = []
     for task_id, paths in artifact_dict.items():
@@ -632,6 +654,7 @@ async def download_firefox_cot_artifacts(chain):
     Raises:
         CoTError: on chain of trust sha validation error
         DownloadError: on download error
+
     """
     artifact_dict = {}
     for link in chain.links:
@@ -658,6 +681,7 @@ def verify_cot_signatures(chain):
 
     Raises:
         CoTError: on failure.
+
     """
     for link in chain.links:
         path = link.get_artifact_full_path('public/chainOfTrust.json.asc')
@@ -705,6 +729,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
 
     Raises:
         CoTError: on failure
+
     """
     ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
     errors = []
@@ -754,6 +779,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 
     Raises:
         CoTError: on failure.
+
     """
     log.info("Verifying the {} {} task definition is part of the {} {} task graph...".format(
         task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
@@ -819,6 +845,7 @@ def verify_firefox_decision_command(decision_link):
 
     Args:
         decision_link (LinkOfTrust): the decision link to test.
+
     """
     log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
     errors = []
@@ -863,6 +890,7 @@ async def verify_decision_task(chain, link):
 
     Raises:
         CoTError: on chain of trust verification error.
+
     """
     errors = []
     worker_type = get_worker_type(link.task)
@@ -899,6 +927,7 @@ async def verify_build_task(chain, link):
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
+
     """
     pass
 
@@ -910,6 +939,7 @@ async def verify_docker_image_task(chain, link):
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
+
     """
     errors = []
     # workerType
@@ -935,6 +965,7 @@ async def verify_balrog_task(chain, obj):
 
     Raises:
         CoTError: on error.
+
     """
     return await verify_scriptworker_task(chain, obj)
 
@@ -951,6 +982,7 @@ async def verify_beetmover_task(chain, obj):
 
     Raises:
         CoTError: on error.
+
     """
     return await verify_scriptworker_task(chain, obj)
 
@@ -967,6 +999,7 @@ async def verify_pushapk_task(chain, obj):
 
     Raises:
         CoTError: on error.
+
     """
     return await verify_scriptworker_task(chain, obj)
 
@@ -983,6 +1016,7 @@ async def verify_signing_task(chain, obj):
 
     Raises:
         CoTError: on error.
+
     """
     return await verify_scriptworker_task(chain, obj)
 
@@ -999,6 +1033,7 @@ def check_num_tasks(chain, task_count):
 
     Raises:
         CoTError: on failure.
+
     """
     errors = []
     # hardcode for now.  If we need a different set of constraints, either
@@ -1020,6 +1055,7 @@ async def verify_task_types(chain):
 
     Returns:
         dict: mapping task type to the number of links.
+
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
@@ -1045,6 +1081,7 @@ async def verify_docker_worker_task(chain, link):
 
     Raises:
         CoTError: on failure.
+
     """
     check_interactive_docker_worker(link)
     verify_docker_image_sha(chain, link)
@@ -1059,6 +1096,7 @@ async def verify_scriptworker_task(chain, obj):
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+
     """
     errors = []
     if obj.worker_impl != "scriptworker":
@@ -1075,6 +1113,7 @@ async def verify_worker_impls(chain):
 
     Raises:
         CoTError: on failure
+
     """
     valid_worker_impls = get_valid_worker_impls()
     for obj in [chain] + chain.links:
@@ -1099,6 +1138,7 @@ def get_firefox_source_url(obj):
 
     Raises:
         CoTError: if repo and source are defined and don't match
+
     """
     task = obj.task
     log.debug("Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
@@ -1126,6 +1166,7 @@ async def trace_back_to_firefox_tree(chain):
 
     Raises:
         CoTError: on error.
+
     """
     errors = []
     repos = {}
@@ -1204,6 +1245,7 @@ async def verify_chain_of_trust(chain):
 
     Raises:
         CoTError: on failure
+
     """
     log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
     with contextual_log_handler(
@@ -1244,6 +1286,7 @@ def verify_cot_cmdln(args=None):
     Args:
         args (list, optional): the commandline args to parse.  If None, use
             ``sys.argv[1:]`` .  Defaults to None.
+
     """
     args = args or sys.argv[1:]
     parser = argparse.ArgumentParser(

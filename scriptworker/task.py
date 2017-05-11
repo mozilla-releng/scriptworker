@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for the module
+
 """
 import aiohttp
 import asyncio
@@ -32,6 +33,7 @@ def worst_level(level1, level2):
 
     Returns:
         int: the larger of the two levels.
+
     """
     return level1 if level1 > level2 else level2
 
@@ -45,6 +47,7 @@ def get_task_id(claim_task):
 
     Returns:
         str: the taskId.
+
     """
     return claim_task['status']['taskId']
 
@@ -58,6 +61,7 @@ def get_run_id(claim_task):
 
     Returns:
         int: the runId.
+
     """
     return claim_task['runId']
 
@@ -71,6 +75,7 @@ def get_decision_task_id(task):
 
     Returns:
         str: the taskId.
+
     """
     return task['taskGroupId']
 
@@ -83,6 +88,7 @@ def get_worker_type(task):
 
     Returns:
         str: the workerType.
+
     """
     return task['workerType']
 
@@ -98,6 +104,7 @@ async def run_task(context):
 
     Returns:
         int: exit code
+
     """
     loop = asyncio.get_event_loop()
     kwargs = {  # pragma: no branch
@@ -139,6 +146,7 @@ async def reclaim_task(context, task):
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 status_code
             from taskcluster.async.Queue.reclaimTask()
+
     """
     while True:
         log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
@@ -176,6 +184,7 @@ async def complete_task(context, result):
 
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
+
     """
     args = [get_task_id(context.claim_task), get_run_id(context.claim_task)]
     try:
@@ -206,6 +215,7 @@ async def kill(pid, sleep_time=1):
         pid (int): the process id to kill.
         sleep_time (int, optional): how long to sleep between killing the pid
             and checking if the pid is still running.
+
     """
     siglist = [signal.SIGINT, signal.SIGTERM]
     while True:
@@ -231,6 +241,7 @@ def max_timeout(context, proc, timeout):
         proc (subprocess.Process): the subprocess proc.  This is compared against context.proc
             to make sure we're killing the right pid.
         timeout (int): Used for the log message.
+
     """
     # We may be called with proc1.  proc1 may finish, and proc2 may start
     # before this function is called.  Make sure we're still running the
@@ -255,6 +266,7 @@ async def claim_work(context):
 
     Returns:
         dict: a dict containing a list of the task definitions of the tasks claimed.
+
     """
     payload = {
         'workerGroup': context.config['worker_group'],

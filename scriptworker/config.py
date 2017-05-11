@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module.
     CREDS_FILES (tuple): an ordered list of files to look for taskcluster
         credentials, if they aren't in the config file or environment.
+
 """
 import argparse
 from copy import deepcopy
@@ -40,6 +41,7 @@ def get_frozen_copy(values):
 
     Args:
         values (dict/list): the values/list to be modified in-place.
+
     """
     if isinstance(values, (frozendict, dict)):
         return frozendict({key: get_frozen_copy(value) for key, value in values.items()})
@@ -58,6 +60,7 @@ def get_unfrozen_copy(values):
 
     Returns:
         values (dict/list): the unfrozen copy.
+
     """
     if isinstance(values, (frozendict, dict)):
         return {key: get_unfrozen_copy(value) for key, value in values.items()}
@@ -80,6 +83,7 @@ def read_worker_creds(key="credentials"):
 
     Returns:
         dict: the credentials found. None if no credentials found.
+
     """
     for path in CREDS_FILES:
         if not os.path.exists(path):
@@ -111,6 +115,7 @@ def check_config(config, path):
 
     Returns:
         list: the error messages found when validating the config.
+
     """
     messages = []
 
@@ -161,6 +166,7 @@ def create_config(config_path="scriptworker.yaml"):
 
     Raises:
         SystemExit: on failure
+
     """
     if not os.path.exists(config_path):
         print("{} doesn't exist! Exiting...".format(config_path), file=sys.stderr)
@@ -195,6 +201,7 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
     Returns:
         tuple: ``scriptworker.context.Context`` with populated config, and
             credentials frozendict
+
     """
     context = Context()
     parser = argparse.ArgumentParser(description=desc)

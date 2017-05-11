@@ -7,6 +7,7 @@ Attributes:
     STATUSES (dict): maps taskcluster status (string) to exit code (int).
     REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
         (int) to the taskcluster status (string).
+
 """
 from frozendict import frozendict
 import os

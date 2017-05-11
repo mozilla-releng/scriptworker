@@ -12,6 +12,7 @@ Attributes:
     log (logging.Logger): the log object for this module.
     GPG_CONFIG_MAPPING (dict): This maps the scriptworker config key names to
         the python-gnupg names.
+
 """
 import arrow
 import asyncio
@@ -55,6 +56,7 @@ def gpg_default_args(gpg_home):
 
     Returns:
         list: the list of default commandline arguments to add to the gpg call.
+
     """
     return [
         "--homedir", gpg_home,
@@ -81,6 +83,7 @@ def guess_gpg_home(obj, gpg_home=None):
     Raises:
         ScriptWorkerGPGException: if obj doesn't contain the gpg home info and
             os.environ['HOME'] isn't set.
+
     """
     try:
         if hasattr(obj, 'config'):
@@ -94,13 +97,14 @@ def guess_gpg_home(obj, gpg_home=None):
 
 
 def guess_gpg_path(context):
-    """Simple gpg_path guessing function.
+    """Guess gpg_path.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
         str: either ``context.config['gpg_path']`` or 'gpg' if that's not defined.
+
     """
     return context.config['gpg_path'] or 'gpg'
 
@@ -123,6 +127,7 @@ def keyid_to_fingerprint(gpg, keyid, private=False):
 
     Raises:
         ScriptworkerGPGException: if we can't find ``keyid`` in this keyring.
+
     """
     for key in gpg.list_keys(private):
         if key['keyid'] == keyid:
@@ -152,6 +157,7 @@ def fingerprint_to_keyid(gpg, fingerprint, private=False):
 
     Raises:
         ScriptworkerGPGException: if we can't find ``fingerprint`` in this keyring.
+
     """
     for key in gpg.list_keys(private):
         if key['fingerprint'] == fingerprint:
@@ -176,6 +182,7 @@ def create_gpg_conf(gpg_home, keyserver=None, my_fingerprint=None):
         my_fingerprint (str, optional): the fingerprint of the default key.
             Once set, gpg will use it by default, unless a different key is
             specified.  Defaults to None.
+
     """
     gpg_conf = os.path.join(gpg_home, "gpg.conf")
     if os.path.exists(gpg_conf):
@@ -207,6 +214,7 @@ def GPG(context, gpg_home=None):
 
     Returns:
         gnupg.GPG: the GPG instance with the appropriate configs.
+
     """
     kwargs = {}
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
@@ -238,6 +246,7 @@ def generate_key(gpg, name, comment, email, key_length=4096, expiration=None):
 
     Returns:
         fingerprint (str): the fingerprint of the key just generated.
+
     """
     log.info("Generating key for {}...".format(email))
     kwargs = {
@@ -271,6 +280,7 @@ def import_key(gpg, key_data, return_type='fingerprints'):
         list: if return_type is 'fingerprints', return the fingerprints of the
             imported keys.  Otherwise return the results list.
             https://pythonhosted.org/python-gnupg/#importing-and-receiving-keys
+
     """
     import_result = gpg.import_keys(key_data)
     if return_type == 'fingerprints':
@@ -292,6 +302,7 @@ def export_key(gpg, fingerprint, private=False):
 
     Raises:
         ScriptworkerGPGException: if the key isn't found.
+
     """
     message = "Exporting key {} from gnupghome {}".format(fingerprint, guess_gpg_home(gpg))
     log.info(message)
@@ -322,6 +333,7 @@ def sign_key(context, target_fingerprint, signing_key=None,
 
     Raises:
         ScriptWorkerGPGException: on a failed signature.
+
     """
     args = []
     gpg_path = guess_gpg_path(context)
@@ -368,6 +380,7 @@ def check_ownertrust(context, gpg_home=None):
         context (scriptworker.context.Context): the scriptworker context.
         gpg_home (str, optional): override the gpg_home with a different
             gnupg home directory here.  Defaults to None.
+
     """
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
@@ -389,6 +402,7 @@ def update_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 
     Raises:
         ScriptWorkerGPGException: if there is an error.
+
     """
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     log.info("Updating ownertrust in {}...".format(gpg_home))
@@ -432,6 +446,7 @@ def verify_ownertrust(context, my_fingerprint, trusted_fingerprints=None, gpg_ho
 
     Raises:
         ScriptWorkerGPGException: if there is an error.
+
     """
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
@@ -475,6 +490,7 @@ def sign(gpg, data, **kwargs):
 
     Returns:
         str: the ascii armored signed data.
+
     """
     return str(gpg.sign(data, **kwargs))
 
@@ -494,6 +510,7 @@ def verify_signature(gpg, signed_data, **kwargs):
 
     Raises:
         ScriptWorkerGPGException: on failure.
+
     """
     log.info("Verifying signature (gnupghome {})".format(guess_gpg_home(gpg)))
     verified = gpg.verify(signed_data, **kwargs)
@@ -523,6 +540,7 @@ def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
 
     Raises:
         ScriptWorkerGPGException: on signature verification failure.
+
     """
     # XXX remove verify_sig kwarg when pubkeys are in git repo
     if verify_sig:
@@ -567,6 +585,7 @@ def _parse_trust_line(trust_line, desc):
            (gpg's option --completes-needed)
         8: Maximum depth of a certification chain.
            *gpg's option --max-cert-depth)
+
     """
     parts = trust_line.split(':')
     messages = []
@@ -708,6 +727,7 @@ def _parse_pub_line(pub_line, desc):
                     2 = SHA-1
                     8 = SHA-256
                 (for other id's see include/cipher.h)
+
     """
     parts = pub_line.split(':')
     messages = []
@@ -745,6 +765,7 @@ def _parse_fpr_line(fpr_line, desc, expected=None):
                 In gpgsm the issuer name comes here
                 An FPR record stores the fingerprint here.
                 The fingerprint of an revocation key is stored here.
+
     """
     parts = fpr_line.split(':')
     fingerprint = parts[9]
@@ -755,6 +776,7 @@ def _parse_sig_line(sig_line, desc):
     """Parse signature line.
 
     sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
+
     """
     parts = sig_line.split(':')
     keyid = parts[4]
@@ -766,6 +788,7 @@ def _parse_uid_line(uid_line, desc):
     """Parse UID line.
 
     sig:::1:D9DC50F64C7D44CF:1472242430::::Scriptworker Test (test key for scriptworker) <scriptworker@example.com>:13x:::::8:
+
     """
     parts = uid_line.split(':')
     uid = parts[9]
@@ -825,6 +848,7 @@ def parse_list_sigs_output(output, desc, expected=None):
     Raises:
         ScriptWorkerGPGException: on mismatched expectations, or if we found
             revocation markers or the like that make for a bad key.
+
     """
     expected = expected or {}
     real = {
@@ -903,6 +927,7 @@ def get_list_sigs_output(context, key_fingerprint, gpg_home=None, validate=True,
 
     Raises:
         ScriptWorkerGPGException: if there is an issue with the key.
+
     """
     gpg_home = guess_gpg_home(context, gpg_home=gpg_home)
     gpg_path = guess_gpg_path(context)
@@ -927,6 +952,7 @@ def has_suffix(path, suffixes):
     Args:
         path (str): the file path to check
         suffixes (list): the suffixes to check for
+
     """
     for suffix in suffixes:
         if path.endswith(suffix):
@@ -949,6 +975,7 @@ def consume_valid_keys(context, keydir=None, ignore_suffixes=(), gpg_home=None):
 
     Raises:
         ScriptworkerGPGException: on error.
+
     """
     if not keydir:
         return
@@ -988,6 +1015,7 @@ def rebuild_gpg_home(context, tmp_gpg_home, my_pub_key_path, my_priv_key_path):
 
     Returns:
         str: my fingerprint
+
     """
     os.chmod(tmp_gpg_home, 0o700)
     gpg = GPG(context, gpg_home=tmp_gpg_home)
@@ -1006,6 +1034,7 @@ def overwrite_gpg_home(tmp_gpg_home, real_gpg_home):
         tmp_gpg_home (str): path to the rebuilt gpg_home with the new keychains+
             trust models
         real_gpg_home (str): path to the old gpg_home to overwrite
+
     """
     log.info("overwrite_gpg_home: {} to {}".format(tmp_gpg_home, real_gpg_home))
     # Back up real_gpg_home until we have more confidence in blowing this away
@@ -1044,6 +1073,7 @@ def rebuild_gpg_home_flat(context, real_gpg_home, my_pub_key_path,
             from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
+
     """
     # Create a new tmp_gpg_home to import into
     with tempfile.TemporaryDirectory() as tmp_gpg_home:
@@ -1091,6 +1121,7 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
             untrusted but valid pubkeys from
         ignore_suffixes (list, optional): the suffixes to ignore in consume_path.
             Defaults to ()
+
     """
     # Create a new tmp_gpg_home to import into
     log.info("rebuilding gpg_home for {} at {}...".format(my_pub_key_path, real_gpg_home))
@@ -1149,6 +1180,7 @@ async def get_git_revision(path, ref="HEAD",
 
     Raises:
         ScriptWorkerRetryException: on failure.
+
     """
     proc = await exec_function(
         'git', "log", "-n1", "--format=format:%H", ref, cwd=path,
@@ -1175,6 +1207,7 @@ async def get_latest_tag(path,
 
     Raises:
         ScriptWorkerRetryException: on failure.
+
     """
     proc = await exec_function(
         'git', "describe", "--abbrev=0", cwd=path,
@@ -1207,6 +1240,7 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
     Raises:
         ScriptWorkerGPGException: on signature validation failure.
         ScriptWorkerRetryException: on ``git pull`` failure.
+
     """
     path = context.config['git_key_repo_dir']
 
@@ -1245,6 +1279,7 @@ async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
 
     Raises:
         ScriptWorkerGPGException: if we're not updated to ``tag``
+
     """
     path = context.config['git_key_repo_dir']
     try:
@@ -1273,6 +1308,7 @@ def get_last_good_git_revision(context):
     Returns:
         str: the latest good git revision, if the file exists
         None: if the file doesn't exist
+
     """
     result = None
     if os.path.exists(context.config['last_good_git_revision_file']):
@@ -1287,6 +1323,7 @@ def write_last_good_git_revision(context, revision):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         revision (str): the last good git revision
+
     """
     log.info(
         "writing last_good_git_revision {} to {}...".format(
@@ -1316,6 +1353,7 @@ def build_gpg_homedirs_from_repo(
 
     Raises:
         ScriptWorkerGPGException: on rebuild exception.
+
     """
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
@@ -1396,6 +1434,7 @@ def get_tmp_base_gpg_home_dir(context):
 
     Returns:
         str: the base_gpg_home_dir with .tmp at the end.
+
     """
     return '{}.tmp'.format(context.config['base_gpg_home_dir'])
 
@@ -1411,6 +1450,7 @@ def is_lockfile_present(context, name, level=logging.WARNING):
     Returns:
         str: "locked" on r/w lock; "ready" if ready to copy.
         None: if lockfile is not present
+
     """
     lockfile = context.config['gpg_lockfile']
     if os.path.exists(lockfile):
@@ -1425,6 +1465,7 @@ def create_lockfile(context, message="locked"):
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
+
     """
     lockfile = context.config['gpg_lockfile']
     with open(lockfile, "w") as fh:
@@ -1436,6 +1477,7 @@ def rm_lockfile(context):
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
+
     """
     rm(context.config['gpg_lockfile'])
 
@@ -1447,6 +1489,7 @@ def rebuild_gpg_homedirs():
 
     Raises:
         SystemExit: on failure.
+
     """
     context, _ = get_context_from_cmdln(sys.argv[1:])
     update_logging_config(context, file_name='rebuild_gpg_homedirs.log')

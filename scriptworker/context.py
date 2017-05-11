@@ -7,6 +7,7 @@ object, let's point to them from a single context object.
 
 Attributes:
     log (logging.Logger): the log object for the module.
+
 """
 import arrow
 from copy import deepcopy
@@ -39,6 +40,7 @@ class Context(object):
         task (dict): the task definition for the current task.
         temp_queue (taskcluster.async.Queue): the taskcluster Queue object
             containing the task-specific temporary credentials.
+
     """
 
     config = None
@@ -63,6 +65,7 @@ class Context(object):
         When setting ``claim_task``, we also set ``self.task`` and
         ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
         then write a task.json to disk.
+
         """
         return self._claim_task
 
@@ -88,6 +91,7 @@ class Context(object):
 
         When setting credentials, also create a new ``self.queue`` and
         update self.credentials_timestamp.
+
         """
         if self._credentials:
             return dict(deepcopy(self._credentials))
@@ -103,6 +107,7 @@ class Context(object):
 
         Args:
             credentials (dict): taskcluster credentials.
+
         """
         if credentials:
             return Queue({
@@ -120,6 +125,7 @@ class Context(object):
         ``reclaim_task`` will be ``None`` if there hasn't been a claimed task yet,
         or if a task has been claimed more recently than the most recent
         reclaimTask call.
+
         """
         return self._reclaim_task
 
@@ -134,6 +140,7 @@ class Context(object):
         """dict: The latest temp credentials, or None if we haven't claimed a task yet.
 
         When setting, create ``self.temp_queue`` from the temp taskcluster creds.
+
         """
         if self._temp_credentials:
             return dict(deepcopy(self._temp_credentials))
@@ -150,6 +157,7 @@ class Context(object):
             path (str): the path to write to
             contents (dict): the contents of the json blob
             message (str): the message to log
+
         """
         log.debug(message.format(path=path))
         makedirs(os.path.dirname(path))

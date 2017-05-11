@@ -14,6 +14,7 @@ Attributes:
   __version__ (Tuple[int, int, int, str]): semver version - three integers and an
     optional string.
   __version_string__ (str): semver version in string format.
+
 """
 from __future__ import absolute_import, division, print_function, \
                        unicode_literals
@@ -35,6 +36,7 @@ def get_version_string(version):
 
     Returns:
       version_string (str): the tuple translated into a string per semver.org
+
     """
     version_len = len(version)
     if version_len == 3:

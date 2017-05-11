@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for the module.
+
 """
 import aiohttp
 import arrow
@@ -36,6 +37,7 @@ async def run_loop(context, creds_key="credentials"):
     Returns:
         int: status
         None: if no task run.
+
     """
     loop = asyncio.get_event_loop()
     tasks = await claim_work(context)
@@ -74,7 +76,9 @@ async def run_loop(context, creds_key="credentials"):
 
 
 async def async_main(context):
-    """Main async loop, following http://docs.taskcluster.net/queue/worker-interaction/ .
+    """Run the main async loop.
+
+    http://docs.taskcluster.net/queue/worker-interaction/
 
     This is a simple loop, mainly to keep each function more testable.
 
