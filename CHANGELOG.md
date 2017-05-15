@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.0.0] - 2017-05-15
+### Added
+- added `scriptworker.task.claim_work` to use the `claimWork` endpoint instead of polling.
+
+### Changed
+
+- changed `worker.run_loop` to use the new `claim_work` function.  In theory this can handle multiple tasks serially, but in practice should only get one at a time.  In the future we can allow for multiple tasks run in parallel in separate `work_dir`s, if desired.
+- `worker.run_loop` now always sleeps the `poll_interval`.  We can adjust this if desired.
+
+### Fixed
+
+- tweaked docstrings to pass pydocstyle>=2.0
+
+### Removed
+- removed `Context.poll_task_urls`
+- removed `scriptworker.poll` completely
+
 ## [3.1.2] - 2017-04-14
 ### Changed
 - allowed for retriggering tasks with a subset of `task.dependencies`, specifically to get around expiration of the breakpoint dependency of pushapk tasks.

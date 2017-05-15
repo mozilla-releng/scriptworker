@@ -2,6 +2,7 @@
 
 Importing this script updates the mimetypes database. This maps some known extensions to text/plain for a better storage
 in S3.
+
 """
 import aiohttp
 import arrow
@@ -31,6 +32,7 @@ def _force_mimetypes_to_plain_text():
 
     These extensions can then be open natively read by browsers once they're uploaded on S3. It doesn't affect artifacts
     once they're downloaded from S3.
+
     """
     for extension in _EXTENSIONS_TO_FORCE_TO_PLAIN_TEXT:
         mimetypes.add_type('text/plain', extension)
@@ -55,6 +57,7 @@ async def upload_artifacts(context):
 
     Raises:
         Exception: any exceptions the tasks raise.
+
     """
     file_list = {}
     for target_path in filepaths_in_dir(context.config['artifact_dir']):
@@ -93,6 +96,7 @@ def compress_artifact_if_supported(artifact_path):
 
     Returns:
         content_type, content_encoding (tuple):  Type and encoding of the file. Encoding equals 'gzip' if compressed.
+
     """
     content_type, encoding = guess_content_type_and_encoding(artifact_path)
     log.debug('"{}" is encoded with "{}" and has mime/type "{}"'.format(artifact_path, encoding, content_type))
@@ -123,6 +127,7 @@ def guess_content_type_and_encoding(path):
 
     Returns:
         str: the content type of the file
+
     """
     content_type, encoding = mimetypes.guess_type(path)
     content_type = content_type or "application/binary"
@@ -136,6 +141,7 @@ async def retry_create_artifact(*args, **kwargs):
     Args:
         *args: the args to pass on to create_artifact
         **kwargs: the args to pass on to create_artifact
+
     """
     await retry_async(
         create_artifact,
@@ -170,6 +176,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
 
     Raises:
         ScriptWorkerRetryException: on failure.
+
     """
     payload = {
         "storageType": storage_type,
@@ -223,6 +230,7 @@ def get_artifact_url(context, task_id, path):
 
     Raises:
         TaskClusterFailure: on failure.
+
     """
     try:
         url = unquote(context.queue.buildUrl('getLatestArtifact', task_id, path))
@@ -250,6 +258,7 @@ def get_expiration_arrow(context):
 
     Returns:
         arrow: now + artifact_expiration_hours
+
     """
     now = arrow.utcnow()
     return now.replace(hours=context.config['artifact_expiration_hours'])
@@ -282,6 +291,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     Raises:
         scriptworker.exceptions.DownloadError: on download failure after
             max retries.
+
     """
     parent_dir = parent_dir or context.config['work_dir']
     session = session or context.session
@@ -319,6 +329,7 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
 
     Raises:
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
+
     """
     task_ids_and_relative_paths = [
         (artifact_definition['taskId'], artifact_definition['paths'])
@@ -347,6 +358,7 @@ def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
 
     Raises:
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
+
     """
     abs_path = get_single_upstream_artifact_full_path(context, task_id, path)
     if not os.path.exists(abs_path):
@@ -372,5 +384,6 @@ def get_single_upstream_artifact_full_path(context, task_id, path):
 
     Returns:
         str: absolute path to the artifact should be.
+
     """
     return os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
