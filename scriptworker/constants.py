@@ -189,8 +189,8 @@ DEFAULT_CONFIG = frozendict({
             'project:releng:beetmover:bucket:release': 'all-release-branches',
             'project:releng:googleplay:release': 'release',
             'project:releng:signing:cert:release-signing': 'all-release-branches',
-            'project:releng:googleplay:beta': 'betatest',
-            'project:releng:googleplay:aurora': 'auroratest',
+            'project:releng:googleplay:beta': 'beta',
+            'project:releng:googleplay:aurora': 'nightly',
             'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
             'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
         })
@@ -217,18 +217,8 @@ DEFAULT_CONFIG = frozendict({
             'beta': (
                 "/releases/mozilla-beta",
             ),
-            # TODO remove it once pushapk is landed on beta
-            'betatest': (
-                "/releases/mozilla-beta",
-                "/projects/jamun",
-            ),
             'aurora': (
                 "/releases/mozilla-aurora",
-            ),
-            # TODO remove it once pushapk is landed on aurora
-            'auroratest': (
-                "/releases/mozilla-aurora",
-                "/projects/date",
             ),
             'esr': (
                 "/releases/mozilla-esr45",
