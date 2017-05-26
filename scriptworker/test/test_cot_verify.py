@@ -257,7 +257,13 @@ def test_raise_on_errors(errors, raises):
     {'payload': {}, 'provisionerId': 'test-dummy-provisioner', 'workerType': 'test-dummy-myname', 'scopes': ["x"]},
     'scriptworker', False
 ), (
+    {'payload': {'mounts': [], 'osGroups': []}, 'provisionerId': '', 'workerType': '', 'scopes': []},
+    'generic-worker', False
+), (
     {'payload': {'image': 'x'}, 'provisionerId': 'test-dummy-provisioner', 'workerType': '', 'scopes': []},
+    None, True
+), (
+    {'payload': {'image': 'x', 'osGroups': []}, 'provisionerId': '', 'workerType': '', 'scopes': []},
     None, True
 )))
 def test_guess_worker_impl(chain, task, expected, raises):
@@ -868,6 +874,12 @@ async def test_verify_docker_worker_task(mocker):
     mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=noop_sync)
     mocker.patch.object(cotverify, 'verify_docker_image_sha', new=noop_sync)
     await cotverify.verify_docker_worker_task(mock.MagicMock(), mock.MagicMock())
+
+
+# verify_generic_worker_task {{{1
+@pytest.mark.asyncio
+async def test_verify_generic_worker_task(mocker):
+    await cotverify.verify_generic_worker_task(mock.MagicMock(), mock.MagicMock())
 
 
 # verify_worker_impls {{{1
