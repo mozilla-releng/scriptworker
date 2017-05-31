@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.0] - 2017-05-31
+### Added
+
+- added generic-worker chain of trust support
+- `scriptworker.cot.verify.verify_generic_worker_task`, currently noop
+
+### Changed
+
+- generic-worker `ignore_suffixes` now includes `.in`
+
 ## [4.0.1] - 2017-05-23
 ### Changed
 
