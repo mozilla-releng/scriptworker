@@ -220,12 +220,13 @@ def raise_on_errors(errors, level=logging.CRITICAL):
 def guess_worker_impl(link):
     """Given a task, determine which worker implementation (e.g., docker-worker) it was run on.
 
-    Currently there are no task markers for generic-worker and
-    taskcluster-worker hasn't been rolled out.  Those need to be populated here
-    once they're ready.
+    Currently there are no task markers for taskcluster-worker.  Those need to
+    be populated here once they're ready.
 
     * docker-worker: ``task.payload.image`` is not None
     * check for scopes beginning with the worker type name.
+    * generic-worker: ``task.payload.osGroups`` is not None
+    * generic-worker: ``task.payload.mounts`` is not None
 
     Args:
         link (LinkOfTrust or ChainOfTrust): the link to check.
@@ -248,6 +249,10 @@ def guess_worker_impl(link):
         worker_impls.append("scriptworker")
     if task['workerType'] in link.context.config['scriptworker_worker_types']:
         worker_impls.append("scriptworker")
+    if task['payload'].get("mounts") is not None:
+        worker_impls.append("generic-worker")
+    if task['payload'].get("osGroups") is not None:
+        worker_impls.append("generic-worker")
 
     for scope in task['scopes']:
         if scope.startswith("docker-worker:"):
@@ -276,6 +281,7 @@ def get_valid_worker_impls():
     # TODO support the rest of the worker impls... generic worker, taskcluster worker
     return frozendict({
         'docker-worker': verify_docker_worker_task,
+        'generic-worker': verify_generic_worker_task,
         'scriptworker': verify_scriptworker_task,
     })
 
@@ -1085,6 +1091,21 @@ async def verify_docker_worker_task(chain, link):
     """
     check_interactive_docker_worker(link)
     verify_docker_image_sha(chain, link)
+
+
+# verify_generic_worker_task {{{1
+async def verify_generic_worker_task(chain, link):
+    """generic-worker specific checks.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    pass
 
 
 # verify_scriptworker_task {{{1
