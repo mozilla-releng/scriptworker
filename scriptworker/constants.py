@@ -185,7 +185,6 @@ DEFAULT_CONFIG = frozendict({
             'project:releng:balrog:server:beta': 'beta',
             'project:releng:balrog:server:release': 'release',
             'project:releng:balrog:server:esr': 'esr',
-            'project:releng:balrog:nightly': 'all-nightly-branches',
             'project:releng:beetmover:bucket:release': 'all-release-branches',
             'project:releng:googleplay:release': 'release',
             'project:releng:signing:cert:release-signing': 'all-release-branches',
