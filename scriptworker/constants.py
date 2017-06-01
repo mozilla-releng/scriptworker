@@ -122,7 +122,7 @@ DEFAULT_CONFIG = frozendict({
         }),
         "generic-worker": frozendict({
             "type": "flat",
-            "ignore_suffixes": (".md", ".in")
+            "ignore_suffixes": (".md", ".in", ".sh")
         }),
         "scriptworker": frozendict({
             "type": "signed",
