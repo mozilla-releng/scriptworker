@@ -135,7 +135,7 @@ def remember_cwd():
         os.chdir(curdir)
 
 
-# tests {{{1
+# run_successful_task {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 def test_run_successful_task(event_loop, context_function):
@@ -158,6 +158,7 @@ def test_run_successful_task(event_loop, context_function):
         assert result['status']['state'] == 'failed'
 
 
+# run_maxtimeout {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 def test_run_maxtimeout(event_loop, context_function):
@@ -184,6 +185,7 @@ def test_run_maxtimeout(event_loop, context_function):
         assert result['status']['state'] in ('failed', 'running')
 
 
+# empty_queue {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 def test_empty_queue(event_loop, context_function):
@@ -196,6 +198,7 @@ def test_empty_queue(event_loop, context_function):
         assert status is None
 
 
+# temp_creds {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 def test_temp_creds(event_loop, context_function):

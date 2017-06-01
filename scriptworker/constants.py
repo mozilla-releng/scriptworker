@@ -7,6 +7,7 @@ Attributes:
     STATUSES (dict): maps taskcluster status (string) to exit code (int).
     REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
         (int) to the taskcluster status (string).
+
 """
 from frozendict import frozendict
 import os
@@ -109,6 +110,7 @@ DEFAULT_CONFIG = frozendict({
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
             "sha256:d438d7818b6a47a0b1d49943ab12b5c504b65161806658e4c28f5f2aac821b9e",
             "sha256:13b80a7a6b8e10c6096aba5a435529fbc99b405f56012e57cc6835facf4b40fb",
+            "sha256:f5e7548ca4313beb7a324681a5f6adf9adfeabbc7b8ad63ce170cf3010546851",
         )
     }),
 
@@ -120,7 +122,7 @@ DEFAULT_CONFIG = frozendict({
         }),
         "generic-worker": frozendict({
             "type": "flat",
-            "ignore_suffixes": (".md", )
+            "ignore_suffixes": (".md", ".in", ".sh")
         }),
         "scriptworker": frozendict({
             "type": "signed",
@@ -170,14 +172,15 @@ DEFAULT_CONFIG = frozendict({
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
-            "^(?P<path>/projects/(date|jamun))(/|$)",
+            # XXX remove /projects/oak when we no longer test updates against it
+            "^(?P<path>/projects/(date|jamun|oak))(/|$)",
         ),
     }), ),
 
     # Map scopes to restricted-level
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
-            'project:releng:balrog:server:nightly': 'nightly',
+            'project:releng:balrog:server:nightly': 'all-nightly-branches',
             'project:releng:balrog:server:aurora': 'aurora',
             'project:releng:balrog:server:beta': 'beta',
             'project:releng:balrog:server:release': 'release',
@@ -185,8 +188,13 @@ DEFAULT_CONFIG = frozendict({
             'project:releng:beetmover:bucket:release': 'all-release-branches',
             'project:releng:googleplay:release': 'release',
             'project:releng:signing:cert:release-signing': 'all-release-branches',
-            'project:releng:googleplay:beta': 'betatest',
-            'project:releng:googleplay:aurora': 'auroratest',
+            'project:releng:googleplay:beta': 'beta',
+            # As part of the Dawn project we decided to use the Aurora Google Play
+            # app to ship Firefox Nightly. This means that the "nightly" trees need
+            # to have the scopes to ship to this product.
+            # https://bugzilla.mozilla.org/show_bug.cgi?id=1357808 has additional
+            # background and discussion.
+            'project:releng:googleplay:aurora': 'nightly',
             'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
             'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
         })
@@ -213,18 +221,8 @@ DEFAULT_CONFIG = frozendict({
             'beta': (
                 "/releases/mozilla-beta",
             ),
-            # TODO remove it once pushapk is landed on beta
-            'betatest': (
-                "/releases/mozilla-beta",
-                "/projects/jamun",
-            ),
             'aurora': (
                 "/releases/mozilla-aurora",
-            ),
-            # TODO remove it once pushapk is landed on aurora
-            'auroratest': (
-                "/releases/mozilla-aurora",
-                "/projects/date",
             ),
             'esr': (
                 "/releases/mozilla-esr45",
@@ -239,6 +237,7 @@ DEFAULT_CONFIG = frozendict({
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
+            # XXX remove /projects/oak when we no longer test updates against it
             'all-nightly-branches': (
                 "/mozilla-central",
                 "/releases/mozilla-unified",
@@ -248,6 +247,7 @@ DEFAULT_CONFIG = frozendict({
                 "/releases/mozilla-esr45",
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
+                "/projects/oak",
                 "/projects/date",
             ),
         }),

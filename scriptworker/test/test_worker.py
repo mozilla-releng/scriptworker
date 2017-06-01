@@ -26,16 +26,6 @@ assert successful_queue, event_loop  # silence flake8
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
     rw_context.credentials_timestamp = arrow.utcnow().replace(minutes=-10).timestamp
-    rw_context.poll_task_urls = {
-        'queues': [{
-            "signedPollUrl": "poll0",
-            "signedDeleteUrl": "delete0",
-        }, {
-            "signedPollUrl": "poll1",
-            "signedDeleteUrl": "delete1",
-        }],
-        'expires': arrow.utcnow().replace(hours=10).isoformat(),
-    }
     yield rw_context
 
 
@@ -103,33 +93,25 @@ def test_async_main(context, event_loop, mocker, tmpdir):
 
 
 # run_loop {{{1
-def test_run_loop_exception(context, successful_queue, event_loop):
-    context.queue = successful_queue
-
-    async def raise_swe(*args, **kwargs):
-        raise ScriptWorkerException("foo")
-
-    with mock.patch.object(worker, 'find_task', new=raise_swe):
-        status = event_loop.run_until_complete(worker.run_loop(context))
-
-    assert status is None
-
-
 @pytest.mark.parametrize("verify_cot", (True, False))
 def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
-    async def find_task(*args, **kwargs):
-        return deepcopy(task)
+    successful_queue.task = task
+    async def claim_work(*args, **kwargs):
+        return {'tasks': [deepcopy(task)]}
+
+    async def run_task(*args, **kwargs):
+        return task
 
     fake_cot = mock.MagicMock
 
     context.config['verify_chain_of_trust'] = verify_cot
 
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
-    mocker.patch.object(worker, "run_task", new=find_task)
+    mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
     mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_async)
@@ -141,7 +123,7 @@ def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mock
 
 def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=noop_async)
+    mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "run_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
@@ -166,8 +148,8 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
     """
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
-    async def find_task(*args, **kwargs):
-        return task
+    async def claim_work(*args, **kwargs):
+        return {'tasks': [task]}
 
     async def fail(*args, **kwargs):
         raise exc("foo")
@@ -176,7 +158,7 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
         return 0
 
     context.queue = successful_queue
-    mocker.patch.object(worker, "find_task", new=find_task)
+    mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     if func_to_raise == "run_task":
         mocker.patch.object(worker, "run_task", new=fail)

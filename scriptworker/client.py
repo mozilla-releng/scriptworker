@@ -4,6 +4,7 @@
 This module should be largely standalone.  This should only depend on
 scriptworker.exceptions and scriptworker.constants, or other standalone
 modules, to avoid circular imports.
+
 """
 import jsonschema
 import os
@@ -24,6 +25,7 @@ def get_task(config):
 
     Raises:
         ScriptWorkerTaskException: on error.
+
     """
     path = os.path.join(config['work_dir'], "task.json")
     message = "Can't read task from {}!\n%(exc)s".format(path)
@@ -44,6 +46,7 @@ def validate_json_schema(data, schema, name="task"):
 
     Raises:
         ScriptWorkerTaskException: on failure
+
     """
     try:
         jsonschema.validate(data, schema)
@@ -71,6 +74,7 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
 
     Raises:
         ScriptWorkerTaskException: on failure to validate.
+
     """
     def callback(match):
         path_info = match.groupdict()

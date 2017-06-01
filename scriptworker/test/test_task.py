@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.task
 """
+import aiohttp
 import asyncio
 import glob
 import mock
@@ -14,8 +15,8 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import event_loop, fake_session, fake_session_500, rw_context, successful_queue, \
-    unsuccessful_queue, read
+from . import event_loop, fake_session, fake_session_500, noop_async, rw_context, \
+    successful_queue, unsuccessful_queue, read
 
 assert event_loop, rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
@@ -175,3 +176,18 @@ def test_max_timeout(context, event_loop):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(files.keys()) == 6
+
+
+# claim_work {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("raises", (True, False))
+async def test_claim_work(event_loop, raises, context):
+    context.queue = mock.MagicMock()
+    if raises:
+        async def foo(*args):
+            raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=4)
+
+        context.queue.claimWork = foo
+    else:
+        context.queue.claimWork = noop_async
+    assert await task.claim_work(context) is None

@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for this module.
+
 """
 import logging
 import os
@@ -23,6 +24,7 @@ def get_cot_artifacts(context):
 
     Returns:
         dict: a dictionary of {"path/to/artifact": {"hash_alg": "..."}, ...}
+
     """
     artifacts = {}
     filepaths = filepaths_in_dir(context.config['artifact_dir'])
@@ -43,6 +45,7 @@ def get_cot_environment(context):
 
     Returns:
         dict: the environment info.
+
     """
     env = {}
     # TODO
@@ -63,6 +66,7 @@ def generate_cot_body(context):
 
     Raises:
         ScriptWorkerException: on error.
+
     """
     try:
         cot = {
@@ -97,6 +101,7 @@ def generate_cot(context, path=None):
 
     Raises:
         ScriptWorkerException: on schema error.
+
     """
     body = generate_cot_body(context)
     schema = load_json(

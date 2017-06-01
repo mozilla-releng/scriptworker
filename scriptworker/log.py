@@ -3,6 +3,7 @@
 
 Attributes:
     log (logging.Logger): the log object for this module.
+
 """
 import logging
 import logging.handlers
@@ -30,6 +31,7 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
         log_name (str, optional): the name of the Logger to modify.
             If None, use the top level module ('scriptworker').
             Defaults to None.
+
     """
     log_name = log_name or __name__.split('.')[0]
     top_level_logger = logging.getLogger(log_name)
@@ -67,6 +69,7 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
         filehandles (list of filehandles, optional): the filehandle(s) to write
             to.  If empty, don't write to a separate file.  Defaults to ().
         level (int, optional): the level to log to.  Defaults to ``logging.INFO``.
+
     """
     while True:
         line = await pipe.readline()
@@ -80,13 +83,14 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
 
 
 def get_log_filename(context):
-    """Helper function to get the task log/error file paths.
+    """Get the task log/error file paths.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
         string: log file path
+
     """
     # XXX Even though our logs aren't live, Treeherder looks for live_backing.log to show errors in failures summary
     return os.path.join(context.config['task_log_dir'], 'live_backing.log')
@@ -94,13 +98,14 @@ def get_log_filename(context):
 
 @contextmanager
 def get_log_filehandle(context):
-    """Helper contextmanager function to open the log and error filehandles.
+    """Open the log and error filehandles.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     Yields:
         log filehandle
+
     """
     log_file_name = get_log_filename(context)
     makedirs(context.config['task_log_dir'])
@@ -124,6 +129,7 @@ def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
 
     Yields:
         None: but cleans up the handler afterwards.
+
     """
     log_obj = log_obj or log
     formatter = formatter or logging.Formatter(

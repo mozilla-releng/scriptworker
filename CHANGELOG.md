@@ -2,6 +2,59 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.1] - 2017-05-31
+### Added
+- added `.sh` as an `ignore_suffix` for generic-worker
+
+## [4.1.0] - 2017-05-31
+### Added
+
+- added generic-worker chain of trust support
+- `scriptworker.cot.verify.verify_generic_worker_task`, currently noop
+
+### Changed
+
+- generic-worker `ignore_suffixes` now includes `.in`
+
+## [4.0.1] - 2017-05-23
+### Changed
+
+- Updated Google Play scopes to allow Nightly to ship to the Aurora product
+
+## [4.0.0] - 2017-05-15
+### Added
+- added `scriptworker.task.claim_work` to use the `claimWork` endpoint instead of polling.
+
+### Changed
+
+- changed `worker.run_loop` to use the new `claim_work` function.  In theory this can handle multiple tasks serially, but in practice should only get one at a time.  In the future we can allow for multiple tasks run in parallel in separate `work_dir`s, if desired.
+- `worker.run_loop` now always sleeps the `poll_interval`.  We can adjust this if desired.
+
+### Fixed
+
+- tweaked docstrings to pass pydocstyle>=2.0
+
+### Removed
+- removed `Context.poll_task_urls`
+- removed `scriptworker.poll` completely
+
+## [3.1.2] - 2017-04-14
+### Changed
+- allowed for retriggering tasks with a subset of `task.dependencies`, specifically to get around expiration of the breakpoint dependency of pushapk tasks.
+
+## [3.1.1] - 2017-04-07
+### Added
+- added oak to `all-nightly-branches`, for update testing.
+- added `repackage` as a valid, verifiable task type for cot.
+
+## [3.1.0] - 2017-04-05
+### Added
+- added log message on startup.
+
+### Changed
+- updated docker image allowlists
+- changed balrog nightly branches to `all-nightly-branches`
+
 ## [3.0.0] - 2017-03-23
 ## Added
 - `scriptworker.artifacts` now has new functions to deal with `upstreamArtifacts`: `get_upstream_artifacts_full_paths_per_task_id`, `get_and_check_single_upstream_artifact_full_path`, and `get_single_upstream_artifact_full_path`.

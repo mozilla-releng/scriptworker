@@ -19,7 +19,7 @@ Scriptworker has [100% test coverage](http://escapewindow.dreamwidth.org/247980.
 Scriptworker follows [semver](http://semver.org/).  Essentially, increment the
 
 1. MAJOR version when you make incompatible API changes,
-2. MINOR version when you add functionality in a backwards-compatible manner, and
+2. MINOR version when you add API functionality in a backwards-compatible manner, and
 3. PATCH version when you make backwards-compatible bug fixes.
 
 ## Changelog
@@ -66,20 +66,6 @@ python scriptworker/version.py
 
 This will update `version.json`.  Verify both files look correct.
 
-## Create a source tarball
-If you're unsure about the changes you've made above, you can run `tox` again.
-
-Commit the above changes you've made.  You'll need to push this and make sure it's merged into `master`.
-
-Package:
-
-```bash
-    # Using the local venv python>=3.5,
-    python setup.py sdist
-```
-
-The new package will be in `dist/`.
-
 ## Tagging
 
 To enable gpg signing in git,
@@ -91,6 +77,7 @@ To enable gpg signing in git,
 Tag and sign!
 
 ```bash
+    # make sure you've committed your changes first!
     VERSION=0.9.0
     git tag -s $VERSION -m"$VERSION"
 ```
@@ -108,7 +95,7 @@ Push!
 Someone with access to the scriptworker package on `pypi.python.org` needs to do the following:
 
 ```bash
-    # Using the local venv python>=3.5, and after updating to the tag,
+    # You may hit problems with this using py>=35?
     python setup.py register sdist upload
 ```
 
@@ -118,7 +105,7 @@ That creates the new version in pypi, creates the source tarball, and uploads it
 
 Connect to Releng VPN.
 
-Copy the tarball to `releng-puppet2.srv.releng.scl3.mozilla.com`:
+Copy the tarball from `dist/` to `releng-puppet2.srv.releng.scl3.mozilla.com`:
 
 ```bash
 scp dist/scriptworker-$VERSION.tar.gz releng-puppet2.srv.releng.scl3.mozilla.com:
