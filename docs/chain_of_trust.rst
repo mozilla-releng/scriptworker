@@ -91,19 +91,27 @@ public key as valid, we don't know if it's been signed by a valid worker key.
 We have a `github repo of pubkeys <https://github.com/mozilla-releng/cot-gpg-keys>`__.
 The latest valid commit is tagged and signed with a trusted gpg key.
 
-   -  scriptworker instances have the pubkeys (from puppet) that are
-      allowed to sign those git commits. ~/.gnupg imports and signs
-      those pubkeys, so we can validate the git commit signatures
-   -  docker-worker and generic-worker just have pubkeys in their
-      respective directories. Scriptworker instances create separate gpg
-      homedirs with those pubkeys, and sign each key so we can verify
-      the signatures of the chain of trust artifacts from those workers
-   -  scriptworker has ``scriptworker/trusted/`` and
-      ``scriptworker/valid``. ``trusted/`` are the pubkeys allowed to
-      sign scriptworker keys. ``valid/`` are the worker keys. The
-      scriptworker gpg homedir imports, signs, and trusts the trusted/
-      pubkeys, and then imports the valid keys without signing or
-      trusting.
+Each ``scriptworker`` instance
+
+-  gets the set of trusted gpg pubkeys from puppet
+-  imports them into ``~/.gnupg``
+-  and signs them with their private gpg key, so we can validate the git commit signatures.
+-  we update to the latest valid-signed tag, and regenerate the worker-implementation gpg homedirs if we're on a new git revision.
+
+For ``flat`` directories:
+
+- Scriptworker creates a new gpg homedir per worker implementation (``generic-worker``, ``docker-worker``, ``taskcluster-worker``).  Each has a corresponding directory in the git repo.
+- Scriptworker then imports all pubkeys from the corresponding directory, and signs them to mark the pubkeys as valid.  This allows us to verify the signature on the signed chain of trust json artifacts.
+
+For ``signed`` directories (currently only scriptworker):
+
+- All pubkeys in the ``trusted/`` subdirectory are imported, signed, and marked as trusted.
+- All pubkeys in the ``valid/`` subdirectory are only imported.  They should already be signed by one of the keys in the ``trusted/`` subdirectory.
+
+Each gpg homedir is separate from the others, so malicious or outdated keys can only affect the security of that single worker implementation.
+
+Verifying the chain
+~~~~~~~~~~~~~~~~~~~
 
 -  Follow the chain to the tree
 -  For upstream tasks, we have ``task.extra.chainOfTrust.inputs``, which
