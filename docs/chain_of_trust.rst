@@ -160,49 +160,19 @@ For each task added to the chain, we inspect the task definition, and add other 
 Verifying the chain
 ~~~~~~~~~~~~~~~~~~~
 
--  Download the chain of trust artifacts and verify their signatures
--  Using the above gpg homedirs
--  Download upstreamArtifacts and verify their shas against the chain of
-   trust artifact shas
--  These live in ``$work_dir/cot/$upstream-task-id/$path`` , so the
-   script doesn't have to re-download and re-verify
--  Verify the chain of trust
--  verify each task type:
+Scriptworker:
 
-   -  `decision <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L759>`__
-   -  `verifying the decision
-      command <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L685>`__
-      is a little hairy atm, but needed.
-   -  download the full-task.json and `make sure all tasks that specify
-      this as the decision task are in that
-      graph <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L643>`__
+-  downloads the chain of trust artifacts for each upstream task in the chain, and verifies their signatures.  This requires detecting which worker implementation each task is run on, to know which gpg homedir to use.  At some point in the future, we may use ``workerType`` to worker implementation mappings.
+-  downloads each of the ``upstreamArtifacts`` and verify their shas against the corresponding task's chain of trust's artifact shas.  the downloaded files live in ``cot/TASKID/PATH`` , so the script doesn't have to re-download and re-verify
+-  downloads each decision task's ``task-graph.json``.  For every *other* task in the chain, we make sure that their task definition matches a task in their decision task's task graph.  There's some fuzzy matching going on here, to allow for datestring changes, as well as retriggering, which results in a new ``taskId``.
+-  verifies each decision task command and ``workerType``, and makes sure its docker image sha is in the allowlist.
+-  verifies each `docker-image` task command and docker image sha against the allowlist, until we resolve `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Every other docker-worker task downloads its image from a previous docker-image task, so these two allowlists help us verify every docker image used by docker-worker.
+-  verifies each docker-worker task's docker image sha
+-  makes sure the `interactive` flag isn't on any docker-worker task.
+-  determines which repo we're building off of
+-  matches its task's scopes against the tree; restricted scopes require specific branches.
 
-      -  `PR
-         #26 <https://github.com/mozilla-releng/scriptworker/pull/26>`__
-         will allow for retriggers
-
-   -  `build/l10n <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L793>`__
-   -  `docker-image <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L826>`__
-   -  `signing <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L849>`__
-
--  `Between 1 and 2 decision
-   tasks <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L864>`__
--  `docker-worker
-   check <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L917>`__
-
-   -  non-interactive; verify the docker image sha against the expected
-
--  `trace back to the
-   tree <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L992>`__
-
-   -  match scopes against tree; `restricted scopes require specific
-      branches <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/constants.py#L213-L245>`__
-   -  if
-      ```is_try`` <https://github.com/mozilla-releng/scriptworker/blob/910c2056bf31c190a2c95c8f6435386dceb66083/scriptworker/cot/verify.py#L293>`__,
-      also fail out on restricted scopes
-
--  then launch the task script after chain of trust verification passes.
-   If it fails, don't launch the task script.
+Once all verification passes, it launches the task script.  If chain of trust verification fails, it exits before launching the task script.
 
 .. _gpg-key-management:
 
