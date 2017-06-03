@@ -14,7 +14,7 @@
    releases
    new_instance_types
    new_instance
-   chain_of_trust
+   chain_of_trust.rst
    README
    scriptworker
 

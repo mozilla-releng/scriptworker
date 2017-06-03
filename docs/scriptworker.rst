@@ -52,14 +52,6 @@ scriptworker.log module
     :undoc-members:
     :show-inheritance:
 
-scriptworker.poll module
-------------------------
-
-.. automodule:: scriptworker.poll
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 scriptworker.task module
 ------------------------
 
