@@ -166,9 +166,9 @@ Scriptworker:
 -  downloads each of the ``upstreamArtifacts`` and verify their shas against the corresponding task's chain of trust's artifact shas.  the downloaded files live in ``cot/TASKID/PATH`` , so the script doesn't have to re-download and re-verify
 -  downloads each decision task's ``task-graph.json``.  For every *other* task in the chain, we make sure that their task definition matches a task in their decision task's task graph.  There's some fuzzy matching going on here, to allow for datestring changes, as well as retriggering, which results in a new ``taskId``.
 -  verifies each decision task command and ``workerType``, and makes sure its docker image sha is in the allowlist.
--  verifies each `docker-image` task command and docker image sha against the allowlist, until we resolve `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Every other docker-worker task downloads its image from a previous docker-image task, so these two allowlists help us verify every docker image used by docker-worker.
+-  verifies each docker-image task command and docker image sha against the allowlist, until we resolve `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Every other docker-worker task downloads its image from a previous docker-image task, so these two allowlists help us verify every docker image used by docker-worker.
 -  verifies each docker-worker task's docker image sha
--  makes sure the `interactive` flag isn't on any docker-worker task.
+-  makes sure the ``interactive`` flag isn't on any docker-worker task.
 -  determines which repo we're building off of
 -  matches its task's scopes against the tree; restricted scopes require specific branches.
 
