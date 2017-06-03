@@ -53,7 +53,7 @@ After the task finishes, the worker creates a chain of trust json blob,
 gpg signs it, then uploads it as ``public/chainOfTrust.json.asc``. It
 looks like
 
-.. code:: json
+.. code:: python
 
         {
           "artifacts": {
