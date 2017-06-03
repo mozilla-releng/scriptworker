@@ -75,9 +75,9 @@ looks like
           "workerId": "..."
         }
 
--  `v1
-   schema <https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/data/cot_v1_schema.json>`__
--  :download:`example artifact <_static/chainOfTrust.json.asc>`
+-  The v1 chain-of-trust json artifact schema is viewable `here
+   <https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/data/cot_v1_schema.json>`__.
+-  This is a real :download:`example artifact <_static/chainOfTrust.json.asc>`.
 
 Chain of Trust Verification
 ---------------------------
