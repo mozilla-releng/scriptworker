@@ -4,6 +4,8 @@ We don't yet have a scriptworker provisioner, so spinning up new instances of a 
 
 ## signing scriptworker
 ### gpg keypair
+If this is a chain of trust enabled scriptworker, you'll need to generate a gpg keypair.  Otherwise (dev or dep scriptworker), skip to the next step.
+
 Generate and sign a gpg keypair for cltsign@**fqdn**, per [these docs](chain_of_trust.html#adding-new-worker-gpg-keys).
 
 The pubkey will need to land in the [cot-gpg-keys repo](https://github.com/mozilla-releng/cot-gpg-keys), in the `scriptworker/valid` directory.  The keypair will need to go into puppet hiera, as specified below.
@@ -31,7 +33,7 @@ Go to the EC2 console, go to the appropriate region (usw2, use1).
 
 ### puppet
 
-First, add the gpg keypair into [hiera](https://wiki.mozilla.org/ReleaseEngineering/PuppetAgain/Secrets).  This will be the `scriptworker_gpg_private_keys` and `scriptworker_gpg_public_keys` dictionaries.  The dictionary key is the instance fqdn; the value is the [encrypted file](https://wiki.mozilla.org/ReleaseEngineering/PuppetAgain/Secrets#Encrypt_files_.28e.g._private_keys.29).
+If this is a chain of trust enabled scriptworker, add the gpg keypair into [hiera](https://wiki.mozilla.org/ReleaseEngineering/PuppetAgain/Secrets).  This will be the `scriptworker_gpg_private_keys` and `scriptworker_gpg_public_keys` dictionaries.  The dictionary key is the instance fqdn; the value is the [encrypted file](https://wiki.mozilla.org/ReleaseEngineering/PuppetAgain/Secrets#Encrypt_files_.28e.g._private_keys.29).
 
 ssh into the instance as root, using the ssh keypair you specified above.
 
