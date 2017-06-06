@@ -52,10 +52,7 @@ Find a task to test
 
 -  Click it, click 'inspect task' in the lower left corner
 
--  The taskId will be in a field near the top of the page. E.g., for
-   `this
-   task <https://tools.taskcluster.net/task-inspector/#cbYd3U6dRRCKPUbKsEj1Iw/0>`__,
-   the task id is ``cbYd3U6dRRCKPUbKsEj1Iw``
+-  The taskId will be in a field near the top of the page.
 
 Run the test
 ~~~~~~~~~~~~
@@ -66,10 +63,10 @@ Run the test
 
 .. code:: bash
 
-        verify_cot TASKID  # e.g., verify_cot cbYd3U6dRRCKPUbKsEj1Iw
+        verify_cot --task-type TASKTYPE TASKID  # e.g., verify_cot --task-type signing cbYd3U6dRRCKPUbKsEj1Iw
 
 Otherwise,
 
 .. code:: bash
 
-        scriptworker/test/data/verify_cot.py TASKID  # e.g., scriptworker/test/data/verify_cot.py cbYd3U6dRRCKPUbKsEj1Iw
+        scriptworker/test/data/verify_cot.py --task-type TASKTYPE TASKID  # e.g., scriptworker/test/data/verify_cot.py --task-type signing cbYd3U6dRRCKPUbKsEj1Iw
