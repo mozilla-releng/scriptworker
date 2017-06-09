@@ -7,12 +7,12 @@ GPG key management is a critical part of the chain of trust. There are
 several types of gpg keys:
 
 -  [taskcluster team] worker keys, which are unsigned pubkeys for
-   docker- and generic- workers
+   docker- and generic- workers.
 -  [releng team] scriptworker keys, which are signed pubkeys for
-   scriptworkers
+   scriptworkers.
 -  [releng team] scriptworker trusted keys, which are the pubkeys of
    releng team members who are allowed to generate and sign scriptworker
-   keys
+   keys.
 -  [various] git commit signing keys. We keep the above pubkeys in a git
    repo, and we sign the commits. These are the pubkeys that are allowed
    to sign the git commits.

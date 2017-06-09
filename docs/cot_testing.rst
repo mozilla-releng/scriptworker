@@ -10,7 +10,7 @@ it should work in the same way.)
 Create the virtualenv
 ~~~~~~~~~~~~~~~~~~~~~
 
--  Install git, ``python>=3.5``, and python3 virtualenv
+-  Install git, ``python>=3.5``, and python3 virtualenv.
 
 -  Clone scriptworker and create virtualenv:
 
@@ -50,7 +50,7 @@ Find a task to test
 -  Find a scriptworker task on
    `treeherder <https://treeherder.mozilla.org>`__ to test.
 
--  Click it, click 'inspect task' in the lower left corner
+-  Click it, click 'inspect task' in the lower left corner.
 
 -  The taskId will be in a field near the top of the page.
 

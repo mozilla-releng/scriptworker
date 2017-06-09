@@ -25,8 +25,8 @@ The latest valid commit is tagged and signed with a trusted gpg key.  More on th
 
 Each scriptworker instance
 
--  gets the set of trusted gpg pubkeys from puppet
--  imports them into ``~/.gnupg``
+-  gets the set of trusted gpg pubkeys from puppet,
+-  imports them into ``~/.gnupg``,
 -  and signs them with their private gpg key, so we can validate the git commit signatures.
 -  we update to the latest valid-signed tag, and regenerate the worker-implementation gpg homedirs if we're on a new git revision.
 
@@ -73,8 +73,8 @@ We add each upstream ``taskId`` to the chain, with corresponding ``taskType`` (w
 
 For each task added to the chain, we inspect the task definition, and add other upstream tasks:
 
-- if the decision task doesn't match, add it to the chain
-- docker-worker tasks have ``task.extra.chainOfTrust.inputs``, which is a dictionary like ``{"docker-image": "docker-image-taskid"}``.  Add the docker image ``taskId`` to the chain (this will likely have a different decision ``taskId``, so add that to the chain)
+- if the decision task doesn't match, add it to the chain.
+- docker-worker tasks have ``task.extra.chainOfTrust.inputs``, which is a dictionary like ``{"docker-image": "docker-image-taskid"}``.  Add the docker image ``taskId`` to the chain (this will likely have a different decision ``taskId``, so add that to the chain).
 
 Verifying the chain
 ~~~~~~~~~~~~~~~~~~~
@@ -82,13 +82,13 @@ Verifying the chain
 Scriptworker:
 
 -  downloads the chain of trust artifacts for each upstream task in the chain, and verifies their signatures.  This requires detecting which worker implementation each task is run on, to know which gpg homedir to use.  At some point in the future, we may use ``workerType`` to worker implementation mappings.
--  downloads each of the ``upstreamArtifacts`` and verify their shas against the corresponding task's chain of trust's artifact shas.  the downloaded files live in ``cot/TASKID/PATH`` , so the script doesn't have to re-download and re-verify
+-  downloads each of the ``upstreamArtifacts`` and verify their shas against the corresponding task's chain of trust's artifact shas.  the downloaded files live in ``cot/TASKID/PATH`` , so the script doesn't have to re-download and re-verify.
 -  downloads each decision task's ``task-graph.json``.  For every *other* task in the chain, we make sure that their task definition matches a task in their decision task's task graph.  There's some fuzzy matching going on here, to allow for datestring changes, as well as retriggering, which results in a new ``taskId``.
 -  verifies each decision task command and ``workerType``, and makes sure its docker image sha is in the allowlist.
 -  verifies each docker-image task command and docker image sha against the allowlist, until we resolve `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Every other docker-worker task downloads its image from a previous docker-image task, so these two allowlists help us verify every docker image used by docker-worker.
--  verifies each docker-worker task's docker image sha
+-  verifies each docker-worker task's docker image sha.
 -  makes sure the ``interactive`` flag isn't on any docker-worker task.
--  determines which repo we're building off of
+-  determines which repo we're building off of.
 -  matches its task's scopes against the tree; restricted scopes require specific branches.
 
 Once all verification passes, it launches the task script.  If chain of trust verification fails, it exits before launching the task script.
