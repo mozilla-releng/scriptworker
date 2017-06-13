@@ -754,9 +754,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     # payload - eliminate the 'expires' key from artifacts because the datestring
     # will change
     for payload in (runtime_defn['payload'], graph_defn['task']['payload']):
-        for key, value in payload.get('artifacts', {}).items():
-            if isinstance(value, dict) and 'expires' in value:
-                del(value['expires'])
+        payload = _take_expires_out_from_artifacts_in_payload(payload)
     # test all non-ignored key/value pairs in the task defn
     for key, value in graph_defn['task'].items():
         if key in ignore_keys:
@@ -767,6 +765,24 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
                 pprint.pformat(value), pprint.pformat(runtime_defn[key])
             ))
     raise_on_errors(errors, level=level)
+
+
+def _take_expires_out_from_artifacts_in_payload(payload):
+    returned_payload = deepcopy(payload)
+    artifacts = payload.get('artifacts', None)
+    if artifacts is None:
+        return returned_payload
+    elif type(artifacts) not in (dict, list):
+        raise CoTError('Unsupported type of artifacts. Found: "{}". Expected: dict, list or undefined. Payload: {}'.format(
+            type(artifacts), payload
+        ))
+
+    artifacts_iterable = artifacts.values() if isinstance(artifacts, dict) else artifacts
+    for artifact_definition in artifacts_iterable:
+        if isinstance(artifact_definition, dict) and 'expires' in value:
+            del(artifact_definition['expires'])
+
+    return returned_payload
 
 
 # verify_link_in_task_graph {{{1
