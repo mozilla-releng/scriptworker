@@ -770,7 +770,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
 
 def _take_expires_out_from_artifacts_in_payload(payload):
     returned_payload = deepcopy(payload)
-    artifacts = payload.get('artifacts', None)
+    artifacts = returned_payload.get('artifacts', None)
     if artifacts is None:
         return returned_payload
     elif type(artifacts) not in (dict, list):
