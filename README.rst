@@ -49,7 +49,7 @@ With integration tests, first create a client with the ``assume:project:taskclus
 Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 
     {
-        "integration_credentials": {
+        "credentials": {
             "clientId": "...",
             "accessToken": "...",
             "certificate": "..."
