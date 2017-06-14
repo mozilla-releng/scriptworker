@@ -658,7 +658,7 @@ def test_verify_cot_signatures(chain, build_link, mocker):
             }],
         },
     ),
-)
+))
 def test_take_expires_out_from_artifacts_in_payload(payload, expected):
     assert cotverify._take_expires_out_from_artifacts_in_payload(payload) == expected
 
