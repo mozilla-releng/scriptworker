@@ -780,7 +780,7 @@ def _take_expires_out_from_artifacts_in_payload(payload):
 
     artifacts_iterable = artifacts.values() if isinstance(artifacts, dict) else artifacts
     for artifact_definition in artifacts_iterable:
-        if isinstance(artifact_definition, dict) and 'expires' in value:
+        if isinstance(artifact_definition, dict) and 'expires' in artifact_definition:
             del(artifact_definition['expires'])
 
     return returned_payload
