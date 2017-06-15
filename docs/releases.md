@@ -95,11 +95,20 @@ Push!
 Someone with access to the scriptworker package on `pypi.python.org` needs to do the following:
 
 ```bash
-    # You may hit problems with this using py>=35?
-    python setup.py register sdist upload
+    # from https://packaging.python.org/tutorials/distributing-packages/#uploading-your-project-to-pypi
+    # Don't use `python setup.py register` or `python setup.py upload`; this may use
+    # cleartext auth!
+    # Using a python with `twine` in the virtualenv:
+    VERSION=4.1.2
+    # create the source tarball
+    python setup.py sdist
+    # sign the source tarball
+    gpg --detach-sign -a dist/scriptworker-${VERSION}.tar.gz
+    # upload the source tarball + signature
+    twine upload dist/scriptworker-${VERSION}.tar.gz{,.asc}
 ```
 
-That creates the new version in pypi, creates the source tarball, and uploads it.
+That creates source tarball, and uploads it.
 
 ## Puppet
 
