@@ -621,6 +621,54 @@ def test_verify_cot_signatures(chain, build_link, mocker):
     with open(path, "r") as fh:
         assert json.load(fh) == {}
 
+@pytest.mark.parametrize('payload, expected', (
+    ({}, {}),
+    (
+        {
+            'artifacts': {
+                'public/build': {
+                    'path': 'public/build',
+                    'expires': '2018-06-13T14:06:47.295419Z',
+                    'type': 'directory',
+                },
+            },
+        },
+        {
+            'artifacts': {
+                'public/build': {
+                    'path': 'public/build',
+                    'type': 'directory',
+                },
+            },
+        },
+    ), (
+        {
+            'artifacts': [{
+                'path': 'public/build',
+                'expires': '2018-06-13T14:06:47.295419Z',
+                'type': 'directory',
+                'name': 'public/build'
+            }],
+        },
+        {
+            'artifacts': [{
+                'path': 'public/build',
+                'type': 'directory',
+                'name': 'public/build'
+            }],
+        },
+    ),
+))
+def test_take_expires_out_from_artifacts_in_payload(payload, expected):
+    assert cotverify._take_expires_out_from_artifacts_in_payload(payload) == expected
+
+
+def test_wrong_take_expires_out_from_artifacts_in_payload():
+    with pytest.raises(CoTError):
+        cotverify._take_expires_out_from_artifacts_in_payload({
+            'artifacts': 0,
+        })
+
 
 # verify_link_in_task_graph {{{1
 def test_verify_link_in_task_graph(chain, decision_link, build_link):
