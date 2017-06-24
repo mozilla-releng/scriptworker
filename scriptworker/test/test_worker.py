@@ -114,7 +114,7 @@ def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mock
     mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
     mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
-    mocker.patch.object(worker, "generate_cot", new=noop_async)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = event_loop.run_until_complete(worker.run_loop(context))
