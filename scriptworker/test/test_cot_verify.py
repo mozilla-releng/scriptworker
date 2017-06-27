@@ -67,6 +67,7 @@ def chain(rw_context):
 def build_link(chain):
     link = cotverify.LinkOfTrust(chain.context, 'build', 'build_task_id')
     link.cot = {
+        'taskId': 'build_task_id',
         'environment': {
             'imageArtifactHash': "sha256:built_docker_image_sha",
         },
@@ -114,6 +115,7 @@ def build_link(chain):
 def decision_link(chain):
     link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
     link.cot = {
+        'taskId': 'decision_task_id',
         'environment': {
             'imageHash': "sha256:decision_image_sha",
         },
@@ -139,6 +141,7 @@ def decision_link(chain):
 def docker_image_link(chain):
     link = cotverify.LinkOfTrust(chain.context, 'docker-image', 'docker_image_task_id')
     link.cot = {
+        'taskId': 'docker_image_task_id',
         'artifacts': {
             'path/image': {
                 'sha256': 'built_docker_image_sha',
@@ -167,6 +170,23 @@ def docker_image_link(chain):
         'extra': {},
     }
     yield link
+
+
+def get_cot(task_defn, task_id="task_id"):
+    return {
+        "artifacts": {
+            "path/to/artifact": {
+                "sha256": "abcd1234"
+            },
+        },
+        "chainOfTrustVersion": 1,
+        "environment": {},
+        "task": task_defn,
+        "runId": 0,
+        "taskId": task_id,
+        "workerGroup": "...",
+        "workerId": "..."
+    }
 
 
 # dependent_task_ids {{{1
@@ -229,11 +249,16 @@ def test_link_task(chain):
 
 # link.cot {{{1
 def test_link_cot(chain):
-    link = cotverify.LinkOfTrust(chain.context, 'build', "one")
-    link.cot = chain.task
-    assert link.cot == chain.task
+    link = cotverify.LinkOfTrust(chain.context, 'build', "task_id")
+    cot = get_cot(chain.task, task_id=link.task_id)
+    link.cot = cot
+    assert link.cot == cot
     with pytest.raises(CoTError):
         link.cot = {}
+    # mismatched taskId should raise
+    link2 = cotverify.LinkOfTrust(chain.context, 'build', "different_task_id")
+    with pytest.raises(CoTError):
+        link2.cot = cot
 
 
 # raise_on_errors {{{1
@@ -509,6 +534,7 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loo
     link.name = 'name'
     link.cot_dir = 'cot_dir'
     link.cot = {
+        'taskId': 'task_id',
         'artifacts': {
             'one': {
                 'sha256': 'sha',
@@ -606,7 +632,7 @@ def test_verify_cot_signatures_bad_sig(chain, build_link, mocker):
 def test_verify_cot_signatures(chain, build_link, mocker):
 
     def fake_body(*args, **kwargs):
-        return '{}'
+        return '{"taskId": "build_task_id"}'
 
     build_link._cot = None
     unsigned_path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
@@ -619,7 +645,7 @@ def test_verify_cot_signatures(chain, build_link, mocker):
     cotverify.verify_cot_signatures(chain)
     assert os.path.exists(path)
     with open(path, "r") as fh:
-        assert json.load(fh) == {}
+        assert json.load(fh) == {"taskId": "build_task_id"}
 
 @pytest.mark.parametrize('payload, expected', (
     ({}, {}),
