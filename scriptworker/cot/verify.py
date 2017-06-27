@@ -176,6 +176,9 @@ class LinkOfTrust(object):
 
     @cot.setter
     def cot(self, cot):
+        cot_task_id = cot.get('taskId')
+        if cot_task_id != self.task_id:
+            raise CoTError("Chain of Trust artifact taskId {} doesn't match task taskId {}!".format(cot_task_id, self.task_id))
         self._set('_cot', cot)
 
     @property
