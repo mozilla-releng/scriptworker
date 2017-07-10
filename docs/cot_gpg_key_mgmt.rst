@@ -79,7 +79,7 @@ Next, sign the newly created gpg keys with your trusted gpg key.
 
 .. code:: bash
 
-       gpg --import HOSTNAME.pub
+       gpg --import FQDN.pub
 
 2. sign pubkey
 
@@ -93,7 +93,7 @@ Next, sign the newly created gpg keys with your trusted gpg key.
 
 .. code:: bash
 
-    gpg --armor --export EMAIL > USERNAME@HOSTNAME.pub  # or fingerprint
+    gpg --armor --export EMAIL > USERNAME@FQDN.pub  # or fingerprint
 
 The signed pubkey + private key will need to go into hiera, as described
 `here <new_instance.html#puppet>`__.
