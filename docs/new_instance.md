@@ -55,6 +55,8 @@ Then puppetize (you need the deploy pass for this):
     PUPPET_SERVER=releng-puppet2.srv.releng.scl3.mozilla.com sh puppetize.sh
     # if we want to puppetize against an environment
     PUPPET_SERVER=releng-puppet2.srv.releng.scl3.mozilla.com PUPPET_EXTRA_OPTIONS="--environment=USER" sh puppetize.sh
+    # run puppet
+    puppet agent --test
 ```
 
 It is probably best to reboot after puppetizing.  After this point, it should Just Work.

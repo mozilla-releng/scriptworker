@@ -43,8 +43,8 @@ generate a new gpg keypair. The Taskcluster team has the option of
 recording the public key and adding it to the repo.
 
 The pubkeys for build, decision, and docker-image workerTypes should be
-added to the repo, with signed commits per the
-`readme <https://github.com/mozilla-releng/cot-gpg-keys/blob/master/README.md>`__.
+added to the repo, with a signed tag per the
+`readme <https://github.com/mozilla-releng/cot-gpg-keys/blob/master/README.md#tagging-git-commits>`__.
 
 new scriptworker gpg keys
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ Next, sign the newly created gpg keys with your trusted gpg key.
 
 .. code:: bash
 
-       gpg --import HOSTNAME.pub
+       gpg --import FQDN.pub
 
 2. sign pubkey
 
@@ -93,11 +93,11 @@ Next, sign the newly created gpg keys with your trusted gpg key.
 
 .. code:: bash
 
-    gpg --armor --export EMAIL > USERNAME@HOSTNAME.pub  # or fingerprint
+    gpg --armor --export EMAIL > USERNAME@FQDN.pub  # or fingerprint
 
 The signed pubkey + private key will need to go into hiera, as described
 `here <new_instance.html#puppet>`__.
 
 The signed pubkey will need to land in
 `scriptworker/valid <https://github.com/mozilla-releng/cot-gpg-keys/tree/master/scriptworker/valid>`__
-with a signed commit.
+with a signed tag, per `the readme <https://github.com/mozilla-releng/cot-gpg-keys/blob/master/README.md#tagging-git-commits>`__.
