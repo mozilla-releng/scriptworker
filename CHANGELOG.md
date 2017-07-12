@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.3] - 2017-07-13
+### Added
+- added a check to verify the cot `taskId` matches the task `taskId`
+- added a a `claimWork` debug log message
+- added a check to prevent `python setup.py register` and `python setup.py upload`
+
+### Fixed
+- updated the docs to more accurately reflect the new instance steps
+- updated the docs to avoid using `python setup.py register sdist upload`
+- allowed the decision task to be an additional runtime dep
+
 ## [4.1.2] - 2017-06-14
 ### Changed
 - rewrote chain of trust docs.
