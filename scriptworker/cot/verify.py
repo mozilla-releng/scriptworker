@@ -750,7 +750,9 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     # the pushapk task, we can clone the task, update timestamps, and remove the
     # breakpoint dependency.
     bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
-    if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
+    # it's OK if a task depends on the decision task
+    bad_deps = bad_deps - {task_link.decision_task_id}
+    if bad_deps:
         errors.append("{} {} dependencies don't line up!\n{}".format(
             task_link.name, task_link.task_id, bad_deps
         ))
