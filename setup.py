@@ -1,8 +1,20 @@
+from __future__ import print_function
 import json
 import os
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 import sys
+
+if {'register', 'upload'}.intersection(set(sys.argv)):
+    print(
+        "                        ***** WARNING *****\n"
+        "`python setup.py register` and `python setup.py upload` are unsafe!\n"
+        "See http://scriptworker.readthedocs.io/en/latest/releases.html#pypi\n"
+        "\n"
+        "Exiting...",
+        file=sys.stderr
+    )
+    sys.exit(1)
 
 reqs = [
     "aiohttp>=2.0.0",
