@@ -51,6 +51,9 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
 
     # Rotating log file
     makedirs(context.config['log_dir'])
+    path = os.path.join(context.config['log_dir'], file_name)
+    handler.setFormatter(formatter)
+    top_level_logger.addHandler(handler)
     top_level_logger.addHandler(logging.NullHandler())
 
 
