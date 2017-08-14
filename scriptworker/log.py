@@ -52,7 +52,13 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
     # Rotating log file
     makedirs(context.config['log_dir'])
     path = os.path.join(context.config['log_dir'], file_name)
-    handler = logging.handlers.RotatingFileHandler(path)
+    if context.config["watch_log_file"]:
+        # If we rotate the log file via logrotate.d, let's watch the file
+        # so we can automatically close/reopen on move.
+        handler = logging.handlers.WatchedFileHandler(path)
+    else:
+        # Avoid using WatchedFileHandler during scriptworker unittests
+        handler = logging.FileHandler(path)
     handler.setFormatter(formatter)
     top_level_logger.addHandler(handler)
     top_level_logger.addHandler(logging.NullHandler())
