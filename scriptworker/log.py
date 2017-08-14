@@ -143,4 +143,5 @@ def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
     contextual_handler.setFormatter(formatter)
     log_obj.addHandler(contextual_handler)
     yield
+    contextual_handler.close()
     log_obj.removeHandler(contextual_handler)
