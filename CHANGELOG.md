@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.1.4] - 2017-08-16
+### Changed
+- updated the decision + docker-image `workerType`s
+
+### Fixed
+- closed the contextual log handler to avoid filling up disk with open filehandles
+
 ## [4.1.3] - 2017-07-13
 ### Added
 - added a check to verify the cot `taskId` matches the task `taskId`
