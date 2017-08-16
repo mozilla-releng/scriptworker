@@ -149,13 +149,19 @@ DEFAULT_CONFIG = frozendict({
 
     # decision task cot
     "valid_decision_worker_types": (
-        "gecko-decision",
+        "gecko-1-decision",
+        "gecko-2-decision",
+        "gecko-3-decision",
+        "gecko-decision",  # legacy
     ),
 
     # docker-image cot
     "valid_docker_image_worker_types": (
         "taskcluster-images",   # TODO: Remove this image once docker-images is the only valid worker type
-        "gecko-images",
+        "gecko-images",  # legacy
+        "gecko-1-images",
+        "gecko-2-images",
+        "gecko-3-images",
     ),
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
