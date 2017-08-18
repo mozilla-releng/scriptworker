@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 
 _GZIP_SUPPORTED_CONTENT_TYPE = ('text/plain', 'application/json', 'text/html', 'application/xml')
-_EXTENSIONS_TO_FORCE_TO_PLAIN_TEXT = ('.asc', '.log')
+_EXTENSIONS_TO_FORCE_TO_PLAIN_TEXT = ('.asc', '.diff', '.log')
 
 
 def _force_mimetypes_to_plain_text():
