@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [4.2.0] - 2017-08-21
+### Added
+- added `prepare_to_run_task` to create a new `current_task_info.json` in `work_dir` for easier debugging.
+
+### Changed
+- `.diff` files now upload as `text/plain`.
+
 ## [4.1.4] - 2017-08-16
 ### Changed
 - updated the decision + docker-image `workerType`s
