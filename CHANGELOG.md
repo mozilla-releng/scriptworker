@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.0.0] - 2017-08-22
+### Added
+- `watch_log_file` pref, to watch the log file for `logrotate.d` (or other) rotation. Set this to true in production.
+
+### Changed
+- switched from `RotatingFileHandler` to `WatchedFileHandler` or `FileHandler`, depending on whether `watch_log_file` is set.
+
+### Removed
+- Non-backwards-compatible: removed `log_max_bytes` and `log_num_backups` prefs. If set in a config file, this will break scriptworker launch. I don't believe anything sets these, but bumping the major version in case.
+
+### Removed
+
 ## [4.2.0] - 2017-08-21
 ### Added
 - added `prepare_to_run_task` to create a new `current_task_info.json` in `work_dir` for easier debugging.

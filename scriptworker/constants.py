@@ -36,8 +36,7 @@ DEFAULT_CONFIG = frozendict({
     # Worker log settings
     "log_datefmt": "%Y-%m-%dT%H:%M:%S",
     "log_fmt": "%(asctime)s %(levelname)8s - %(message)s",
-    "log_max_bytes": 1024 * 1024 * 512,
-    "log_num_backups": 10,
+    "watch_log_file": False,
 
     # intervals are expressed in seconds
     "artifact_expiration_hours": 24,
