@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.0.1] - 2017-08-25
+### Added
+- added sparse checkout decision task support in cot verification.
+- added decision image 0.1.10 sha to allowlist
+
 ## [5.0.0] - 2017-08-22
 ### Added
 - `watch_log_file` pref, to watch the log file for `logrotate.d` (or other) rotation. Set this to true in production.
