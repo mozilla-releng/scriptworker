@@ -886,7 +886,7 @@ def verify_firefox_decision_command(decision_link):
     for item in command[1:-1]:
         if item in allowed_args:
             continue
-        if item.startswith('--vcs-checkout='):
+        if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
             continue
         errors.append("{} {} illegal option {} in the command!".format(
             decision_link.name, decision_link.task_id, item

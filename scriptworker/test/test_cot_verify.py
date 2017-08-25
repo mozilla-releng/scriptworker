@@ -777,6 +777,16 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
     ], False
 ), (
     [
+        '/home/worker/bin/run-task',
+        '--vcs-checkout=foo',
+        '--sparse-profile=taskgraph',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], False
+), (
+    [
         '/bad/worker/bin/run-task',
         '--vcs-checkout=foo',
         '--',
