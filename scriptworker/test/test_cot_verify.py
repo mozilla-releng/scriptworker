@@ -915,7 +915,7 @@ async def test_verify_docker_image_task_command(chain, docker_image_link):
 # verify_scriptworker_task {{{1
 @pytest.mark.parametrize("func", ["verify_balrog_task", "verify_beetmover_task",
                                   "verify_pushapk_task", "verify_signing_task",
-                                  "verify_scriptworker_task"])
+                                  "verify_partials_task", "verify_scriptworker_task"])
 @pytest.mark.asyncio
 async def test_verify_scriptworker_task(chain, build_link, func):
     build_link.worker_impl = 'scriptworker'
