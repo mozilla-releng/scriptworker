@@ -125,7 +125,7 @@ DEFAULT_CONFIG = frozendict({
     "gpg_homedirs": frozendict({
         "docker-worker": frozendict({
             "type": "flat",
-            "ignore_suffixes": (".md", )
+            "ignore_suffixes": (".md", ".json")
         }),
         "generic-worker": frozendict({
             "type": "flat",
