@@ -333,6 +333,7 @@ def get_valid_task_types():
         'docker-image': verify_docker_image_task,
         'pushapk': verify_pushapk_task,
         'signing': verify_signing_task,
+        'partials': verify_partials_task,
     })
 
 
@@ -984,6 +985,23 @@ async def verify_docker_image_task(chain, link):
 # verify_balrog_task {{{1
 async def verify_balrog_task(chain, obj):
     """Verify the balrog trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the balrog task.
+
+    Raises:
+        CoTError: on error.
+
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+# verify_partials_task {{{1
+async def verify_partials_task(chain, obj):
+    """Verify the partials trust object.
 
     Currently the only check is to make sure it was run on a scriptworker.
 
