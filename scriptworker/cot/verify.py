@@ -4,6 +4,7 @@
 Attributes:
     DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
         ignoring options.
+    DECISION_TASK_TYPES (tuple): the decision task types.
     log (logging.Logger): the log object for this module.
 
 """
@@ -42,6 +43,7 @@ DECISION_MACH_COMMANDS = ((
 ), (
     './mach', 'taskgraph', 'action-callback'
 ))
+DECISION_TASK_TYPES = ('decision', )
 
 
 # ChainOfTrust {{{1
@@ -118,6 +120,32 @@ class ChainOfTrust(object):
         if len(links) != 1:
             raise CoTError("No single Link matches task_id {}!\n{}".format(task_id, self.dependent_task_ids()))
         return links[0]
+
+    def is_decision(self):
+        """Determine if the chain is a decision task.
+
+        Returns:
+            bool: whether it is a decision task.
+
+        """
+        return self.task_type in DECISION_TASK_TYPES
+
+    def get_all_links_in_chain(self):
+        """Return all links in the chain of trust, including the target task.
+
+        By default, we're checking a task and all its dependencies back to the
+        tree, so the full chain is ``self.links`` + ``self``. However, we also
+        support checking the decision task itself. In that case, we populate
+        the decision task as a link in ``self.links``, and we don't need to add
+        another check for ``self``.
+
+        Returns:
+            list: of all ``LinkOfTrust``s to verify.
+
+        """
+        if self.is_decision() and self.get_link(self.task_id):
+            return self.links
+        return [self] + self.links
 
 
 # LinkOfTrust {{{1
@@ -509,11 +537,10 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
 
     decision_task_id = get_decision_task_id(task)
-    task_type = guess_task_type(task_name)
-    if decision_task_id != task_id and task_type != 'decision':
-        # make sure we deal with the decision task first, or we may populate
-        # signing:build0:decision before signing:decision
-        dependencies.insert(0, _craft_dependency_tuple(task_name, 'decision', decision_task_id))
+    # make sure we deal with the decision task first, or we may populate
+    # signing:build0:decision before signing:decision
+    decision_tuple = _craft_dependency_tuple(task_name, 'decision', decision_task_id)
+    dependencies.insert(0, decision_tuple)
 
     log.info('found dependencies: {}'.format(dependencies))
     return dependencies
@@ -950,7 +977,7 @@ async def verify_decision_task(chain, link):
     link.task_graph = load_json(
         path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
     )
-    for target_link in [chain] + chain.links:
+    for target_link in chain.get_all_links_in_chain():
         # Verify the target's task is in the decision task's task graph, unless
         # it's this task or another decision task.
         # https://github.com/mozilla-releng/scriptworker/issues/77
@@ -1123,8 +1150,7 @@ async def verify_task_types(chain):
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
-    # check the chain object (current task) as well
-    for obj in [chain] + chain.links:
+    for obj in chain.get_all_links_in_chain():
         task_type = obj.task_type
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
         task_count.setdefault(task_type, 0)
@@ -1195,14 +1221,12 @@ async def verify_worker_impls(chain):
 
     """
     valid_worker_impls = get_valid_worker_impls()
-    for obj in [chain] + chain.links:
+    for obj in chain.get_all_links_in_chain():
         worker_impl = obj.worker_impl
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, worker_impl))
         # Run tests synchronously for now.  We can parallelize if efficiency
         # is more important than a single simple logfile.
         await valid_worker_impls[worker_impl](chain, obj)
-        if isinstance(obj, ChainOfTrust) and obj.worker_impl != "scriptworker":
-            raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
 # get_firefox_source_url {{{1
@@ -1381,7 +1405,7 @@ To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6
 or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     parser.add_argument('task_id', help='the task id to test')
     parser.add_argument('--task-type', help='the task type to test',
-                        choices=['signing', 'balrog', 'beetmover', 'pushapk'], required=True)
+                        choices=sorted(get_valid_task_types().keys()), required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
     opts = parser.parse_args(args)

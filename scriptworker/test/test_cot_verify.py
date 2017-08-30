@@ -198,6 +198,20 @@ def test_dependent_task_ids(chain):
     assert sorted(chain.dependent_task_ids()) == sorted(ids)
 
 
+# get_all_links_in_chain {{{1
+@pytest.mark.asyncio
+async def test_get_all_links_in_chain(chain, decision_link, build_link):
+    # standard test
+    chain.links = [build_link, decision_link]
+    assert set(chain.get_all_links_in_chain()) == set([chain, decision_link, build_link])
+
+    # decision task test
+    chain.task_type = 'decision'
+    chain.task_id = decision_link.task_id
+    chain.links = [build_link, decision_link]
+    assert set(chain.get_all_links_in_chain()) == set([decision_link, build_link])
+
+
 # is_try {{{1
 @pytest.mark.parametrize("bools,expected", (([False, False], False), ([False, True], True)))
 def test_chain_is_try(chain, bools, expected):
@@ -379,12 +393,14 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, decision_link)
 
 
-@pytest.mark.parametrize("task,expected", ((
+@pytest.mark.parametrize("task,expected,task_type", ((
     {'taskGroupId': 'task_id', 'extra': {}, 'payload': {}},
-    []
+    [('decision:decision', 'task_id')],
+    'decision'
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
-    [('build:decision', 'decision_task_id')]
+    [('build:decision', 'decision_task_id')],
+    'build'
 ), (
     {
         'taskGroupId': 'decision_task_id',
@@ -395,7 +411,8 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
     }, [
         ('build:decision', 'decision_task_id'),
         ('build:docker-image', 'docker_image_task_id'),
-    ]
+    ],
+    'build'
 ), (
     {
         'taskGroupId': 'decision_task_id',
@@ -416,7 +433,8 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
         ('build:blah', 'blah_task_id'),
         ('build:blah', 'blah_task_id'),     # Duplicates aren't deleted
         ('build:docker-image', 'docker_image_task_id'),
-    ]
+    ],
+    'build'
 ), (
     # PushAPK-like definitions
     {
@@ -435,14 +453,15 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
             }],
         },
     }, [
-        ('build:decision', 'decision_task_id'),
-        ('build:signing', 'platform_0_signing_task_id'),
-        ('build:signing', 'platform_1_signing_task_id'),
-        ('build:signing', 'platform_2_signing_task_id'),
-    ]
+        ('pushapk:decision', 'decision_task_id'),
+        ('pushapk:signing', 'platform_0_signing_task_id'),
+        ('pushapk:signing', 'platform_1_signing_task_id'),
+        ('pushapk:signing', 'platform_2_signing_task_id'),
+    ],
+    'pushapk'
 )))
-def test_find_sorted_task_dependencies(task, expected):
-    assert expected == cotverify.find_sorted_task_dependencies(task, 'build', 'task_id')
+def test_find_sorted_task_dependencies(task, expected, task_type):
+    assert expected == cotverify.find_sorted_task_dependencies(task, task_type, 'task_id')
 
 
 # build_task_dependencies {{{1
@@ -979,19 +998,13 @@ async def test_verify_generic_worker_task(mocker):
 
 
 # verify_worker_impls {{{1
-@pytest.mark.parametrize("raises", (True, False))
 @pytest.mark.asyncio
 async def test_verify_worker_impls(chain, decision_link, build_link,
-                                   docker_image_link, raises, mocker):
+                                   docker_image_link, mocker):
     chain.links = [decision_link, build_link, docker_image_link]
     for func in cotverify.get_valid_worker_impls().values():
         mocker.patch.object(cotverify, func.__name__, new=noop_async)
-    if raises:
-        chain.worker_impl = 'docker-worker'
-        with pytest.raises(CoTError):
-            await cotverify.verify_worker_impls(chain)
-    else:
-        await cotverify.verify_worker_impls(chain)
+    await cotverify.verify_worker_impls(chain)
 
 
 # get_firefox_source_url {{{1
