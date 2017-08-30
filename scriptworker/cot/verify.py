@@ -2,6 +2,8 @@
 """Chain of Trust artifact verification.
 
 Attributes:
+    DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
+        ignoring options.
     log (logging.Logger): the log object for this module.
 
 """
@@ -29,6 +31,17 @@ from scriptworker.utils import format_json, get_hash, load_json, makedirs, match
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
+
+
+DECISION_MACH_COMMANDS = ((
+    './mach', 'taskgraph', 'decision'
+), (
+    './mach', 'taskgraph', 'add-tasks'
+), (
+    './mach', 'taskgraph', 'backfill'
+), (
+    './mach', 'taskgraph', 'action-callback'
+))
 
 
 # ChainOfTrust {{{1
@@ -894,18 +907,22 @@ def verify_firefox_decision_command(decision_link):
         ))
     bash_commands = command[-1].split('&&')
     allowed_commands = ('cd', 'ln')
-    allowed_mach_args = ['./mach', 'taskgraph', 'decision']
     for bash_command in bash_commands:
         parts = shlex.split(bash_command)
+        non_options = []
         if parts[0] in allowed_commands:
             continue
         for part in parts:
             if part.startswith('--'):
                 continue
-            if not allowed_mach_args or part != allowed_mach_args.pop(0):
-                errors.append("{} {} Illegal command ``{}``".format(
-                    decision_link.name, decision_link.task_id, bash_command
-                ))
+            non_options.append(part)
+        for mach_command in DECISION_MACH_COMMANDS:
+            if tuple(non_options) == mach_command:
+                break
+        else:
+            errors.append("{} {} Illegal command ``{}``".format(
+                decision_link.name, decision_link.task_id, bash_command
+            ))
     raise_on_errors(errors)
 
 
