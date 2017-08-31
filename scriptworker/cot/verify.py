@@ -1003,7 +1003,8 @@ async def verify_balrog_task(chain, obj):
 async def verify_partials_task(chain, obj):
     """Verify the partials trust object.
 
-    Currently the only check is to make sure it was run on a scriptworker.
+    The main points of concern are tested elsewhere:
+    Runs as a docker-worker.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on
@@ -1013,7 +1014,7 @@ async def verify_partials_task(chain, obj):
         CoTError: on error.
 
     """
-    return await verify_scriptworker_task(chain, obj)
+    pass
 
 
 # verify_beetmover_task {{{1

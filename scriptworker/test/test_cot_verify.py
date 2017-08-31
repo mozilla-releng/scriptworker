@@ -890,6 +890,18 @@ async def test_verify_build_task_noop(chain, build_link):
     await cotverify.verify_build_task(chain, build_link)
 
 
+# verify_partials_task {{{1
+@pytest.mark.asyncio
+async def test_verify_partials_task(chain, build_link):
+    await cotverify.verify_partials_task(chain, build_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_partials_task_noop(chain, build_link):
+    build_link.worker_impl = 'unknown'
+    await cotverify.verify_partials_task(chain, build_link)
+
+
 # verify_docker_image_task {{{1
 @pytest.mark.asyncio
 async def test_verify_docker_image_task(chain, docker_image_link):
