@@ -880,13 +880,13 @@ def verify_firefox_decision_command(decision_link):
 
     Some example commands::
 
-        "/home/worker/bin/run-task",
-        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "/builds/worker/bin/run-task",
+        "--vcs-checkout=/builds/worker/checkouts/gecko",
         "--",
         "bash",
         "-cx",
-        "cd /home/worker/checkouts/gecko &&
-        ln -s /home/worker/artifacts artifacts &&
+        "cd /builds/worker/checkouts/gecko &&
+        ln -s /builds/worker/artifacts artifacts &&
         ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
         --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
         --base-repository='https://hg.mozilla.org/mozilla-central'
@@ -895,13 +895,13 @@ def verify_firefox_decision_command(decision_link):
         --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
         --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
 
-        "/home/worker/bin/run-task",
-        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "/builds/worker/bin/run-task",
+        "--vcs-checkout=/builds/worker/checkouts/gecko",
         "--",
         "bash",
         "-cx",
-        "cd /home/worker/checkouts/gecko &&
-        ln -s /home/worker/artifacts artifacts &&
+        "cd /builds/worker/checkouts/gecko &&
+        ln -s /builds/worker/artifacts artifacts &&
         ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
         --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
         --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
@@ -920,8 +920,9 @@ def verify_firefox_decision_command(decision_link):
     errors = []
     command = decision_link.task['payload']['command']
     allowed_args = ('--', 'bash', '/bin/bash', '-cx')
-    if command[0] != '/home/worker/bin/run-task':
-        errors.append("{} {} command must start with /home/worker/bin/run-task!".format(
+    # /home/worker is an old path, before https://bugzilla.mozilla.org/show_bug.cgi?id=1338651#c195
+    if command[0] not in('/home/worker/bin/run-task', '/builds/worker/bin/run-task'):
+        errors.append("{} {} command must start with /builds/worker/bin/run-task!".format(
             decision_link.name, decision_link.task_id
         ))
     for item in command[1:-1]:
@@ -1021,8 +1022,10 @@ async def verify_docker_image_task(chain, link):
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
     # XXX remove the command checks once we have a vetted decision task
     # from in-tree yaml
-    if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
-        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
+    command = link.task['payload'].get('command')
+    # this path changed to /builds in https://bugzilla.mozilla.org/show_bug.cgi?id=1394883
+    if command != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"] and command != ['/bin/bash', '-c', '/builds/worker/bin/build_image.sh']:
+        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, command))
     raise_on_errors(errors)
 
 

@@ -2,7 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [5.1.1] - 2017-08-31
+### Fixed
+- updated cot verification to allow for the new docker-image and decision paths (/home/worker -> /builds/worker)
+
+## [5.1.0] - 2017-08-31
 ### Added
 - added `DECISION_MACH_COMMANDS` to `cot.verify`, to support action task verification
 - added `DECISION_TASK_TYPES` to `cot.verify`, to support verifying decision tasks via `verify_cot`
