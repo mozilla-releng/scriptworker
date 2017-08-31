@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.0.2] - 2017-08-28
+### Added
+- added .json as an `ignore_suffix` for docker-worker
+- added `partials` as a valid task type
+
 ## [5.0.1] - 2017-08-25
 ### Added
 - added sparse checkout decision task support in cot verification.
