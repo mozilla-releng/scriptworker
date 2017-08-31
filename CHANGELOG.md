@@ -8,12 +8,16 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - added `DECISION_TASK_TYPES` to `cot.verify`, to support verifying decision tasks via `verify_cot`
 - added `ChainOfTrust.is_decision` to find if the chain object is a decision task
 - added `ChainOfTrust.get_all_links_in_chain`. Previously, we ran certain tests against all the links in the chain, and other tests against all links + the chain object. Now, the chain itself may be a decision task; we will add the decision task as a link in the chain, and we no longer want to run verification tests against the chain object.
+- added new docker image shas
 
 ### Changed
 - we now support testing any verifiable `taskType` via `verify_cot`! Previously, only scriptworker task types were verifiable via the commandline tool.
 - we now support testing action task commandlines in `verify_firefox_decision_command`
 - we no longer ignore the decision task if the task-to-verify is the decision task in `find_sorted_task_dependencies`. We want to make sure we verify it.
 - we no longer raise a `CoTError` if the `ChainOfTrust` object is not a scriptworker implementation
+
+### Fixed
+- fixed `partials` task verification
 
 ## [5.0.2] - 2017-08-28
 ### Added
