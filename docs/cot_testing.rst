@@ -1,11 +1,8 @@
 Chain of Trust Testing / debugging
 ----------------------------------
 
-The new ``verify_cot`` entry point allows you to test chain of trust
-verification without running a scriptworker instance locally. (If `PR
-#26 <https://github.com/mozilla-releng/scriptworker/pull/26>`__ hasn't
-landed yet, the command is ``scriptworker/test/data/verify_cot.py``, but
-it should work in the same way.)
+The ``verify_cot`` entry point allows you to test chain of trust
+verification without running a scriptworker instance locally.
 
 Create the virtualenv
 ~~~~~~~~~~~~~~~~~~~~~
@@ -47,7 +44,7 @@ Set up the test env
 Find a task to test
 ~~~~~~~~~~~~~~~~~~~
 
--  Find a scriptworker task on
+-  Find a cot-enabled task on
    `treeherder <https://treeherder.mozilla.org>`__ to test.
 
 -  Click it, click 'inspect task' in the lower left corner.
@@ -57,16 +54,8 @@ Find a task to test
 Run the test
 ~~~~~~~~~~~~
 
--  Now you should be able to test chain of trust verification! If `PR
-   #26 <https://github.com/mozilla-releng/scriptworker/pull/26>`__ has
-   landed, then
+-  Now you should be able to test chain of trust verification!
 
 .. code:: bash
 
         verify_cot --task-type TASKTYPE TASKID  # e.g., verify_cot --task-type signing cbYd3U6dRRCKPUbKsEj1Iw
-
-Otherwise,
-
-.. code:: bash
-
-        scriptworker/test/data/verify_cot.py --task-type TASKTYPE TASKID  # e.g., scriptworker/test/data/verify_cot.py --task-type signing cbYd3U6dRRCKPUbKsEj1Iw
