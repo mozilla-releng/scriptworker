@@ -922,7 +922,7 @@ def verify_firefox_decision_command(decision_link):
     allowed_args = ('--', 'bash', '/bin/bash', '-cx')
     # /home/worker is an old path, before https://bugzilla.mozilla.org/show_bug.cgi?id=1338651#c195
     if command[0] not in('/home/worker/bin/run-task', '/builds/worker/bin/run-task'):
-        errors.append("{} {} command must start with /{builds,home}/worker/bin/run-task!".format(
+        errors.append("{} {} command must start with /builds/worker/bin/run-task!".format(
             decision_link.name, decision_link.task_id
         ))
     for item in command[1:-1]:
