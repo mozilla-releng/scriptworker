@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+### Added
+- added `json-e` dependency.
+
 ## [6.0.1] - 2018-01-03
 ### Added
 - Allow projects/birch to use project:releng:signing:cert:release-signing
