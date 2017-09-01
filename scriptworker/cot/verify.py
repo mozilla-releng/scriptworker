@@ -1022,10 +1022,8 @@ async def verify_docker_image_task(chain, link):
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
     # XXX remove the command checks once we have a vetted decision task
     # from in-tree yaml
-    command = link.task['payload'].get('command')
-    # this path changed to /builds in https://bugzilla.mozilla.org/show_bug.cgi?id=1394883
-    if command != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"] and command != ['/bin/bash', '-c', '/builds/worker/bin/build_image.sh']:
-        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, command))
+    if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
+        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
 
 
