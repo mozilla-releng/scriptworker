@@ -98,6 +98,15 @@ DEFAULT_CONFIG = frozendict({
     }), ),
 
     # docker image shas
+    #
+    # these shas are the *runtime* shas, not the generation shas.
+    #
+    # 10:04 <•garndt> $ docker inspect taskcluster/decision@sha256:4039fd878e5700b326d4a636e28c595c053fbcb53909c1db84ad1f513cf644ef | jq '.[0].Id'
+    # 10:04 <•garndt> "sha256:f49aeaeffe6a5053d1b3d09aaa140b13418f760e661424404a1a8b4021ff6203"
+    # 10:05 <•garndt> so that last hash is the one I think cot and puppet need to have
+    # 10:05 <•garndt> you can find it like above, or `docker images --no-trunc`
+    # 10:05 <•garndt> you can do the same for the image builder image
+    #
     "docker_image_allowlists": frozendict({
         "decision": (
             ### NOTE: these hashes are NOT the same as the hashes in task.payload.image
