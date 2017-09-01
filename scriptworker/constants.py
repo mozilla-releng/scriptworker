@@ -109,7 +109,7 @@ DEFAULT_CONFIG = frozendict({
     #
     "docker_image_allowlists": frozendict({
         "decision": (
-            ### NOTE: these hashes are NOT the same as the hashes in task.payload.image
+            # NOTE: these hashes are NOT the same as the hashes in task.payload.image
             # 0.1.6
             "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9",
             # 0.1.5
