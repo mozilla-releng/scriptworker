@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.1.2] - 2017-09-01
+### Fixed
+- fixed new false error raised on missing command in payload
+
 ## [5.1.1] - 2017-08-31
 ### Fixed
 - updated cot verification to allow for the new docker-image and decision paths (/home/worker -> /builds/worker)
