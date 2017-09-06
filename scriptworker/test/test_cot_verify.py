@@ -1084,7 +1084,7 @@ async def test_trace_back_to_firefox_tree_docker_unknown_repo(chain, decision_li
 async def test_trace_back_to_firefox_tree_diff_repo(chain, decision_link,
                                                     build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
-    docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-aurora"
+    docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-beta"
     chain.links = [decision_link, build_link, docker_image_link]
     await cotverify.trace_back_to_firefox_tree(chain)
 

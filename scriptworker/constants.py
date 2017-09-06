@@ -228,7 +228,6 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_trees': frozendict({
         'firefox': frozendict({
             # Which repos can perform release actions?
-            # Allow aurora for staging betas.
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
             'all-release-branches': (
