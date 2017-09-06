@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.1.4] - 2017-09-06
+## Fixed
+- no longer add a decision task's decision task to the chain of trust to verify. This was a regression.
+
+## Removed
+- cleaned up aurora references from everything but pushapk, which uses it.
+
 ## [5.1.3] - 2017-09-01
 ### Fixed
 - specify the correct docker shas for the new docker images.
