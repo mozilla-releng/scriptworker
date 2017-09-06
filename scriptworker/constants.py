@@ -193,7 +193,7 @@ DEFAULT_CONFIG = frozendict({
         "path_regexes": (
             "^(?P<path>/mozilla-(central|unified))(/|$)",
             "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
-            "^(?P<path>/releases/mozilla-(aurora|beta|release|esr45|esr52))(/|$)",
+            "^(?P<path>/releases/mozilla-(beta|release|esr52))(/|$)",
             # XXX remove /projects/date when taskcluster nightly migration is
             #     tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer release firefox
@@ -207,7 +207,6 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_scopes': frozendict({
         'firefox': frozendict({
             'project:releng:balrog:server:nightly': 'all-nightly-branches',
-            'project:releng:balrog:server:aurora': 'aurora',
             'project:releng:balrog:server:beta': 'beta',
             'project:releng:balrog:server:release': 'release',
             'project:releng:balrog:server:esr': 'esr',
@@ -229,14 +228,11 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_trees': frozendict({
         'firefox': frozendict({
             # Which repos can perform release actions?
-            # Allow aurora for staging betas.
             # XXX remove /projects/jamun when we no longer release firefox
             #     from it
             'all-release-branches': (
-                "/releases/mozilla-aurora",
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
-                "/releases/mozilla-esr45",
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
             ),
@@ -247,11 +243,7 @@ DEFAULT_CONFIG = frozendict({
             'beta': (
                 "/releases/mozilla-beta",
             ),
-            'aurora': (
-                "/releases/mozilla-aurora",
-            ),
             'esr': (
-                "/releases/mozilla-esr45",
                 "/releases/mozilla-esr52",
             ),
             'nightly': (
@@ -267,10 +259,8 @@ DEFAULT_CONFIG = frozendict({
             'all-nightly-branches': (
                 "/mozilla-central",
                 "/releases/mozilla-unified",
-                "/releases/mozilla-aurora",
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
-                "/releases/mozilla-esr45",
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
                 "/projects/oak",
