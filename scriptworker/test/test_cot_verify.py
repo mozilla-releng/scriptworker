@@ -393,8 +393,10 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, decision_link)
 
 
+# find_sorted_task_dependencies{{{1
 @pytest.mark.parametrize("task,expected,task_type", ((
-    {'taskGroupId': 'task_id', 'extra': {}, 'payload': {}},
+    # Make sure we don't follow other_task_id on a decision task
+    {'taskGroupId': 'other_task_id', 'extra': {}, 'payload': {}},
     [('decision:decision', 'task_id')],
     'decision'
 ), (

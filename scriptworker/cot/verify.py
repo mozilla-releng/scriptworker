@@ -509,6 +509,7 @@ def verify_docker_image_sha(chain, link):
     raise_on_errors(errors)
 
 
+# find_sorted_task_dependencies {{{1
 def find_sorted_task_dependencies(task, task_name, task_id):
     """Find the taskIds of the chain of trust dependencies of a given task.
 
@@ -536,7 +537,13 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     dependencies = [*cot_input_dependencies, *upstream_artifacts_dependencies]
     dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
 
-    decision_task_id = get_decision_task_id(task)
+    # bug 1396517 - Decision tasks are standalone; don't point at another task
+    # even if the taskGroupId doesn't match.
+    task_type = guess_task_type(task_name)
+    if task_type in DECISION_TASK_TYPES:
+        decision_task_id = task_id
+    else:
+        decision_task_id = get_decision_task_id(task)
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
     decision_tuple = _craft_dependency_tuple(task_name, 'decision', decision_task_id)
