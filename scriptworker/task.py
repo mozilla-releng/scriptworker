@@ -80,6 +80,7 @@ def get_decision_task_id(task):
     return task['taskGroupId']
 
 
+# get_worker_type {{{1
 def get_worker_type(task):
     """Given a task dict, return the workerType.
 
@@ -91,6 +92,34 @@ def get_worker_type(task):
 
     """
     return task['workerType']
+
+
+# prepare_to_run_task {{{1
+def prepare_to_run_task(context, claim_task):
+    """Given a `claim_task` json dict, prepare the `context` and `work_dir`.
+
+    Set `context.claim_task`, and write a `work_dir/current_task_info.json`
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        claim_task (dict): the claim_task dict.
+
+    Returns:
+        dict: the contents of `current_task_info.json`
+
+    """
+    current_task_info = {}
+    context.claim_task = claim_task
+    current_task_info['taskId'] = get_task_id(claim_task)
+    current_task_info['runId'] = get_run_id(claim_task)
+    log.info("Going to run taskId {taskId} runId {runId}!".format(
+        **current_task_info
+    ))
+    context.write_json(
+        os.path.join(context.config['work_dir'], 'current_task_info.json'),
+        current_task_info, "Writing current task info to {path}..."
+    )
+    return current_task_info
 
 
 # run_task {{{1

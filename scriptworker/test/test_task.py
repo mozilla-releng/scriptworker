@@ -5,6 +5,7 @@
 import aiohttp
 import asyncio
 import glob
+import json
 import mock
 import os
 import pprint
@@ -57,6 +58,19 @@ def test_get_decision_task_id(defn, result):
 @pytest.mark.parametrize("defn,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
 def test_get_worker_type(defn, result):
     assert task.get_worker_type(defn) == result
+
+
+# prepare_to_run_task {{{1
+def test_prepare_to_run_task(context):
+    claim_task = context.claim_task
+    context.claim_task = None
+    expected = {'taskId': 'taskId', 'runId': 'runId'}
+    path = os.path.join(context.config['work_dir'], 'current_task_info.json')
+    assert task.prepare_to_run_task(context, claim_task) == expected
+    assert os.path.exists(path)
+    with open(path) as fh:
+        contents = json.load(fh)
+    assert contents == expected
 
 
 # run_task {{{1

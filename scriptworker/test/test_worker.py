@@ -111,6 +111,7 @@ def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mock
     context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
     mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
     mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
@@ -125,6 +126,7 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
     mocker.patch.object(worker, "run_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
@@ -160,6 +162,7 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
     context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
     if func_to_raise == "run_task":
         mocker.patch.object(worker, "run_task", new=fail)
     else:

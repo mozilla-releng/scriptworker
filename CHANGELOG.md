@@ -2,6 +2,82 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.1.3] - 2017-09-01
+### Fixed
+- specify the correct docker shas for the new docker images.
+
+## [5.1.2] - 2017-09-01
+### Fixed
+- fixed new false error raised on missing command in payload
+
+## [5.1.1] - 2017-08-31
+### Fixed
+- updated cot verification to allow for the new docker-image and decision paths (/home/worker -> /builds/worker)
+
+## [5.1.0] - 2017-08-31
+### Added
+- added `DECISION_MACH_COMMANDS` to `cot.verify`, to support action task verification
+- added `DECISION_TASK_TYPES` to `cot.verify`, to support verifying decision tasks via `verify_cot`
+- added `ChainOfTrust.is_decision` to find if the chain object is a decision task
+- added `ChainOfTrust.get_all_links_in_chain`. Previously, we ran certain tests against all the links in the chain, and other tests against all links + the chain object. Now, the chain itself may be a decision task; we will add the decision task as a link in the chain, and we no longer want to run verification tests against the chain object.
+- added new docker image shas
+
+### Changed
+- we now support testing any verifiable `taskType` via `verify_cot`! Previously, only scriptworker task types were verifiable via the commandline tool.
+- we now support testing action task commandlines in `verify_firefox_decision_command`
+- we no longer ignore the decision task if the task-to-verify is the decision task in `find_sorted_task_dependencies`. We want to make sure we verify it.
+- we no longer raise a `CoTError` if the `ChainOfTrust` object is not a scriptworker implementation
+
+### Fixed
+- fixed `partials` task verification
+
+## [5.0.2] - 2017-08-28
+### Added
+- added .json as an `ignore_suffix` for docker-worker
+- added `partials` as a valid task type
+
+## [5.0.1] - 2017-08-25
+### Added
+- added sparse checkout decision task support in cot verification.
+- added decision image 0.1.10 sha to allowlist
+
+## [5.0.0] - 2017-08-22
+### Added
+- `watch_log_file` pref, to watch the log file for `logrotate.d` (or other) rotation. Set this to true in production.
+
+### Changed
+- switched from `RotatingFileHandler` to `WatchedFileHandler` or `FileHandler`, depending on whether `watch_log_file` is set.
+
+### Removed
+- Non-backwards-compatible: removed `log_max_bytes` and `log_num_backups` prefs. If set in a config file, this will break scriptworker launch. I don't believe anything sets these, but bumping the major version in case.
+
+### Removed
+
+## [4.2.0] - 2017-08-21
+### Added
+- added `prepare_to_run_task` to create a new `current_task_info.json` in `work_dir` for easier debugging.
+
+### Changed
+- `.diff` files now upload as `text/plain`.
+
+## [4.1.4] - 2017-08-16
+### Changed
+- updated the decision + docker-image `workerType`s
+
+### Fixed
+- closed the contextual log handler to avoid filling up disk with open filehandles
+
+## [4.1.3] - 2017-07-13
+### Added
+- added a check to verify the cot `taskId` matches the task `taskId`
+- added a a `claimWork` debug log message
+- added a check to prevent `python setup.py register` and `python setup.py upload`
+
+### Fixed
+- updated the docs to more accurately reflect the new instance steps
+- updated the docs to avoid using `python setup.py register sdist upload`
+- allowed the decision task to be an additional runtime dep
+
 ## [4.1.2] - 2017-06-14
 ### Changed
 - rewrote chain of trust docs.

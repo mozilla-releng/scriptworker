@@ -24,6 +24,16 @@ of text
 """
 
 
+def close_handlers(log_name=None):
+    log_name = log_name or __name__.split('.')[0]
+    log = logging.getLogger(log_name)
+    handlers = log.handlers[:]
+    for handler in handlers:
+        handler.close()
+        log.removeHandler(handler)
+    log.addHandler(logging.NullHandler())
+
+
 # tests {{{1
 def test_get_log_filename(context):
     log_file = swlog.get_log_filename(context)
@@ -61,6 +71,7 @@ def test_update_logging_config_verbose(context):
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 3
+    close_handlers(log_name=context.config['log_dir'])
 
 
 def test_update_logging_config_verbose_existing_handler(context):
@@ -70,6 +81,7 @@ def test_update_logging_config_verbose_existing_handler(context):
     swlog.update_logging_config(context, log_name=context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 4
+    close_handlers(log_name=context.config['log_dir'])
 
 
 def test_update_logging_config_not_verbose(context):
@@ -78,6 +90,7 @@ def test_update_logging_config_not_verbose(context):
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.INFO
     assert len(log.handlers) == 2
+    close_handlers(log_name=context.config['log_dir'])
 
 
 def test_contextual_log_handler(context, mocker):
@@ -90,3 +103,17 @@ def test_contextual_log_handler(context, mocker):
         contents = fh.read().splitlines()
     assert len(contents) == 1
     assert contents[0].endswith("foo")
+
+
+def test_watched_log_file(context):
+    context.config['watch_log_file'] = True
+    context.config["log_fmt"] = "%(levelname)s - %(message)s"
+    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    path = os.path.join(context.config['log_dir'], 'worker.log')
+    log = logging.getLogger(context.config['log_dir'])
+    log.info("foo")
+    os.rename(path, "{}.1".format(path))
+    log.info("bar")
+    with open(path, "r") as fh:
+        assert fh.read().rstrip() == "INFO - bar"
+    close_handlers(log_name=context.config['log_dir'])

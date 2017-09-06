@@ -2,6 +2,9 @@
 """Chain of Trust artifact verification.
 
 Attributes:
+    DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
+        ignoring options.
+    DECISION_TASK_TYPES (tuple): the decision task types.
     log (logging.Logger): the log object for this module.
 
 """
@@ -29,6 +32,18 @@ from scriptworker.utils import format_json, get_hash, load_json, makedirs, match
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
+
+
+DECISION_MACH_COMMANDS = ((
+    './mach', 'taskgraph', 'decision'
+), (
+    './mach', 'taskgraph', 'add-tasks'
+), (
+    './mach', 'taskgraph', 'backfill'
+), (
+    './mach', 'taskgraph', 'action-callback'
+))
+DECISION_TASK_TYPES = ('decision', )
 
 
 # ChainOfTrust {{{1
@@ -105,6 +120,32 @@ class ChainOfTrust(object):
         if len(links) != 1:
             raise CoTError("No single Link matches task_id {}!\n{}".format(task_id, self.dependent_task_ids()))
         return links[0]
+
+    def is_decision(self):
+        """Determine if the chain is a decision task.
+
+        Returns:
+            bool: whether it is a decision task.
+
+        """
+        return self.task_type in DECISION_TASK_TYPES
+
+    def get_all_links_in_chain(self):
+        """Return all links in the chain of trust, including the target task.
+
+        By default, we're checking a task and all its dependencies back to the
+        tree, so the full chain is ``self.links`` + ``self``. However, we also
+        support checking the decision task itself. In that case, we populate
+        the decision task as a link in ``self.links``, and we don't need to add
+        another check for ``self``.
+
+        Returns:
+            list: of all ``LinkOfTrust``s to verify.
+
+        """
+        if self.is_decision() and self.get_link(self.task_id):
+            return self.links
+        return [self] + self.links
 
 
 # LinkOfTrust {{{1
@@ -333,6 +374,7 @@ def get_valid_task_types():
         'docker-image': verify_docker_image_task,
         'pushapk': verify_pushapk_task,
         'signing': verify_signing_task,
+        'partials': verify_partials_task,
     })
 
 
@@ -495,11 +537,10 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
 
     decision_task_id = get_decision_task_id(task)
-    task_type = guess_task_type(task_name)
-    if decision_task_id != task_id and task_type != 'decision':
-        # make sure we deal with the decision task first, or we may populate
-        # signing:build0:decision before signing:decision
-        dependencies.insert(0, _craft_dependency_tuple(task_name, 'decision', decision_task_id))
+    # make sure we deal with the decision task first, or we may populate
+    # signing:build0:decision before signing:decision
+    decision_tuple = _craft_dependency_tuple(task_name, 'decision', decision_task_id)
+    dependencies.insert(0, decision_tuple)
 
     log.info('found dependencies: {}'.format(dependencies))
     return dependencies
@@ -750,7 +791,9 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     # the pushapk task, we can clone the task, update timestamps, and remove the
     # breakpoint dependency.
     bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
-    if bad_deps and runtime_defn['dependencies'] != [task_link.decision_task_id]:
+    # it's OK if a task depends on the decision task
+    bad_deps = bad_deps - {task_link.decision_task_id}
+    if bad_deps:
         errors.append("{} {} dependencies don't line up!\n{}".format(
             task_link.name, task_link.task_id, bad_deps
         ))
@@ -837,13 +880,13 @@ def verify_firefox_decision_command(decision_link):
 
     Some example commands::
 
-        "/home/worker/bin/run-task",
-        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "/builds/worker/bin/run-task",
+        "--vcs-checkout=/builds/worker/checkouts/gecko",
         "--",
         "bash",
         "-cx",
-        "cd /home/worker/checkouts/gecko &&
-        ln -s /home/worker/artifacts artifacts &&
+        "cd /builds/worker/checkouts/gecko &&
+        ln -s /builds/worker/artifacts artifacts &&
         ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
         --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
         --base-repository='https://hg.mozilla.org/mozilla-central'
@@ -852,13 +895,13 @@ def verify_firefox_decision_command(decision_link):
         --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
         --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
 
-        "/home/worker/bin/run-task",
-        "--vcs-checkout=/home/worker/checkouts/gecko",
+        "/builds/worker/bin/run-task",
+        "--vcs-checkout=/builds/worker/checkouts/gecko",
         "--",
         "bash",
         "-cx",
-        "cd /home/worker/checkouts/gecko &&
-        ln -s /home/worker/artifacts artifacts &&
+        "cd /builds/worker/checkouts/gecko &&
+        ln -s /builds/worker/artifacts artifacts &&
         ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
         --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
         --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
@@ -877,32 +920,37 @@ def verify_firefox_decision_command(decision_link):
     errors = []
     command = decision_link.task['payload']['command']
     allowed_args = ('--', 'bash', '/bin/bash', '-cx')
-    if command[0] != '/home/worker/bin/run-task':
-        errors.append("{} {} command must start with /home/worker/bin/run-task!".format(
+    # /home/worker is an old path, before https://bugzilla.mozilla.org/show_bug.cgi?id=1338651#c195
+    if command[0] not in('/home/worker/bin/run-task', '/builds/worker/bin/run-task'):
+        errors.append("{} {} command must start with /builds/worker/bin/run-task!".format(
             decision_link.name, decision_link.task_id
         ))
     for item in command[1:-1]:
         if item in allowed_args:
             continue
-        if item.startswith('--vcs-checkout='):
+        if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
             continue
         errors.append("{} {} illegal option {} in the command!".format(
             decision_link.name, decision_link.task_id, item
         ))
     bash_commands = command[-1].split('&&')
     allowed_commands = ('cd', 'ln')
-    allowed_mach_args = ['./mach', 'taskgraph', 'decision']
     for bash_command in bash_commands:
         parts = shlex.split(bash_command)
+        non_options = []
         if parts[0] in allowed_commands:
             continue
         for part in parts:
             if part.startswith('--'):
                 continue
-            if not allowed_mach_args or part != allowed_mach_args.pop(0):
-                errors.append("{} {} Illegal command ``{}``".format(
-                    decision_link.name, decision_link.task_id, bash_command
-                ))
+            non_options.append(part)
+        for mach_command in DECISION_MACH_COMMANDS:
+            if tuple(non_options) == mach_command:
+                break
+        else:
+            errors.append("{} {} Illegal command ``{}``".format(
+                decision_link.name, decision_link.task_id, bash_command
+            ))
     raise_on_errors(errors)
 
 
@@ -930,7 +978,7 @@ async def verify_decision_task(chain, link):
     link.task_graph = load_json(
         path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
     )
-    for target_link in [chain] + chain.links:
+    for target_link in chain.get_all_links_in_chain():
         # Verify the target's task is in the decision task's task graph, unless
         # it's this task or another decision task.
         # https://github.com/mozilla-releng/scriptworker/issues/77
@@ -994,6 +1042,24 @@ async def verify_balrog_task(chain, obj):
 
     """
     return await verify_scriptworker_task(chain, obj)
+
+
+# verify_partials_task {{{1
+async def verify_partials_task(chain, obj):
+    """Verify the partials trust object.
+
+    The main points of concern are tested elsewhere:
+    Runs as a docker-worker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the balrog task.
+
+    Raises:
+        CoTError: on error.
+
+    """
+    pass
 
 
 # verify_beetmover_task {{{1
@@ -1085,8 +1151,7 @@ async def verify_task_types(chain):
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
-    # check the chain object (current task) as well
-    for obj in [chain] + chain.links:
+    for obj in chain.get_all_links_in_chain():
         task_type = obj.task_type
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
         task_count.setdefault(task_type, 0)
@@ -1157,14 +1222,12 @@ async def verify_worker_impls(chain):
 
     """
     valid_worker_impls = get_valid_worker_impls()
-    for obj in [chain] + chain.links:
+    for obj in chain.get_all_links_in_chain():
         worker_impl = obj.worker_impl
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, worker_impl))
         # Run tests synchronously for now.  We can parallelize if efficiency
         # is more important than a single simple logfile.
         await valid_worker_impls[worker_impl](chain, obj)
-        if isinstance(obj, ChainOfTrust) and obj.worker_impl != "scriptworker":
-            raise CoTError("ChainOfTrust object is not a scriptworker impl!")
 
 
 # get_firefox_source_url {{{1
@@ -1343,7 +1406,7 @@ To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6
 or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     parser.add_argument('task_id', help='the task id to test')
     parser.add_argument('--task-type', help='the task type to test',
-                        choices=['signing', 'balrog', 'beetmover', 'pushapk'], required=True)
+                        choices=sorted(get_valid_task_types().keys()), required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
     opts = parser.parse_args(args)
