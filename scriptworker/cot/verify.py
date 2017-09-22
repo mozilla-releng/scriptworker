@@ -2,9 +2,12 @@
 """Chain of Trust artifact verification.
 
 Attributes:
+    ACTION_MACH_COMMANDS (tuple): the allowlisted mach commands for an action task,
+        ignoring options.
     DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
         ignoring options.
     DECISION_TASK_TYPES (tuple): the decision task types.
+    PARENT_TASK_TYPES (tuple): the parent task types.
     log (logging.Logger): the log object for this module.
 
 """
@@ -27,7 +30,7 @@ from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
-from scriptworker.task import get_decision_task_id, get_worker_type, get_task_id
+from scriptworker.task import get_decision_task_id, get_parent_task_id, get_worker_type, get_task_id
 from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
 from taskcluster.exceptions import TaskclusterFailure
 
@@ -36,7 +39,9 @@ log = logging.getLogger(__name__)
 
 DECISION_MACH_COMMANDS = ((
     './mach', 'taskgraph', 'decision'
-), (
+), )
+# XXX Remove all non- `action-callback` commands when we retire all trees <Fx58
+ACTION_MACH_COMMANDS = ((
     './mach', 'taskgraph', 'add-tasks'
 ), (
     './mach', 'taskgraph', 'backfill'
@@ -44,6 +49,7 @@ DECISION_MACH_COMMANDS = ((
     './mach', 'taskgraph', 'action-callback'
 ))
 DECISION_TASK_TYPES = ('decision', )
+PARENT_TASK_TYPES = ('decision', 'action')
 
 
 # ChainOfTrust {{{1
@@ -53,6 +59,7 @@ class ChainOfTrust(object):
     Attributes:
         context (scriptworker.context.Context): the scriptworker context
         decision_task_id (str): the task_id of self.task's decision task
+        parent_task_id (str): the task_id of self.task's parent task
         links (list): the list of ``LinkOfTrust``s
         name (str): the name of the task (e.g., signing)
         task_id (str): the taskId of the task
@@ -78,6 +85,7 @@ class ChainOfTrust(object):
         self.task = context.task
         self.worker_impl = guess_worker_impl(self)  # this should be scriptworker
         self.decision_task_id = get_decision_task_id(self.task)
+        self.parent_task_id = get_parent_task_id(self.task)
         self.links = []
 
     def dependent_task_ids(self):
@@ -155,6 +163,7 @@ class LinkOfTrust(object):
     Attributes:
         context (scriptworker.context.Context): the scriptworker context
         decision_task_id (str): the task_id of self.task's decision task
+        parent_task_id (str): the task_id of self.task's parent task
         is_try (bool): whether the task is a try task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
@@ -197,8 +206,8 @@ class LinkOfTrust(object):
     def task(self):
         """dict: the task definition.
 
-        When set, we also set ``self.decision_task_id``, ``self.worker_impl``,
-        and ``self.is_try`` based on the task definition.
+        When set, we also set ``self.decision_task_id``, ``self.parent_task_id``,
+        ``self.worker_impl``, and ``self.is_try`` based on the task definition.
 
         """
         return self._task
@@ -207,6 +216,7 @@ class LinkOfTrust(object):
     def task(self, task):
         self._set('_task', task)
         self.decision_task_id = get_decision_task_id(self.task)
+        self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
         self.is_try = is_try(self.task)
 
@@ -322,7 +332,7 @@ def get_valid_worker_impls():
             validation functions.
 
     """
-    # TODO support the rest of the worker impls... generic worker, taskcluster worker
+    # TODO support taskcluster worker
     return frozendict({
         'docker-worker': verify_docker_worker_task,
         'generic-worker': verify_generic_worker_task,
@@ -370,7 +380,8 @@ def get_valid_task_types():
         'build': verify_build_task,
         'l10n': verify_build_task,
         'repackage': verify_build_task,
-        'decision': verify_decision_task,
+        'action': verify_parent_task,
+        'decision': verify_parent_task,
         'docker-image': verify_docker_image_task,
         'pushapk': verify_pushapk_task,
         'signing': verify_signing_task,
@@ -417,6 +428,35 @@ def is_try(task):
     if task['metadata'].get('source'):
         result = result or _is_try_url(task['metadata']['source'])
     result = result or task['schedulerId'] in ("gecko-level-1", )
+    return result
+
+
+# is_action {{{1
+def is_action(task):
+    """Determine if a task is an action task.
+
+    Trusted decision and action tasks are important in that they can generate
+    other valid tasks. The verification of decision and action tasks is slightly
+    different, so we need to be able to tell them apart.
+
+    This checks for the following things::
+
+        * ``task.payload.env.ACTION_CALLBACK`` exists
+        * ``task.extra.action`` exists
+
+    Args:
+        task (dict): the task definition to check
+
+    Returns:
+        bool: True if it's an action
+
+    """
+    result = False
+    env = task['payload'].get('env', {})
+    if env.get("ACTION_CALLBACK"):
+        result = True
+    if task.get('extra', {}).get('action') is not None:
+        result = True
     return result
 
 
@@ -541,13 +581,19 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     # even if the taskGroupId doesn't match.
     task_type = guess_task_type(task_name)
     if task_type in DECISION_TASK_TYPES:
-        decision_task_id = task_id
+        parent_task_id = task_id
+        parent_task_type = 'decision'
     else:
+        parent_task_id = get_parent_task_id(task)
         decision_task_id = get_decision_task_id(task)
+        if decision_task_id == parent_task_id:
+            parent_task_type = 'decision'
+        else:
+            parent_task_type = 'action'
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
-    decision_tuple = _craft_dependency_tuple(task_name, 'decision', decision_task_id)
-    dependencies.insert(0, decision_tuple)
+    parent_tuple = _craft_dependency_tuple(task_name, parent_task_type, parent_task_id)
+    dependencies.insert(0, parent_tuple)
 
     log.info('found dependencies: {}'.format(dependencies))
     return dependencies
@@ -716,7 +762,7 @@ async def download_firefox_cot_artifacts(chain):
     artifact_dict = {}
     for link in chain.links:
         task_type = link.task_type
-        if task_type == 'decision':
+        if task_type in PARENT_TASK_TYPES:
             artifact_dict.setdefault(link.task_id, [])
             artifact_dict[link.task_id].append('public/task-graph.json')
     if 'upstreamArtifacts' in chain.task['payload']:
@@ -753,8 +799,6 @@ def verify_cot_signatures(chain):
         except OSError as exc:
             raise CoTError("Can't read {}: {}!".format(path, str(exc)))
         try:
-            # TODO remove verify_sig pref and kwarg when git repo pubkey
-            # verification works reliably!
             body = get_body(
                 gpg, contents,
                 verify_sig=chain.context.config['verify_cot_signature']
@@ -882,7 +926,7 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
 
 
 # verify_firefox_decision_command {{{1
-def verify_firefox_decision_command(decision_link):
+def verify_firefox_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS):
     r"""Verify the decision command for a firefox decision task.
 
     Some example commands::
@@ -921,6 +965,11 @@ def verify_firefox_decision_command(decision_link):
 
     Args:
         decision_link (LinkOfTrust): the decision link to test.
+        mach_commands (tuple): a tuple of tuples, specifying the allowlisted
+            mach commands for a decision task, ignoring options.
+
+    Raises:
+        CoTError: on chain of trust verification error.
 
     """
     log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
@@ -951,7 +1000,7 @@ def verify_firefox_decision_command(decision_link):
             if part.startswith('--'):
                 continue
             non_options.append(part)
-        for mach_command in DECISION_MACH_COMMANDS:
+        for mach_command in mach_commands:
             if tuple(non_options) == mach_command:
                 break
         else:
@@ -965,6 +1014,57 @@ def verify_firefox_decision_command(decision_link):
 async def verify_decision_task(chain, link):
     """Verify the decision task Link.
 
+    This should be called in conjunction with ``verify_parent_task``.
+
+    Currently this function just verifies the command; in the future we should
+    rebuild the decision task definition from source, via json-e.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
+
+    Raises:
+        CoTError: on chain of trust verification error.
+
+    """
+    # TODO: rebuild from json-e.
+    verify_firefox_decision_command(link, mach_commands=DECISION_MACH_COMMANDS)
+
+
+# verify_action_task {{{1
+async def verify_action_task(chain, link):
+    """Verify the action task Link.
+
+    This should be called in conjunction with ``verify_parent_task``.
+
+    Currently this function just verifies the command; in the future we should
+    rebuild the action task definition from the decision task's ``actions.json``
+    and ``task.extra.action`` via json-e.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        link (LinkOfTrust): the task link we're checking.
+
+    Raises:
+        CoTError: on chain of trust verification error.
+
+    """
+    # TODO: download the ``actions.json`` from the decision / parent task;
+    # rebuild from ``task.extra.action`` via json-e
+    verify_firefox_decision_command(link, mach_commands=ACTION_MACH_COMMANDS)
+
+
+# verify_parent_task {{{1
+async def verify_parent_task(chain, link):
+    """Verify the parent task Link.
+
+    Action task verification is currently in the same verification function as
+    decision tasks, because sometimes we'll have an action task masquerading as
+    a decision task, e.g. in templatized actions for release graphs. To make
+    sure our guess of decision or action task isn't fatal, call this function
+    first, and then use ``is_action()`` to determine whether to call
+    ``verify_decision_task`` or ``verify_action_task``.
+
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         link (LinkOfTrust): the task link we're checking.
@@ -977,7 +1077,7 @@ async def verify_decision_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_decision_worker_types']:
         errors.append("{} is not a valid decision workerType!".format(worker_type))
-    # make sure all tasks generated from this decision task match the published task-graph.json
+    # make sure all tasks generated from this parent task match the published task-graph.json
     path = link.get_artifact_full_path('public/task-graph.json')
     if not os.path.exists(path):
         errors.append("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
@@ -985,15 +1085,19 @@ async def verify_decision_task(chain, link):
     link.task_graph = load_json(
         path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
     )
+    # This check may want to move to a per-task check?
     for target_link in chain.get_all_links_in_chain():
-        # Verify the target's task is in the decision task's task graph, unless
-        # it's this task or another decision task.
+        # Verify the target's task is in the parent task's task graph, unless
+        # it's this task or a parent task.
         # https://github.com/mozilla-releng/scriptworker/issues/77
-        if target_link.decision_task_id == link.task_id and \
+        if target_link.parent_task_id == link.task_id and \
                 target_link.task_id != link.task_id and \
-                target_link.task_type != 'decision':
+                target_link.task_type not in PARENT_TASK_TYPES:
             verify_link_in_task_graph(chain, link, target_link)
-    verify_firefox_decision_command(link)
+    if is_action(link.task):
+        await verify_action_task(chain, link)
+    else:
+        await verify_decision_task(chain, link)
     raise_on_errors(errors)
 
 
