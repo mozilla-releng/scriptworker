@@ -2,6 +2,27 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.2.0] - 2017-10-03
+### Added
+- `scriptworker.task.get_parent_task_id` to support the new `task.extra.parent` breadcrumb.
+- `scriptworker.cot.verify.ACTION_MACH_COMMANDS` and `cot.verify.PARENT_TASK_TYPES` to separate action task verification from decision task verification.
+- `scriptworker.cot.verify.ChainOfTrust.parent_task_id` to find the `parent_task_id` later.
+- `scriptworker.cot.verify.LinkOfTrust.parent_task_id` to find the `parent_task_id` later.
+- added a new `action` task type. This uses the same sha allowlist as the `decision` task type.
+- `scriptworker.cot.verify.is_action`, since differentiating between a decision task and an action task requires some task definition introspection.
+- `verify_firefox_decision_command` now takes a `mach_commands` kwarg; for action tasks, we set this to `ACTION_MACH_COMMANDS`
+- `verify_action_task` verifies the action task command.
+- `verify_parent_task` runs the checks previously in `verify_decision_task`; we run this for both action and decision tasks.
+
+### Changed
+- `find_sorted_task_dependencies` now uses the `parent_task_id` rather than the `decision_task_id` for its `parent_tuple`.
+- `download_firefox_cot_artifacts` now downloads `task-graph.json` from action tasks as well as decision tasks
+- `verify_decision_task` now only checks the command. The other checks have been moved to `verify_parent_task`.
+- decision tasks now run `verify_parent_task`.
+
+### Fixed
+- Updated `README.md` to specify `tox` rather than `python setup.py test`
+
 ## [5.1.5] - 2017-10-02
 ### Added
 - added maple to the list of privileged branches.
