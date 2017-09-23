@@ -40,9 +40,9 @@ Testing
 
 Note: GPG tests require gpg 2.0.x!
 
-Without integration tests,
+Without integration tests, install tox, then
 
-``NO_TESTS_OVER_WIRE=1 python setup.py test``
+``NO_TESTS_OVER_WIRE=1 tox -e py35``
 
 With integration tests, first create a client with the ``assume:project:taskcluster:worker-test-scopes`` scope.
 
@@ -62,7 +62,7 @@ Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 
 then
 
-``python setup.py test``
+``tox``
 
 It's also possible to create a ``./secrets.json`` as above, then::
 
