@@ -43,35 +43,37 @@ async def run_loop(context, creds_key="credentials"):
     loop = asyncio.get_event_loop()
     tasks = await claim_work(context)
     status = None
-    if tasks:
-        # Assume only a single task, but should more than one fall through,
-        # run them sequentially.  A side effect is our return status will
-        # be the status of the final task run.
-        for task_defn in tasks.get('tasks', []):
-            status = 0
-            prepare_to_run_task(context, task_defn)
-            loop.create_task(reclaim_task(context, context.task))
-            try:
-                if context.config['verify_chain_of_trust']:
-                    chain = ChainOfTrust(context, context.config['cot_job_type'])
-                    await verify_chain_of_trust(chain)
-                status = await run_task(context)
-                generate_cot(context)
-            except ScriptWorkerException as e:
-                status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(e))
-            try:
-                await upload_artifacts(context)
-            except ScriptWorkerException as e:
-                status = worst_level(status, e.exit_code)
-                log.error("Hit ScriptWorkerException: {}".format(e))
-            except aiohttp.ClientError as e:
-                status = worst_level(status, STATUSES['intermittent-task'])
-                log.error("Hit aiohttp error: {}".format(e))
-            await complete_task(context, status)
-            cleanup(context)
-            await asyncio.sleep(1)
-    await asyncio.sleep(context.config['poll_interval'])
+    if not tasks:
+        await asyncio.sleep(context.config['poll_interval'])
+        return status
+
+    # Assume only a single task, but should more than one fall through,
+    # run them sequentially.  A side effect is our return status will
+    # be the status of the final task run.
+    for task_defn in tasks.get('tasks', []):
+        status = 0
+        prepare_to_run_task(context, task_defn)
+        loop.create_task(reclaim_task(context, context.task))
+        try:
+            if context.config['verify_chain_of_trust']:
+                chain = ChainOfTrust(context, context.config['cot_job_type'])
+                await verify_chain_of_trust(chain)
+            status = await run_task(context)
+            generate_cot(context)
+        except ScriptWorkerException as e:
+            status = worst_level(status, e.exit_code)
+            log.error("Hit ScriptWorkerException: {}".format(e))
+        try:
+            await upload_artifacts(context)
+        except ScriptWorkerException as e:
+            status = worst_level(status, e.exit_code)
+            log.error("Hit ScriptWorkerException: {}".format(e))
+        except aiohttp.ClientError as e:
+            status = worst_level(status, STATUSES['intermittent-task'])
+            log.error("Hit aiohttp error: {}".format(e))
+        await complete_task(context, status)
+        cleanup(context)
+        await asyncio.sleep(1)
     return status
 
 
@@ -94,7 +96,6 @@ async def async_main(context):
         finally:
             rm_lockfile(context)
     await run_loop(context)
-    await asyncio.sleep(context.config['poll_interval'])
 
 
 def main():
