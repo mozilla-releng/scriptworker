@@ -42,7 +42,7 @@ DEFAULT_CONFIG = frozendict({
     "artifact_expiration_hours": 24,
     "task_max_timeout": 60 * 20,
     "reclaim_interval": 300,
-    "poll_interval": 5,
+    "poll_interval": 10,
     "sign_key_timeout": 60 * 2,
 
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
