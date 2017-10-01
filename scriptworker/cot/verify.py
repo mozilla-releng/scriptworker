@@ -538,8 +538,8 @@ def verify_docker_image_sha(chain, link):
         # Using downloaded image from docker hub
         task_type = link.task_type
         image_hash = cot['environment']['imageHash']
-        # XXX we will need some way to allow trusted developers to update these
-        # allowlists
+        if task_type == 'action':
+            task_type = 'decision'
         if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
             errors.append("{} {} docker imageHash {} not in the allowlist!\n{}".format(
                 link.name, link.task_id, image_hash, cot

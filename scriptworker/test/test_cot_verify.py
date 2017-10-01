@@ -451,6 +451,9 @@ def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_
     chain.links = [build_link, decision_link, docker_image_link]
     for link in chain.links:
         cotverify.verify_docker_image_sha(chain, link)
+    # cover action == decision case
+    decision_link.task_type = 'action'
+    cotverify.verify_docker_image_sha(chain, decision_link)
 
 
 def test_verify_docker_image_sha_wrong_built_sha(chain, build_link, decision_link, docker_image_link):
