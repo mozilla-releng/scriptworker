@@ -2,11 +2,24 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.1.5] - 2017-10-02
+### Added
+- added maple to the list of privileged branches.
+
+### Changed
+- changed the default `poll_interval` to 10.
+
+### Fixed
+- updated post-task sleep to 1; we only sleep `poll_interval` only between polls.
+
+### Removed
+- removed date from the list of privileged branches.
+
 ## [5.1.4] - 2017-09-06
-## Fixed
+### Fixed
 - no longer add a decision task's decision task to the chain of trust to verify. This was a regression.
 
-## Removed
+### Removed
 - cleaned up aurora references from everything but pushapk, which uses it.
 
 ## [5.1.3] - 2017-09-01

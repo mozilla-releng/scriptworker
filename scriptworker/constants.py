@@ -194,12 +194,12 @@ DEFAULT_CONFIG = frozendict({
             "^(?P<path>/mozilla-(central|unified))(/|$)",
             "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
             "^(?P<path>/releases/mozilla-(beta|release|esr52))(/|$)",
-            # XXX remove /projects/date when taskcluster nightly migration is
+            # XXX remove /projects/maple when taskcluster relpro migration is
             #     tier1 and landed on mozilla-central
-            # XXX remove /projects/jamun when we no longer release firefox
+            # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             # XXX remove /projects/oak when we no longer test updates against it
-            "^(?P<path>/projects/(date|jamun|oak))(/|$)",
+            "^(?P<path>/projects/(maple|jamun|oak))(/|$)",
         ),
     }), ),
 
@@ -228,13 +228,16 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_trees': frozendict({
         'firefox': frozendict({
             # Which repos can perform release actions?
-            # XXX remove /projects/jamun when we no longer release firefox
+            # XXX remove /projects/maple when taskcluster relpro migration is
+            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             'all-release-branches': (
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
+                "/projects/maple",
             ),
             # Limit things like pushapk to just these branches
             'release': (
@@ -251,9 +254,9 @@ DEFAULT_CONFIG = frozendict({
             ),
 
             # Which repos can do nightly signing?
-            # XXX remove /projects/date when taskcluster nightly migration is
+            # XXX remove /projects/maple when taskcluster relpro migration is
             #     tier1 and landed on mozilla-central
-            # XXX remove /projects/jamun when we no longer release firefox
+            # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             # XXX remove /projects/oak when we no longer test updates against it
             'all-nightly-branches': (
@@ -264,7 +267,7 @@ DEFAULT_CONFIG = frozendict({
                 "/releases/mozilla-esr52",
                 "/projects/jamun",
                 "/projects/oak",
-                "/projects/date",
+                "/projects/maple",
             ),
         }),
     }),
