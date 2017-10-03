@@ -538,6 +538,7 @@ def verify_docker_image_sha(chain, link):
         # Using downloaded image from docker hub
         task_type = link.task_type
         image_hash = cot['environment']['imageHash']
+        # Use the decision docker_image_allowlist for action tasks.
         if task_type == 'action':
             task_type = 'decision'
         if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
@@ -1061,8 +1062,8 @@ async def verify_parent_task(chain, link):
     Action task verification is currently in the same verification function as
     decision tasks, because sometimes we'll have an action task masquerading as
     a decision task, e.g. in templatized actions for release graphs. To make
-    sure our guess of decision or action task isn't fatal, call this function
-    first, and then use ``is_action()`` to determine whether to call
+    sure our guess of decision or action task isn't fatal, we call this
+    function; this function uses ``is_action()`` to determine whether to call
     ``verify_decision_task`` or ``verify_action_task``.
 
     Args:

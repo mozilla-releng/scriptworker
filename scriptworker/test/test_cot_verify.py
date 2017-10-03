@@ -310,6 +310,25 @@ def test_is_try(task):
 ), (
     {
         'payload': {
+        },
+        'extra': {
+            'action': {
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+            'env': {
+                'ACTION_CALLBACK': 'foo'
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
             'env': {
                 'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"
             }
