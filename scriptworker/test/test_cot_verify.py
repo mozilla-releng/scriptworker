@@ -106,6 +106,7 @@ def build_link(chain):
                     'docker-image': 'docker_image_task_id',
                 },
             },
+            'parent': 'decision_task_id',
         },
     }
     yield link
@@ -133,6 +134,66 @@ def decision_link(chain):
             'image': "blah",
         },
         'extra': {},
+    }
+    yield link
+
+
+@pytest.yield_fixture(scope='function')
+def action_link(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'action', 'action_task_id')
+    link.cot = {
+        'taskId': 'action_task_id',
+        'environment': {
+            'imageHash': "sha256:decision_image_sha",
+        },
+    }
+    link.task = {
+        'taskGroupId': 'decision_task_id',
+        'schedulerId': 'scheduler_id',
+        'provisionerId': 'provisioner_id',
+        'workerType': 'workerType',
+        'scopes': [],
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central',
+        },
+        'payload': {
+            'image': "blah",
+        },
+        'extra': {
+            'action': {},
+            'parent': 'decision_task_id',
+        },
+    }
+    yield link
+
+
+@pytest.yield_fixture(scope='function')
+def release_action_link(chain):
+    # Release action tasks look like decision tasks (self-contained graph) but
+    # are action tasks.
+    link = cotverify.LinkOfTrust(chain.context, 'decision', 'relaction_task_id')
+    link.cot = {
+        'taskId': 'relaction_task_id',
+        'environment': {
+            'imageHash': "sha256:decision_image_sha",
+        },
+    }
+    link.task = {
+        'taskGroupId': 'relaction_task_id',
+        'schedulerId': 'scheduler_id',
+        'provisionerId': 'provisioner_id',
+        'workerType': 'workerType',
+        'scopes': [],
+        'metadata': {
+            'source': 'https://hg.mozilla.org/mozilla-central',
+        },
+        'payload': {
+            'image': "blah",
+        },
+        'extra': {
+            'action': {},
+            'parent': 'decision_task_id',
+        },
     }
     yield link
 
@@ -230,6 +291,55 @@ def test_chain_is_try(chain, bools, expected):
 ))
 def test_is_try(task):
     assert cotverify.is_try(task)
+
+
+# is_action {{{1
+@pytest.mark.parametrize("task,expected", ((
+    {
+        'payload': {
+            'env': {
+                'ACTION_CALLBACK': 'foo'
+            }
+        },
+        'extra': {
+            'action': {
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+        },
+        'extra': {
+            'action': {
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+            'env': {
+                'ACTION_CALLBACK': 'foo'
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"
+            }
+        },
+        'metadata': {},
+        'schedulerId': "x"
+    },
+    False
+)))
+def test_is_action(task, expected):
+    assert cotverify.is_action(task) == expected
 
 
 # get_link {{{1
@@ -360,6 +470,9 @@ def test_verify_docker_image_sha(chain, build_link, decision_link, docker_image_
     chain.links = [build_link, decision_link, docker_image_link]
     for link in chain.links:
         cotverify.verify_docker_image_sha(chain, link)
+    # cover action == decision case
+    decision_link.task_type = 'action'
+    cotverify.verify_docker_image_sha(chain, decision_link)
 
 
 def test_verify_docker_image_sha_wrong_built_sha(chain, build_link, decision_link, docker_image_link):
@@ -402,6 +515,10 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
     [('build:decision', 'decision_task_id')],
+    'build'
+), (
+    {'taskGroupId': 'decision_task_id', 'extra': {'parent': 'action_task_id'}, 'payload': {}},
+    [('build:action', 'action_task_id')],
     'build'
 ), (
     {
@@ -843,32 +960,36 @@ def test_verify_firefox_decision_command(decision_link, command, raises):
         cotverify.verify_firefox_decision_command(decision_link)
 
 
-# verify_decision_task {{{1
+# verify_parent_task {{{1
 @pytest.mark.asyncio
-async def test_verify_decision_task(chain, decision_link, build_link, mocker):
+async def test_verify_parent_task(chain, action_link, release_action_link,
+                                  decision_link, build_link, mocker):
+    for parent_link in (action_link, release_action_link, decision_link):
+        build_link.decision_task_id = parent_link.decision_task_id
+        build_link.parent_task_id = parent_link.task_id
 
-    def task_graph(*args, **kwargs):
-        return {
-            build_link.task_id: {
-                'task': deepcopy(build_link.task)
-            },
-            chain.task_id: {
-                'task': deepcopy(chain.task)
-            },
-        }
+        def task_graph(*args, **kwargs):
+            return {
+                build_link.task_id: {
+                    'task': deepcopy(build_link.task)
+                },
+                chain.task_id: {
+                    'task': deepcopy(chain.task)
+                },
+            }
 
-    path = os.path.join(decision_link.cot_dir, "public", "task-graph.json")
-    makedirs(os.path.dirname(path))
-    touch(path)
-    chain.links = [decision_link, build_link]
-    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
-    mocker.patch.object(cotverify, 'load_json', new=task_graph)
-    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
-    await cotverify.verify_decision_task(chain, decision_link)
+        path = os.path.join(parent_link.cot_dir, "public", "task-graph.json")
+        makedirs(os.path.dirname(path))
+        touch(path)
+        chain.links = [parent_link, build_link]
+        parent_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+        mocker.patch.object(cotverify, 'load_json', new=task_graph)
+        mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
+        await cotverify.verify_parent_task(chain, parent_link)
 
 
 @pytest.mark.asyncio
-async def test_verify_decision_task_worker_type(chain, decision_link, build_link, mocker):
+async def test_verify_parent_task_worker_type(chain, decision_link, build_link, mocker):
 
     def task_graph(*args, **kwargs):
         return {
@@ -888,15 +1009,15 @@ async def test_verify_decision_task_worker_type(chain, decision_link, build_link
     mocker.patch.object(cotverify, 'load_json', new=task_graph)
     mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
     with pytest.raises(CoTError):
-        await cotverify.verify_decision_task(chain, decision_link)
+        await cotverify.verify_parent_task(chain, decision_link)
 
 
 @pytest.mark.asyncio
-async def test_verify_decision_task_missing_graph(chain, decision_link, build_link, mocker):
+async def test_verify_parent_task_missing_graph(chain, decision_link, build_link, mocker):
     chain.links = [decision_link, build_link]
     decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
     with pytest.raises(CoTError):
-        await cotverify.verify_decision_task(chain, decision_link)
+        await cotverify.verify_parent_task(chain, decision_link)
 
 
 # verify_build_task {{{1
@@ -1067,6 +1188,7 @@ async def test_trace_back_to_firefox_tree_bad_cot_product(chain):
 async def test_trace_back_to_firefox_tree_unknown_repo(chain, decision_link,
                                                        build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
+    docker_image_link.parent_task_id = 'other'
     docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/unknown/repo"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
@@ -1086,6 +1208,7 @@ async def test_trace_back_to_firefox_tree_docker_unknown_repo(chain, decision_li
 async def test_trace_back_to_firefox_tree_diff_repo(chain, decision_link,
                                                     build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
+    docker_image_link.parent_task_id = 'other'
     docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-beta"
     chain.links = [decision_link, build_link, docker_image_link]
     await cotverify.trace_back_to_firefox_tree(chain)

@@ -70,14 +70,34 @@ def get_run_id(claim_task):
 def get_decision_task_id(task):
     """Given a task dict, return the decision taskId.
 
+    By convention, the decision task of the ``taskId`` is the task's ``taskGroupId``.
+
     Args:
         task (dict): the task dict.
 
     Returns:
-        str: the taskId.
+        str: the taskId of the decision task.
 
     """
     return task['taskGroupId']
+
+
+# get_parent_task_id {{{1
+def get_parent_task_id(task):
+    """Given a task dict, return the parent taskId.
+
+    The parent taskId could be a decision taskId, or an action taskId.
+    The parent is the task that created this task; it should have a
+    ``task-graph.json`` containing this task's definition as an artifact.
+
+    Args:
+        task (dict): the task dict
+
+    Returns:
+        str: the taskId of the parent.
+
+    """
+    return task.get('extra', {}).get('parent', get_decision_task_id(task))
 
 
 # get_worker_type {{{1
