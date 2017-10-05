@@ -71,7 +71,8 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 
 
 # retry_request {{{1
-async def retry_request(*args, retry_exceptions=(ScriptWorkerRetryException, ),
+async def retry_request(*args, retry_exceptions=(asyncio.TimeoutError,
+                                                 ScriptWorkerRetryException),
                         retry_async_kwargs=None, **kwargs):
     """Retry the ``request`` function.
 
