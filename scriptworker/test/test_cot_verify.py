@@ -1109,9 +1109,17 @@ async def test_verify_task_types(chain, decision_link, build_link, docker_image_
 # verify_docker_worker_task {{{1
 @pytest.mark.asyncio
 async def test_verify_docker_worker_task(mocker):
-    mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=noop_sync)
-    mocker.patch.object(cotverify, 'verify_docker_image_sha', new=noop_sync)
-    await cotverify.verify_docker_worker_task(mock.MagicMock(), mock.MagicMock())
+    chain = mock.MagicMock()
+    link = mock.MagicMock()
+    check = mock.MagicMock()
+    mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=check.method1)
+    mocker.patch.object(cotverify, 'verify_docker_image_sha', new=check.method2)
+    await cotverify.verify_docker_worker_task(chain, chain)
+    check.method1.assert_not_called()
+    check.method2.assert_not_called()
+    await cotverify.verify_docker_worker_task(chain, link)
+    check.method1.assert_called_once_with(link)
+    check.method2.assert_called_once_with(chain, link)
 
 
 # verify_generic_worker_task {{{1
