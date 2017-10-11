@@ -240,7 +240,7 @@ async def complete_task(context, result):
         if result == 0:
             log.info("Reporting task complete...")
             response = await context.temp_queue.reportCompleted(*args)
-        elif result in list(range(2, 7)):
+        elif result != 1 and result in REVERSED_STATUSES:
             reason = REVERSED_STATUSES[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
