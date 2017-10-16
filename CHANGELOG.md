@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [5.2.2] - 2017-10-16
 ### Added
 - Added integration tests that run `verify_chain_of_trust` against production tasks, to make sure `cot.verify` changes are backwards compatible.
 
