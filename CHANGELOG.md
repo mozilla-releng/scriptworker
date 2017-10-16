@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+### Fixed
+- stopped verifying docker-worker cot on the chain object, which may not have a cot artifact to verify.
+- updated the `retry_exceptions` for `retry_request` to include `asyncio.TimeoutError`.
+
 ## [5.2.1] - 2017-10-11
 ### Added
 - scriptworker will now retry (`intermittent-task` status) on a script exit code of -11, which corresponds to a python segfault.
