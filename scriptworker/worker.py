@@ -73,7 +73,6 @@ async def run_loop(context, creds_key="credentials"):
             log.error("Hit aiohttp error: {}".format(e))
         await complete_task(context, status)
         cleanup(context)
-        await asyncio.sleep(1)
     return status
 
 
