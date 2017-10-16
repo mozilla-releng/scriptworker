@@ -284,4 +284,7 @@ STATUSES = {
     'superseded': 6,
     'intermittent-task': 7,
 }
-REVERSED_STATUSES = {v: k for k, v in STATUSES.items()}
+# Retry on python segfault
+_rev = {v: k for k, v in STATUSES.items()}
+_rev[-11] = 'intermittent-task'
+REVERSED_STATUSES = _rev
