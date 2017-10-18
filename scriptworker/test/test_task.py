@@ -150,6 +150,23 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
 
 
 @pytest.mark.asyncio
+async def test_run_task_negative_11(context, mocker):
+    async def fake_wait():
+        return -11
+
+    fake_proc = mock.MagicMock()
+    fake_proc.wait = fake_wait
+
+    async def fake_exec(*args, **kwargs):
+        return fake_proc
+
+    mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
+
+    status = await task.run_task(context)
+    log_file = log.get_log_filename(context)
+    contents = read(log_file)
+    assert contents == "Automation Error: Python exited with signal -11\n"
+    
 async def test_reclaim_task_mock(context, mocker, event_loop):
 
     async def fake_reclaim(*args, **kwargs):
