@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.2.2] - 2017-10-16
+### Added
+- Added integration tests that run `verify_chain_of_trust` against production tasks, to make sure `cot.verify` changes are backwards compatible.
+
+### Fixed
+- stopped verifying docker-worker cot on the chain object, which may not have a cot artifact to verify.
+- updated the `retry_exceptions` for `retry_request` to include `asyncio.TimeoutError`.
+
+### Removed
+- Removed the `await asyncio.sleep(1)` after running a task.
+
 ## [5.2.1] - 2017-10-11
 ### Added
 - scriptworker will now retry (`intermittent-task` status) on a script exit code of -11, which corresponds to a python segfault.

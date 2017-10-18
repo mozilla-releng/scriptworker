@@ -1280,14 +1280,19 @@ async def verify_docker_worker_task(chain, link):
 
     Args:
         chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+        link (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
 
     Raises:
         CoTError: on failure.
 
     """
-    check_interactive_docker_worker(link)
-    verify_docker_image_sha(chain, link)
+    if chain != link:
+        # These two checks will die on `link.cot` if `link` is a ChainOfTrust
+        # object (e.g., the task we're running `verify_cot` against is a
+        # docker-worker task). So only run these tests if they are not the chain
+        # object.
+        check_interactive_docker_worker(link)
+        verify_docker_image_sha(chain, link)
 
 
 # verify_generic_worker_task {{{1
@@ -1296,7 +1301,7 @@ async def verify_generic_worker_task(chain, link):
 
     Args:
         chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
+        link (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
 
     Raises:
         CoTError: on failure.
