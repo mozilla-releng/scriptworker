@@ -165,7 +165,7 @@ async def test_run_task_negative_11(context, mocker):
     status = await task.run_task(context)
     log_file = log.get_log_filename(context)
     contents = read(log_file)
-    assert contents == "Automation Error: Python exited with signal -11\n"
+    assert contents == "Automation Error: python exited with signal -11\n"
     
 async def test_reclaim_task_mock(context, mocker, event_loop):
 
