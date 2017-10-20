@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [5.2.3] - 2017-10-20
+### Fixed
+- Made the exit status more explicit on exit code -11.
+- Fixed `verify_sig` to return the message body if `gpg.decrypt` returns an empty body.
+
 ## [5.2.2] - 2017-10-16
 ### Added
 - Added integration tests that run `verify_chain_of_trust` against production tasks, to make sure `cot.verify` changes are backwards compatible.

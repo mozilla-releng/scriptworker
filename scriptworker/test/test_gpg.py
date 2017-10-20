@@ -240,6 +240,7 @@ def test_verify_bad_signatures(base_context, params):
         sgpg.verify_signature(gpg, data)
 
 
+# get_body {{{1
 @pytest.mark.parametrize("text", [v for _, v in sorted(TEXT.items())])
 @pytest.mark.parametrize("params", GOOD_GPG_KEYS.items())
 @pytest.mark.parametrize("verify_sig", (True, False))
@@ -249,6 +250,31 @@ def test_get_body(base_context, text, params, verify_sig):
     if not text.endswith('\n'):
         text = "{}\n".format(text)
     assert sgpg.get_body(gpg, data, verify_sig=verify_sig) == text
+
+
+def test_get_body_cleartext(mocker):
+    d = {"a": "b"}
+    dstr = json.dumps(d)
+
+    def signed_body(*args, **kwargs):
+        return dstr
+
+    def unsigned_body(*args, **kwargs):
+        return ''
+
+    def check_body(gpg):
+        body = sgpg.get_body(gpg, dstr, verify_sig=False)
+        assert json.loads(body) == d
+
+    mocker.patch.object(sgpg, 'verify_signature', new=noop_sync)
+    gpg = mock.MagicMock()
+    # With a signed body, gpg.decrypt() will return the decrypted contents.
+    gpg.decrypt = signed_body
+    check_body(gpg)
+    # With an unsigned body, gpg.decrypt() will return an empty string.
+    # get_body should return the original string.
+    gpg.decrypt = unsigned_body
+    check_body(gpg)
 
 
 # create_gpg_conf {{{1
