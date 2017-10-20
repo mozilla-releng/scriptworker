@@ -542,11 +542,13 @@ def get_body(gpg, signed_data, gpg_home=None, verify_sig=True, **kwargs):
         ScriptWorkerGPGException: on signature verification failure.
 
     """
-    # XXX remove verify_sig kwarg when pubkeys are in git repo
     if verify_sig:
         verify_signature(gpg, signed_data)
-    body = gpg.decrypt(signed_data, **kwargs)
-    return str(body)
+    body = str(gpg.decrypt(signed_data, **kwargs))
+    # On dev/dep scriptworker pools, the cot artifact often isn't signed at all
+    if not verify_sig and not body:
+        return(signed_data)
+    return body
 
 
 # key signature verification {{{1
