@@ -11,7 +11,8 @@ import tempfile
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
     create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
     _force_mimetypes_to_plain_text, _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
-    get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path
+    get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
+    get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
 
@@ -210,27 +211,58 @@ def test_download_artifacts(context, event_loop):
 
 
 def test_get_upstream_artifacts_full_paths_per_task_id(context):
+    artifacts_to_succeed = [{
+        'paths': ['public/file_a'],
+        'taskId': 'dependency1',
+        'taskType': 'signing',
+    }, {
+        'paths': ['public/file_b'],
+        'taskId': 'dependency2',
+        'taskType': 'signing',
+    }]
+
     context.task['payload'] = {
         'upstreamArtifacts': [{
-            'paths': ['public/file_a'],
-            'taskId': 'dependency1',
+            'paths': ['public/failed_optional_file1'],
+            'taskId': 'failedDependency1',
             'taskType': 'signing',
+            'optional': True
         }, {
-            'paths': ['public/file_b'],
-            'taskId': 'dependency2',
+            'paths': ['public/failed_optional_file2', 'public/failed_optional_file3'],
+            'taskId': 'failedDependency2',
             'taskType': 'signing',
+            'optional': True
         }],
     }
 
-    for artifact in context.task['payload']['upstreamArtifacts']:
+    context.task['payload']['upstreamArtifacts'].extend(artifacts_to_succeed)
+    for artifact in artifacts_to_succeed:
         folder = os.path.join(context.config['work_dir'], 'cot', artifact['taskId'])
         os.makedirs(os.path.join(folder, 'public'))
         touch(os.path.join(folder, artifact['paths'][0]))
 
-    assert get_upstream_artifacts_full_paths_per_task_id(context) == {
+    succeeded_artifacts, failed_artifacts = get_upstream_artifacts_full_paths_per_task_id(context)
+
+    assert succeeded_artifacts == {
         'dependency1': [os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')],
         'dependency2': [os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b')],
     }
+    assert failed_artifacts == {
+        'failedDependency1': ['public/failed_optional_file1'],
+        'failedDependency2': ['public/failed_optional_file2', 'public/failed_optional_file3'],
+    }
+
+
+def test_fail_get_upstream_artifacts_full_paths_per_task_id(context):
+    context.task['payload'] = {
+        'upstreamArtifacts': [{
+            'paths': ['public/failed_mandatory_file'],
+            'taskId': 'failedDependency',
+            'taskType': 'signing',
+        }]
+    }
+    with pytest.raises(ScriptWorkerTaskException):
+        get_upstream_artifacts_full_paths_per_task_id(context)
 
 
 def test_get_and_check_single_upstream_artifact_full_path(context):
@@ -259,3 +291,32 @@ def test_get_single_upstream_artifact_full_path(context):
 
     assert get_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a') == \
         os.path.join(context.config['work_dir'], 'cot', 'non-existing-dep', 'public', 'file_a')
+
+
+@pytest.mark.parametrize('upstream_artifacts, expected', ((
+    [{}], {},
+), (
+    [{'taskId': 'someTaskId', 'paths': ['mandatory_artifact_1']}], {},
+), (
+    [{'taskId': 'someTaskId', 'paths': ['optional_artifact_1'], 'optional': True}],
+    {'someTaskId': ['optional_artifact_1']},
+), (
+    [{'taskId': 'someTaskId', 'paths': ['optional_artifact_1', 'optional_artifact_2'], 'optional': True}],
+    {'someTaskId': ['optional_artifact_1', 'optional_artifact_2']},
+), (
+    [
+        {'taskId': 'someTaskId', 'paths': ['optional_artifact_1'], 'optional': True},
+        {'taskId': 'someOtherTaskId', 'paths': ['optional_artifact_2'], 'optional': True},
+        {'taskId': 'anotherOtherTaskId', 'paths': ['mandatory_artifact_1']},
+    ],
+    {'someTaskId': ['optional_artifact_1'], 'someOtherTaskId': ['optional_artifact_2']},
+), (
+    [
+        {'taskId': 'taskIdGivenThreeTimes', 'paths': ['optional_artifact_1'], 'optional': True},
+        {'taskId': 'taskIdGivenThreeTimes', 'paths': ['mandatory_artifact_1']},
+        {'taskId': 'taskIdGivenThreeTimes', 'paths': ['optional_artifact_2'], 'optional': True},
+    ],
+    {'taskIdGivenThreeTimes': ['optional_artifact_1', 'optional_artifact_2']},
+)))
+def test_get_optional_artifacts_per_task_id(upstream_artifacts, expected):
+    assert get_optional_artifacts_per_task_id(upstream_artifacts) == expected

@@ -13,7 +13,7 @@ import pytest
 import tempfile
 from taskcluster.exceptions import TaskclusterFailure
 import scriptworker.cot.verify as cotverify
-from scriptworker.exceptions import CoTError, ScriptWorkerGPGException
+from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
 from scriptworker.utils import makedirs
 from . import noop_async, noop_sync, rw_context, tmpdir, touch
 
@@ -699,20 +699,27 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loo
 async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
 
     async def fake_download(x, y, path):
+        if path == 'failed_path':
+            raise DownloadError('')
         return path
 
-    artifact_dict = {'task_id': ['path1', 'path2']}
+    chain.task['payload']['upstreamArtifacts'] = [
+        {'taskId': 'task_id', 'paths': ['path1', 'path2']},
+        {'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True},
+    ]
+    artifact_dict = {
+        'task_id': ['path1', 'path2', 'failed_path'],
+    }
     if raises:
         mocker.patch.object(cotverify, 'download_cot_artifact', new=die_async)
         with pytest.raises(CoTError):
-            await cotverify.download_cot_artifacts(chain, artifact_dict)
+            await cotverify.download_cot_artifacts(chain)
     else:
         mocker.patch.object(cotverify, 'download_cot_artifact', new=fake_download)
-        result = await cotverify.download_cot_artifacts(chain, artifact_dict)
+        result = await cotverify.download_cot_artifacts(chain)
         assert sorted(result) == ['path1', 'path2']
 
 
-# download_firefox_cot_artifacts {{{1
 @pytest.mark.parametrize("upstream_artifacts,expected", ((
     None, {'decision_task_id': ['public/task-graph.json']}
 ), (
@@ -730,18 +737,12 @@ async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
     }
 )))
 @pytest.mark.asyncio
-async def test_download_firefox_cot_artifacts(chain, decision_link, build_link,
-                                              upstream_artifacts, expected,
-                                              docker_image_link, mocker, event_loop):
-
-    async def fake_download(_, result):
-        return result
+async def test_get_all_artifacts_per_task_id(chain, decision_link, build_link,
+                                             upstream_artifacts, expected,
+                                             docker_image_link, mocker, event_loop):
 
     chain.links = [decision_link, build_link, docker_image_link]
-    if upstream_artifacts is not None:
-        chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
-    mocker.patch.object(cotverify, 'download_cot_artifacts', new=fake_download)
-    assert expected == await cotverify.download_firefox_cot_artifacts(chain)
+    assert expected == cotverify.get_all_artifacts_per_task_id(chain, upstream_artifacts)
 
 
 # verify_cot_signatures {{{1
@@ -1231,7 +1232,7 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
         if exc is not None:
             raise exc("blah")
 
-    for func in ('build_task_dependencies', 'download_cot', 'download_firefox_cot_artifacts',
+    for func in ('build_task_dependencies', 'download_cot', 'download_cot_artifacts',
                  'verify_task_types', 'verify_worker_impls'):
         mocker.patch.object(cotverify, func, new=noop_async)
     for func in ('verify_cot_signatures', 'check_num_tasks'):

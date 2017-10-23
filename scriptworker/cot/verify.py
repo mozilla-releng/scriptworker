@@ -23,7 +23,8 @@ import shlex
 import sys
 import tempfile
 from urllib.parse import unquote, urlparse
-from scriptworker.artifacts import download_artifacts, get_artifact_url, get_single_upstream_artifact_full_path
+from scriptworker.artifacts import download_artifacts, get_artifact_url, get_single_upstream_artifact_full_path, \
+    get_optional_artifacts_per_task_id
 from scriptworker.config import read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -31,7 +32,8 @@ from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGExce
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import get_decision_task_id, get_parent_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm
+from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm, \
+    get_results_and_future_exceptions, add_enumerable_item_to_dict
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
@@ -714,64 +716,75 @@ async def download_cot_artifact(chain, task_id, path):
 
 
 # download_cot_artifacts {{{1
-async def download_cot_artifacts(chain, artifact_dict):
-    """Call ``download_cot_artifact`` in parallel for each key/value in ``artifact_dict``.
+async def download_cot_artifacts(chain):
+    """Call ``download_cot_artifact`` in parallel for each "upstreamArtifacts".
+
+    Optional artifacts are allowed to not be downloaded.
 
     Args:
         chain (ChainOfTrust): the chain of trust object
-        artifact_dict (dict): maps task_id to list of paths of artifacts to download
 
     Returns:
-        list: list of full paths to artifacts
+        list: list of full paths to downloaded artifacts. Failed optional artifacts
+        aren't returned
 
     Raises:
-        CoTError: on chain of trust sha validation error
-        DownloadError: on download error
+        CoTError: on chain of trust sha validation error, on a mandatory artifact
+        DownloadError: on download error on a mandatory artifact
 
     """
-    tasks = []
-    for task_id, paths in artifact_dict.items():
+    upstream_artifacts = chain.task['payload'].get('upstreamArtifacts', [])
+    all_artifacts_per_task_id = get_all_artifacts_per_task_id(chain, upstream_artifacts)
+    optional_artifacts_per_task_id = get_optional_artifacts_per_task_id(upstream_artifacts)
+
+    mandatory_artifact_tasks = []
+    optional_artifact_tasks = []
+    for task_id, paths in all_artifacts_per_task_id.items():
         for path in paths:
-            tasks.append(
-                asyncio.ensure_future(
-                    download_cot_artifact(
-                        chain, task_id, path
-                    )
-                )
-            )
-    full_paths = await raise_future_exceptions(tasks)
-    return full_paths
+            coroutine = asyncio.ensure_future(download_cot_artifact(chain, task_id, path))
+
+            is_artifact_optional = path in optional_artifacts_per_task_id.get(task_id, [])
+            if is_artifact_optional:
+                optional_artifact_tasks.append(coroutine)
+            else:
+                mandatory_artifact_tasks.append(coroutine)
+
+    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    succeeded_optional_artifacts_paths, failed_optional_artifacts = \
+        await get_results_and_future_exceptions(optional_artifact_tasks)
+
+    if failed_optional_artifacts:
+        error_messages = '\n'.join(' * '.format(failed_optional_artifacts))
+        log.warn('Could not download {} artifacts:'.format(len(failed_optional_artifacts), error_messages))
+
+    return mandatory_artifacts_paths + succeeded_optional_artifacts_paths
 
 
-# download_firefox_cot_artifacts {{{1
-async def download_firefox_cot_artifacts(chain):
-    """Download artifacts needed for firefox chain of trust verification.
-
-    This is only task-graph.json so far.
+def get_all_artifacts_per_task_id(chain, upstream_artifacts):
+    """Return every artifact to download, including the Chain Of Trust Artifacts.
 
     Args:
         chain (ChainOfTrust): the chain of trust object
+        upstream_artifacts: the list of upstream artifact definitions
 
     Returns:
-        list: list of full paths to artifacts
-
-    Raises:
-        CoTError: on chain of trust sha validation error
-        DownloadError: on download error
+        dict: list of paths to downloaded artifacts ordered by taskId
 
     """
-    artifact_dict = {}
+    all_artifacts_per_task_id = {}
     for link in chain.links:
-        task_type = link.task_type
-        if task_type in PARENT_TASK_TYPES:
-            artifact_dict.setdefault(link.task_id, [])
-            artifact_dict[link.task_id].append('public/task-graph.json')
-    if 'upstreamArtifacts' in chain.task['payload']:
-        for upstream_dict in chain.task['payload']['upstreamArtifacts']:
-            artifact_dict.setdefault(upstream_dict['taskId'], [])
-            for path in upstream_dict['paths']:
-                artifact_dict[upstream_dict['taskId']].append(path)
-    return await download_cot_artifacts(chain, artifact_dict)
+        if link.task_type in PARENT_TASK_TYPES:
+            add_enumerable_item_to_dict(
+                dict_=all_artifacts_per_task_id, key=link.task_id, item='public/task-graph.json'
+            )
+
+    if upstream_artifacts:
+        for upstream_dict in upstream_artifacts:
+            add_enumerable_item_to_dict(
+                dict_=all_artifacts_per_task_id, key=upstream_dict['taskId'], item=upstream_dict['paths']
+            )
+
+    return all_artifacts_per_task_id
 
 
 # verify_cot_signatures {{{1
@@ -1484,7 +1497,7 @@ async def verify_chain_of_trust(chain):
             # verify the signatures and populate the ``link.cot``s
             verify_cot_signatures(chain)
             # download all other artifacts needed to verify chain of trust
-            await download_firefox_cot_artifacts(chain)
+            await download_cot_artifacts(chain)
             # verify the task types, e.g. decision
             task_count = await verify_task_types(chain)
             check_num_tasks(chain, task_count)
