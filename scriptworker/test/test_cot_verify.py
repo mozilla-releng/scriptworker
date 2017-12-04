@@ -125,6 +125,7 @@ def decision_link(chain):
         'taskGroupId': 'decision_task_id',
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
+        'taskId': 'decision_task_id',
         'workerType': 'workerType',
         'scopes': [],
         'metadata': {
@@ -506,6 +507,13 @@ def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, decision_link)
 
 
+def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_link, docker_image_link):
+    decision_link._cot = None
+    chain.links = [build_link, decision_link, docker_image_link]
+    # Non-downloaded CoT may happen on non-exiting optional artifacts
+    cotverify.verify_docker_image_sha(chain, decision_link)
+
+
 # find_sorted_task_dependencies{{{1
 @pytest.mark.parametrize("task,expected,task_type", ((
     # Make sure we don't follow other_task_id on a decision task
@@ -716,6 +724,15 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loo
             await cotverify.download_cot_artifact(chain, 'task_id', path)
     else:
         await cotverify.download_cot_artifact(chain, 'task_id', path)
+
+
+@pytest.mark.asyncio
+async def test_download_cot_artifact_no_downloaded_cot(chain, mocker, event_loop):
+    link = mock.MagicMock()
+    link.task_id = 'task_id'
+    link.cot = None
+    chain.links = [link]
+    await cotverify.download_cot_artifact(chain, 'task_id', 'path')
 
 
 # download_cot_artifacts {{{1
