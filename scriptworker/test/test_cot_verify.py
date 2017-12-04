@@ -627,26 +627,51 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
 
 
 # download_cot {{{1
-@pytest.mark.parametrize("raises", (True, False))
+@pytest.mark.parametrize('upstream_artifacts, raises, download_artifacts_mock', ((
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']}],
+    True,
+    die_async,
+), (
+    [{'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
+    False,
+    die_async,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
+    {'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
+    True,
+    die_async,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},],
+    False,
+    None,
+), (
+    [],
+    False,
+    None,
+)))
 @pytest.mark.asyncio
-async def test_download_cot(chain, mocker, raises, event_loop):
+async def test_download_cot(chain, mocker, event_loop, upstream_artifacts, raises, download_artifacts_mock):
     async def down(*args, **kwargs):
         return ['x']
+
+    if download_artifacts_mock is None:
+        download_artifacts_mock = down
 
     def sha(*args, **kwargs):
         return "sha"
 
     m = mock.MagicMock()
-    m.task_id = "x"
+    m.task_id = "task_id"
     m.cot_dir = "y"
     chain.links = [m]
+    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
     mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
     if raises:
-        mocker.patch.object(cotverify, 'download_artifacts', new=die_async)
+        mocker.patch.object(cotverify, 'download_artifacts', new=download_artifacts_mock)
         with pytest.raises(CoTError):
             await cotverify.download_cot(chain)
     else:
-        mocker.patch.object(cotverify, 'download_artifacts', new=down)
+        mocker.patch.object(cotverify, 'download_artifacts', new=download_artifacts_mock)
         mocker.patch.object(cotverify, 'get_hash', new=sha)
         await cotverify.download_cot(chain)
 
@@ -720,6 +745,94 @@ async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
         assert sorted(result) == ['path1', 'path2']
 
 
+@pytest.mark.parametrize('upstream_artifacts, task_id, expected', ((
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1', 'id1_path2'],
+    }, {
+        'taskId': 'id2',
+        'paths': ['id2_path1', 'id2_path2'],
+    }],
+    'id1',
+    True
+), (
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1', 'id1_path2'],
+        'optional': True,
+    }, {
+        'taskId': 'id2',
+        'paths': ['id2_path1', 'id2_path2'],
+    }],
+    'id1',
+    False
+), (
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1'],
+        'optional': True,
+    }, {
+        'taskId': 'id2',
+        'paths': ['id2_path1', 'id2_path2'],
+    }, {
+        'taskId': 'id1',
+        'paths': ['id1_path2'],
+    }],
+    'id1',
+    True,
+)))
+def test_is_task_required_by_any_mandatory_artifact(chain, upstream_artifacts, task_id, expected):
+    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
+    assert cotverify.is_task_required_by_any_mandatory_artifact(chain, task_id) == expected
+
+
+@pytest.mark.parametrize('upstream_artifacts, task_id, path, expected', ((
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1', 'id1_path2'],
+    }],
+    'id1',
+    'id1_path1',
+    False,
+), (
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1', 'id1_path2'],
+        'optional': True,
+    }],
+    'id1',
+    'id1_path1',
+    True
+), (
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1'],
+        'optional': True,
+    }, {
+        'taskId': 'id1',
+        'paths': ['id1_path2'],
+    }],
+    'id1',
+    'id1_path1',
+    True,
+), (
+    [{
+        'taskId': 'id1',
+        'paths': ['id1_path1'],
+        'optional': True,
+    }, {
+        'taskId': 'id1',
+        'paths': ['id1_path2'],
+    }],
+    'id1',
+    'id1_path2',
+    False,
+)))
+def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected):
+    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
+    assert cotverify.is_artifact_optional(chain, task_id, path) == expected
+
+
 @pytest.mark.parametrize("upstream_artifacts,expected", ((
     None, {'decision_task_id': ['public/task-graph.json']}
 ), (
@@ -745,11 +858,29 @@ async def test_get_all_artifacts_per_task_id(chain, decision_link, build_link,
     assert expected == cotverify.get_all_artifacts_per_task_id(chain, upstream_artifacts)
 
 
-# verify_cot_signatures {{{1
-def test_verify_cot_signatures_no_file(chain, build_link, mocker):
+@pytest.mark.parametrize('upstream_artifacts, raises', ((
+    [{'taskId': 'build_task_id', 'paths': ['path1', 'path2']}],
+    True,
+), (
+    [{'taskId': 'build_task_id', 'paths': ['failed_path'], 'optional': True}],
+    False,
+), (
+    [{'taskId': 'build_task_id', 'paths': ['path1', 'path2']},
+    {'taskId': 'build_task_id', 'paths': ['failed_path'], 'optional': True}],
+    True,
+), (
+    [],
+    False,
+)))
+def test_verify_cot_signatures_no_file(chain, build_link, mocker, upstream_artifacts, raises):
     chain.links = [build_link]
     mocker.patch.object(cotverify, 'GPG', new=noop_sync)
-    with pytest.raises(CoTError):
+
+    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.verify_cot_signatures(chain)
+    else:
         cotverify.verify_cot_signatures(chain)
 
 

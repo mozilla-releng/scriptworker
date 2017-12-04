@@ -506,6 +506,12 @@ def verify_docker_image_sha(chain, link):
     cot = link.cot
     task = link.task
     errors = []
+
+    if not cot:
+        log.warn('Chain of Trust for {} does not exist. See above log for more details. \
+Skipping docker image sha verification'.format(task['taskId']))
+        return
+
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
@@ -657,7 +663,8 @@ async def download_cot(chain):
         DownloadError: on failure.
 
     """
-    async_tasks = []
+    mandatory_artifact_tasks = []
+    optional_artifact_tasks = []
     # only deal with chain.links, which are previously finished tasks with
     # signed chain of trust artifacts.  ``chain.task`` is the current running
     # task, and will not have a signed chain of trust artifact yet.
@@ -665,15 +672,28 @@ async def download_cot(chain):
         task_id = link.task_id
         url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
-        async_tasks.append(
-            asyncio.ensure_future(
-                download_artifacts(
-                    chain.context, [url], parent_dir=parent_dir,
-                    valid_artifact_task_ids=[task_id]
-                )
+        coroutine = asyncio.ensure_future(
+            download_artifacts(
+                chain.context, [url], parent_dir=parent_dir,
+                valid_artifact_task_ids=[task_id]
             )
         )
-    paths = await raise_future_exceptions(async_tasks)
+
+        if is_task_required_by_any_mandatory_artifact(chain, task_id):
+            mandatory_artifact_tasks.append(coroutine)
+        else:
+            optional_artifact_tasks.append(coroutine)
+
+    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    succeeded_optional_artifacts_paths, failed_optional_artifacts = \
+        await get_results_and_future_exceptions(optional_artifact_tasks)
+
+    if failed_optional_artifacts:
+        error_messages = '\n'.join(' * '.format(failed_optional_artifacts))
+        log.warn('Could not download {} "chainOfTrust.json.asc". Although, they were not needed by \
+any mandatory artifact. Continuing CoT verifications. Errors gotten: {}'.format(len(failed_optional_artifacts), error_messages))
+
+    paths = mandatory_artifacts_paths + succeeded_optional_artifacts_paths
     for path in paths:
         sha = get_hash(path[0])
         log.debug("{} downloaded; hash is {}".format(path[0], sha))
@@ -697,6 +717,11 @@ async def download_cot_artifact(chain, task_id, path):
     """
     link = chain.get_link(task_id)
     log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
+    if not link.cot:
+        log.warn('Chain of Trust for "{}" in {} does not exist. See above log for more details. \
+Skipping download of this artifact'.format(path, task_id))
+        return
+
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
     url = get_artifact_url(chain.context, task_id, path)
@@ -735,7 +760,6 @@ async def download_cot_artifacts(chain):
     """
     upstream_artifacts = chain.task['payload'].get('upstreamArtifacts', [])
     all_artifacts_per_task_id = get_all_artifacts_per_task_id(chain, upstream_artifacts)
-    optional_artifacts_per_task_id = get_optional_artifacts_per_task_id(upstream_artifacts)
 
     mandatory_artifact_tasks = []
     optional_artifact_tasks = []
@@ -743,8 +767,7 @@ async def download_cot_artifacts(chain):
         for path in paths:
             coroutine = asyncio.ensure_future(download_cot_artifact(chain, task_id, path))
 
-            is_artifact_optional = path in optional_artifacts_per_task_id.get(task_id, [])
-            if is_artifact_optional:
+            if is_artifact_optional(chain, task_id, path):
                 optional_artifact_tasks.append(coroutine)
             else:
                 mandatory_artifact_tasks.append(coroutine)
@@ -754,10 +777,46 @@ async def download_cot_artifacts(chain):
         await get_results_and_future_exceptions(optional_artifact_tasks)
 
     if failed_optional_artifacts:
-        error_messages = '\n'.join(' * '.format(failed_optional_artifacts))
-        log.warn('Could not download {} artifacts:'.format(len(failed_optional_artifacts), error_messages))
+        log.warn('Could not download {} artifacts: {}'.format(len(failed_optional_artifacts), failed_optional_artifacts))
 
     return mandatory_artifacts_paths + succeeded_optional_artifacts_paths
+
+
+def is_task_required_by_any_mandatory_artifact(chain, task_id):
+    """Tells whether a task has only optional artifacts or not.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust object
+        task_id (str): the id of the aforementioned task
+
+    Returns:
+        bool: True if task has one or several mandatory artifacts
+
+    """
+    upstream_artifacts = chain.task['payload'].get('upstreamArtifacts', [])
+    all_artifacts_per_task_id = get_all_artifacts_per_task_id(chain, upstream_artifacts)
+    optional_artifacts_per_task_id = get_optional_artifacts_per_task_id(upstream_artifacts)
+
+    all_artifacts = all_artifacts_per_task_id.get(task_id, [])
+    optional_artifacts = optional_artifacts_per_task_id.get(task_id, [])
+    mandatory_artifacts = set(all_artifacts) - set(optional_artifacts)
+    return bool(mandatory_artifacts)
+
+
+def is_artifact_optional(chain, task_id, path):
+    """Tells whether an artifact is flagged as optional or not.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust object
+        task_id (str): the id of the aforementioned task
+
+    Returns:
+        bool: True if artifact is optional
+
+    """
+    upstream_artifacts = chain.task['payload'].get('upstreamArtifacts', [])
+    optional_artifacts_per_task_id = get_optional_artifacts_per_task_id(upstream_artifacts)
+    return path in optional_artifacts_per_task_id.get(task_id, [])
 
 
 def get_all_artifacts_per_task_id(chain, upstream_artifacts):
@@ -811,7 +870,11 @@ def verify_cot_signatures(chain):
             with open(path, "r") as fh:
                 contents = fh.read()
         except OSError as exc:
-            raise CoTError("Can't read {}: {}!".format(path, str(exc)))
+            if is_task_required_by_any_mandatory_artifact(chain, link.task_id):
+                raise CoTError("Can't read mandatory {}: {}!".format(path, str(exc)))
+            else:
+                log.warn("Could not read optional {}. Continuing. Error gotten: {}!".format(path, str(exc)))
+                continue
         try:
             body = get_body(
                 gpg, contents,
