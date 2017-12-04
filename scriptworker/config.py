@@ -15,9 +15,11 @@ import os
 import re
 import sys
 from yaml import safe_load
+from collections import Mapping
 
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
+from scriptworker.exceptions import ConfigError
 from scriptworker.log import update_logging_config
 from scriptworker.utils import load_json
 
@@ -133,7 +135,10 @@ def check_config(config, path):
                 messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
             else:
                 value_type = type(value)
-                default_type = type(DEFAULT_CONFIG[key])
+                if isinstance(DEFAULT_CONFIG[key], Mapping) and 'by-cot-product' in DEFAULT_CONFIG[key]:
+                    default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][DEFAULT_CONFIG['cot_product']])
+                else:
+                    default_type = type(DEFAULT_CONFIG[key])
                 if value_type is not default_type:
                     messages.append(
                         "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
@@ -149,6 +154,29 @@ def check_config(config, path):
 
 def _is_id_valid(id_string):
     return _GENERIC_ID_REGEX.match(id_string) is not None
+
+
+def apply_product_config(config):
+    """Apply config values that are keyed by `cot_product`.
+
+    This modifies the passed in configuration.
+
+    Args:
+        config dict: the config to apply cot_product keying too
+
+    Returns: dict
+
+    """
+    cot_product = config['cot_product']
+
+    for key in config:
+        if isinstance(config[key], Mapping) and 'by-cot-product' in config[key]:
+            try:
+                config[key] = config[key]['by-cot-product'][cot_product]
+            except KeyError:
+                raise ConfigError("Product {} not specified for key {}".format(cot_product, key))
+
+    return config
 
 
 # create_config {{{1
@@ -177,6 +205,7 @@ def create_config(config_path="scriptworker.yaml"):
     if not secrets.get("credentials"):
         secrets['credentials'] = read_worker_creds()
     config.update(secrets)
+    apply_product_config(config)
     messages = check_config(config, config_path)
     if messages:
         print('\n'.join(messages), file=sys.stderr)

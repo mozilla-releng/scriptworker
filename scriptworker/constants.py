@@ -187,7 +187,6 @@ DEFAULT_CONFIG = frozendict({
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
     # all other repos are relegated to CI scopes.
     'valid_vcs_rules': (frozendict({
-        # TODO index by cot_product
         "schemes": ("https", "ssh", ),
         "netlocs": ("hg.mozilla.org", ),
         "path_regexes": (
@@ -204,75 +203,79 @@ DEFAULT_CONFIG = frozendict({
     }), ),
 
     # Map scopes to restricted-level
-    'cot_restricted_scopes': frozendict({
-        'firefox': frozendict({
-            'project:releng:balrog:server:nightly': 'all-nightly-branches',
-            'project:releng:balrog:server:beta': 'beta',
-            'project:releng:balrog:server:release': 'release',
-            'project:releng:balrog:server:esr': 'esr',
-            'project:releng:beetmover:bucket:release': 'all-release-branches',
-            'project:releng:googleplay:release': 'release',
-            'project:releng:signing:cert:release-signing': 'all-release-branches',
-            'project:releng:googleplay:beta': 'beta',
-            # As part of the Dawn project we decided to use the Aurora Google Play
-            # app to ship Firefox Nightly. This means that the "nightly" trees need
-            # to have the scopes to ship to this product.
-            # https://bugzilla.mozilla.org/show_bug.cgi?id=1357808 has additional
-            # background and discussion.
-            'project:releng:googleplay:aurora': 'nightly',
-            'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
-            'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
-        })
-    }),
-    # Map restricted-level to trees
-    'cot_restricted_trees': frozendict({
-        'firefox': frozendict({
-            # Which repos can perform release actions?
-            # XXX remove /projects/maple and birch when taskcluster relpro
-            #     migration is tier1 and landed on mozilla-central
-            # XXX remove /projects/jamun when we no longer run staging releases
-            #     from it
-            'all-release-branches': (
-                "/releases/mozilla-beta",
-                "/releases/mozilla-release",
-                "/releases/mozilla-esr52",
-                "/projects/birch",
-                "/projects/jamun",
-                "/projects/maple",
-            ),
-            # Limit things like pushapk to just these branches
-            'release': (
-                "/releases/mozilla-release",
-            ),
-            'beta': (
-                "/releases/mozilla-beta",
-            ),
-            'esr': (
-                "/releases/mozilla-esr52",
-            ),
-            'nightly': (
-                "/mozilla-central",
-            ),
-
-            # Which repos can do nightly signing?
-            # XXX remove /projects/maple and birch when taskcluster relpro
-            #     migration is tier1 and landed on mozilla-central
-            # XXX remove /projects/jamun when we no longer run staging releases
-            #     from it
-            # XXX remove /projects/oak when we no longer test updates against it
-            'all-nightly-branches': (
-                "/mozilla-central",
-                "/releases/mozilla-unified",
-                "/releases/mozilla-beta",
-                "/releases/mozilla-release",
-                "/releases/mozilla-esr52",
-                "/projects/birch",
-                "/projects/jamun",
-                "/projects/oak",
-                "/projects/maple",
-            ),
+    'cot_restricted_scopes': {
+        'by-cot-product': frozendict({
+            'firefox': frozendict({
+                'project:releng:balrog:server:nightly': 'all-nightly-branches',
+                'project:releng:balrog:server:beta': 'beta',
+                'project:releng:balrog:server:release': 'release',
+                'project:releng:balrog:server:esr': 'esr',
+                'project:releng:beetmover:bucket:release': 'all-release-branches',
+                'project:releng:googleplay:release': 'release',
+                'project:releng:signing:cert:release-signing': 'all-release-branches',
+                'project:releng:googleplay:beta': 'beta',
+                # As part of the Dawn project we decided to use the Aurora Google Play
+                # app to ship Firefox Nightly. This means that the "nightly" trees need
+                # to have the scopes to ship to this product.
+                # https://bugzilla.mozilla.org/show_bug.cgi?id=1357808 has additional
+                # background and discussion.
+                'project:releng:googleplay:aurora': 'nightly',
+                'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
+                'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
+            }),
         }),
-    }),
+    },
+    # Map restricted-level to trees
+    'cot_restricted_trees': {
+        'by-cot-product': frozendict({
+            'firefox': frozendict({
+                # Which repos can perform release actions?
+                # XXX remove /projects/maple and birch when taskcluster relpro
+                #     migration is tier1 and landed on mozilla-central
+                # XXX remove /projects/jamun when we no longer run staging releases
+                #     from it
+                'all-release-branches': (
+                    "/releases/mozilla-beta",
+                    "/releases/mozilla-release",
+                    "/releases/mozilla-esr52",
+                    "/projects/birch",
+                    "/projects/jamun",
+                    "/projects/maple",
+                ),
+                # Limit things like pushapk to just these branches
+                'release': (
+                    "/releases/mozilla-release",
+                ),
+                'beta': (
+                    "/releases/mozilla-beta",
+                ),
+                'esr': (
+                    "/releases/mozilla-esr52",
+                ),
+                'nightly': (
+                    "/mozilla-central",
+                ),
+
+                # Which repos can do nightly signing?
+                # XXX remove /projects/maple and birch when taskcluster relpro
+                #     migration is tier1 and landed on mozilla-central
+                # XXX remove /projects/jamun when we no longer run staging releases
+                #     from it
+                # XXX remove /projects/oak when we no longer test updates against it
+                'all-nightly-branches': (
+                    "/mozilla-central",
+                    "/releases/mozilla-unified",
+                    "/releases/mozilla-beta",
+                    "/releases/mozilla-release",
+                    "/releases/mozilla-esr52",
+                    "/projects/birch",
+                    "/projects/jamun",
+                    "/projects/oak",
+                    "/projects/maple",
+                ),
+            }),
+        }),
+    },
 })
 
 # STATUSES and REVERSED_STATUSES {{{1

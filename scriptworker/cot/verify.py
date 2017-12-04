@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Chain of Trust artifact verification.
 
 Attributes:
@@ -25,7 +24,7 @@ import tempfile
 from urllib.parse import unquote, urlparse
 from scriptworker.artifacts import download_artifacts, get_artifact_url, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
-from scriptworker.config import read_worker_creds
+from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
@@ -1469,14 +1468,11 @@ async def trace_back_to_firefox_tree(chain):
     repos = {}
     restricted_privs = None
     rules = {}
-    cot_product = chain.context.config['cot_product']
     for my_key, config_key in {
         'scopes': 'cot_restricted_scopes',
         'trees': 'cot_restricted_trees'
     }.items():
-        rules[my_key] = chain.context.config[config_key].get(cot_product)
-        if not isinstance(rules[my_key], (dict, frozendict)):
-            raise_on_errors(["{} invalid for {}: {}!".format(config_key, cot_product, rules[my_key])])
+        rules[my_key] = chain.context.config[config_key]
 
     def callback(match):
         path_info = match.groupdict()
@@ -1615,7 +1611,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             context.session = session
             context.credentials = read_worker_creds()
             context.task = loop.run_until_complete(context.queue.task(opts.task_id))
-            context.config = dict(deepcopy(DEFAULT_CONFIG))
+            context.config = apply_product_config(dict(deepcopy(DEFAULT_CONFIG)))
             context.config.update({
                 'work_dir': os.path.join(tmp, 'work'),
                 'artifact_dir': os.path.join(tmp, 'artifacts'),
