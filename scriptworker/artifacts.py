@@ -325,7 +325,9 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
         context (scriptworker.context.Context): the scriptworker context.
 
     Returns:
-        dict: lists of the paths to existing upstream artifacts, sorted by task_id
+        dict, dict: lists of the paths to upstream artifacts, sorted by task_id.
+            First dict represents the existing upstream artifacts. The second one
+            maps the optional artifacts that couldn't be downloaded
 
     Raises:
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
