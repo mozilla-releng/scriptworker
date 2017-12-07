@@ -225,6 +225,8 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
             }),
+            'thunderbird': frozendict({
+            }),
         }),
     },
     # Map restricted-level to trees
@@ -275,6 +277,8 @@ DEFAULT_CONFIG = frozendict({
                     "/projects/oak",
                     "/projects/maple",
                 ),
+            }),
+            'thunderbird': frozendict({
             }),
         }),
     },
