@@ -136,36 +136,40 @@ def get_parent_task_id(task):
 
 
 # get_repo {{{1
-def get_repo(task):
+def get_repo(task, source_env_prefix):
     """Get the repo for a task.
 
     Args:
-        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        task (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
 
     Returns:
         str: the source url.
         None: if not defined for this task.
 
     """
-    repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
+    repo = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_REPOSITORY')
     if repo is not None:
         repo = repo.rstrip('/')
     return repo
 
 
 # get_revision {{{1
-def get_revision(task):
+def get_revision(task, source_env_prefix):
     """Get the revision for a task.
 
     Args:
         obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
 
     Returns:
         str: the revision.
         None: if not defined for this task.
 
     """
-    revision = task['payload'].get('env', {}).get('GECKO_HEAD_REV')
+    revision = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_REV')
     return revision
 
 
@@ -241,15 +245,15 @@ def _is_try_url(url):
     parsed = urlparse(url)
     path = unquote(parsed.path).lstrip('/')
     parts = path.split('/')
-    if parts[0] == "try":
+    if "try" in parts[0]:
         return True
     return False
 
 
-def is_try(task):
+def is_try(task, source_env_prefix):
     """Determine if a task is a 'try' task (restricted privs).
 
-    This goes further than get_source_url.  We may or may not want
+    This goes further than get_repo.  We may or may not want
     to keep this.
 
     This checks for the following things::
@@ -261,6 +265,8 @@ def is_try(task):
 
     Args:
         task (dict): the task definition to check
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
 
     Returns:
         bool: True if it's try
@@ -268,11 +274,11 @@ def is_try(task):
     """
     result = False
     env = task['payload'].get('env', {})
-    repo = get_repo(task)
+    repo = get_repo(task, source_env_prefix)
     if repo:
         result = result or _is_try_url(repo)
     if env.get("MH_BRANCH"):
-        result = result or task['payload']['env']['MH_BRANCH'] == 'try'
+        result = result or 'try' in task['payload']['env']['MH_BRANCH']
     if task['metadata'].get('source'):
         result = result or _is_try_url(task['metadata']['source'])
     result = result or task['schedulerId'] in ("gecko-level-1", )

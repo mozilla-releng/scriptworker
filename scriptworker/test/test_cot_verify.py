@@ -1455,7 +1455,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
 
 
 # get_source_url {{{1
-@pytest.mark.parametrize("task,expected", ((
+@pytest.mark.parametrize("task,expected,source_env_prefix", ((
     {
         'payload': {
             'env': {
@@ -1463,7 +1463,9 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
             },
         },
         'metadata': {'source': 'https://example.com/blah/blah'}
-    }, "https://example.com/blah/blah"
+    },
+    "https://example.com/blah/blah",
+    'GECKO',
 ), (
     {
         'payload': {
@@ -1472,18 +1474,35 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
             },
         },
         'metadata': {'source': 'https://task/blah'}
-    }, "https://example.com/blah/blah"
+    },
+    "https://example.com/blah/blah",
+    'GECKO',
 ), (
     {
         'payload': {
             'env': {},
         },
         'metadata': {'source': 'https://example.com/blah'}
-    }, "https://example.com/blah"
+    },
+    "https://example.com/blah",
+    'GECKO',
+), (
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': 'https://example.com/blah/blah',
+                'COMM_HEAD_REPOSITORY': 'https://example.com/blah/comm',
+            },
+        },
+        'metadata': {'source': 'https://example.com/blah'}
+    },
+    "https://example.com/blah/comm",
+    'COMM',
 )))
-def test_get_source_url(task, expected):
+def test_get_source_url(task, expected, source_env_prefix):
     obj = mock.MagicMock()
     obj.task = task
+    obj.context.config = {'source_env_prefix': source_env_prefix}
     assert expected == cotverify.get_source_url(obj)
 
 

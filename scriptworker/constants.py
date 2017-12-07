@@ -278,6 +278,12 @@ DEFAULT_CONFIG = frozendict({
             }),
         }),
     },
+    'source_env_prefix': {
+        'by-cot-product': frozendict({
+            'firefox': 'GECKO',
+            'thunderbird': 'COMM',
+        })
+    },
 })
 
 # STATUSES and REVERSED_STATUSES {{{1

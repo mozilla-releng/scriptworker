@@ -98,9 +98,9 @@ def test_get_repo(repo):
     task = {'payload': {'env': {}}}
     if repo:
         task['payload']['env']['GECKO_HEAD_REPOSITORY'] = repo
-        assert swtask.get_repo(task) == 'https://hg.mozilla.org/mozilla-central'
+        assert swtask.get_repo(task, 'GECKO') == 'https://hg.mozilla.org/mozilla-central'
     else:
-        assert swtask.get_repo(task) is None
+        assert swtask.get_repo(task, 'GECKO') is None
 
 
 # get_revision {{{1
@@ -109,7 +109,7 @@ def test_get_revision(rev):
     task = {'payload': {'env': {}}}
     if rev:
         task['payload']['env']['GECKO_HEAD_REV'] = rev
-    assert swtask.get_revision(task) == rev
+    assert swtask.get_revision(task, 'GECKO') == rev
 
 
 # get_worker_type {{{1
@@ -119,14 +119,15 @@ def test_get_worker_type(task, result):
 
 
 # is_try {{{1
-@pytest.mark.parametrize("task", (
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"},
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"},
-    {'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"},
-    {'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"},
+@pytest.mark.parametrize("task,source_env_prefix", (
+    ({'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"}, 'GECKO'),
+    ({'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"}, 'GECKO'),
+    ({'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"}, 'GECKO'),
+    ({'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"}, 'GECKO'),
+    ({'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", 'COMM_HEAD_REPOSITORY': "https://hg.mozilla.org/try-comm-central/blahblah"}}, 'metadata': {}, 'schedulerId': "x"}, 'COMM'),
 ))
-def test_is_try(task):
-    assert swtask.is_try(task)
+def test_is_try(task,source_env_prefix):
+    assert swtask.is_try(task, source_env_prefix=source_env_prefix)
 
 
 # is_action {{{1
