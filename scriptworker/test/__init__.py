@@ -259,11 +259,13 @@ def tmpdir2():
         yield tmp
 
 
-@pytest.yield_fixture(scope='function')
-def rw_context():
+@pytest.yield_fixture(scope='function', params=['firefox'])
+def rw_context(request):
     with tempfile.TemporaryDirectory() as tmp:
+        config = get_unfrozen_copy(DEFAULT_CONFIG)
+        config['cot_product'] = request.param
         context = Context()
-        context.config = apply_product_config(get_unfrozen_copy(DEFAULT_CONFIG))
+        context.config = apply_product_config(config)
         context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
         context.config['cot_job_type'] = "signing"
         for key, value in context.config.items():

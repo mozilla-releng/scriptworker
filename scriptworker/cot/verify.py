@@ -1013,6 +1013,7 @@ def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS)
     the commandline if possible.
 
     Args:
+        chain (ChainOfTrust): the chain we're operating on.
         decision_link (LinkOfTrust): the decision link to test.
         mach_commands (tuple): a tuple of tuples, specifying the allowlisted
             mach commands for a decision task, ignoring options.
@@ -1034,6 +1035,8 @@ def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS)
         if item in allowed_args:
             continue
         if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
+            continue
+        if item.startswith(tuple(decision_link.context.config['extra_run_task_arguments'])):
             continue
         errors.append("{} {} illegal option {} in the command!".format(
             decision_link.name, decision_link.task_id, item

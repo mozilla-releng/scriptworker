@@ -284,6 +284,12 @@ DEFAULT_CONFIG = frozendict({
             'thunderbird': 'COMM',
         })
     },
+    'extra_run_task_arguments': {
+        'by-cot-product': frozendict({
+            'firefox': (),
+            'thunderbird': ('--comm-checkout=',),
+        })
+    },
 })
 
 # STATUSES and REVERSED_STATUSES {{{1
