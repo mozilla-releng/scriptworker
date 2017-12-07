@@ -1817,6 +1817,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
                         choices=sorted(get_valid_task_types().keys()), required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
+    parser.add_argument('--cot-product', help='the product type to test', default='firefox')
     opts = parser.parse_args(args)
     tmp = tempfile.mkdtemp()
     log = logging.getLogger('scriptworker')
@@ -1830,14 +1831,16 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             context.session = session
             context.credentials = read_worker_creds()
             context.task = loop.run_until_complete(context.queue.task(opts.task_id))
-            context.config = apply_product_config(dict(deepcopy(DEFAULT_CONFIG)))
+            context.config = dict(deepcopy(DEFAULT_CONFIG))
             context.config.update({
+                'cot_product': opts.cot_product,
                 'work_dir': os.path.join(tmp, 'work'),
                 'artifact_dir': os.path.join(tmp, 'artifacts'),
                 'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
                 'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
                 'verify_cot_signature': False,
             })
+            context.config = apply_product_config(context.config)
             cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
             loop.run_until_complete(verify_chain_of_trust(cot))
             log.info(format_json(cot.dependent_task_ids()))
