@@ -192,17 +192,31 @@ DEFAULT_CONFIG = frozendict({
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
     # all other repos are relegated to CI scopes.
-    'valid_vcs_rules': (frozendict({
-        "schemes": ("https", "ssh", ),
-        "netlocs": ("hg.mozilla.org", ),
-        "path_regexes": (
-            "^(?P<path>/mozilla-(central|unified))(/|$)",
-            "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
-            "^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-            "^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
-            "^(?P<path>/(try))(/|$)",
-        ),
-    }), ),
+    'valid_vcs_rules': {
+        'by-cot-product': frozendict({
+            'firefox': (frozendict({
+                "schemes": ("https", "ssh", ),
+                "netlocs": ("hg.mozilla.org", ),
+                "path_regexes": (
+                    "^(?P<path>/mozilla-(central|unified))(/|$)",
+                    "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
+                    "^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
+                    "^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
+                    "^(?P<path>/(try))(/|$)",
+                ),
+            }),),
+            # XXX We should also check the mozilla-central tree that is being used.
+            'thunderbird': (frozendict({
+                "schemes": ("https", "ssh", ),
+                "netlocs": ("hg.mozilla.org", ),
+                "path_regexes": (
+                    "^(?P<path>/comm-central)(/|$)",
+                    "^(?P<path>/releases/comm-(beta|esr\d+))(/|$)",
+                    "^(?P<path>/(try-comm-central))(/|$)",
+                ),
+            }),),
+        }),
+    },
 
     # Map scopes to restricted-level
     'cot_restricted_scopes': {
