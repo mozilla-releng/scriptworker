@@ -324,7 +324,7 @@ async def get_results_and_future_exceptions(tasks):
     """Given a list of futures, await them, then return results and exceptions.
 
     This is similar to raise_future_exceptions, except that it doesn't raise any
-    exception. They are returned instead. This allow some tasks to optionally fail.
+    exception. They are returned instead. This allows some tasks to optionally fail.
     Please consider that no exception will be raised when calling this function.
     You must verify the content of the second item of the tuple. It contains all
     exceptions raised by the futures.
@@ -529,7 +529,7 @@ def add_enumerable_item_to_dict(dict_, key, item):
     For example: If the dict is ``{'some_key': ['an_item']}``, then calling this function
     will alter the dict to ``{'some_key': ['an_item', 'another_item']}``.
 
-    If the key doesn't exist yet, the function initialize it with a list containing the
+    If the key doesn't exist yet, the function initializes it with a list containing the
     item.
 
     List-like items are allowed. In this case, the existing list will be extended.

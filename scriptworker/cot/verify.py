@@ -689,7 +689,7 @@ async def download_cot(chain):
         await get_results_and_future_exceptions(optional_artifact_tasks)
 
     if failed_optional_artifacts:
-        error_messages = '\n'.join(' * '.format(failed_optional_artifacts))
+        error_messages = '\n'.join([' * {}'.format(failure) for failure in failed_optional_artifacts])
         log.warn('Could not download {} "chainOfTrust.json.asc". Although, they were not needed by \
 any mandatory artifact. Continuing CoT verifications. Errors gotten: {}'.format(len(failed_optional_artifacts), error_messages))
 
