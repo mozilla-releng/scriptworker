@@ -238,6 +238,29 @@ def test_raise_future_exceptions_noop(event_loop):
     )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exc", (IOError, SyntaxError, None))
+async def test_get_results_and_future_exceptions(exc):
+    async def one():
+        if exc is None:
+            return 'passed1'
+        else:
+            raise exc('failed')
+
+    async def two():
+        return 'passed2'
+
+    tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
+
+    passed_results, error_results = await utils.get_results_and_future_exceptions(tasks)
+    if exc is None:
+        assert passed_results == ['passed1', 'passed2']
+        assert error_results == []
+    else:
+        assert passed_results == ['passed2']
+        assert [str(error) for error in error_results] == [str(exc('failed'))]
+
+
 # filepaths_in_dir {{{1
 def test_filepaths_in_dir(tmpdir):
     filepaths = sorted([
@@ -384,3 +407,21 @@ def test_match_url_regex():
 
     assert utils.match_url_regex(rules, "https://hg.mozilla.org/mozilla-central", cb) == "mozilla-central"
     assert utils.match_url_regex((), "https://hg.mozilla.org/mozilla-central", cb) is None
+
+
+@pytest.mark.parametrize("dict_, key, item, expected", ((
+    {}, 'non_existing_key', 'an_item', {'non_existing_key': ['an_item']}
+), (
+    {}, 'non_existing_key', ['a', 'list'], {'non_existing_key': ['a', 'list']}
+), (
+    {}, 'non_existing_key', ('a', 'tuple', 'to', 'become', 'a', 'list'), {'non_existing_key': ['a', 'tuple', 'to', 'become', 'a', 'list']}
+), (
+    {'existing_key': []}, 'existing_key', 'an_item', {'existing_key': ['an_item']}
+), (
+    {'existing_key': ['an_item']}, 'existing_key', 'a_second_item', {'existing_key': ['an_item', 'a_second_item']}
+), (
+    {'existing_key': ['an_item']}, 'existing_key', ['some', 'new', 'items'], {'existing_key': ['an_item', 'some', 'new', 'items']}
+)))
+def test_add_enumerable_item_to_dict(dict_, key, item, expected):
+    utils.add_enumerable_item_to_dict(dict_, key, item)
+    assert dict_ == expected

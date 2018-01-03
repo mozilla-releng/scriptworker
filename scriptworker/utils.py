@@ -309,23 +309,54 @@ async def raise_future_exceptions(tasks):
         tasks (list): the list of futures to await and check for exceptions.
 
     Returns:
-        list: the list of result()s from the futures.
+        list: the list of results from the futures.
 
     Raises:
         Exception: any exceptions in task.exception(), or CancelledError if
             the task was cancelled
 
     """
-    if not tasks:
-        return
-    result = []
-    await asyncio.wait(tasks)
-    for task in tasks:
-        exc = task.exception()
-        if exc is not None:
-            raise exc
-        result.append(task.result())
-    return result
+    succeeded_results, _ = await _process_future_exceptions(tasks, raise_at_first_error=True)
+    return succeeded_results
+
+
+async def get_results_and_future_exceptions(tasks):
+    """Given a list of futures, await them, then return results and exceptions.
+
+    This is similar to raise_future_exceptions, except that it doesn't raise any
+    exception. They are returned instead. This allows some tasks to optionally fail.
+    Please consider that no exception will be raised when calling this function.
+    You must verify the content of the second item of the tuple. It contains all
+    exceptions raised by the futures.
+
+    Args:
+        tasks (list): the list of futures to await and check for exceptions.
+
+    Returns:
+        tuple: the list of results from the futures, then the list of exceptions.
+
+    """
+    return await _process_future_exceptions(tasks, raise_at_first_error=False)
+
+
+async def _process_future_exceptions(tasks, raise_at_first_error):
+    succeeded_results = []
+    error_results = []
+
+    if tasks:
+        await asyncio.wait(tasks)
+        for task in tasks:
+            exc = task.exception()
+            if exc is None:
+                succeeded_results.append(task.result())
+            else:
+                if raise_at_first_error:
+                    raise exc
+                else:
+                    log.warn('Async task failed with error: {}'.format(exc))
+                    error_results.append(exc)
+
+    return succeeded_results, error_results
 
 
 # filepaths_in_dir {{{1
@@ -490,3 +521,31 @@ def match_url_regex(rules, url, callback):
             result = callback(m)
             if result is not None:
                 return result
+
+
+def add_enumerable_item_to_dict(dict_, key, item):
+    """Add an item to a list contained in a dict.
+
+    For example: If the dict is ``{'some_key': ['an_item']}``, then calling this function
+    will alter the dict to ``{'some_key': ['an_item', 'another_item']}``.
+
+    If the key doesn't exist yet, the function initializes it with a list containing the
+    item.
+
+    List-like items are allowed. In this case, the existing list will be extended.
+
+    Args:
+        dict_ (dict): the dict to modify
+        key (str): the key to add the item to
+        item (whatever): The item to add to the list associated to the key
+    """
+    if isinstance(item, (list, tuple)):
+        try:
+            dict_[key].extend(item)
+        except KeyError:
+            dict_[key] = list(item)
+    else:
+        try:
+            dict_[key].append(item)
+        except KeyError:
+            dict_[key] = [item]
