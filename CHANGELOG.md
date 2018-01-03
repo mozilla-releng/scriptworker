@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [6.0.0] - 2018-01-03
+### Added
+- `scriptworker.cot.verify.download_cot` now supports optional upstream artifacts
+- `scriptworker.artifacts.get_optional_artifacts_per_task_id`, `scriptworker.cot.verify.(is_task_required_by_any_mandatory_artifact, is_artifact_optional)`, and `scriptworker.utils.(get_results_and_future_exceptions, add_enumerable_item_to_dict)` are defined and publicly exposed.
+
+### Changed
+- `scriptworker.artifacts.get_upstream_artifacts_full_paths_per_task_id` returns 2 dictionaries instead of 1.
+- `scriptworker.cot.verify.(verify_docker_image_sha, download_cot_artifact)` don't error out if cot isn't defined (missing cot are detected earlier)
+
 ## [5.2.3] - 2017-10-20
 ### Fixed
 - Made the exit status more explicit on exit code -11.
