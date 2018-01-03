@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [6.0.1] - 2018-01-03
+### Added
+- Allow projects/birch to use project:releng:signing:cert:release-signing
+
 ## [6.0.0] - 2018-01-03
 ### Added
 - `scriptworker.cot.verify.download_cot` now supports optional upstream artifacts

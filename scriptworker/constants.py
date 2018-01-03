@@ -194,12 +194,12 @@ DEFAULT_CONFIG = frozendict({
             "^(?P<path>/mozilla-(central|unified))(/|$)",
             "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
             "^(?P<path>/releases/mozilla-(beta|release|esr52))(/|$)",
-            # XXX remove /projects/maple when taskcluster relpro migration is
-            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/maple and birch when taskcluster relpro
+            #     migration is tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             # XXX remove /projects/oak when we no longer test updates against it
-            "^(?P<path>/projects/(maple|jamun|oak))(/|$)",
+            "^(?P<path>/projects/(birch|maple|jamun|oak))(/|$)",
         ),
     }), ),
 
@@ -228,14 +228,15 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_trees': frozendict({
         'firefox': frozendict({
             # Which repos can perform release actions?
-            # XXX remove /projects/maple when taskcluster relpro migration is
-            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/maple and birch when taskcluster relpro
+            #     migration is tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             'all-release-branches': (
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
                 "/releases/mozilla-esr52",
+                "/projects/birch",
                 "/projects/jamun",
                 "/projects/maple",
             ),
@@ -254,8 +255,8 @@ DEFAULT_CONFIG = frozendict({
             ),
 
             # Which repos can do nightly signing?
-            # XXX remove /projects/maple when taskcluster relpro migration is
-            #     tier1 and landed on mozilla-central
+            # XXX remove /projects/maple and birch when taskcluster relpro
+            #     migration is tier1 and landed on mozilla-central
             # XXX remove /projects/jamun when we no longer run staging releases
             #     from it
             # XXX remove /projects/oak when we no longer test updates against it
@@ -265,6 +266,7 @@ DEFAULT_CONFIG = frozendict({
                 "/releases/mozilla-beta",
                 "/releases/mozilla-release",
                 "/releases/mozilla-esr52",
+                "/projects/birch",
                 "/projects/jamun",
                 "/projects/oak",
                 "/projects/maple",
