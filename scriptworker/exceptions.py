@@ -108,3 +108,12 @@ class CoTError(ScriptWorkerTaskException, KeyError):
         super(CoTError, self).__init__(
             msg, exit_code=3
         )
+
+
+class ConfigError(ScriptWorkerException):
+    """Invalid configuration provided to scriptworker.
+
+    Attributes:
+        exit_code (int): this is set to 5 (internal-error).
+
+    """

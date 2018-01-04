@@ -10,6 +10,7 @@ import os
 import pytest
 import scriptworker.config as config
 from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.exceptions import ConfigError
 
 
 # constants helpers and fixtures {{{1
@@ -36,7 +37,7 @@ ENV_CREDS_PARAMS = ((
 
 @pytest.fixture(scope='function')
 def t_config():
-    return dict(deepcopy(DEFAULT_CONFIG))
+    return config.apply_product_config(dict(deepcopy(DEFAULT_CONFIG)))
 
 
 @pytest.fixture(scope='function')
@@ -214,7 +215,7 @@ def test_get_context_from_cmdln(t_config):
         c.update(json.load(fh))
     expected_creds = frozendict(c['credentials'])
     del(c['credentials'])
-    expected_config = frozendict(c)
+    expected_config = frozendict(config.apply_product_config(c))
 
     def noop(*args, **kwargs):
         pass
@@ -232,3 +233,45 @@ def test_get_context_from_cmdln(t_config):
 def test_get_context_from_cmdln_exception(args):
     with pytest.raises(SystemExit):
         config.get_context_from_cmdln(args)
+
+
+def test_apply_product_config():
+    """
+    `apply_product_config` returns configuration that replaces entries that
+    have `by-cot-product` entries with the value corresponding to `cot_product`
+    in the config.
+    """
+    c = {
+        'cot_product': 'thunderbird',
+        'unkeyed': 'no keys',
+        'keyed': {
+            'by-cot-product': {
+                'thunderbird': 'expected',
+                'firefox': 'unexpected',
+            }
+        },
+    }
+    expected_config = {
+        'cot_product': 'thunderbird',
+        'unkeyed': 'no keys',
+        'keyed': 'expected',
+    }
+    assert config.apply_product_config(c) == expected_config
+
+
+def test_apply_product_config_unknown_product():
+    """
+    `apply_product_config` raises an exception if a keyed option in the config
+    doesn't have a value for the `cot_product` in the config.
+    """
+    c = {
+        'cot_product': 'seamonkey',
+        'keyed': {
+            'by-cot-product': {
+                'thunderbird': 'expected',
+                'firefox': 'unexpected',
+            }
+        },
+    }
+    with pytest.raises(config.ConfigError):
+        config.apply_product_config(c)
