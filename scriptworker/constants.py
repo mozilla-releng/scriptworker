@@ -87,6 +87,9 @@ DEFAULT_CONFIG = frozendict({
     "privkey_path": "...",
     "my_email": "scriptworker@example.com",
 
+    "project_configuration_url": "https://hg.mozilla.org/build/ci-configuration/raw-file/default/projects.yml",
+    "pushlog_url": "{repo}/json-pushes?changeset={revision}&tipsonly=1&version=2&full=1",
+
     "chain_of_trust_hash_algorithm": "sha256",
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
 
@@ -192,13 +195,9 @@ DEFAULT_CONFIG = frozendict({
         "path_regexes": (
             "^(?P<path>/mozilla-(central|unified))(/|$)",
             "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
-            "^(?P<path>/releases/mozilla-(beta|release|esr52))(/|$)",
-            # XXX remove /projects/maple and birch when taskcluster relpro
-            #     migration is tier1 and landed on mozilla-central
-            # XXX remove /projects/jamun when we no longer run staging releases
-            #     from it
-            # XXX remove /projects/oak when we no longer test updates against it
-            "^(?P<path>/projects/(birch|maple|jamun|oak))(/|$)",
+            "^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
+            "^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
+            "^(?P<path>/(try))(/|$)",
         ),
     }), ),
 
