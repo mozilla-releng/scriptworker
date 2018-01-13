@@ -10,7 +10,7 @@ import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import GPG, sign
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json
+from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json_or_yaml
 
 log = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ def generate_cot(context, path=None):
 
     """
     body = generate_cot_body(context)
-    schema = load_json(
+    schema = load_json_or_yaml(
         context.config['cot_schema_path'], is_path=True,
         exception=ScriptWorkerException,
         message="Can't read schema file {}: %(exc)s".format(context.config['cot_schema_path'])

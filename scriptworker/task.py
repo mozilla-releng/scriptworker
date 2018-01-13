@@ -13,6 +13,7 @@ import logging
 import os
 import pprint
 import signal
+from urllib.parse import unquote, urlparse
 
 import taskcluster
 import taskcluster.exceptions
@@ -66,6 +67,36 @@ def get_run_id(claim_task):
     return claim_task['runId']
 
 
+# get_action_name {{{1
+def get_action_name(task):
+    """Get the name of an action task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the name.
+
+    """
+    name = task['extra'].get('action', {}).get('name')
+    return name
+
+
+# get_commit_message {{{1
+def get_commit_message(task):
+    """Get the commit message for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the commit message.
+
+    """
+    msg = task['payload'].get('env', {}).get('GECKO_COMMIT_MSG', ' ')
+    return msg
+
+
 # get_decision_task_id {{{1
 def get_decision_task_id(task):
     """Given a task dict, return the decision taskId.
@@ -100,6 +131,40 @@ def get_parent_task_id(task):
     return task.get('extra', {}).get('parent', get_decision_task_id(task))
 
 
+# get_repo {{{1
+def get_repo(task):
+    """Get the repo for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the source url.
+        None: if not defined for this task.
+
+    """
+    repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
+    if repo is not None:
+        repo = repo.rstrip('/')
+    return repo
+
+
+# get_revision {{{1
+def get_revision(task):
+    """Get the revision for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the revision.
+        None: if not defined for this task.
+
+    """
+    revision = task['payload'].get('env', {}).get('GECKO_HEAD_REV')
+    return revision
+
+
 # get_worker_type {{{1
 def get_worker_type(task):
     """Given a task dict, return the workerType.
@@ -112,6 +177,78 @@ def get_worker_type(task):
 
     """
     return task['workerType']
+
+
+# is_try {{{1
+def _is_try_url(url):
+    parsed = urlparse(url)
+    path = unquote(parsed.path).lstrip('/')
+    parts = path.split('/')
+    if parts[0] == "try":
+        return True
+    return False
+
+
+def is_try(task):
+    """Determine if a task is a 'try' task (restricted privs).
+
+    This goes further than get_source_url.  We may or may not want
+    to keep this.
+
+    This checks for the following things::
+
+        * ``task.payload.env.GECKO_HEAD_REPOSITORY`` == "https://hg.mozilla.org/try/"
+        * ``task.payload.env.MH_BRANCH`` == "try"
+        * ``task.metadata.source`` == "https://hg.mozilla.org/try/..."
+        * ``task.schedulerId`` in ("gecko-level-1", )
+
+    Args:
+        task (dict): the task definition to check
+
+    Returns:
+        bool: True if it's try
+
+    """
+    result = False
+    env = task['payload'].get('env', {})
+    repo = get_repo(task)
+    if repo:
+        result = result or _is_try_url(repo)
+    if env.get("MH_BRANCH"):
+        result = result or task['payload']['env']['MH_BRANCH'] == 'try'
+    if task['metadata'].get('source'):
+        result = result or _is_try_url(task['metadata']['source'])
+    result = result or task['schedulerId'] in ("gecko-level-1", )
+    return result
+
+
+# is_action {{{1
+def is_action(task):
+    """Determine if a task is an action task.
+
+    Trusted decision and action tasks are important in that they can generate
+    other valid tasks. The verification of decision and action tasks is slightly
+    different, so we need to be able to tell them apart.
+
+    This checks for the following things::
+
+        * ``task.payload.env.ACTION_CALLBACK`` exists
+        * ``task.extra.action`` exists
+
+    Args:
+        task (dict): the task definition to check
+
+    Returns:
+        bool: True if it's an action
+
+    """
+    result = False
+    env = task['payload'].get('env', {})
+    if env.get("ACTION_CALLBACK"):
+        result = True
+    if task.get('extra', {}).get('action') is not None:
+        result = True
+    return result
 
 
 # prepare_to_run_task {{{1

@@ -11,7 +11,7 @@ import os
 
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
-from scriptworker.utils import load_json, match_url_regex
+from scriptworker.utils import load_json_or_yaml, match_url_regex
 
 
 def get_task(config):
@@ -29,7 +29,7 @@ def get_task(config):
     """
     path = os.path.join(config['work_dir'], "task.json")
     message = "Can't read task from {}!\n%(exc)s".format(path)
-    contents = load_json(path, is_path=True, message=message)
+    contents = load_json_or_yaml(path, is_path=True, message=message)
     return contents
 
 

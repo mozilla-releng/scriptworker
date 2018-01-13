@@ -6,6 +6,7 @@ Attributes:
     DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
         ignoring options.
     DECISION_TASK_TYPES (tuple): the decision task types.
+    KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
     PARENT_TASK_TYPES (tuple): the parent task types.
     log (logging.Logger): the log object for this module.
 
@@ -14,34 +15,62 @@ import aiohttp
 import argparse
 import asyncio
 from copy import deepcopy
+import dictdiffer
 from frozendict import frozendict
+import jsone
 import logging
 import os
 import pprint
 import shlex
 import sys
 import tempfile
-from urllib.parse import unquote, urlparse
-from scriptworker.artifacts import download_artifacts, get_artifact_url, get_single_upstream_artifact_full_path, \
-    get_optional_artifacts_per_task_id
+from scriptworker.artifacts import (
+    download_artifacts,
+    get_artifact_url,
+    get_optional_artifacts_per_task_id,
+    get_single_upstream_artifact_full_path,
+)
 from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
-from scriptworker.task import get_decision_task_id, get_parent_task_id, get_worker_type, get_task_id
-from scriptworker.utils import format_json, get_hash, load_json, makedirs, match_url_regex, raise_future_exceptions, rm, \
-    get_results_and_future_exceptions, add_enumerable_item_to_dict
+from scriptworker.task import (
+    get_action_name,
+    get_commit_message,
+    get_decision_task_id,
+    get_parent_task_id,
+    get_repo,
+    get_revision,
+    get_task_id,
+    get_worker_type,
+    is_try,
+    is_action,
+)
+from scriptworker.utils import (
+    add_enumerable_item_to_dict,
+    get_hash,
+    get_results_and_future_exceptions,
+    format_json,
+    load_json_or_yaml,
+    load_json_or_yaml_from_url,
+    makedirs,
+    match_url_path_callback,
+    match_url_regex,
+    raise_future_exceptions,
+    remove_empty_keys,
+    rm,
+)
 from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
 
 
+# XXX Remove all mach command hardcodes when all trees are 59+
 DECISION_MACH_COMMANDS = ((
     './mach', 'taskgraph', 'decision'
 ), )
-# XXX Remove all non- `action-callback` commands when we retire all trees <Fx58
 ACTION_MACH_COMMANDS = ((
     './mach', 'taskgraph', 'add-tasks'
 ), (
@@ -51,6 +80,7 @@ ACTION_MACH_COMMANDS = ((
 ))
 DECISION_TASK_TYPES = ('decision', )
 PARENT_TASK_TYPES = ('decision', 'action')
+KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
 
 
 # ChainOfTrust {{{1
@@ -80,10 +110,10 @@ class ChainOfTrust(object):
 
         """
         self.name = name
-        self.task_type = guess_task_type(name)
         self.context = context
         self.task_id = task_id or get_task_id(context.claim_task)
         self.task = context.task
+        self.task_type = guess_task_type(name, self.task)
         self.worker_impl = guess_worker_impl(self)  # this should be scriptworker
         self.decision_task_id = get_decision_task_id(self.task)
         self.parent_task_id = get_parent_task_id(self.task)
@@ -189,7 +219,6 @@ class LinkOfTrust(object):
 
         """
         self.name = name
-        self.task_type = guess_task_type(name)
         self.context = context
         self.task_id = task_id
 
@@ -216,6 +245,7 @@ class LinkOfTrust(object):
     @task.setter
     def task(self, task):
         self._set('_task', task)
+        self.task_type = guess_task_type(self.name, self.task)
         self.decision_task_id = get_decision_task_id(self.task)
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
@@ -342,7 +372,7 @@ def get_valid_worker_impls():
 
 
 # guess_task_type {{{1
-def guess_task_type(name):
+def guess_task_type(name, task_defn):
     """Guess the task type of the task.
 
     Args:
@@ -357,6 +387,11 @@ def guess_task_type(name):
     """
     parts = name.split(':')
     task_type = parts[-1]
+    if task_type == 'parent':
+        if is_action(task_defn):
+            task_type = 'action'
+        else:
+            task_type = 'decision'
     if task_type not in get_valid_task_types():
         raise CoTError(
             "Invalid task type for {}!".format(name)
@@ -388,77 +423,6 @@ def get_valid_task_types():
         'signing': verify_signing_task,
         'partials': verify_partials_task,
     })
-
-
-# is_try {{{1
-def _is_try_url(url):
-    parsed = urlparse(url)
-    path = unquote(parsed.path).lstrip('/')
-    parts = path.split('/')
-    if parts[0] == "try":
-        return True
-    return False
-
-
-def is_try(task):
-    """Determine if a task is a 'try' task (restricted privs).
-
-    This goes further than get_firefox_source_url.  We may or may not want
-    to keep this.
-
-    This checks for the following things::
-
-        * ``task.payload.env.GECKO_HEAD_REPOSITORY`` == "https://hg.mozilla.org/try/"
-        * ``task.payload.env.MH_BRANCH`` == "try"
-        * ``task.metadata.source`` == "https://hg.mozilla.org/try/..."
-        * ``task.schedulerId`` in ("gecko-level-1", )
-
-    Args:
-        task (dict): the task definition to check
-
-    Returns:
-        bool: True if it's try
-
-    """
-    result = False
-    env = task['payload'].get('env', {})
-    if env.get("GECKO_HEAD_REPOSITORY"):
-        result = result or _is_try_url(task['payload']['env']['GECKO_HEAD_REPOSITORY'])
-    if env.get("MH_BRANCH"):
-        result = result or task['payload']['env']['MH_BRANCH'] == 'try'
-    if task['metadata'].get('source'):
-        result = result or _is_try_url(task['metadata']['source'])
-    result = result or task['schedulerId'] in ("gecko-level-1", )
-    return result
-
-
-# is_action {{{1
-def is_action(task):
-    """Determine if a task is an action task.
-
-    Trusted decision and action tasks are important in that they can generate
-    other valid tasks. The verification of decision and action tasks is slightly
-    different, so we need to be able to tell them apart.
-
-    This checks for the following things::
-
-        * ``task.payload.env.ACTION_CALLBACK`` exists
-        * ``task.extra.action`` exists
-
-    Args:
-        task (dict): the task definition to check
-
-    Returns:
-        bool: True if it's an action
-
-    """
-    result = False
-    env = task['payload'].get('env', {})
-    if env.get("ACTION_CALLBACK"):
-        result = True
-    if task.get('extra', {}).get('action') is not None:
-        result = True
-    return result
 
 
 # check_interactive_docker_worker {{{1
@@ -587,17 +551,14 @@ def find_sorted_task_dependencies(task, task_name, task_id):
 
     # bug 1396517 - Decision tasks are standalone; don't point at another task
     # even if the taskGroupId doesn't match.
-    task_type = guess_task_type(task_name)
+    # XXX remove this workaround when all trees are 59+
+    task_type = guess_task_type(task_name, task)
     if task_type in DECISION_TASK_TYPES:
         parent_task_id = task_id
         parent_task_type = 'decision'
     else:
-        parent_task_id = get_parent_task_id(task)
-        decision_task_id = get_decision_task_id(task)
-        if decision_task_id == parent_task_id:
-            parent_task_type = 'decision'
-        else:
-            parent_task_type = 'action'
+        parent_task_id = get_parent_task_id(task) or get_decision_task_id(task)
+        parent_task_type = 'parent'
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
     parent_tuple = _craft_dependency_tuple(task_name, parent_task_type, parent_task_id)
@@ -831,9 +792,18 @@ def get_all_artifacts_per_task_id(chain, upstream_artifacts):
     """
     all_artifacts_per_task_id = {}
     for link in chain.links:
+        # Download task-graph.json for decision+action task cot verification
         if link.task_type in PARENT_TASK_TYPES:
             add_enumerable_item_to_dict(
                 dict_=all_artifacts_per_task_id, key=link.task_id, item='public/task-graph.json'
+            )
+        # Download actions.json for decision+action task cot verification
+        if link.task_type in DECISION_TASK_TYPES:
+            add_enumerable_item_to_dict(
+                dict_=all_artifacts_per_task_id, key=link.task_id, item='public/actions.json'
+            )
+            add_enumerable_item_to_dict(
+                dict_=all_artifacts_per_task_id, key=link.task_id, item='public/parameters.yml'
             )
 
     if upstream_artifacts:
@@ -881,7 +851,7 @@ def verify_cot_signatures(chain):
             )
         except ScriptWorkerGPGException as exc:
             raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
-        link.cot = load_json(
+        link.cot = load_json_or_yaml(
             body, exception=CoTError,
             message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
         )
@@ -1001,9 +971,12 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         )])
 
 
-# verify_firefox_decision_command {{{1
-def verify_firefox_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS):
-    r"""Verify the decision command for a firefox decision task.
+# verify_decision_command {{{1
+def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS):
+    r"""Verify the decision command for a decision task.
+
+    This is deprecated, but still very much in use.
+    Let's stop needing it.
 
     Some example commands::
 
@@ -1086,48 +1059,193 @@ def verify_firefox_decision_command(decision_link, mach_commands=DECISION_MACH_C
     raise_on_errors(errors)
 
 
-# verify_decision_task {{{1
-async def verify_decision_task(chain, link):
-    """Verify the decision task Link.
-
-    This should be called in conjunction with ``verify_parent_task``.
-
-    Currently this function just verifies the command; in the future we should
-    rebuild the decision task definition from source, via json-e.
+# get_pushlog_info {{{1
+async def get_pushlog_info(decision_link):
+    """Get pushlog info for a decision LinkOfTrust.
 
     Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        link (LinkOfTrust): the task link we're checking.
+        decision_link (LinkOfTrust): the decision link to get pushlog info about.
 
-    Raises:
-        CoTError: on chain of trust verification error.
+    Returns:
+        dict: pushlog info.
 
     """
-    # TODO: rebuild from json-e.
-    verify_firefox_decision_command(link, mach_commands=DECISION_MACH_COMMANDS)
+    repo = get_repo(decision_link.task)
+    rev = get_revision(decision_link.task)
+    context = decision_link.context
+    pushlog_url = context.config['pushlog_url'].format(
+        repo=repo, revision=rev
+    )
+    log.info("Pushlog url {}".format(pushlog_url))
+    file_path = os.path.join(context.config["work_dir"], "{}_push_log.json".format(decision_link.name))
+    pushlog_info = await load_json_or_yaml_from_url(
+        context, pushlog_url, file_path, overwrite=False
+    )
+    if len(pushlog_info['pushes']) != 1:
+        log.warning("Pushlog error: expected a single push at {} but got {}!".format(
+            pushlog_url, pushlog_info['pushes']
+        ))
+    return pushlog_info
 
 
-# verify_action_task {{{1
-async def verify_action_task(chain, link):
-    """Verify the action task Link.
+# verify_parent_task_definition {{{1
+async def verify_parent_task_definition(chain, parent_link):
+    """Rebuild the decision/action/cron task definition via json-e.
 
-    This should be called in conjunction with ``verify_parent_task``.
+    This is Chain of Trust verification version 2, aka cotv2.
+    Instead of looking at various parts of the parent task's task definition
+    and making sure they look well-formed, let's rebuild the task definition
+    from the tree and make sure it matches.
 
-    Currently this function just verifies the command; in the future we should
-    rebuild the action task definition from the decision task's ``actions.json``
-    and ``task.extra.action`` via json-e.
+    We use the ``decision_link`` for a number of the checks here.
 
     Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        link (LinkOfTrust): the task link we're checking.
+        chain (ChainOfTrust): the chain of trust to add to.
+        parent_link (LinkOfTrust): the parent link to test.
 
     Raises:
-        CoTError: on chain of trust verification error.
+        CoTError: on failure.
 
     """
-    # TODO: download the ``actions.json`` from the decision / parent task;
-    # rebuild from ``task.extra.action`` via json-e
-    verify_firefox_decision_command(link, mach_commands=ACTION_MACH_COMMANDS)
+    log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
+    errors = []
+    context = chain.context
+    # Use the decision_link for a number of checks.
+    # For decision tasks, parent_link is decision_link.
+    # For action tasks, parent_link is a child of decision_link.
+    decision_link = chain.get_link(parent_link.decision_task_id)
+    # Download template from the decision task.
+    source_url = get_source_url(decision_link)
+    tmpl = await load_json_or_yaml_from_url(
+        context, source_url, os.path.join(
+            context.config["work_dir"], "{}_source_tmpl.yml".format(decision_link.name)
+        )
+    )
+    # Download projects.yml
+    projects = await load_json_or_yaml_from_url(
+        context, context.config['project_configuration_url'],
+        os.path.join(context.config["work_dir"], "projects.yml"),
+        overwrite=False
+    )
+    # Populate template (jsone)
+    try:
+        task_ids = {
+             "default": parent_link.task_id,
+             "decision": decision_link.task_id,
+        }
+        repo = get_repo(decision_link.task)
+        rev = get_revision(decision_link.task)
+        project_path = match_url_regex(
+            chain.context.config['valid_vcs_rules'], source_url,
+            match_url_path_callback
+        )
+        if project_path is None:
+            raise CoTError("Unknown repo for source url {}!".format(source_url))
+        project = project_path.split('/')[-1]
+        level = projects[project]['access'].replace("scm_level_", "")
+        tasks_for = parent_link.task['extra']['tasks_for']
+        if tasks_for not in KNOWN_TASKS_FOR:
+            raise CoTError(
+                "{} {}: Unknown tasks_for: {}".format(
+                    parent_link.name, parent_link.task_id, tasks_for
+                )
+            )
+        jsone_context = {
+            'now': parent_link.task['created'],
+            'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
+            'tasks_for': tasks_for,
+            'repository': {
+                'level': level,
+                'url': repo,
+                'project': project,
+            },
+            'taskId': None
+        }
+        if tasks_for == 'action':
+            actions_path = decision_link.get_artifact_full_path('public/actions.json')
+            params_path = decision_link.get_artifact_full_path('public/parameters.yml')
+            action_name = get_action_name(parent_link.task)
+            all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
+            actions_tmpl = [d for d in all_actions if d['name'] == action_name][0]
+            parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
+            jsone_context.update(deepcopy(parent_link.task['extra']['action']['context']))
+            jsone_context['push'] = deepcopy(actions_tmpl['task']['$let']['push'])
+            jsone_context['action'] = deepcopy(actions_tmpl['task']['$let']['action'])
+            jsone_context['parameters'] = parameters
+            jsone_context['task'] = None
+            jsone_context['ownTaskId'] = parent_link.task_id
+        else:
+            pushlog_info = await get_pushlog_info(decision_link)
+            pushlog_id = list(pushlog_info['pushes'].keys())[0]
+            decision_comment = get_commit_message(decision_link.task)
+            if tasks_for == 'hg-push':
+                # on-push decision task
+                push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
+                if decision_comment not in (' ', push_comment):
+                    raise CoTError(
+                        "Decision task {} comment doesn't match the push comment!\n"
+                        "Decision comment: \n{}\nPush comment: \n{}".format(
+                            decision_link.name, pprint.pformat(decision_comment),
+                            pprint.pformat(push_comment)
+                        )
+                    )
+                jsone_context["push"] = {
+                    "revision": rev,
+                    "comment": decision_comment,
+                    "owner": pushlog_info['pushes'][pushlog_id]['user'],
+                    "pushlog_id": pushlog_id,
+                    "pushdate": pushlog_info['pushes'][pushlog_id]['date'],
+                }
+            else:
+                # cron decision task
+                jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
+                # I don't love these hardcodes.
+                jsone_context["push"] = {
+                    "revision": rev,
+                    "comment": '',
+                    "owner": 'nobody',
+                    "pushlog_id": '-1',
+                    "pushdate": '0',
+                }
+        log.debug("json-e context:")
+        log.debug(pprint.pformat(jsone_context))
+        rebuilt_definition = jsone.render(tmpl, jsone_context)
+        compare_definition = deepcopy(rebuilt_definition["tasks"][0])
+        # XXX remove this hack when treeherder rolls out json-e 2.5.0
+        # https://whatsdeployed.io/?owner=mozilla&repo=treeherder&name[]=Stage&url[]=https://treeherder.allizom.org/revision.txt&name[]=Prod&url[]=https://treeherder.mozilla.org/revision.txt
+        if tasks_for == 'action':
+            compare_definition['payload']['env']['ACTION_INPUT'] = parent_link.task['payload']['env']['ACTION_INPUT']
+            compare_definition['payload']['env']['ACTION_PARAMETERS'] = parent_link.task['payload']['env']['ACTION_PARAMETERS']
+        # remove key/value pairs where the value is empty, since json-e drops
+        # them instead of keeping them with a None/{}/[] value.
+        compare_definition = remove_empty_keys(compare_definition)
+        runtime_definition = remove_empty_keys(parent_link.task)
+    except jsone.JSONTemplateError as e:
+        log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
+        raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
+    except KeyError as e:
+        msg = "KeyError while rebuilding {} {} task definition!".format(
+            parent_link.name, parent_link.task_id
+        )
+        log.exception(msg)
+        raise CoTError(msg + "\n{}".format(str(e)))
+    # Compare compare_definition vs runtime_definition
+    try:
+        # Rebuilt decision tasks have an extra `taskId`; remove
+        if 'taskId' in compare_definition:
+            del(compare_definition['taskId'])
+        log.debug("Compare_definition:\n{}".format(pprint.pformat(compare_definition)))
+        log.debug("Runtime definition:\n{}".format(pprint.pformat(runtime_definition)))
+        diff = list(dictdiffer.diff(compare_definition, runtime_definition))
+        if diff:
+            raise AssertionError(pprint.pformat(diff))
+    except AssertionError:
+        msg = "{} {}: the rebuilt definition doesn't match the runtime task!".format(
+            parent_link.name, parent_link.task_id
+        )
+        log.exception(msg)
+        errors.append(msg)
+    raise_on_errors(errors)
 
 
 # verify_parent_task {{{1
@@ -1138,8 +1256,8 @@ async def verify_parent_task(chain, link):
     decision tasks, because sometimes we'll have an action task masquerading as
     a decision task, e.g. in templatized actions for release graphs. To make
     sure our guess of decision or action task isn't fatal, we call this
-    function; this function uses ``is_action()`` to determine whether to call
-    ``verify_decision_task`` or ``verify_action_task``.
+    function; this function uses ``is_action()`` to determine how to verify
+    the task.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on.
@@ -1149,32 +1267,46 @@ async def verify_parent_task(chain, link):
         CoTError: on chain of trust verification error.
 
     """
-    errors = []
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_decision_worker_types']:
-        errors.append("{} is not a valid decision workerType!".format(worker_type))
-    # make sure all tasks generated from this parent task match the published task-graph.json
-    path = link.get_artifact_full_path('public/task-graph.json')
-    if not os.path.exists(path):
-        errors.append("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
-        raise_on_errors(errors)
-    link.task_graph = load_json(
-        path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
-    )
-    # This check may want to move to a per-task check?
-    for target_link in chain.get_all_links_in_chain():
-        # Verify the target's task is in the parent task's task graph, unless
-        # it's this task or a parent task.
-        # https://github.com/mozilla-releng/scriptworker/issues/77
-        if target_link.parent_task_id == link.task_id and \
-                target_link.task_id != link.task_id and \
-                target_link.task_type not in PARENT_TASK_TYPES:
-            verify_link_in_task_graph(chain, link, target_link)
-    if is_action(link.task):
-        await verify_action_task(chain, link)
-    else:
-        await verify_decision_task(chain, link)
-    raise_on_errors(errors)
+        raise CoTError("{} is not a valid decision workerType!".format(worker_type))
+    if chain is not link:
+        # make sure all tasks generated from this parent task match the published
+        # task-graph.json. Not applicable if this link is the ChainOfTrust object,
+        # since this task won't have generated a task-graph.json yet.
+        path = link.get_artifact_full_path('public/task-graph.json')
+        if not os.path.exists(path):
+            raise CoTError("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
+        link.task_graph = load_json_or_yaml(
+            path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path)
+        )
+        # This check may want to move to a per-task check?
+        for target_link in chain.get_all_links_in_chain():
+            # Verify the target's task is in the parent task's task graph, unless
+            # it's this task or a parent task.
+            # (Decision tasks will not exist in a parent task's task-graph.json;
+            #  action tasks, which are generated later, will also be missing.)
+            # https://github.com/mozilla-releng/scriptworker/issues/77
+            if target_link.parent_task_id == link.task_id and \
+                    target_link.task_id != link.task_id and \
+                    target_link.task_type not in PARENT_TASK_TYPES:
+                verify_link_in_task_graph(chain, link, target_link)
+    try:
+        # Try verifying decision task via json-e (cot v2)
+        await verify_parent_task_definition(chain, link)
+    except (CoTError, DownloadError, KeyError) as e:
+        if chain.context.config['min_cot_version'] > 1:
+            raise CoTError(e)
+        # Fall back to cot v1.
+        # XXX Get rid of the fallback when all trees are Fx59+.
+        log.exception("Falling back to non-json-e decision task verification for {}!".format(link.task_id))
+        if is_action(link.task):
+            mach_commands = ACTION_MACH_COMMANDS
+        else:
+            mach_commands = DECISION_MACH_COMMANDS
+        verify_decision_command(link, mach_commands=mach_commands)
+        # log message for easy papertrail parsing
+        log.warning("DEPRECATED_DECISION_TASK {} while verifying task {}".format(link.task_id, chain.task_id))
 
 
 # verify_build_task {{{1
@@ -1207,8 +1339,7 @@ async def verify_docker_image_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_docker_image_worker_types']:
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
-    # XXX remove the command checks once we have a vetted decision task
-    # from in-tree yaml
+    # XXX remove the command checks once we require json-e cot verification.
     if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
         errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
@@ -1422,9 +1553,9 @@ async def verify_worker_impls(chain):
         await valid_worker_impls[worker_impl](chain, obj)
 
 
-# get_firefox_source_url {{{1
-def get_firefox_source_url(obj):
-    """Get the firefox source url for a Trust object.
+# get_source_url {{{1
+def get_source_url(obj):
+    """Get the source url for a Trust object.
 
     Args:
         obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
@@ -1437,10 +1568,16 @@ def get_firefox_source_url(obj):
 
     """
     task = obj.task
-    log.debug("Getting firefox source url for {} {}...".format(obj.name, obj.task_id))
-    repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
+    log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
+    repo = get_repo(obj.task)
     source = task['metadata']['source']
-    # We hit this for hooks.
+    # XXX We hit this for hooks - still needed? Remove when json-e cot
+    # verification is required.
+    # XXX .startswith() is not the ideal check here.
+    # XXX this will break the new json-e cot verification. We could hardcode
+    # a `{repo}/raw-file/{revision}/.taskcluster.yml` path, but that assumes
+    # hg.m.o. A better approach may be to let misconfigured hooks break, and
+    # either obsolete or fix them.
     if repo and not source.startswith(repo):
         log.warning("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}... returning {}".format(
             obj.name, obj.task_id, repo, source, repo
@@ -1450,9 +1587,9 @@ def get_firefox_source_url(obj):
     return source
 
 
-# trace_back_to_firefox_tree {{{1
-async def trace_back_to_firefox_tree(chain):
-    """Trace the chain back to the firefox tree.
+# trace_back_to_tree {{{1
+async def trace_back_to_tree(chain):
+    """Trace the chain back to the tree.
 
     task.metadata.source: "https://hg.mozilla.org/projects/date//file/a80373508881bfbff67a2a49297c328ff8052572/taskcluster/ci/build"
     task.payload.env.GECKO_HEAD_REPOSITORY "https://hg.mozilla.org/projects/date/"
@@ -1474,15 +1611,13 @@ async def trace_back_to_firefox_tree(chain):
     }.items():
         rules[my_key] = chain.context.config[config_key]
 
-    def callback(match):
-        path_info = match.groupdict()
-        return path_info['path']
-
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
     for obj in [chain] + chain.links:
-        source_url = get_firefox_source_url(obj)
-        repo_path = match_url_regex(chain.context.config['valid_vcs_rules'], source_url, callback)
+        source_url = get_source_url(obj)
+        repo_path = match_url_regex(
+            chain.context.config['valid_vcs_rules'], source_url, match_url_path_callback
+        )
         repos[obj] = repo_path
     # check for restricted scopes.
     my_repo = repos[chain]
@@ -1562,7 +1697,7 @@ async def verify_chain_of_trust(chain):
             check_num_tasks(chain, task_count)
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
-            await trace_back_to_firefox_tree(chain)
+            await trace_back_to_tree(chain)
         except (DownloadError, KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):

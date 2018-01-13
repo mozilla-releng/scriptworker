@@ -21,7 +21,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
 from scriptworker.log import update_logging_config
-from scriptworker.utils import load_json
+from scriptworker.utils import load_json_or_yaml
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ def read_worker_creds(key="credentials"):
     for path in CREDS_FILES:
         if not os.path.exists(path):
             continue
-        contents = load_json(path, is_path=True, exception=None)
+        contents = load_json_or_yaml(path, is_path=True, exception=None)
         if contents.get(key):
             return contents[key]
     else:

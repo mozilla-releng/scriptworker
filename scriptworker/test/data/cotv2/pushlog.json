@@ -1,0 +1,4 @@
+{
+"lastpushid": 343,
+"pushes": {"343": {"changesets": [{"author": "Aki Sasaki \u003casasaki@mozilla.com\u003e", "branch": "default", "desc": "fix yaml", "files": ["taskcluster/ci/docker-image/kind.yml"], "node": "054fe08d229f064a71bae9bb793e7ab8d95eff61", "parents": ["7ce449ebc213e11232cf6b2b417256893194f21f"], "tags": ["tip"]}], "date": 1515524845, "user": "asasaki@mozilla.com"}}
+}

@@ -10,7 +10,7 @@ import mock
 import os
 import pprint
 import pytest
-import scriptworker.task as task
+import scriptworker.task as swtask
 import scriptworker.log as log
 import sys
 import taskcluster.exceptions
@@ -45,19 +45,137 @@ def context(rw_context):
 # worst_level {{{1
 @pytest.mark.parametrize("one,two,expected", ((1, 2, 2), (4, 2, 4)))
 def test_worst_level(one, two, expected):
-    assert task.worst_level(one, two) == expected
+    assert swtask.worst_level(one, two) == expected
+
+
+# get_action_name {{{1
+@pytest.mark.parametrize("name", ("foo", "bar"))
+def test_get_action_name(name):
+    assert swtask.get_action_name({
+        "extra": {
+            "action": {
+                "name": name
+            }
+        }
+    }) == name
+
+
+# get_commit_message {{{1
+@pytest.mark.parametrize("message,expected", ((
+    None, ' '
+), (
+    "foo bar", "foo bar"
+)))
+def test_get_commit_message(message, expected):
+    task = {'payload': {'env': {}}}
+    if message is not None:
+        task['payload']['env']['GECKO_COMMIT_MSG'] = message
+    assert swtask.get_commit_message(task) == expected
 
 
 # get_decision_task_id {{{1
-@pytest.mark.parametrize("defn,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
-def test_get_decision_task_id(defn, result):
-    assert task.get_decision_task_id(defn) == result
+@pytest.mark.parametrize("task,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
+def test_get_decision_task_id(task, result):
+    assert swtask.get_decision_task_id(task) == result
+
+
+# get_parent_task_id {{{1
+@pytest.mark.parametrize("set_parent", (True, False))
+def test_get_parent_task_id(set_parent):
+    task = {'taskGroupId': 'parent_task_id', 'extra': {}}
+    if set_parent:
+        task['extra']['parent'] = 'parent_task_id'
+    assert swtask.get_parent_task_id(task) == 'parent_task_id'
+
+
+# get_repo {{{1
+@pytest.mark.parametrize("repo", (
+    None,
+    "https://hg.mozilla.org/mozilla-central",
+    "https://hg.mozilla.org/mozilla-central/",
+))
+def test_get_repo(repo):
+    task = {'payload': {'env': {}}}
+    if repo:
+        task['payload']['env']['GECKO_HEAD_REPOSITORY'] = repo
+        assert swtask.get_repo(task) == 'https://hg.mozilla.org/mozilla-central'
+    else:
+        assert swtask.get_repo(task) is None
+
+
+# get_revision {{{1
+@pytest.mark.parametrize("rev", (None, "revision!"))
+def test_get_revision(rev):
+    task = {'payload': {'env': {}}}
+    if rev:
+        task['payload']['env']['GECKO_HEAD_REV'] = rev
+    assert swtask.get_revision(task) == rev
 
 
 # get_worker_type {{{1
-@pytest.mark.parametrize("defn,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
-def test_get_worker_type(defn, result):
-    assert task.get_worker_type(defn) == result
+@pytest.mark.parametrize("task,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
+def test_get_worker_type(task, result):
+    assert swtask.get_worker_type(task) == result
+
+
+# is_try {{{1
+@pytest.mark.parametrize("task", (
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"},
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"},
+    {'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"},
+    {'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"},
+))
+def test_is_try(task):
+    assert swtask.is_try(task)
+
+
+# is_action {{{1
+@pytest.mark.parametrize("task,expected", ((
+    {
+        'payload': {
+            'env': {
+                'ACTION_CALLBACK': 'foo'
+            }
+        },
+        'extra': {
+            'action': {
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+        },
+        'extra': {
+            'action': {
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+            'env': {
+                'ACTION_CALLBACK': 'foo'
+            }
+        },
+    },
+    True
+), (
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"
+            }
+        },
+        'metadata': {},
+        'schedulerId': "x"
+    },
+    False
+)))
+def test_is_action(task, expected):
+    assert swtask.is_action(task) == expected
 
 
 # prepare_to_run_task {{{1
@@ -66,7 +184,7 @@ def test_prepare_to_run_task(context):
     context.claim_task = None
     expected = {'taskId': 'taskId', 'runId': 'runId'}
     path = os.path.join(context.config['work_dir'], 'current_task_info.json')
-    assert task.prepare_to_run_task(context, claim_task) == expected
+    assert swtask.prepare_to_run_task(context, claim_task) == expected
     assert os.path.exists(path)
     with open(path) as fh:
         contents = json.load(fh)
@@ -76,7 +194,7 @@ def test_prepare_to_run_task(context):
 # run_task {{{1
 @pytest.mark.asyncio
 async def test_run_task(context):
-    status = await task.run_task(context)
+    status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
     assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
     assert status == 1
@@ -95,7 +213,7 @@ async def test_run_task_negative_11(context, mocker):
 
     mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
 
-    status = await task.run_task(context)
+    status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
     contents = read(log_file)
     assert contents == "Automation Error: python exited with signal -11\n"
@@ -105,7 +223,7 @@ async def test_run_task_negative_11(context, mocker):
 def test_reportCompleted(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
-        task.complete_task(context, 0)
+        swtask.complete_task(context, 0)
     )
     assert successful_queue.info == ["reportCompleted", ('taskId', 'runId'), {}]
 
@@ -113,7 +231,7 @@ def test_reportCompleted(context, successful_queue, event_loop):
 def test_reportFailed(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
-        task.complete_task(context, 1)
+        swtask.complete_task(context, 1)
     )
     assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
 
@@ -121,7 +239,7 @@ def test_reportFailed(context, successful_queue, event_loop):
 def test_reportException(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
-        task.complete_task(context, 2)
+        swtask.complete_task(context, 2)
     )
     assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
@@ -130,7 +248,7 @@ def test_reportException(context, successful_queue, event_loop):
 def test_complete_task_409(context, unsuccessful_queue, event_loop):
     context.temp_queue = unsuccessful_queue
     event_loop.run_until_complete(
-        task.complete_task(context, 0)
+        swtask.complete_task(context, 0)
     )
 
 
@@ -139,7 +257,7 @@ def test_complete_task_non_409(context, unsuccessful_queue, event_loop):
     context.temp_queue = unsuccessful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
         event_loop.run_until_complete(
-            task.complete_task(context, 0)
+            swtask.complete_task(context, 0)
         )
 
 
@@ -147,14 +265,14 @@ def test_complete_task_non_409(context, unsuccessful_queue, event_loop):
 def test_reclaim_task(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
-        task.reclaim_task(context, context.task)
+        swtask.reclaim_task(context, context.task)
     )
 
 
 def test_skip_reclaim_task(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     event_loop.run_until_complete(
-        task.reclaim_task(context, {"unrelated": "task"})
+        swtask.reclaim_task(context, {"unrelated": "task"})
     )
 
 
@@ -163,7 +281,7 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
     context.temp_queue = successful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
         event_loop.run_until_complete(
-            task.reclaim_task(context, context.task)
+            swtask.reclaim_task(context, context.task)
         )
 
 
@@ -179,13 +297,13 @@ async def test_reclaim_task_mock(context, mocker, event_loop):
     context.temp_queue = mock.MagicMock()
     context.temp_queue.reclaimTask = fake_reclaim
     mocker.patch.object(pprint, 'pformat', new=die)
-    await task.reclaim_task(context, context.task)
+    await swtask.reclaim_task(context, context.task)
 
 
 # max_timeout {{{1
 def test_max_timeout_noop(context):
-    with mock.patch.object(task.log, 'debug') as p:
-        task.max_timeout(context, "invalid_proc", 0)
+    with mock.patch.object(swtask.log, 'debug') as p:
+        swtask.max_timeout(context, "invalid_proc", 0)
         assert not p.called
 
 
@@ -195,7 +313,7 @@ def test_max_timeout(context, event_loop):
         sys.executable, TIMEOUT_SCRIPT, temp_dir
     )
     context.config['task_max_timeout'] = 3
-    event_loop.run_until_complete(task.run_task(context))
+    event_loop.run_until_complete(swtask.run_task(context))
     try:
         event_loop.run_until_complete(asyncio.sleep(10))  # Let kill() calls run
     except RuntimeError:
@@ -222,4 +340,4 @@ async def test_claim_work(event_loop, raises, context):
         context.queue.claimWork = foo
     else:
         context.queue.claimWork = noop_async
-    assert await task.claim_work(context) is None
+    assert await swtask.claim_work(context) is None
