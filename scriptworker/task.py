@@ -2,6 +2,7 @@
 """Scriptworker task execution.
 
 Attributes:
+    KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
     log (logging.Logger): the log object for the module
 
 """
@@ -20,8 +21,11 @@ import taskcluster.exceptions
 
 from scriptworker.constants import REVERSED_STATUSES
 from scriptworker.log import get_log_filehandle, pipe_to_log
+from scriptworker.utils import match_url_path_callback, match_url_regex
 
 log = logging.getLogger(__name__)
+
+KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
 
 
 # worst_level {{{1
@@ -177,6 +181,59 @@ def get_worker_type(task):
 
     """
     return task['workerType']
+
+
+# get_and_check_project {{{1
+def get_and_check_project(valid_vcs_rules, source_url):
+    """Given vcs rules and a source_url, return the project.
+
+    The project is in the path, but is the repo name.
+    `releases/mozilla-beta` is the path; `mozilla-beta` is the project.
+
+    Args:
+        valid_vcs_rules (tuple of frozendicts): the valid vcs rules, per
+            ``match_url_regex``.
+        source_url (str): the source url to find the project for.
+
+    Raises:
+        RuntimeError: on failure to find the project.
+
+    Returns:
+        str: the project.
+
+    """
+    project_path = match_url_regex(valid_vcs_rules, source_url, match_url_path_callback)
+    if project_path is None:
+        raise ValueError("Unknown repo for source url {}!".format(source_url))
+    project = project_path.split('/')[-1]
+    return project
+
+
+# get_and_check_tasks_for {{{1
+def get_and_check_tasks_for(task, msg_prefix=''):
+    """Given a parent task, return the reason the parent task was spawned.
+
+    ``.taskcluster.yml`` uses this to know whether to spawn an action,
+    cron, or decision task definition.  The current known ``tasks_for`` are in
+    ``KNOWN_TASKS_FOR``.
+
+    Args:
+        task (dict): the task definition.
+        msg_prefix (str): the string prefix to use for an exception.
+
+    Raises:
+        (KeyError, ValueError): on failure to find a valid ``tasks_for``.
+
+    Returns:
+        str: the ``tasks_for``
+
+    """
+    tasks_for = task['extra']['tasks_for']
+    if tasks_for not in KNOWN_TASKS_FOR:
+        raise ValueError(
+            '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
+        )
+    return tasks_for
 
 
 # is_try {{{1

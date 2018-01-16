@@ -6,7 +6,6 @@ Attributes:
     DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
         ignoring options.
     DECISION_TASK_TYPES (tuple): the decision task types.
-    KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
     PARENT_TASK_TYPES (tuple): the parent task types.
     log (logging.Logger): the log object for this module.
 
@@ -38,6 +37,8 @@ from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
     get_action_name,
+    get_and_check_project,
+    get_and_check_tasks_for,
     get_commit_message,
     get_decision_task_id,
     get_parent_task_id,
@@ -80,7 +81,6 @@ ACTION_MACH_COMMANDS = ((
 ))
 DECISION_TASK_TYPES = ('decision', )
 PARENT_TASK_TYPES = ('decision', 'action')
-KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
 
 
 # ChainOfTrust {{{1
@@ -1088,6 +1088,141 @@ async def get_pushlog_info(decision_link):
     return pushlog_info
 
 
+# get_scm_level {{{1
+async def get_scm_level(context, project):
+    """Get the scm level for a project from ``projects.yml``.
+
+    We define all known projects in ``projects.yml``. Let's make sure we have
+    it populated in ``context``, then return the scm level of ``project``.
+
+    SCM levels are an integer, 1-3, matching Mozilla commit levels.
+    https://www.mozilla.org/en-US/about/governance/policies/commit/access-policy/
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+        project (str): the project to get the scm level for.
+
+    Returns:
+        str: the level of the project, as a string.
+
+    """
+    await context.populate_projects()
+    level = context.projects[project]['access'].replace("scm_level_", "")
+    return level
+
+
+# populate_json_context {{{1
+async def _get_additional_action_jsone_context(parent_link, decision_link):
+    actions_path = decision_link.get_artifact_full_path('public/actions.json')
+    params_path = decision_link.get_artifact_full_path('public/parameters.yml')
+    action_name = get_action_name(parent_link.task)
+    all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
+    actions_tmpl = [d for d in all_actions if d['name'] == action_name][0]
+    parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
+    jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
+    jsone_context['push'] = deepcopy(actions_tmpl['task']['$let']['push'])
+    jsone_context['action'] = deepcopy(actions_tmpl['task']['$let']['action'])
+    jsone_context['parameters'] = parameters
+    jsone_context['task'] = None
+    jsone_context['ownTaskId'] = parent_link.task_id
+    return jsone_context
+
+
+async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
+    rev = get_revision(decision_link.task)
+    pushlog_info = await get_pushlog_info(decision_link)
+    pushlog_id = list(pushlog_info['pushes'].keys())[0]
+    decision_comment = get_commit_message(decision_link.task)
+    push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
+    if decision_comment not in (' ', push_comment):
+        raise CoTError(
+            "Decision task {} comment doesn't match the push comment!\n"
+            "Decision comment: \n{}\nPush comment: \n{}".format(
+                decision_link.name, pprint.pformat(decision_comment),
+                pprint.pformat(push_comment)
+            )
+        )
+    return {
+        "push": {
+            "revision": rev,
+            "comment": decision_comment,
+            "owner": pushlog_info['pushes'][pushlog_id]['user'],
+            "pushlog_id": pushlog_id,
+            "pushdate": pushlog_info['pushes'][pushlog_id]['date'],
+        }
+    }
+
+
+async def _get_additional_cron_jsone_context(parent_link, decision_link):
+    jsone_context = {}
+    rev = get_revision(decision_link.task)
+    jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
+    # I don't love these hardcodes.
+    jsone_context["push"] = {
+        "revision": rev,
+        "comment": '',
+        "owner": 'nobody',
+        "pushlog_id": '-1',
+        "pushdate": '0',
+    }
+    return jsone_context
+
+
+async def populate_jsone_context(chain, parent_link, decision_link):
+    """Populate the json-e context to rebuild ``parent_link``'s task definition.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust to add to.
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the parent link's decision task link.
+
+    Raises:
+        CoTError, KeyError, ValueError: on failure.
+
+    Returns:
+        dict: the json-e context.
+
+    """
+    task_ids = {
+         "default": parent_link.task_id,
+         "decision": decision_link.task_id,
+    }
+    repo = get_repo(decision_link.task)
+    source_url = get_source_url(decision_link)
+    project = get_and_check_project(chain.context.config['valid_vcs_rules'], source_url)
+    level = await get_scm_level(chain.context, project)
+    tasks_for = get_and_check_tasks_for(
+        parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
+    )
+    log.debug("task_ids: {}".format(task_ids))
+    jsone_context = {
+        'now': parent_link.task['created'],
+        'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
+        'tasks_for': tasks_for,
+        'repository': {
+            'level': level,
+            'url': repo,
+            'project': project,
+        },
+        'taskId': None
+    }
+    if tasks_for == 'action':
+        jsone_context.update(
+            await _get_additional_action_jsone_context(parent_link, decision_link)
+        )
+    elif tasks_for == 'hg-push':
+        jsone_context.update(
+            await _get_additional_hgpush_jsone_context(parent_link, decision_link)
+        )
+    else:
+        jsone_context.update(
+            await _get_additional_cron_jsone_context(parent_link, decision_link)
+        )
+    log.debug("json-e context:")
+    log.debug(pprint.pformat(jsone_context))
+    return jsone_context
+
+
 # verify_parent_task_definition {{{1
 async def verify_parent_task_definition(chain, parent_link):
     """Rebuild the decision/action/cron task definition via json-e.
@@ -1111,7 +1246,6 @@ async def verify_parent_task_definition(chain, parent_link):
 
     """
     log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
-    errors = []
     context = chain.context
     decision_link = chain.get_link(parent_link.decision_task_id)
     # Download template from the decision task.
@@ -1121,99 +1255,44 @@ async def verify_parent_task_definition(chain, parent_link):
             context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
         )
     )
-    # Download projects.yml
-    projects = await load_json_or_yaml_from_url(
-        context, context.config['project_configuration_url'],
-        os.path.join(context.config["work_dir"], "projects.yml"),
-        overwrite=False
-    )
     # Populate template (jsone)
     try:
-        task_ids = {
-             "default": parent_link.task_id,
-             "decision": decision_link.task_id,
-        }
-        repo = get_repo(decision_link.task)
-        rev = get_revision(decision_link.task)
-        project_path = match_url_regex(
-            chain.context.config['valid_vcs_rules'], source_url,
-            match_url_path_callback
+        jsone_context = await populate_jsone_context(
+            chain, parent_link, decision_link
         )
-        if project_path is None:
-            raise CoTError("Unknown repo for source url {}!".format(source_url))
-        project = project_path.split('/')[-1]
-        level = projects[project]['access'].replace("scm_level_", "")
-        tasks_for = parent_link.task['extra']['tasks_for']
-        if tasks_for not in KNOWN_TASKS_FOR:
-            raise CoTError(
-                "{} {}: Unknown tasks_for: {}".format(
-                    parent_link.name, parent_link.task_id, tasks_for
-                )
-            )
-        log.debug("task_ids: {}".format(task_ids))
-        jsone_context = {
-            'now': parent_link.task['created'],
-            'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
-            'tasks_for': tasks_for,
-            'repository': {
-                'level': level,
-                'url': repo,
-                'project': project,
-            },
-            'taskId': None
-        }
-        if tasks_for == 'action':
-            actions_path = decision_link.get_artifact_full_path('public/actions.json')
-            params_path = decision_link.get_artifact_full_path('public/parameters.yml')
-            action_name = get_action_name(parent_link.task)
-            all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
-            actions_tmpl = [d for d in all_actions if d['name'] == action_name][0]
-            parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
-            jsone_context.update(deepcopy(parent_link.task['extra']['action']['context']))
-            jsone_context['push'] = deepcopy(actions_tmpl['task']['$let']['push'])
-            jsone_context['action'] = deepcopy(actions_tmpl['task']['$let']['action'])
-            jsone_context['parameters'] = parameters
-            jsone_context['task'] = None
-            jsone_context['ownTaskId'] = parent_link.task_id
-        else:
-            pushlog_info = await get_pushlog_info(decision_link)
-            pushlog_id = list(pushlog_info['pushes'].keys())[0]
-            decision_comment = get_commit_message(decision_link.task)
-            if tasks_for == 'hg-push':
-                # on-push decision task
-                push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
-                if decision_comment not in (' ', push_comment):
-                    raise CoTError(
-                        "Decision task {} comment doesn't match the push comment!\n"
-                        "Decision comment: \n{}\nPush comment: \n{}".format(
-                            decision_link.name, pprint.pformat(decision_comment),
-                            pprint.pformat(push_comment)
-                        )
-                    )
-                jsone_context["push"] = {
-                    "revision": rev,
-                    "comment": decision_comment,
-                    "owner": pushlog_info['pushes'][pushlog_id]['user'],
-                    "pushlog_id": pushlog_id,
-                    "pushdate": pushlog_info['pushes'][pushlog_id]['date'],
-                }
-            else:
-                # cron decision task
-                jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
-                # I don't love these hardcodes.
-                jsone_context["push"] = {
-                    "revision": rev,
-                    "comment": '',
-                    "owner": 'nobody',
-                    "pushlog_id": '-1',
-                    "pushdate": '0',
-                }
-        log.debug("json-e context:")
-        log.debug(pprint.pformat(jsone_context))
         rebuilt_definition = jsone.render(tmpl, jsone_context)
         compare_definition = deepcopy(rebuilt_definition["tasks"][0])
+    except jsone.JSONTemplateError as e:
+        log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
+        raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
+    except (KeyError, ValueError) as e:
+        msg = "Error while rebuilding {} {} task definition!".format(
+            parent_link.name, parent_link.task_id
+        )
+        log.exception(msg)
+        raise CoTError(msg + "\n{}".format(str(e)))
+
+    compare_jsone_task_definition(parent_link, compare_definition)
+
+
+def compare_jsone_task_definition(parent_link, compare_definition):
+    """Compare the json-e rebuilt task definition vs the runtime definition.
+
+    Args:
+        parent_link (LinkOfTrust): the parent link to test.
+        compare_definition (dict): the rebuilt task definition.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    try:
+        # Rebuilt decision tasks have an extra `taskId`; remove
+        if 'taskId' in compare_definition:
+            del(compare_definition['taskId'])
         # XXX remove this hack when treeherder rolls out json-e 2.5.0
-        # https://whatsdeployed.io/?owner=mozilla&repo=treeherder&name[]=Stage&url[]=https://treeherder.allizom.org/revision.txt&name[]=Prod&url[]=https://treeherder.mozilla.org/revision.txt
+        # https://whatsdeployed.io/s-pdF
+        tasks_for = get_and_check_tasks_for(parent_link.task)
         if tasks_for == 'action':
             compare_definition['payload']['env']['ACTION_INPUT'] = parent_link.task['payload']['env']['ACTION_INPUT']
             compare_definition['payload']['env']['ACTION_PARAMETERS'] = parent_link.task['payload']['env']['ACTION_PARAMETERS']
@@ -1221,32 +1300,17 @@ async def verify_parent_task_definition(chain, parent_link):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
-    except jsone.JSONTemplateError as e:
-        log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
-        raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
-    except KeyError as e:
-        msg = "KeyError while rebuilding {} {} task definition!".format(
-            parent_link.name, parent_link.task_id
-        )
-        log.exception(msg)
-        raise CoTError(msg + "\n{}".format(str(e)))
-    # Compare compare_definition vs runtime_definition
-    try:
-        # Rebuilt decision tasks have an extra `taskId`; remove
-        if 'taskId' in compare_definition:
-            del(compare_definition['taskId'])
         log.debug("Compare_definition:\n{}".format(pprint.pformat(compare_definition)))
         log.debug("Runtime definition:\n{}".format(pprint.pformat(runtime_definition)))
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
         if diff:
             raise AssertionError(pprint.pformat(diff))
-    except AssertionError:
+    except (AssertionError, KeyError):
         msg = "{} {}: the rebuilt definition doesn't match the runtime task!".format(
             parent_link.name, parent_link.task_id
         )
         log.exception(msg)
-        errors.append(msg)
-    raise_on_errors(errors)
+        raise CoTError(msg)
 
 
 # verify_parent_task {{{1

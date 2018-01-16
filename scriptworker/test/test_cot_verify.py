@@ -15,6 +15,7 @@ import tempfile
 from taskcluster.exceptions import TaskclusterFailure
 import scriptworker.cot.verify as cotverify
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
+import scriptworker.context as swcontext
 from scriptworker.utils import makedirs, load_json_or_yaml
 from . import noop_async, noop_sync, rw_context, tmpdir, touch
 
@@ -260,7 +261,7 @@ def get_cot(task_defn, task_id="task_id"):
     }
 
 async def cotv2_load_url(context, url, path, **kwargs):
-    if path.endswith("source_tmpl.yml"):
+    if path.endswith("taskcluster.yml"):
         return load_json_or_yaml(
             os.path.join(COTV2_DIR, ".taskcluster.yml"), is_path=True, file_type='yaml'
         )
@@ -1136,6 +1137,7 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
         decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
 
@@ -1154,6 +1156,7 @@ async def test_verify_parent_task_definition_bad_project(chain, mocker):
         return "https://fake_server"
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
     mocker.patch.object(cotverify, 'get_source_url', new=fake_url)
@@ -1172,6 +1175,7 @@ async def test_verify_parent_task_definition_bad_comment(chain, mocker):
     link.task['payload']['env']['GECKO_COMMIT_MSG'] = "invalid comment"
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
 
@@ -1191,6 +1195,7 @@ async def test_verify_parent_task_definition_failed_jsone(chain, mocker):
         raise jsone.JSONTemplateError("foo")
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
     mocker.patch.object(jsone, 'render', new=die)
@@ -1209,6 +1214,7 @@ async def test_verify_parent_task_definition_failed_diff(chain, mocker):
     link.task['illegal'] = 'boom'
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
 
@@ -1226,6 +1232,7 @@ async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
     link.task['extra']['tasks_for'] = 'illegal'
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
 
