@@ -7,13 +7,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `scriptworker.cot.verify.verify_parent_task_definition`. This is the core change in this release, aka CoT version 2. We now use json-e to rebuild the decision/action task definitions from the tree.
 - Added `json-e` and `dictdiffer` dependencies.
 - `arrow`, `certifi`, `taskcluster`, and `yarl` have updated their major version numbers.
+- Added `Context.projects` and `Context.populate_projects`.
 - Added `load_json_or_yaml_from_url`.
 - Added `DEFAULT_CONFIG['cot_version']` and `DEFAULT_CONFIG['min_cot_version']`; this is cotv2. If `min_cot_version` is 1, we allow for falling back to the old cot v1 logic.
 - Added `DEFAULT_CONFIG['project_configuration_url']` and `DEFAULT_CONFIG['pushlog_url']`.
-- Added `scriptworker.cot.verify.KNOWN_TASKS_FOR`
-- Added `scriptworker.task.get_action_name`, `scriptworker.task.get_commit_message`,
+- Added `scriptworker.task.KNOWN_TASKS_FOR`, `scriptworker.task.get_action_name`, `scriptworker.task.get_commit_message`, `scriptworker.task.get_and_check_project`, `scriptworker.task.get_and_check_tasks_for`
 - Added `scriptworker.utils.remove_empty_keys` since json-e drops key/value pairs where the value is empty. See https://github.com/taskcluster/json-e/issues/223
-- Added `scriptworker.cot.verify.get_pushlog_info`.
+- Added `scriptworker.cot.verify.get_pushlog_info`, `scriptworker.cot.verify.get_scm_level`, `scriptworker.cot.verify.populate_jsone_context`, and `scriptworker.cot.verify.compare_jsone_task_definition`.
 - Added test files to `scriptworker/test/data/cotv2/`.
 
 ### Changed
