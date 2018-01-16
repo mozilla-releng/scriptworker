@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - Added `scriptworker.cot.verify.verify_parent_task_definition`. This is the core change in this release, aka CoT version 2. We now use json-e to rebuild the decision/action task definitions from the tree.
 - Added `json-e` and `dictdiffer` dependencies.
+- `arrow`, `certifi`, `taskcluster`, and `yarl` have updated their major version numbers.
 - Added `load_json_or_yaml_from_url`.
 - Added `DEFAULT_CONFIG['cot_version']` and `DEFAULT_CONFIG['min_cot_version']`; this is cotv2. If `min_cot_version` is 1, we allow for falling back to the old cot v1 logic.
 - Added `DEFAULT_CONFIG['project_configuration_url']` and `DEFAULT_CONFIG['pushlog_url']`.

@@ -1097,7 +1097,10 @@ async def verify_parent_task_definition(chain, parent_link):
     and making sure they look well-formed, let's rebuild the task definition
     from the tree and make sure it matches.
 
-    We use the ``decision_link`` for a number of the checks here.
+    We use the the link with the ``task_id`` of ``parent_link.decision_task_id``
+    for a number of the checks here. If ``parent_link`` is a decision or cron
+    task, they're the same task. If ``parent_link`` is an action task, this
+    will reference the decision task that the action task is based off of.
 
     Args:
         chain (ChainOfTrust): the chain of trust to add to.
@@ -1110,15 +1113,12 @@ async def verify_parent_task_definition(chain, parent_link):
     log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
     errors = []
     context = chain.context
-    # Use the decision_link for a number of checks.
-    # For decision tasks, parent_link is decision_link.
-    # For action tasks, parent_link is a child of decision_link.
     decision_link = chain.get_link(parent_link.decision_task_id)
     # Download template from the decision task.
     source_url = get_source_url(decision_link)
     tmpl = await load_json_or_yaml_from_url(
         context, source_url, os.path.join(
-            context.config["work_dir"], "{}_source_tmpl.yml".format(decision_link.name)
+            context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
         )
     )
     # Download projects.yml
@@ -1150,6 +1150,7 @@ async def verify_parent_task_definition(chain, parent_link):
                     parent_link.name, parent_link.task_id, tasks_for
                 )
             )
+        log.debug("task_ids: {}".format(task_ids))
         jsone_context = {
             'now': parent_link.task['created'],
             'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
