@@ -632,7 +632,10 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
         length = chain.context.config['max_chain_length']
         await cotverify.build_task_dependencies(
             chain, {},
-            ':'.join([str(x) for x in range(-length, length)]),
+            # range(0, length) gives `max_chain_length` parts, but we're
+            # measuring colons which are at `max_chain_length - 1`.
+            # To go over, we have to add 2.
+            ':'.join([str(x) for x in range(0, length + 2)]),
             'task_id',
         )
     with pytest.raises(CoTError):
