@@ -1290,12 +1290,6 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         # Rebuilt decision tasks have an extra `taskId`; remove
         if 'taskId' in compare_definition:
             del(compare_definition['taskId'])
-        # XXX remove this hack when treeherder rolls out json-e 2.5.0
-        # https://whatsdeployed.io/s-pdF
-        tasks_for = get_and_check_tasks_for(parent_link.task)
-        if tasks_for == 'action':
-            compare_definition['payload']['env']['ACTION_INPUT'] = parent_link.task['payload']['env']['ACTION_INPUT']
-            compare_definition['payload']['env']['ACTION_PARAMETERS'] = parent_link.task['payload']['env']['ACTION_PARAMETERS']
         # remove key/value pairs where the value is empty, since json-e drops
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
