@@ -629,9 +629,10 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
 
     mocker.patch.object(cotverify, 'find_sorted_task_dependencies', new=fake_find)
     with pytest.raises(CoTError):
+        length = chain.context.config['max_chain_length']
         await cotverify.build_task_dependencies(
             chain, {},
-            ':'.join([str(x) for x in range(0, chain.context.config['max_chain_length'])]),
+            ':'.join([str(x) for x in range(-length, length)]),
             'task_id',
         )
     with pytest.raises(CoTError):
