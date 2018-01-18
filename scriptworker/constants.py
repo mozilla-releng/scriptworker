@@ -64,6 +64,7 @@ DEFAULT_CONFIG = frozendict({
     "verify_cot_signature": False,
     "cot_job_type": "unknown",  # e.g., signing
     "cot_product": "firefox",
+    "max_chain_length": 20,
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
