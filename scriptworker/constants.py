@@ -67,6 +67,7 @@ DEFAULT_CONFIG = frozendict({
     "cot_version": 2,
     "min_cot_version": 1,
     "max_chain_length": 20,
+    "max_jsone_iterations": 10,
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,

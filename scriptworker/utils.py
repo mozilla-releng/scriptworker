@@ -12,6 +12,7 @@ from copy import deepcopy
 import functools
 import hashlib
 import json
+import jsone
 import logging
 import os
 import random
@@ -628,6 +629,30 @@ def remove_empty_keys(values, remove=({}, None, [], 'null')):
                 for key, value in deepcopy(values).items() if value not in remove}
     if isinstance(values, list):
         return [remove_empty_keys(value, remove=remove)
-                for value in deepcopy(values)]
+                for value in deepcopy(values) if value not in remove]
 
     return values
+
+
+# render_jsone {{{1
+def render_jsone(tmpl, jsone_context, max_iterations=10):
+    """Render json-e from the template and json-e context, up to ``max_iterations`` times.
+
+    Args:
+        tmpl (dict): the json-e template to render.
+        jsone_context (dict): the json-e context to render the template with.
+        max_iterations (int, optional): the maximum number of additional
+            `jsone.render` passes to run through, since templates can define
+            values that get rendered on a pass > 1.
+
+    Returns:
+        dict: the rendered json-e.
+
+    """
+    rebuilt_definition = jsone.render(tmpl, jsone_context)
+    for attempt in range(0, max_iterations):
+        new_rebuild = jsone.render(rebuilt_definition, jsone_context)
+        if new_rebuild == rebuilt_definition:
+            break
+        rebuilt_definition = new_rebuild
+    return rebuilt_definition

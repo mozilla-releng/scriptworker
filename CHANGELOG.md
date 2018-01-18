@@ -12,7 +12,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `DEFAULT_CONFIG['cot_version']` and `DEFAULT_CONFIG['min_cot_version']`; this is cotv2. If `min_cot_version` is 1, we allow for falling back to the old cot v1 logic.
 - Added `DEFAULT_CONFIG['project_configuration_url']` and `DEFAULT_CONFIG['pushlog_url']`.
 - Added `scriptworker.task.KNOWN_TASKS_FOR`, `scriptworker.task.get_action_name`, `scriptworker.task.get_commit_message`, `scriptworker.task.get_and_check_project`, `scriptworker.task.get_and_check_tasks_for`
-- Added `scriptworker.utils.remove_empty_keys` since json-e drops key/value pairs where the value is empty. See https://github.com/taskcluster/json-e/issues/223
+- Added `scriptworker.utils.remove_empty_keys` since the taskgraph drops key/value pairs where the value is empty. See https://github.com/taskcluster/json-e/issues/223
+- Added `scriptworker.utils.render_jsone` to generically render json-e.
+- Added `max_jsone_iterations` pref; sometimes the values to replace template values are several layers deep.
 - Added `scriptworker.cot.verify.get_pushlog_info`, `scriptworker.cot.verify.get_scm_level`, `scriptworker.cot.verify.populate_jsone_context`, and `scriptworker.cot.verify.compare_jsone_task_definition`.
 - Added test files to `scriptworker/test/data/cotv2/`.
 

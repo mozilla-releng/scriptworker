@@ -61,6 +61,7 @@ from scriptworker.utils import (
     match_url_regex,
     raise_future_exceptions,
     remove_empty_keys,
+    render_jsone,
     rm,
 )
 from taskcluster.exceptions import TaskclusterFailure
@@ -1111,7 +1112,7 @@ async def get_scm_level(context, project):
     return level
 
 
-# populate_json_context {{{1
+# populate_jsone_context {{{1
 async def _get_additional_action_jsone_context(parent_link, decision_link):
     actions_path = decision_link.get_artifact_full_path('public/actions.json')
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
@@ -1260,7 +1261,9 @@ async def verify_parent_task_definition(chain, parent_link):
         jsone_context = await populate_jsone_context(
             chain, parent_link, decision_link
         )
-        rebuilt_definition = jsone.render(tmpl, jsone_context)
+        rebuilt_definition = render_jsone(
+            tmpl, jsone_context, max_iterations=context.config['max_jsone_iterations']
+        )
         compare_definition = deepcopy(rebuilt_definition["tasks"][0])
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
