@@ -25,6 +25,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `scriptworker.cot.verify.guess_task_type` takes a 2nd arg, `task_defn`, to differentiate action tasks from decision/cron tasks.
 - `scriptworker.cot.verify.get_all_artifacts_per_task_id` adds `public/actions.json` and `public/parameters.yml` to decision task artifacts to download, for action task verification.
 - Removed the `firefox` from `scriptworker.cot.verify` function names.
+- Tweaked the task ID logging in `verify_cot`.
 
 ### Fixed
 - Updated `path_regexes` to identify most (all?) valid hg.m.o repo paths, instead of returning `None`.
