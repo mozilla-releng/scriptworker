@@ -66,6 +66,7 @@ DEFAULT_CONFIG = frozendict({
     "cot_product": "firefox",
     "cot_version": 2,
     "min_cot_version": 1,
+    "max_chain_length": 20,
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,

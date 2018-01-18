@@ -30,6 +30,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 - Removed `scriptworker.cot.verify.verify_decision_task` and `scriptworker.cot.verify.verify_action_task` in favor of `scriptworker.cot.verify.verify_parent_task`.
 
+## [6.0.2] - 2018-01-17
+### Added
+- `max_chain_length` pref, defaulting to the arbitrary (but larger than the current 5) int 20.
+
+### Changed
+- Stopped hardcoding the max chain length to 5 due to longer-than-5 valid chains in production.
+
 ## [6.0.1] - 2018-01-03
 ### Added
 - Allow projects/birch to use project:releng:signing:cert:release-signing

@@ -591,7 +591,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
     """
     log.info("build_task_dependencies {} {}".format(name, my_task_id))
-    if name.count(':') > 5:
+    if name.count(':') > chain.context.config['max_chain_length']:
         raise CoTError("Too deep recursion!\n{}".format(name))
     sorted_dependencies = find_sorted_task_dependencies(task, name, my_task_id)
 
