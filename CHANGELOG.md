@@ -12,6 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 - Removed `scriptworker.utils.render_jsone`, since it reduced to a `jsone.render` call.
+- Removed the now-unused `scriptworker.constants.max_jsone_iterations`
 
 ## [7.0.0] - 2018-01-18
 ### Added
