@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [8.0.0] - 2018-01-19
+### Added
+- Added `scriptworker.cot.verify.get_jsone_template`, because action tasks use actions.json instead of .taskcluster.yml
+
+### Changed
+- Added a `tasks_for` argument to `populate_jsone_context`.
+- Used `format_json` instead of `pprint.pformat` in most `scriptworker.cot.verify` functions.
+
+### Removed
+- Removed `scriptworker.utils.render_jsone`, since it reduced to a `jsone.render` call.
+
 ## [7.0.0] - 2018-01-18
 ### Added
 - Added `scriptworker.cot.verify.verify_parent_task_definition`. This is the core change in this release, aka CoT version 2. We now use json-e to rebuild the decision/action task definitions from the tree.

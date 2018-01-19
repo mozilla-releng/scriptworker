@@ -482,17 +482,3 @@ def test_add_enumerable_item_to_dict(dict_, key, item, expected):
 )))
 def test_remove_empty_keys(orig, expected):
     assert utils.remove_empty_keys(orig) == expected
-
-
-# render_jsone {{{1
-@pytest.mark.parametrize("tmpl,jsone_context,expected,max_iterations", ((
-    {'foo': '${x}'}, {'x': 'bar'}, {'foo': 'bar'}, 1
-), (
-    {'foo': '$${input.foo}'}, {'input': {'foo': 'bar'}},
-    {'foo': 'bar'}, 1
-), (
-    {'foo': '$${input.foo}'}, {'input': {'foo': 'bar'}},
-    {'foo': '${input.foo}'}, 0
-)))
-def test_render_jsone(tmpl, jsone_context, expected, max_iterations):
-    assert utils.render_jsone(tmpl, jsone_context, max_iterations=max_iterations) == expected
