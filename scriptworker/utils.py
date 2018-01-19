@@ -8,15 +8,18 @@ Attributes:
 import aiohttp
 import arrow
 import asyncio
+from copy import deepcopy
 import functools
 import hashlib
 import json
+import jsone
 import logging
 import os
 import random
 import re
 import shutil
 from urllib.parse import unquote, urlparse
+import yaml
 from taskcluster.client import createTemporaryCredentials
 from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
@@ -320,6 +323,7 @@ async def raise_future_exceptions(tasks):
     return succeeded_results
 
 
+# get_results_and_future_exceptions {{{1
 async def get_results_and_future_exceptions(tasks):
     """Given a list of futures, await them, then return results and exceptions.
 
@@ -415,36 +419,45 @@ def format_json(data):
     return json.dumps(data, indent=2, sort_keys=True)
 
 
-# load_json {{{1
-def load_json(string, is_path=False, exception=ScriptWorkerTaskException,
-              message="Failed to load json: %(exc)s"):
-    """Load json from a filehandle or string, and raise a custom exception on failure.
+# load_json_or_yaml {{{1
+def load_json_or_yaml(string, is_path=False, file_type='json',
+                      exception=ScriptWorkerTaskException,
+                      message="Failed to load %(file_type)s: %(exc)s"):
+    """Load json or yaml from a filehandle or string, and raise a custom exception on failure.
 
     Args:
-        string (str): json body or a path to open
+        string (str): json/yaml body or a path to open
         is_path (bool, optional): if ``string`` is a path. Defaults to False.
+        file_type (str, optional): either "json" or "yaml". Defaults to "json".
         exception (exception, optional): the exception to raise on failure.
             If None, don't raise an exception.  Defaults to ScriptWorkerTaskException.
         message (str, optional): the message to use for the exception.
-            Defaults to "Failed to load json: %(exc)s"
+            Defaults to "Failed to load %(file_type)s: %(exc)s"
 
     Returns:
-        dict: the json contents
+        dict: the data from the string.
 
     Raises:
         Exception: as specified, on failure
 
     """
+    if file_type == 'json':
+        _load_fh = json.load
+        _load_str = json.loads
+    else:
+        _load_fh = yaml.safe_load
+        _load_str = yaml.safe_load
+
     try:
         if is_path:
             with open(string, "r") as fh:
-                contents = json.load(fh)
+                contents = _load_fh(fh)
         else:
-            contents = json.loads(string)
+            contents = _load_str(string)
         return contents
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, yaml.scanner.ScannerError) as exc:
         if exception is not None:
-            repl_dict = {'exc': str(exc)}
+            repl_dict = {'exc': str(exc), 'file_type': file_type}
             raise exception(message % repl_dict)
 
 
@@ -476,6 +489,50 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
                     break
                 fd.write(chunk)
     log.info("Done")
+
+
+# load_json_or_yaml_from_url {{{1
+async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
+    """Retry a json/yaml file download, load it, then return its data.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        url (str): the url to download
+        path (str): the path to download to
+        overwrite (bool, optional): if False and path exists, don't download.
+            Defaults to True.
+
+    Returns:
+        dict: the url data.
+
+    Raises:
+        Exception: as specified, on failure
+
+    """
+    if path.endswith("json"):
+        file_type = 'json'
+    else:
+        file_type = 'yaml'
+    if not overwrite or not os.path.exists(path):
+        await retry_async(
+            download_file, args=(context, url, path),
+        )
+    return load_json_or_yaml(path, is_path=True, file_type=file_type)
+
+
+# match_url_path_callback {{{1
+def match_url_path_callback(match):
+    """Return the path, as a ``match_url_regex`` callback.
+
+    Args:
+        match (re.match): the regex match object from ``match_url_regex``
+
+    Returns:
+        string: the path matched in the regex.
+
+    """
+    path_info = match.groupdict()
+    return path_info['path']
 
 
 # match_url_regex {{{1
@@ -523,6 +580,7 @@ def match_url_regex(rules, url, callback):
                 return result
 
 
+# add_enumerable_item_to_dict {{{1
 def add_enumerable_item_to_dict(dict_, key, item):
     """Add an item to a list contained in a dict.
 
@@ -538,6 +596,7 @@ def add_enumerable_item_to_dict(dict_, key, item):
         dict_ (dict): the dict to modify
         key (str): the key to add the item to
         item (whatever): The item to add to the list associated to the key
+
     """
     if isinstance(item, (list, tuple)):
         try:
@@ -549,3 +608,51 @@ def add_enumerable_item_to_dict(dict_, key, item):
             dict_[key].append(item)
         except KeyError:
             dict_[key] = [item]
+
+
+# remove_empty_keys {{{1
+def remove_empty_keys(values, remove=({}, None, [], 'null')):
+    """Recursively remove key/value pairs where the value is in ``remove``.
+
+    This is targeted at comparing json-e rebuilt task definitions, since
+    json-e drops key/value pairs with empty values.
+
+    Args:
+        values (dict/list): the dict or list to remove empty keys from.
+
+    Returns:
+        values (dict/list): a dict or list copy, with empty keys removed.
+
+    """
+    if isinstance(values, dict):
+        return {key: remove_empty_keys(value, remove=remove)
+                for key, value in deepcopy(values).items() if value not in remove}
+    if isinstance(values, list):
+        return [remove_empty_keys(value, remove=remove)
+                for value in deepcopy(values) if value not in remove]
+
+    return values
+
+
+# render_jsone {{{1
+def render_jsone(tmpl, jsone_context, max_iterations=10):
+    """Render json-e from the template and json-e context, up to ``max_iterations`` times.
+
+    Args:
+        tmpl (dict): the json-e template to render.
+        jsone_context (dict): the json-e context to render the template with.
+        max_iterations (int, optional): the maximum number of additional
+            `jsone.render` passes to run through, since templates can define
+            values that get rendered on a pass > 1.
+
+    Returns:
+        dict: the rendered json-e.
+
+    """
+    rebuilt_definition = jsone.render(tmpl, jsone_context)
+    for attempt in range(0, max_iterations):
+        new_rebuild = jsone.render(rebuilt_definition, jsone_context)
+        if new_rebuild == rebuilt_definition:
+            break
+        rebuilt_definition = new_rebuild
+    return rebuilt_definition

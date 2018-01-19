@@ -14,8 +14,9 @@ from copy import deepcopy
 import json
 import logging
 import os
+import tempfile
 
-from scriptworker.utils import makedirs
+from scriptworker.utils import makedirs, load_json_or_yaml_from_url
 from taskcluster.async import Queue
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ class Context(object):
     _claim_task = None  # This assumes a single task per worker.
     _temp_credentials = None  # This assumes a single task per worker.
     _reclaim_task = None
+    _projects = None
 
     @property
     def claim_task(self):
@@ -163,3 +165,35 @@ class Context(object):
         makedirs(os.path.dirname(path))
         with open(path, "w") as fh:
             json.dump(contents, fh, indent=2, sort_keys=True)
+
+    @property
+    def projects(self):
+        """dict: The current contents of ``projects.yml``, which defines CI configuration.
+
+        I'd love to auto-populate this; currently we need to set this from
+        the config's ``project_configuration_url``.
+
+        """
+        if self._projects:
+            return dict(deepcopy(self._projects))
+
+    @projects.setter
+    def projects(self, projects):
+        self._projects = projects
+
+    async def populate_projects(self, force=False):
+        """Download the ``projects.yml`` file and populate ``self.projects``.
+
+        This only sets it once, unless ``force`` is set.
+
+        Args:
+            force (bool, optional): Re-run the download, even if ``self.projects``
+                is already defined. Defaults to False.
+
+        """
+        if force or not self.projects:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                self.projects = await load_json_or_yaml_from_url(
+                    self, self.config['project_configuration_url'],
+                    os.path.join(tmpdirname, 'projects.yml')
+                )

@@ -1,0 +1,79 @@
+{
+  "provisionerId": "aws-provisioner-v1",
+  "workerType": "gecko-3-decision",
+  "schedulerId": "gecko-level-3",
+  "taskGroupId": "VQU9QMO4Teq7zr91FhBusg",
+  "dependencies": [],
+  "requires": "all-completed",
+  "routes": [
+    "index.gecko.v2.maple.latest.firefox.decision",
+    "index.gecko.v2.maple.revision.054fe08d229f064a71bae9bb793e7ab8d95eff61.firefox.decision",
+    "index.gecko.v2.maple.pushlog-id.343.decision",
+    "tc-treeherder.v2.maple.054fe08d229f064a71bae9bb793e7ab8d95eff61.343",
+    "notify.email.asasaki@mozilla.com.on-failed",
+    "notify.email.asasaki@mozilla.com.on-exception"
+  ],
+  "priority": "lowest",
+  "retries": 5,
+  "created": "2018-01-09T19:07:36.291Z",
+  "deadline": "2018-01-10T19:07:36.291Z",
+  "expires": "2019-01-09T19:07:37.291Z",
+  "scopes": [
+    "assume:repo:hg.mozilla.org/projects/maple:*",
+    "queue:route:notify.email.asasaki@mozilla.com.*"
+  ],
+  "payload": {
+    "env": {
+      "GECKO_BASE_REPOSITORY": "https://hg.mozilla.org/mozilla-unified",
+      "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/projects/maple",
+      "GECKO_HEAD_REF": "054fe08d229f064a71bae9bb793e7ab8d95eff61",
+      "GECKO_HEAD_REV": "054fe08d229f064a71bae9bb793e7ab8d95eff61",
+      "GECKO_COMMIT_MSG": " ",
+      "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
+      "TASKCLUSTER_CACHES": "/builds/worker/checkouts"
+    },
+    "cache": {
+      "level-3-checkouts-sparse-v1": "/builds/worker/checkouts"
+    },
+    "features": {
+      "taskclusterProxy": true,
+      "chainOfTrust": true
+    },
+    "image": "taskcluster/decision:2.0.0@sha256:4039fd878e5700b326d4a636e28c595c053fbcb53909c1db84ad1f513cf644ef",
+    "maxRunTime": 1800,
+    "command": [
+      "/builds/worker/bin/run-task",
+      "--vcs-checkout=/builds/worker/checkouts/gecko",
+      "--sparse-profile=build/sparse-profiles/taskgraph",
+      "--",
+      "bash",
+      "-cx",
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph decision --pushlog-id='343' --pushdate='1515524845' --project='maple' --message=\"$GECKO_COMMIT_MSG\" --owner='asasaki@mozilla.com' --level='3' --base-repository=\"$GECKO_BASE_REPOSITORY\" --head-repository=\"$GECKO_HEAD_REPOSITORY\" --head-ref=\"$GECKO_HEAD_REF\" --head-rev=\"$GECKO_HEAD_REV\" \n"
+    ],
+    "artifacts": {
+      "public": {
+        "type": "directory",
+        "path": "/builds/worker/artifacts",
+        "expires": "2019-01-09T19:07:36.291Z"
+      }
+    }
+  },
+  "metadata": {
+    "owner": "asasaki@mozilla.com",
+    "source": "https://hg.mozilla.org/projects/maple/raw-file/054fe08d229f064a71bae9bb793e7ab8d95eff61/.taskcluster.yml",
+    "name": "Gecko Decision Task",
+    "description": "The task that creates all of the other tasks in the task graph"
+  },
+  "tags": {
+    "createdForUser": "asasaki@mozilla.com"
+  },
+  "extra": {
+    "treeherder": {
+      "machine": {
+        "platform": "gecko-decision"
+      },
+      "symbol": "D"
+    },
+    "tasks_for": "hg-push"
+  }
+}

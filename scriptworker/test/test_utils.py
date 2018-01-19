@@ -6,11 +6,20 @@ import asyncio
 import mock
 import os
 import pytest
+import re
+import shutil
 import tempfile
 from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
-from . import event_loop, fake_session, fake_session_500, FakeResponse, tmpdir, \
-    touch
+from . import (
+    FakeResponse,
+    event_loop,
+    fake_session,
+    fake_session_500,
+    noop_async,
+    tmpdir,
+    touch,
+)
 from . import rw_context as context
 
 assert event_loop, tmpdir  # silence flake8
@@ -356,7 +365,7 @@ def test_format_json():
 
 
 
-# load_json {{{1
+# load_json_or_yaml {{{1
 @pytest.mark.parametrize("string,is_path,exception,raises,result", ((
     os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
     True, None, False, {"credentials": ["blah"]}
@@ -367,12 +376,47 @@ def test_format_json():
 ), (
     '{"a": "b}', False, ScriptWorkerException, True, None
 )))
-def test_load_json(string, is_path, exception, raises, result):
+def test_load_json_or_yaml(string, is_path, exception, raises, result):
     if raises:
         with pytest.raises(exception):
-            utils.load_json(string, is_path=is_path, exception=exception)
+            utils.load_json_or_yaml(string, is_path=is_path, exception=exception)
     else:
-        assert result == utils.load_json(string, is_path=is_path, exception=exception)
+        for file_type in ("json", "yaml"):
+            assert result == utils.load_json_or_yaml(
+                string, is_path=is_path, exception=exception, file_type=file_type
+            )
+
+# load_json_or_yaml_from_url {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("overwrite,file_type", ((
+    True, "json"
+), (
+    False, "json"
+), (
+    True, "yaml"
+), (
+    False, "yaml"
+)))
+async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type, tmpdir):
+    mocker.patch.object(utils, 'retry_async', new=noop_async)
+    path = os.path.join(tmpdir, "bad.{}".format(file_type))
+    shutil.copyfile(
+        os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
+        path
+    )
+    assert await utils.load_json_or_yaml_from_url(
+        context, "", path, overwrite=overwrite
+    ) == {"credentials": ["blah"]}
+
+
+# match_url_path_callback {{{1
+@pytest.mark.parametrize("path", (
+    "/mozilla-central", "/mozilla-central/foo/bar", "/mozilla-central/"
+))
+def test_match_url_path_callback(path):
+    regex = re.compile("^/(?P<path>mozilla-(central|unified))(/|$)")
+    m = regex.match(path)
+    assert utils.match_url_path_callback(m) == "mozilla-central"
 
 
 # match_url_regex {{{1
@@ -409,6 +453,7 @@ def test_match_url_regex():
     assert utils.match_url_regex((), "https://hg.mozilla.org/mozilla-central", cb) is None
 
 
+# add_enumerable_item_to_dict {{{1
 @pytest.mark.parametrize("dict_, key, item, expected", ((
     {}, 'non_existing_key', 'an_item', {'non_existing_key': ['an_item']}
 ), (
@@ -425,3 +470,29 @@ def test_match_url_regex():
 def test_add_enumerable_item_to_dict(dict_, key, item, expected):
     utils.add_enumerable_item_to_dict(dict_, key, item)
     assert dict_ == expected
+
+
+# remove_empty_keys {{{1
+@pytest.mark.parametrize("orig,expected", ((
+    {'a': None, 'b': '', 'c': {}, 'd': [], 'e': 'null'},
+    {'b': ''}
+), (
+    {'a': {'b': None, 'c': ''}, 'd': [{}, '']},
+    {'a': {'c': ''}, 'd': ['']}
+)))
+def test_remove_empty_keys(orig, expected):
+    assert utils.remove_empty_keys(orig) == expected
+
+
+# render_jsone {{{1
+@pytest.mark.parametrize("tmpl,jsone_context,expected,max_iterations", ((
+    {'foo': '${x}'}, {'x': 'bar'}, {'foo': 'bar'}, 1
+), (
+    {'foo': '$${input.foo}'}, {'input': {'foo': 'bar'}},
+    {'foo': 'bar'}, 1
+), (
+    {'foo': '$${input.foo}'}, {'input': {'foo': 'bar'}},
+    {'foo': '${input.foo}'}, 0
+)))
+def test_render_jsone(tmpl, jsone_context, expected, max_iterations):
+    assert utils.render_jsone(tmpl, jsone_context, max_iterations=max_iterations) == expected

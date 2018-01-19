@@ -6,6 +6,7 @@ import asyncio
 from copy import deepcopy
 from frozendict import frozendict
 import json
+import jsone
 import logging
 import mock
 import os
@@ -14,7 +15,8 @@ import tempfile
 from taskcluster.exceptions import TaskclusterFailure
 import scriptworker.cot.verify as cotverify
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
-from scriptworker.utils import makedirs
+import scriptworker.context as swcontext
+from scriptworker.utils import makedirs, load_json_or_yaml
 from . import noop_async, noop_sync, rw_context, tmpdir, touch
 
 assert rw_context, tmpdir  # silence pyflakes
@@ -28,6 +30,9 @@ VALID_WORKER_IMPLS = (
     'scriptworker',
     'taskcluster-worker',
 )
+
+
+COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
 
 
 async def die_async(*args, **kwargs):
@@ -127,6 +132,7 @@ def decision_link(chain):
         'provisionerId': 'provisioner_id',
         'taskId': 'decision_task_id',
         'workerType': 'workerType',
+        'dependencies': [],
         'scopes': [],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
@@ -134,7 +140,9 @@ def decision_link(chain):
         'payload': {
             'image': "blah",
         },
-        'extra': {},
+        'extra': {
+            'tasks_for': 'hg-push',
+        },
     }
     yield link
 
@@ -153,37 +161,39 @@ def action_link(chain):
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
+        'dependencies': [],
         'scopes': [],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
         },
         'payload': {
+            'env': {'ACTION_CALLBACK': ''},
             'image': "blah",
         },
         'extra': {
             'action': {},
             'parent': 'decision_task_id',
+            'tasks_for': 'action',
         },
     }
     yield link
 
 
 @pytest.yield_fixture(scope='function')
-def release_action_link(chain):
-    # Release action tasks look like decision tasks (self-contained graph) but
-    # are action tasks.
-    link = cotverify.LinkOfTrust(chain.context, 'decision', 'relaction_task_id')
+def cron_link(chain):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
     link.cot = {
-        'taskId': 'relaction_task_id',
+        'taskId': 'decision_task_id',
         'environment': {
             'imageHash': "sha256:decision_image_sha",
         },
     }
     link.task = {
-        'taskGroupId': 'relaction_task_id',
+        'taskGroupId': 'decision_task_id',
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
+        'dependencies': [],
         'scopes': [],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
@@ -192,8 +202,8 @@ def release_action_link(chain):
             'image': "blah",
         },
         'extra': {
-            'action': {},
-            'parent': 'decision_task_id',
+            'cron': {},
+            'tasks_for': 'cron',
         },
     }
     yield link
@@ -250,6 +260,30 @@ def get_cot(task_defn, task_id="task_id"):
         "workerId": "..."
     }
 
+async def cotv2_load_url(context, url, path, **kwargs):
+    if path.endswith("taskcluster.yml"):
+        return load_json_or_yaml(
+            os.path.join(COTV2_DIR, ".taskcluster.yml"), is_path=True, file_type='yaml'
+        )
+    elif path.endswith("projects.yml"):
+        return load_json_or_yaml(
+            os.path.join(COTV2_DIR, "projects.yml"), is_path=True, file_type='yaml'
+        )
+
+def cotv2_load(string, is_path=False, **kwargs):
+    if is_path:
+        if string.endswith("parameters.yml"):
+            return load_json_or_yaml(
+                os.path.join(COTV2_DIR, "parameters.yml"), is_path=True, file_type='yaml'
+            )
+        elif string.endswith("actions.json"):
+            return load_json_or_yaml(os.path.join(COTV2_DIR, "actions.json"), is_path=True)
+    else:
+        return load_json_or_yaml(string)
+
+async def cotv2_pushlog(_):
+    return load_json_or_yaml(os.path.join(COTV2_DIR, "pushlog.json"), is_path=True)
+
 
 # dependent_task_ids {{{1
 def test_dependent_task_ids(chain):
@@ -282,65 +316,6 @@ def test_chain_is_try(chain, bools, expected):
         m.is_try = b
         chain.links.append(m)
     assert chain.is_try() == expected
-
-
-@pytest.mark.parametrize("task", (
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"},
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/mozilla-central", "MH_BRANCH": "try"}}, 'metadata': {}, "schedulerId": "x"},
-    {'payload': {}, 'metadata': {'source': 'http://hg.mozilla.org/try'}, 'schedulerId': "x"},
-    {'payload': {}, 'metadata': {}, 'schedulerId': "gecko-level-1"},
-))
-def test_is_try(task):
-    assert cotverify.is_try(task)
-
-
-# is_action {{{1
-@pytest.mark.parametrize("task,expected", ((
-    {
-        'payload': {
-            'env': {
-                'ACTION_CALLBACK': 'foo'
-            }
-        },
-        'extra': {
-            'action': {
-            }
-        },
-    },
-    True
-), (
-    {
-        'payload': {
-        },
-        'extra': {
-            'action': {
-            }
-        },
-    },
-    True
-), (
-    {
-        'payload': {
-            'env': {
-                'ACTION_CALLBACK': 'foo'
-            }
-        },
-    },
-    True
-), (
-    {
-        'payload': {
-            'env': {
-                'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"
-            }
-        },
-        'metadata': {},
-        'schedulerId': "x"
-    },
-    False
-)))
-def test_is_action(task, expected):
-    assert cotverify.is_action(task) == expected
 
 
 # get_link {{{1
@@ -437,12 +412,19 @@ def test_get_valid_worker_impls():
         assert callable(value)
 
 
-# get_task_type {{{1
-def test_get_task_type():
+# guess_task_type {{{1
+def test_guess_task_type():
     for name in cotverify.get_valid_task_types().keys():
         with pytest.raises(CoTError):
-            cotverify.guess_task_type("foo:bar:baz:{}0".format(name))
-        assert name == cotverify.guess_task_type("foo:bar:baz:{}".format(name))
+            cotverify.guess_task_type("foo:bar:baz:{}0".format(name), {})
+        assert name == cotverify.guess_task_type("foo:bar:baz:{}".format(name), {})
+    # Special cased `parent` name
+    assert cotverify.guess_task_type("foo:bar:baz:parent", {'payload': {}}) == 'decision'
+    assert cotverify.guess_task_type(
+        "foo:bar:baz:parent", {
+            'payload': {}, 'extra': {'action': {}}
+        }
+    ) == 'action'
 
 
 # check_interactive_docker_worker {{{1
@@ -522,11 +504,11 @@ def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_l
     'decision'
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
-    [('build:decision', 'decision_task_id')],
+    [('build:parent', 'decision_task_id')],
     'build'
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {'parent': 'action_task_id'}, 'payload': {}},
-    [('build:action', 'action_task_id')],
+    [('build:parent', 'action_task_id')],
     'build'
 ), (
     {
@@ -536,7 +518,7 @@ def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_l
         },
         'payload': {},
     }, [
-        ('build:decision', 'decision_task_id'),
+        ('build:parent', 'decision_task_id'),
         ('build:docker-image', 'docker_image_task_id'),
     ],
     'build'
@@ -556,7 +538,7 @@ def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_l
             }],
         },
     }, [
-        ('build:decision', 'decision_task_id'),
+        ('build:parent', 'decision_task_id'),
         ('build:blah', 'blah_task_id'),
         ('build:blah', 'blah_task_id'),     # Duplicates aren't deleted
         ('build:docker-image', 'docker_image_task_id'),
@@ -580,7 +562,7 @@ def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_l
             }],
         },
     }, [
-        ('pushapk:decision', 'decision_task_id'),
+        ('pushapk:parent', 'decision_task_id'),
         ('pushapk:signing', 'platform_0_signing_task_id'),
         ('pushapk:signing', 'platform_1_signing_task_id'),
         ('pushapk:signing', 'platform_2_signing_task_id'),
@@ -744,22 +726,28 @@ async def test_download_cot_artifact_no_downloaded_cot(chain, mocker, event_loop
 
 
 # download_cot_artifacts {{{1
-@pytest.mark.parametrize("raises", (True, False))
+@pytest.mark.parametrize("upstreamArtifacts,raises", ((
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
+     {'taskId': 'task_id', 'paths': ['path3', 'failed_path'], 'optional': True}],
+    True,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
+     {'taskId': 'task_id', 'paths': ['path3', 'failed_path'], 'optional': True}],
+    False,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
+     {'taskId': 'task_id', 'paths': ['path3', ], 'optional': True}],
+    False,
+)))
 @pytest.mark.asyncio
-async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
+async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts, event_loop):
 
     async def fake_download(x, y, path):
         if path == 'failed_path':
             raise DownloadError('')
         return path
 
-    chain.task['payload']['upstreamArtifacts'] = [
-        {'taskId': 'task_id', 'paths': ['path1', 'path2']},
-        {'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True},
-    ]
-    artifact_dict = {
-        'task_id': ['path1', 'path2', 'failed_path'],
-    }
+    chain.task['payload']['upstreamArtifacts'] = upstreamArtifacts
     if raises:
         mocker.patch.object(cotverify, 'download_cot_artifact', new=die_async)
         with pytest.raises(CoTError):
@@ -767,9 +755,10 @@ async def test_download_cot_artifacts(chain, raises, mocker, event_loop):
     else:
         mocker.patch.object(cotverify, 'download_cot_artifact', new=fake_download)
         result = await cotverify.download_cot_artifacts(chain)
-        assert sorted(result) == ['path1', 'path2']
+        assert sorted(result) == ['path1', 'path2', 'path3']
 
 
+# is_task_required_by_any_mandatory_artifact {{{1
 @pytest.mark.parametrize('upstream_artifacts, task_id, expected', ((
     [{
         'taskId': 'id1',
@@ -811,6 +800,7 @@ def test_is_task_required_by_any_mandatory_artifact(chain, upstream_artifacts, t
     assert cotverify.is_task_required_by_any_mandatory_artifact(chain, task_id) == expected
 
 
+# is_artifact_optional {{{1
 @pytest.mark.parametrize('upstream_artifacts, task_id, path, expected', ((
     [{
         'taskId': 'id1',
@@ -859,7 +849,7 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
 
 
 @pytest.mark.parametrize("upstream_artifacts,expected", ((
-    None, {'decision_task_id': ['public/task-graph.json']}
+    None, {'decision_task_id': ['public/task-graph.json', 'public/actions.json', 'public/parameters.yml']}
 ), (
     [{
         "taskId": "id1",
@@ -869,7 +859,7 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
         "paths": ["id2_path1", "id2_path2"],
     }],
     {
-        'decision_task_id': ['public/task-graph.json'],
+        'decision_task_id': ['public/task-graph.json', 'public/actions.json', 'public/parameters.yml'],
         'id1': ['id1_path1', 'id1_path2'],
         'id2': ['id2_path1', 'id2_path2'],
     }
@@ -1060,7 +1050,7 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
 
-# verify_firefox_decision_command {{{1
+# verify_decision_command {{{1
 @pytest.mark.parametrize("command,raises", ((
     [
         '/home/worker/bin/run-task',
@@ -1108,20 +1098,173 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'cd foo && -s x y && ./mach bad command',
     ], True
 )))
-def test_verify_firefox_decision_command(decision_link, command, raises):
+def test_verify_decision_command(decision_link, command, raises):
     decision_link.task['payload']['command'] = command
     if raises:
         with pytest.raises(CoTError):
-            cotverify.verify_firefox_decision_command(decision_link)
+            cotverify.verify_decision_command(decision_link)
     else:
-        cotverify.verify_firefox_decision_command(decision_link)
+        cotverify.verify_decision_command(decision_link)
+
+
+# get_pushlog_info {{{1
+@pytest.mark.parametrize("pushes", (
+    ["push"],
+    ["push1", "push2"]
+))
+@pytest.mark.asyncio
+async def test_get_pushlog_info(decision_link, pushes, mocker):
+
+    async def fake_load(*args, **kwargs):
+        return {"pushes": pushes}
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=fake_load)
+    assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
+
+
+# verify_parent_task_definition {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
+    "decision", "VQU9QMO4Teq7zr91FhBusg", os.path.join(COTV2_DIR, "decision_hg-push.json"),
+    "VQU9QMO4Teq7zr91FhBusg", os.path.join(COTV2_DIR, "decision_hg-push.json"),
+), (
+    "action", "MP8uhRdMTjm__Q_sA0GTnA", os.path.join(COTV2_DIR, "action_relpro.json"),
+    "VQU9QMO4Teq7zr91FhBusg", os.path.join(COTV2_DIR, "decision_hg-push.json"),
+), (
+    "decision", "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json"),
+    "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json"),
+)))
+async def test_verify_parent_task_definition(chain, name, task_id, path,
+                                             decision_task_id, decision_path, mocker):
+    link = cotverify.LinkOfTrust(chain.context, name, task_id)
+    link.task = load_json_or_yaml(path, is_path=True)
+    if task_id == decision_task_id:
+        decision_link = link
+    else:
+        decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
+        decision_link.task = load_json_or_yaml(decision_path, is_path=True)
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+
+    chain.links = list(set([decision_link, link]))
+    await cotverify.verify_parent_task_definition(
+        chain, link
+    )
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_definition_bad_project(chain, mocker):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
+    link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
+
+    def fake_url(*args):
+        return "https://fake_server"
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+    mocker.patch.object(cotverify, 'get_source_url', new=fake_url)
+
+    chain.links = [link]
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(
+            chain, link
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_definition_bad_comment(chain, mocker):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
+    link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
+    link.task['payload']['env']['GECKO_COMMIT_MSG'] = "invalid comment"
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+
+    chain.links = [link]
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(
+            chain, link
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_definition_failed_jsone(chain, mocker):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
+    link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
+
+    def die(*args):
+        raise jsone.JSONTemplateError("foo")
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+    mocker.patch.object(jsone, 'render', new=die)
+
+    chain.links = [link]
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(
+            chain, link
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_definition_failed_diff(chain, mocker):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
+    link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
+    link.task['illegal'] = 'boom'
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+
+    chain.links = [link]
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(
+            chain, link
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
+    link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
+    link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
+    link.task['extra']['tasks_for'] = 'illegal'
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+
+    chain.links = [link]
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(
+            chain, link
+        )
 
 
 # verify_parent_task {{{1
 @pytest.mark.asyncio
-async def test_verify_parent_task(chain, action_link, release_action_link,
-                                  decision_link, build_link, mocker):
-    for parent_link in (action_link, release_action_link, decision_link):
+@pytest.mark.parametrize("defn_fn,min_cot_version,raises", ((
+    noop_async, 1, False
+), (
+    die_async, 1, False
+), (
+    die_async, 2, True
+)))
+async def test_verify_parent_task(chain, action_link, cron_link,
+                                  decision_link, build_link, mocker, defn_fn,
+                                  min_cot_version, raises):
+    chain.context.config['min_cot_version'] = min_cot_version
+    for parent_link in (action_link, cron_link, decision_link):
         build_link.decision_task_id = parent_link.decision_task_id
         build_link.parent_task_id = parent_link.task_id
 
@@ -1135,14 +1278,29 @@ async def test_verify_parent_task(chain, action_link, release_action_link,
                 },
             }
 
-        path = os.path.join(parent_link.cot_dir, "public", "task-graph.json")
-        makedirs(os.path.dirname(path))
-        touch(path)
+        paths = [
+            os.path.join(parent_link.cot_dir, "public", "task-graph.json"),
+            os.path.join(decision_link.cot_dir, "public", "parameters.yml"),
+        ]
+        for path in paths:
+            makedirs(os.path.dirname(path))
+            touch(path)
         chain.links = [parent_link, build_link]
         parent_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
-        mocker.patch.object(cotverify, 'load_json', new=task_graph)
-        mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
-        await cotverify.verify_parent_task(chain, parent_link)
+        mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
+        mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
+        mocker.patch.object(cotverify, 'verify_parent_task_definition', new=defn_fn)
+        if raises:
+            with pytest.raises(CoTError):
+                await cotverify.verify_parent_task(chain, parent_link)
+        else:
+            await cotverify.verify_parent_task(chain, parent_link)
+            # Deal with chain == link scenario
+            orig_chain_task = chain.task
+            chain.task = parent_link.task
+            chain.links = []
+            await cotverify.verify_parent_task(chain, chain)
+            chain.task = orig_chain_task
 
 
 @pytest.mark.asyncio
@@ -1163,8 +1321,9 @@ async def test_verify_parent_task_worker_type(chain, decision_link, build_link, 
     touch(path)
     chain.links = [decision_link, build_link]
     decision_link.task['workerType'] = 'bad-worker-type'
-    mocker.patch.object(cotverify, 'load_json', new=task_graph)
-    mocker.patch.object(cotverify, 'verify_firefox_decision_command', new=noop_sync)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
+    mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
+    mocker.patch.object(cotverify, 'verify_parent_task_definition', new=noop_async)
     with pytest.raises(CoTError):
         await cotverify.verify_parent_task(chain, decision_link)
 
@@ -1295,7 +1454,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     await cotverify.verify_worker_impls(chain)
 
 
-# get_firefox_source_url {{{1
+# get_source_url {{{1
 @pytest.mark.parametrize("task,expected", ((
     {
         'payload': {
@@ -1322,54 +1481,54 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
         'metadata': {'source': 'https://example.com/blah'}
     }, "https://example.com/blah"
 )))
-def test_get_firefox_source_url(task, expected):
+def test_get_source_url(task, expected):
     obj = mock.MagicMock()
     obj.task = task
-    assert expected == cotverify.get_firefox_source_url(obj)
+    assert expected == cotverify.get_source_url(obj)
 
 
-# trace_back_to_firefox_tree {{{1
+# trace_back_to_tree {{{1
 @pytest.mark.asyncio
-async def test_trace_back_to_firefox_tree(chain, decision_link, build_link, docker_image_link):
+async def test_trace_back_to_tree(chain, decision_link, build_link, docker_image_link):
     chain.links = [decision_link, build_link, docker_image_link]
-    await cotverify.trace_back_to_firefox_tree(chain)
+    await cotverify.trace_back_to_tree(chain)
 
 
 @pytest.mark.asyncio
-async def test_trace_back_to_firefox_tree_bad_repo(chain):
+async def test_trace_back_to_tree_bad_repo(chain):
     chain.task['metadata']['source'] = "https://hg.mozilla.org/try"
     with pytest.raises(CoTError):
-        await cotverify.trace_back_to_firefox_tree(chain)
+        await cotverify.trace_back_to_tree(chain)
 
 
 @pytest.mark.asyncio
-async def test_trace_back_to_firefox_tree_unknown_repo(chain, decision_link,
+async def test_trace_back_to_tree_unknown_repo(chain, decision_link,
                                                        build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
     docker_image_link.parent_task_id = 'other'
     docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/unknown/repo"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
-        await cotverify.trace_back_to_firefox_tree(chain)
+        await cotverify.trace_back_to_tree(chain)
 
 
 @pytest.mark.asyncio
-async def test_trace_back_to_firefox_tree_docker_unknown_repo(chain, decision_link,
+async def test_trace_back_to_tree_docker_unknown_repo(chain, decision_link,
                                                               build_link, docker_image_link):
     build_link.task['metadata']['source'] = "https://hg.mozilla.org/unknown/repo"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
-        await cotverify.trace_back_to_firefox_tree(chain)
+        await cotverify.trace_back_to_tree(chain)
 
 
 @pytest.mark.asyncio
-async def test_trace_back_to_firefox_tree_diff_repo(chain, decision_link,
+async def test_trace_back_to_tree_diff_repo(chain, decision_link,
                                                     build_link, docker_image_link):
     docker_image_link.decision_task_id = 'other'
     docker_image_link.parent_task_id = 'other'
     docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-beta"
     chain.links = [decision_link, build_link, docker_image_link]
-    await cotverify.trace_back_to_firefox_tree(chain)
+    await cotverify.trace_back_to_tree(chain)
 
 
 # verify_chain_of_trust {{{1
@@ -1386,7 +1545,7 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
         mocker.patch.object(cotverify, func, new=noop_async)
     for func in ('verify_cot_signatures', 'check_num_tasks'):
         mocker.patch.object(cotverify, func, new=noop_sync)
-    mocker.patch.object(cotverify, 'trace_back_to_firefox_tree', new=maybe_die)
+    mocker.patch.object(cotverify, 'trace_back_to_tree', new=maybe_die)
     if exc:
         with pytest.raises(CoTError):
             await cotverify.verify_chain_of_trust(chain)

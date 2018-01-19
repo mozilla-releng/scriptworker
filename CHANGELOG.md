@@ -2,6 +2,37 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [7.0.0] - 2018-01-18
+### Added
+- Added `scriptworker.cot.verify.verify_parent_task_definition`. This is the core change in this release, aka CoT version 2. We now use json-e to rebuild the decision/action task definitions from the tree.
+- Added `json-e` and `dictdiffer` dependencies.
+- `arrow`, `certifi`, `multidict`, `taskcluster`, and `yarl` have updated their major version numbers.
+- Added `Context.projects` and `Context.populate_projects`.
+- Added `load_json_or_yaml_from_url`.
+- Added `DEFAULT_CONFIG['cot_version']` and `DEFAULT_CONFIG['min_cot_version']`; this is cotv2. If `min_cot_version` is 1, we allow for falling back to the old cot v1 logic.
+- Added `DEFAULT_CONFIG['project_configuration_url']` and `DEFAULT_CONFIG['pushlog_url']`.
+- Added `scriptworker.task.KNOWN_TASKS_FOR`, `scriptworker.task.get_action_name`, `scriptworker.task.get_commit_message`, `scriptworker.task.get_and_check_project`, `scriptworker.task.get_and_check_tasks_for`
+- Added `scriptworker.utils.remove_empty_keys` since the taskgraph drops key/value pairs where the value is empty. See https://github.com/taskcluster/json-e/issues/223
+- Added `scriptworker.utils.render_jsone` to generically render json-e.
+- Added `max_jsone_iterations` pref; sometimes the values to replace template values are several layers deep.
+- Added `scriptworker.cot.verify.get_pushlog_info`, `scriptworker.cot.verify.get_scm_level`, `scriptworker.cot.verify.populate_jsone_context`, and `scriptworker.cot.verify.compare_jsone_task_definition`.
+- Added test files to `scriptworker/test/data/cotv2/`.
+
+### Changed
+- Renamed `load_json` to `load_json_or_yaml`. This now takes a `file_type` kwarg that defaults to `json`.
+- Moved `get_repo`, `get_revision`, `is_try`, and `is_action` from `scriptworker.cot.verify` to `scriptworker.task`
+- Moved the sub-function path callback from `scriptworker.cot.verify` to `scriptworker.utils.match_url_path_callback`
+- `scriptworker.cot.verify.guess_task_type` takes a 2nd arg, `task_defn`, to differentiate action tasks from decision/cron tasks.
+- `scriptworker.cot.verify.get_all_artifacts_per_task_id` adds `public/actions.json` and `public/parameters.yml` to decision task artifacts to download, for action task verification.
+- Removed the `firefox` from `scriptworker.cot.verify` function names.
+- Tweaked the task ID logging in `verify_cot`.
+
+### Fixed
+- Updated `path_regexes` to identify most (all?) valid hg.m.o repo paths, instead of returning `None`.
+
+### Removed
+- Removed `scriptworker.cot.verify.verify_decision_task` and `scriptworker.cot.verify.verify_action_task` in favor of `scriptworker.cot.verify.verify_parent_task`.
+
 ## [6.0.2] - 2018-01-17
 ### Added
 - `max_chain_length` pref, defaulting to the arbitrary (but larger than the current 5) int 20.

@@ -1,0 +1,27 @@
+base_repository: https://hg.mozilla.org/mozilla-unified
+build_date: 1515524845
+build_number: 1
+desktop_release_type: ''
+do_not_optimize: []
+existing_tasks: {}
+filters:
+- check_servo
+- target_tasks_method
+head_ref: 054fe08d229f064a71bae9bb793e7ab8d95eff61
+head_repository: https://hg.mozilla.org/projects/maple
+head_rev: 054fe08d229f064a71bae9bb793e7ab8d95eff61
+include_nightly: true
+level: '3'
+message: ' '
+moz_build_date: '20180109190725'
+next_version: null
+optimize_target_tasks: true
+owner: asasaki@mozilla.com
+project: maple
+pushdate: 1515524845
+pushlog_id: '343'
+release_history: {}
+target_tasks_method: mozilla_beta_tasks
+try_mode: null
+try_options: null
+try_task_config: null

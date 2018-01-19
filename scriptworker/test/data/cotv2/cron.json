@@ -1,0 +1,74 @@
+{
+  "provisionerId": "aws-provisioner-v1",
+  "workerType": "gecko-3-decision",
+  "schedulerId": "gecko-level-3",
+  "taskGroupId": "D4euZNyCRtuBci-fnsfn7A",
+  "dependencies": [],
+  "requires": "all-completed",
+  "routes": [
+    "tc-treeherder.v2.maple.054fe08d229f064a71bae9bb793e7ab8d95eff61.-1",
+    "index.gecko.v2.maple.latest.firefox.decision-nightly-android"
+  ],
+  "priority": "lowest",
+  "retries": 5,
+  "created": "2018-01-10T01:01:34.734Z",
+  "deadline": "2018-01-11T01:01:34.734Z",
+  "expires": "2019-01-10T01:01:35.734Z",
+  "scopes": [
+    "assume:repo:hg.mozilla.org/projects/maple:cron:nightly-android"
+  ],
+  "payload": {
+    "features": {
+      "taskclusterProxy": true,
+      "chainOfTrust": true
+    },
+    "artifacts": {
+      "public": {
+        "path": "/builds/worker/artifacts",
+        "expires": "2019-01-10T01:01:34.734Z",
+        "type": "directory"
+      }
+    },
+    "image": "taskcluster/decision:2.0.0@sha256:4039fd878e5700b326d4a636e28c595c053fbcb53909c1db84ad1f513cf644ef",
+    "cache": {
+      "level-3-checkouts-sparse-v1": "/builds/worker/checkouts"
+    },
+    "maxRunTime": 1800,
+    "command": [
+      "/builds/worker/bin/run-task",
+      "--vcs-checkout=/builds/worker/checkouts/gecko",
+      "--sparse-profile=build/sparse-profiles/taskgraph",
+      "--",
+      "bash",
+      "-cx",
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph decision --pushlog-id='-1' --pushdate='0' --project='maple' --message=\"$GECKO_COMMIT_MSG\" --owner='nobody@noreply.mozilla.org' --level='3' --base-repository=\"$GECKO_BASE_REPOSITORY\" --head-repository=\"$GECKO_HEAD_REPOSITORY\" --head-ref=\"$GECKO_HEAD_REF\" --head-rev=\"$GECKO_HEAD_REV\" --target-tasks-method=nightly_fennec\n"
+    ],
+    "env": {
+      "TASKCLUSTER_CACHES": "/builds/worker/checkouts",
+      "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
+      "GECKO_HEAD_REV": "054fe08d229f064a71bae9bb793e7ab8d95eff61",
+      "GECKO_COMMIT_MSG": "",
+      "GECKO_BASE_REPOSITORY": "https://hg.mozilla.org/mozilla-unified",
+      "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/projects/maple",
+      "GECKO_HEAD_REF": "054fe08d229f064a71bae9bb793e7ab8d95eff61"
+    }
+  },
+  "metadata": {
+    "owner": "nobody@noreply.mozilla.org",
+    "source": "https://hg.mozilla.org/projects/maple/raw-file/054fe08d229f064a71bae9bb793e7ab8d95eff61/.taskcluster.yml",
+    "name": "Decision Task for cron job nightly-android",
+    "description": "Created by a [cron task](https://tools.taskcluster.net/tasks/JLDb7ljhS4e4-QArv6FDWw)"
+  },
+  "tags": {},
+  "extra": {
+    "cron": "{\"job_name\":\"nightly-android\",\"job_symbol\":\"Na\",\"quoted_args\":\"--target-tasks-method=nightly_fennec\",\"task_id\":\"JLDb7ljhS4e4-QArv6FDWw\"}",
+    "treeherder": {
+      "machine": {
+        "platform": "gecko-decision"
+      },
+      "groupSymbol": "cron",
+      "symbol": "Na"
+    },
+    "tasks_for": "cron"
+  }
+}

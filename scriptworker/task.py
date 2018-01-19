@@ -2,6 +2,7 @@
 """Scriptworker task execution.
 
 Attributes:
+    KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
     log (logging.Logger): the log object for the module
 
 """
@@ -13,14 +14,18 @@ import logging
 import os
 import pprint
 import signal
+from urllib.parse import unquote, urlparse
 
 import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import REVERSED_STATUSES
 from scriptworker.log import get_log_filehandle, pipe_to_log
+from scriptworker.utils import match_url_path_callback, match_url_regex
 
 log = logging.getLogger(__name__)
+
+KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
 
 
 # worst_level {{{1
@@ -66,6 +71,36 @@ def get_run_id(claim_task):
     return claim_task['runId']
 
 
+# get_action_name {{{1
+def get_action_name(task):
+    """Get the name of an action task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the name.
+
+    """
+    name = task['extra'].get('action', {}).get('name')
+    return name
+
+
+# get_commit_message {{{1
+def get_commit_message(task):
+    """Get the commit message for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the commit message.
+
+    """
+    msg = task['payload'].get('env', {}).get('GECKO_COMMIT_MSG', ' ')
+    return msg
+
+
 # get_decision_task_id {{{1
 def get_decision_task_id(task):
     """Given a task dict, return the decision taskId.
@@ -100,6 +135,40 @@ def get_parent_task_id(task):
     return task.get('extra', {}).get('parent', get_decision_task_id(task))
 
 
+# get_repo {{{1
+def get_repo(task):
+    """Get the repo for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the source url.
+        None: if not defined for this task.
+
+    """
+    repo = task['payload'].get('env', {}).get('GECKO_HEAD_REPOSITORY')
+    if repo is not None:
+        repo = repo.rstrip('/')
+    return repo
+
+
+# get_revision {{{1
+def get_revision(task):
+    """Get the revision for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+
+    Returns:
+        str: the revision.
+        None: if not defined for this task.
+
+    """
+    revision = task['payload'].get('env', {}).get('GECKO_HEAD_REV')
+    return revision
+
+
 # get_worker_type {{{1
 def get_worker_type(task):
     """Given a task dict, return the workerType.
@@ -112,6 +181,131 @@ def get_worker_type(task):
 
     """
     return task['workerType']
+
+
+# get_and_check_project {{{1
+def get_and_check_project(valid_vcs_rules, source_url):
+    """Given vcs rules and a source_url, return the project.
+
+    The project is in the path, but is the repo name.
+    `releases/mozilla-beta` is the path; `mozilla-beta` is the project.
+
+    Args:
+        valid_vcs_rules (tuple of frozendicts): the valid vcs rules, per
+            ``match_url_regex``.
+        source_url (str): the source url to find the project for.
+
+    Raises:
+        RuntimeError: on failure to find the project.
+
+    Returns:
+        str: the project.
+
+    """
+    project_path = match_url_regex(valid_vcs_rules, source_url, match_url_path_callback)
+    if project_path is None:
+        raise ValueError("Unknown repo for source url {}!".format(source_url))
+    project = project_path.split('/')[-1]
+    return project
+
+
+# get_and_check_tasks_for {{{1
+def get_and_check_tasks_for(task, msg_prefix=''):
+    """Given a parent task, return the reason the parent task was spawned.
+
+    ``.taskcluster.yml`` uses this to know whether to spawn an action,
+    cron, or decision task definition.  The current known ``tasks_for`` are in
+    ``KNOWN_TASKS_FOR``.
+
+    Args:
+        task (dict): the task definition.
+        msg_prefix (str): the string prefix to use for an exception.
+
+    Raises:
+        (KeyError, ValueError): on failure to find a valid ``tasks_for``.
+
+    Returns:
+        str: the ``tasks_for``
+
+    """
+    tasks_for = task['extra']['tasks_for']
+    if tasks_for not in KNOWN_TASKS_FOR:
+        raise ValueError(
+            '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
+        )
+    return tasks_for
+
+
+# is_try {{{1
+def _is_try_url(url):
+    parsed = urlparse(url)
+    path = unquote(parsed.path).lstrip('/')
+    parts = path.split('/')
+    if parts[0] == "try":
+        return True
+    return False
+
+
+def is_try(task):
+    """Determine if a task is a 'try' task (restricted privs).
+
+    This goes further than get_source_url.  We may or may not want
+    to keep this.
+
+    This checks for the following things::
+
+        * ``task.payload.env.GECKO_HEAD_REPOSITORY`` == "https://hg.mozilla.org/try/"
+        * ``task.payload.env.MH_BRANCH`` == "try"
+        * ``task.metadata.source`` == "https://hg.mozilla.org/try/..."
+        * ``task.schedulerId`` in ("gecko-level-1", )
+
+    Args:
+        task (dict): the task definition to check
+
+    Returns:
+        bool: True if it's try
+
+    """
+    result = False
+    env = task['payload'].get('env', {})
+    repo = get_repo(task)
+    if repo:
+        result = result or _is_try_url(repo)
+    if env.get("MH_BRANCH"):
+        result = result or task['payload']['env']['MH_BRANCH'] == 'try'
+    if task['metadata'].get('source'):
+        result = result or _is_try_url(task['metadata']['source'])
+    result = result or task['schedulerId'] in ("gecko-level-1", )
+    return result
+
+
+# is_action {{{1
+def is_action(task):
+    """Determine if a task is an action task.
+
+    Trusted decision and action tasks are important in that they can generate
+    other valid tasks. The verification of decision and action tasks is slightly
+    different, so we need to be able to tell them apart.
+
+    This checks for the following things::
+
+        * ``task.payload.env.ACTION_CALLBACK`` exists
+        * ``task.extra.action`` exists
+
+    Args:
+        task (dict): the task definition to check
+
+    Returns:
+        bool: True if it's an action
+
+    """
+    result = False
+    env = task['payload'].get('env', {})
+    if env.get("ACTION_CALLBACK"):
+        result = True
+    if task.get('extra', {}).get('action') is not None:
+        result = True
+    return result
 
 
 # prepare_to_run_task {{{1
