@@ -61,7 +61,6 @@ from scriptworker.utils import (
     match_url_regex,
     raise_future_exceptions,
     remove_empty_keys,
-    render_jsone,
     rm,
 )
 from taskcluster.exceptions import TaskclusterFailure
@@ -907,7 +906,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
         if value != runtime_defn[key]:
             errors.append("{} {} {} differs!\n graph: {}\n task: {}".format(
                 task_link.name, task_link.task_id, key,
-                pprint.pformat(value), pprint.pformat(runtime_defn[key])
+                format_json(value), format_json(runtime_defn[key])
             ))
     raise_on_errors(errors, level=level)
 
@@ -1114,15 +1113,9 @@ async def get_scm_level(context, project):
 
 # populate_jsone_context {{{1
 async def _get_additional_action_jsone_context(parent_link, decision_link):
-    actions_path = decision_link.get_artifact_full_path('public/actions.json')
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
-    action_name = get_action_name(parent_link.task)
-    all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
-    actions_tmpl = [d for d in all_actions if d['name'] == action_name][0]
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
     jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
-    jsone_context['push'] = deepcopy(actions_tmpl['task']['$let']['push'])
-    jsone_context['action'] = deepcopy(actions_tmpl['task']['$let']['action'])
     jsone_context['parameters'] = parameters
     jsone_context['task'] = None
     jsone_context['ownTaskId'] = parent_link.task_id
@@ -1139,8 +1132,7 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
         raise CoTError(
             "Decision task {} comment doesn't match the push comment!\n"
             "Decision comment: \n{}\nPush comment: \n{}".format(
-                decision_link.name, pprint.pformat(decision_comment),
-                pprint.pformat(push_comment)
+                decision_link.name, decision_comment, push_comment
             )
         )
     return {
@@ -1169,13 +1161,15 @@ async def _get_additional_cron_jsone_context(parent_link, decision_link):
     return jsone_context
 
 
-async def populate_jsone_context(chain, parent_link, decision_link):
+async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
     """Populate the json-e context to rebuild ``parent_link``'s task definition.
 
     Args:
         chain (ChainOfTrust): the chain of trust to add to.
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the parent link's decision task link.
+        tasks_for (str): the reason the parent link was created (cron,
+            hg-push, action)
 
     Raises:
         CoTError, KeyError, ValueError: on failure.
@@ -1192,9 +1186,6 @@ async def populate_jsone_context(chain, parent_link, decision_link):
     source_url = get_source_url(decision_link)
     project = get_and_check_project(chain.context.config['valid_vcs_rules'], source_url)
     level = await get_scm_level(chain.context, project)
-    tasks_for = get_and_check_tasks_for(
-        parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
-    )
     log.debug("task_ids: {}".format(task_ids))
     jsone_context = {
         'now': parent_link.task['created'],
@@ -1219,9 +1210,42 @@ async def populate_jsone_context(chain, parent_link, decision_link):
         jsone_context.update(
             await _get_additional_cron_jsone_context(parent_link, decision_link)
         )
-    log.debug("json-e context:")
+    log.debug("{} json-e context:".format(parent_link.name))
     log.debug(pprint.pformat(jsone_context))
     return jsone_context
+
+
+# get_jsone_template {{{1
+async def get_jsone_template(parent_link, decision_link, tasks_for):
+    """Get the appropriate json-e template.
+
+    Args:
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the parent link's decision task link.
+        tasks_for (str): the reason the parent link was created (cron,
+            hg-push, action)
+
+    Returns:
+        dict: the json-e template.
+
+    """
+    if tasks_for == 'action':
+        actions_path = decision_link.get_artifact_full_path('public/actions.json')
+        all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
+        action_name = get_action_name(parent_link.task)
+        tmpl = [d for d in all_actions if d['name'] == action_name][0]['task']
+    else:
+        context = decision_link.context
+        source_url = get_source_url(decision_link)
+        tmpl = await load_json_or_yaml_from_url(
+            context, source_url, os.path.join(
+                context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
+            )
+        )
+        tmpl = tmpl['tasks'][0]
+    log.debug("{} json-e template:".format(parent_link.name))
+    log.debug(format_json(tmpl))
+    return tmpl
 
 
 # verify_parent_task_definition {{{1
@@ -1247,24 +1271,16 @@ async def verify_parent_task_definition(chain, parent_link):
 
     """
     log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
-    context = chain.context
     decision_link = chain.get_link(parent_link.decision_task_id)
-    # Download template from the decision task.
-    source_url = get_source_url(decision_link)
-    tmpl = await load_json_or_yaml_from_url(
-        context, source_url, os.path.join(
-            context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
-        )
-    )
-    # Populate template (jsone)
     try:
+        tasks_for = get_and_check_tasks_for(
+            parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
+        )
+        tmpl = await get_jsone_template(parent_link, decision_link, tasks_for)
         jsone_context = await populate_jsone_context(
-            chain, parent_link, decision_link
+            chain, parent_link, decision_link, tasks_for
         )
-        rebuilt_definition = render_jsone(
-            tmpl, jsone_context, max_iterations=context.config['max_jsone_iterations']
-        )
-        compare_definition = deepcopy(rebuilt_definition["tasks"][0])
+        rebuilt_definition = jsone.render(tmpl, jsone_context)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
         raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
@@ -1275,9 +1291,10 @@ async def verify_parent_task_definition(chain, parent_link):
         log.exception(msg)
         raise CoTError(msg + "\n{}".format(str(e)))
 
-    compare_jsone_task_definition(parent_link, compare_definition)
+    compare_jsone_task_definition(parent_link, rebuilt_definition)
 
 
+# compare_jsone_task_definition {{{1
 def compare_jsone_task_definition(parent_link, compare_definition):
     """Compare the json-e rebuilt task definition vs the runtime definition.
 
@@ -1297,11 +1314,12 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
-        log.debug("Compare_definition:\n{}".format(pprint.pformat(compare_definition)))
-        log.debug("Runtime definition:\n{}".format(pprint.pformat(runtime_definition)))
+        log.debug("Compare_definition:\n{}".format(format_json(compare_definition)))
+        log.debug("Runtime definition:\n{}".format(format_json(runtime_definition)))
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
         if diff:
             raise AssertionError(pprint.pformat(diff))
+        log.info("{}: Good.".format(parent_link.name))
     except (AssertionError, KeyError):
         msg = "{} {}: the rebuilt definition doesn't match the runtime task!".format(
             parent_link.name, parent_link.task_id
@@ -1818,7 +1836,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             })
             cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
             loop.run_until_complete(verify_chain_of_trust(cot))
-            log.info(pprint.pformat(cot.dependent_task_ids()))
+            log.info(format_json(cot.dependent_task_ids()))
             log.info("{} : {}".format(cot.name, cot.task_id))
             for link in cot.links:
                 log.info("{} : {}".format(link.name, link.task_id))
