@@ -135,7 +135,7 @@ class ChainOfTrust(object):
             bool: True if a task is a try task.
 
         """
-        result = is_try(self.task)
+        result = is_try(self.task, source_env_prefix=self.context.config['source_env_prefix'])
         for link in self.links:
             if link.is_try:
                 result = True
@@ -249,7 +249,7 @@ class LinkOfTrust(object):
         self.decision_task_id = get_decision_task_id(self.task)
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
-        self.is_try = is_try(self.task)
+        self.is_try = is_try(self.task, source_env_prefix=self.context.config['source_env_prefix'])
 
     @property
     def cot(self):
@@ -1013,6 +1013,7 @@ def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS)
     the commandline if possible.
 
     Args:
+        chain (ChainOfTrust): the chain we're operating on.
         decision_link (LinkOfTrust): the decision link to test.
         mach_commands (tuple): a tuple of tuples, specifying the allowlisted
             mach commands for a decision task, ignoring options.
@@ -1034,6 +1035,8 @@ def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS)
         if item in allowed_args:
             continue
         if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
+            continue
+        if item.startswith(tuple(decision_link.context.config['extra_run_task_arguments'])):
             continue
         errors.append("{} {} illegal option {} in the command!".format(
             decision_link.name, decision_link.task_id, item
@@ -1070,8 +1073,9 @@ async def get_pushlog_info(decision_link):
         dict: pushlog info.
 
     """
-    repo = get_repo(decision_link.task)
-    rev = get_revision(decision_link.task)
+    source_env_prefix = decision_link.context.config['source_env_prefix']
+    repo = get_repo(decision_link.task, source_env_prefix)
+    rev = get_revision(decision_link.task, source_env_prefix)
     context = decision_link.context
     pushlog_url = context.config['pushlog_url'].format(
         repo=repo, revision=rev
@@ -1123,7 +1127,8 @@ async def _get_additional_action_jsone_context(parent_link, decision_link):
 
 
 async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
-    rev = get_revision(decision_link.task)
+    source_env_prefix = decision_link.context.config['source_env_prefix']
+    rev = get_revision(decision_link.task, source_env_prefix)
     pushlog_info = await get_pushlog_info(decision_link)
     pushlog_id = list(pushlog_info['pushes'].keys())[0]
     decision_comment = get_commit_message(decision_link.task)
@@ -1148,7 +1153,8 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
 
 async def _get_additional_cron_jsone_context(parent_link, decision_link):
     jsone_context = {}
-    rev = get_revision(decision_link.task)
+    source_env_prefix = decision_link.context.config['source_env_prefix']
+    rev = get_revision(decision_link.task, source_env_prefix)
     jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
     # I don't love these hardcodes.
     jsone_context["push"] = {
@@ -1182,7 +1188,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
          "default": parent_link.task_id,
          "decision": decision_link.task_id,
     }
-    repo = get_repo(decision_link.task)
+    repo = get_repo(decision_link.task, source_env_prefix=decision_link.context.config['source_env_prefix'])
     source_url = get_source_url(decision_link)
     project = get_and_check_project(chain.context.config['valid_vcs_rules'], source_url)
     level = await get_scm_level(chain.context, project)
@@ -1647,9 +1653,10 @@ def get_source_url(obj):
         CoTError: if repo and source are defined and don't match
 
     """
+    source_env_prefix = obj.context.config['source_env_prefix']
     task = obj.task
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
-    repo = get_repo(obj.task)
+    repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task['metadata']['source']
     # XXX We hit this for hooks - still needed? Remove when json-e cot
     # verification is required.
@@ -1659,8 +1666,8 @@ def get_source_url(obj):
     # hg.m.o. A better approach may be to let misconfigured hooks break, and
     # either obsolete or fix them.
     if repo and not source.startswith(repo):
-        log.warning("{} {}: GECKO_HEAD_REPOSITORY {} doesn't match source {}... returning {}".format(
-            obj.name, obj.task_id, repo, source, repo
+        log.warning("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}... returning {repo}".format(
+            name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source,
         ))
         return repo
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
@@ -1813,6 +1820,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
                         choices=sorted(get_valid_task_types().keys()), required=True)
     parser.add_argument('--cleanup', help='clean up the temp dir afterwards',
                         dest='cleanup', action='store_true', default=False)
+    parser.add_argument('--cot-product', help='the product type to test', default='firefox')
     opts = parser.parse_args(args)
     tmp = tempfile.mkdtemp()
     log = logging.getLogger('scriptworker')
@@ -1826,14 +1834,16 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             context.session = session
             context.credentials = read_worker_creds()
             context.task = loop.run_until_complete(context.queue.task(opts.task_id))
-            context.config = apply_product_config(dict(deepcopy(DEFAULT_CONFIG)))
+            context.config = dict(deepcopy(DEFAULT_CONFIG))
             context.config.update({
+                'cot_product': opts.cot_product,
                 'work_dir': os.path.join(tmp, 'work'),
                 'artifact_dir': os.path.join(tmp, 'artifacts'),
                 'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
                 'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
                 'verify_cot_signature': False,
             })
+            context.config = apply_product_config(context.config)
             cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
             loop.run_until_complete(verify_chain_of_trust(cot))
             log.info(format_json(cot.dependent_task_ids()))

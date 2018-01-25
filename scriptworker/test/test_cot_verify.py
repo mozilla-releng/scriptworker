@@ -1051,7 +1051,7 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
 
 
 # verify_decision_command {{{1
-@pytest.mark.parametrize("command,raises", ((
+@pytest.mark.parametrize("command,raises,rw_context", ((
     [
         '/home/worker/bin/run-task',
         '--vcs-checkout=foo',
@@ -1059,7 +1059,8 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'bash',
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False
+    ], False,
+    'firefox',
 ), (
     [
         '/home/worker/bin/run-task',
@@ -1069,7 +1070,8 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'bash',
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False
+    ], False,
+    'firefox',
 ), (
     [
         '/bad/worker/bin/run-task',
@@ -1078,7 +1080,8 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'bash',
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True
+    ], True,
+    'firefox',
 ), (
     [
         '/home/worker/bin/run-task',
@@ -1087,7 +1090,8 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'bash',
         '-cx',
         'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True
+    ], True,
+    'firefox',
 ), (
     [
         '/home/worker/bin/run-task',
@@ -1096,8 +1100,35 @@ def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, b
         'bash',
         '-cx',
         'cd foo && -s x y && ./mach bad command',
-    ], True
-)))
+    ], True,
+    'firefox',
+), (
+    [
+        '/home/worker/bin/run-task',
+        '--vcs-checkout=foo',
+        '--sparse-profile=taskgraph',
+        '--comm-checkout=foo/comm',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], True,
+    'firefox',
+), (
+    [
+        '/home/worker/bin/run-task',
+        '--vcs-checkout=foo',
+        '--sparse-profile=taskgraph',
+        '--comm-checkout=foo/comm',
+        '--',
+        'bash',
+        '-cx',
+        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
+    ], False,
+    'thunderbird',
+)),
+indirect=['rw_context'],
+)
 def test_verify_decision_command(decision_link, command, raises):
     decision_link.task['payload']['command'] = command
     if raises:
@@ -1455,7 +1486,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
 
 
 # get_source_url {{{1
-@pytest.mark.parametrize("task,expected", ((
+@pytest.mark.parametrize("task,expected,source_env_prefix", ((
     {
         'payload': {
             'env': {
@@ -1463,7 +1494,9 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
             },
         },
         'metadata': {'source': 'https://example.com/blah/blah'}
-    }, "https://example.com/blah/blah"
+    },
+    "https://example.com/blah/blah",
+    'GECKO',
 ), (
     {
         'payload': {
@@ -1472,18 +1505,35 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
             },
         },
         'metadata': {'source': 'https://task/blah'}
-    }, "https://example.com/blah/blah"
+    },
+    "https://example.com/blah/blah",
+    'GECKO',
 ), (
     {
         'payload': {
             'env': {},
         },
         'metadata': {'source': 'https://example.com/blah'}
-    }, "https://example.com/blah"
+    },
+    "https://example.com/blah",
+    'GECKO',
+), (
+    {
+        'payload': {
+            'env': {
+                'GECKO_HEAD_REPOSITORY': 'https://example.com/blah/blah',
+                'COMM_HEAD_REPOSITORY': 'https://example.com/blah/comm',
+            },
+        },
+        'metadata': {'source': 'https://example.com/blah'}
+    },
+    "https://example.com/blah/comm",
+    'COMM',
 )))
-def test_get_source_url(task, expected):
+def test_get_source_url(task, expected, source_env_prefix):
     obj = mock.MagicMock()
     obj.task = task
+    obj.context.config = {'source_env_prefix': source_env_prefix}
     assert expected == cotverify.get_source_url(obj)
 
 
