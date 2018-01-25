@@ -238,6 +238,9 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:googleplay:aurora': 'nightly',
                 'project:releng:beetmover:bucket:nightly': 'all-nightly-branches',
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
+
+                'project:releng:ship-it:production': 'all-production-branches',
+                'project:releng:ship-it:staging': 'all-staging-branches',
             }),
             'thunderbird': frozendict({
             }),
@@ -289,6 +292,18 @@ DEFAULT_CONFIG = frozendict({
                     "/projects/birch",
                     "/projects/jamun",
                     "/projects/oak",
+                    "/projects/maple",
+                ),
+
+                'all-production-branches': (
+                    "/releases/mozilla-beta",
+                    "/releases/mozilla-release",
+                    "/releases/mozilla-esr52",
+                ),
+
+                'all-staging-branches': (
+                    "/projects/birch",
+                    "/projects/jamun",
                     "/projects/maple",
                 ),
             }),
