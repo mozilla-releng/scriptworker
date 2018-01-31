@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [8.1.0] - 2018-01-31
+### Added
+- `valid_vcs_rules`, `source_env_prefix`, `extra_run_task_arguments` depend on `cot_product`
+- `cot_product` is defined in example configuration
+- Support for ship-it tasks
+
 ## [8.0.0] - 2018-01-19
 ### Added
 - Added `scriptworker.cot.verify.get_jsone_template`, because action tasks use actions.json instead of .taskcluster.yml
