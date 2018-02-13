@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [8.1.1] - 2018-02-13
+### Fixed
+- Freeze aiohttp to 2.x.y
+
 ## [8.1.0] - 2018-01-31
 ### Added
 - `valid_vcs_rules`, `source_env_prefix`, `extra_run_task_arguments` depend on `cot_product`
