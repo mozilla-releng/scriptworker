@@ -162,6 +162,7 @@ DEFAULT_CONFIG = frozendict({
         "beetmoverworker-v1",
         "pushapk-v1",
         "signing-linux-v1",
+        "treescriptworker-v1"
     ),
     "scriptworker_provisioners": (
         "scriptworker-prov-v1",
@@ -228,8 +229,9 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:balrog:server:esr': 'esr',
                 'project:releng:beetmover:bucket:release': 'all-release-branches',
                 'project:releng:googleplay:release': 'release',
-                'project:releng:signing:cert:release-signing': 'all-release-branches',
                 'project:releng:googleplay:beta': 'beta',
+                'project:releng:signing:cert:release-signing': 'all-release-branches',
+                'project:releng:treescript:action:push': 'all-release-branches',
                 # As part of the Dawn project we decided to use the Aurora Google Play
                 # app to ship Firefox Nightly. This means that the "nightly" trees need
                 # to have the scopes to ship to this product.
