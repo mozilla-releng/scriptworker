@@ -413,6 +413,7 @@ def get_valid_task_types():
         'scriptworker': verify_scriptworker_task,
         'balrog': verify_balrog_task,
         'beetmover': verify_beetmover_task,
+        'bouncer': verify_bouncer_task,
         'build': verify_build_task,
         'l10n': verify_build_task,
         'repackage': verify_build_task,
@@ -1470,6 +1471,22 @@ async def verify_partials_task(chain, obj):
 # verify_beetmover_task {{{1
 async def verify_beetmover_task(chain, obj):
     """Verify the beetmover trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
+
+    Raises:
+        CoTError: on error.
+
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+async def verify_bouncer_task(chain, obj):
+    """Verify the bouncer trust object.
 
     Currently the only check is to make sure it was run on a scriptworker.
 
