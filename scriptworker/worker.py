@@ -11,6 +11,7 @@ import asyncio
 import logging
 import os
 import sys
+import signal
 
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
@@ -26,8 +27,11 @@ from scriptworker.utils import cleanup, rm
 log = logging.getLogger(__name__)
 
 
-async def run_loop(context, creds_key="credentials"):
-    """Split this out of the async_main while loop for easier testing.
+async def run_tasks(context, creds_key="credentials"):
+    """Run any tasks returned by claimWork.
+
+    Returns the integer status of the task that was run, or None if no task was
+    run.
 
     args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -77,11 +81,9 @@ async def run_loop(context, creds_key="credentials"):
 
 
 async def async_main(context):
-    """Run the main async loop.
+    """Set up and run tasks for this iteration.
 
     http://docs.taskcluster.net/queue/worker-interaction/
-
-    This is a simple loop, mainly to keep each function more testable.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
@@ -94,7 +96,7 @@ async def async_main(context):
             os.rename(tmp_gpg_home, context.config['base_gpg_home_dir'])
         finally:
             rm_lockfile(context)
-    await run_loop(context)
+    await run_tasks(context)
 
 
 def main():
@@ -104,10 +106,20 @@ def main():
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
+
+    done = False
+
+    def _handle_sigterm(signum, frame):
+        nonlocal done
+        log.info("SIGTERM received; shutting down after next task")
+        done = True
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.credentials = credentials
-        while True:
+        while not done:
             try:
                 loop.run_until_complete(async_main(context))
             except Exception:

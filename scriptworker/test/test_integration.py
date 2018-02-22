@@ -159,7 +159,7 @@ def test_run_successful_task(event_loop, context_function):
         with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             status = event_loop.run_until_complete(
-                worker.run_loop(context, creds_key="integration_credentials")
+                worker.run_tasks(context, creds_key="integration_credentials")
             )
         assert status == 1
         result = event_loop.run_until_complete(
@@ -186,7 +186,7 @@ def test_run_maxtimeout(event_loop, context_function):
             os.chdir(os.path.dirname(context.config['work_dir']))
             with pytest.raises(RuntimeError):
                 event_loop.run_until_complete(
-                    worker.run_loop(context, creds_key="integration_credentials")
+                    worker.run_tasks(context, creds_key="integration_credentials")
                 )
                 # Because we're using asyncio to kill tasks in the loop,
                 # we're going to hit a RuntimeError
@@ -203,7 +203,7 @@ def test_empty_queue(event_loop, context_function):
         with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             status = event_loop.run_until_complete(
-                worker.run_loop(context, creds_key="integration_credentials")
+                worker.run_tasks(context, creds_key="integration_credentials")
             )
         assert status is None
 
