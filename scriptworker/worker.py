@@ -106,10 +106,20 @@ def main():
     cleanup(context)
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
+
+    done = False
+
+    def _handle_sigterm(signum, frame):
+        nonlocal done
+        log.info("SIGTERM received; shutting down after next task")
+        done = True
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
     with aiohttp.ClientSession(connector=conn) as session:
         context.session = session
         context.credentials = credentials
-        while True:
+        while not done:
             try:
                 loop.run_until_complete(async_main(context))
             except Exception:
