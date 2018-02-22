@@ -76,7 +76,7 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         sys.exit()
 
     try:
-        mocker.patch.object(worker, 'run_loop', new=tweak_lockfile)
+        mocker.patch.object(worker, 'run_tasks', new=tweak_lockfile)
         mocker.patch.object(asyncio, 'sleep', new=noop_async)
         mocker.patch.object(worker, 'rm', new=noop_sync)
         mocker.patch.object(os, 'rename', new=noop_sync)
@@ -92,9 +92,9 @@ def test_async_main(context, event_loop, mocker, tmpdir):
             shutil.rmtree(path)
 
 
-# run_loop {{{1
+# run_tasks {{{1
 @pytest.mark.parametrize("verify_cot", (True, False))
-def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mocker):
+def test_mocker_run_tasks(context, successful_queue, event_loop, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
     successful_queue.task = task
@@ -118,11 +118,11 @@ def test_mocker_run_loop(context, successful_queue, event_loop, verify_cot, mock
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_loop(context))
+    status = event_loop.run_until_complete(worker.run_tasks(context))
     assert status == task
 
 
-def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
+def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
     context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
@@ -131,7 +131,7 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_loop(context))
+    status = event_loop.run_until_complete(worker.run_tasks(context))
     assert context.credentials is None
     assert status is None
 
@@ -143,9 +143,9 @@ def test_mocker_run_loop_noop(context, successful_queue, event_loop, mocker):
 ), (
     'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task']
 )))
-def test_mocker_run_loop_exception(context, successful_queue, event_loop,
+def test_mocker_run_tasks_exception(context, successful_queue, event_loop,
                                    mocker, func_to_raise, exc, expected):
-    """Raise an exception within the run_loop try/excepts and make sure the
+    """Raise an exception within the run_tasks try/excepts and make sure the
     status is changed
     """
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
@@ -173,5 +173,5 @@ def test_mocker_run_loop_exception(context, successful_queue, event_loop,
     else:
         mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_loop(context))
+    status = event_loop.run_until_complete(worker.run_tasks(context))
     assert status == expected
