@@ -13,6 +13,8 @@ import pytest
 import tempfile
 import shutil
 import sys
+import signal
+
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
@@ -50,6 +52,31 @@ def test_main(mocker, context, event_loop):
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         with pytest.raises(ScriptWorkerException):
             worker.main()
+    finally:
+        os.remove(tmp)
+
+
+def test_main_sigterm(mocker, context, event_loop):
+    """Test that sending SIGTERM causes the main loop to stop after the next
+    call to async_main."""
+    config = dict(context.config)
+    config['poll_interval'] = 1
+    creds = {'fake_creds': True}
+    config['credentials'] = deepcopy(creds)
+
+    async def async_main(arg):
+        # Send SIGTERM to ourselves so that we stop
+        os.kill(os.getpid(), signal.SIGTERM)
+        return True
+
+    try:
+        _, tmp = tempfile.mkstemp()
+        with open(tmp, "w") as fh:
+            json.dump(config, fh)
+        del(config['credentials'])
+        mocker.patch.object(worker, 'async_main', new=async_main)
+        mocker.patch.object(sys, 'argv', new=['x', tmp])
+        worker.main()
     finally:
         os.remove(tmp)
 
