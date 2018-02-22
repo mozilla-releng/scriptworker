@@ -47,7 +47,7 @@ async def run_tasks(context, creds_key="credentials"):
     loop = asyncio.get_event_loop()
     tasks = await claim_work(context)
     status = None
-    if not tasks:
+    if not tasks or not tasks.get('tasks', []):
         await asyncio.sleep(context.config['poll_interval'])
         return status
 
