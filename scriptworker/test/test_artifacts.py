@@ -21,13 +21,18 @@ from . import touch, rw_context, event_loop, fake_session, fake_session_500, suc
 
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
+    now = arrow.utcnow()
     rw_context.config['reclaim_interval'] = 0.001
     rw_context.config['task_max_timeout'] = .1
     rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
     rw_context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
-        'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
+        'task': {
+            'expires': now.replace(days=2).isoformat(),
+            'dependencies': ['dependency1', 'dependency2'],
+            'taskGroupId': 'dependency0',
+        },
         'runId': 'runId',
     }
     yield rw_context
@@ -58,14 +63,10 @@ def test_guess_content_type(mime_types):
 
 # get_expiration_arrow {{{1
 def test_expiration_arrow(context):
-    now = arrow.utcnow()
 
     # make sure time differences don't screw up the test
-    with mock.patch.object(arrow, 'utcnow') as p:
-        p.return_value = now
-        expiration = get_expiration_arrow(context)
-        diff = expiration.timestamp - now.timestamp
-        assert diff == 3600
+    expiration = get_expiration_arrow(context)
+    assert expiration.isoformat() == context.task['expires']
 
 
 # upload_artifacts {{{1
