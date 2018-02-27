@@ -69,7 +69,6 @@ def build_config(override, basedir):
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),
         'artifact_upload_timeout': 60 * 2,
-        'artifact_expiration_hours': 1,
         'gpg_home': GPG_HOME,
         "gpg_encoding": 'utf-8',
         "gpg_options": None,

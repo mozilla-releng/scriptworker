@@ -251,17 +251,16 @@ def get_artifact_url(context, task_id, path):
 
 # get_expiration_arrow {{{1
 def get_expiration_arrow(context):
-    """Return an arrow, ``artifact_expiration_hours`` in the future from now.
+    """Return an arrow matching `context.task['expires']`.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context
 
     Returns:
-        arrow: now + artifact_expiration_hours
+        arrow: `context.task['expires']`.
 
     """
-    now = arrow.utcnow()
-    return now.replace(hours=context.config['artifact_expiration_hours'])
+    return arrow.get(context.task['expires'])
 
 
 # download_artifacts {{{1

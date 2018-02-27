@@ -39,7 +39,6 @@ DEFAULT_CONFIG = frozendict({
     "watch_log_file": False,
 
     # intervals are expressed in seconds
-    "artifact_expiration_hours": 24,
     "task_max_timeout": 60 * 20,
     "reclaim_interval": 300,
     "poll_interval": 10,

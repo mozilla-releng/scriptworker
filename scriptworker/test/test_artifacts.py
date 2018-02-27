@@ -21,7 +21,6 @@ from . import touch, rw_context, event_loop, fake_session, fake_session_500, suc
 
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
-    rw_context.config['artifact_expiration_hours'] = 1
     rw_context.config['reclaim_interval'] = 0.001
     rw_context.config['task_max_timeout'] = .1
     rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
