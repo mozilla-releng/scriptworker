@@ -2,6 +2,17 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [9.0.0] - 2018-02-27
+### Added
+- added support for bouncer scriptworker
+
+### Changed
+- renamed `run_loop` to `run_tasks`
+- `run_tasks` now shuts down gracefully after receiving a SIGTERM: it finishes the current task(s), and exits.
+
+### Fixed
+- `run_tasks` now sleeps 5 if there were no tasks claimed.
+
 ## [8.1.1] - 2018-02-13
 ### Fixed
 - Freeze aiohttp to 2.x.y
