@@ -13,7 +13,12 @@ import pytest
 import re
 import slugid
 import tempfile
-from scriptworker.config import CREDS_FILES, read_worker_creds, get_unfrozen_copy
+from scriptworker.config import (
+    CREDS_FILES,
+    apply_product_config,
+    get_unfrozen_copy,
+    read_worker_creds,
+)
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
@@ -79,6 +84,7 @@ def build_config(override, basedir):
         'reclaim_interval': 5,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
+        'cot_product': 'firefox'
     })
     creds = read_integration_creds()
     del(config['credentials'])
@@ -86,6 +92,7 @@ def build_config(override, basedir):
         config.update(override)
     with open(os.path.join(basedir, "config.json"), "w") as fh:
         json.dump(config, fh, indent=2, sort_keys=True)
+    config = apply_product_config(config)
     return config, creds
 
 
