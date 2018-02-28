@@ -6,6 +6,8 @@ import json
 import os
 import pytest
 import taskcluster
+import scriptworker.context as swcontext
+from copy import deepcopy
 from . import tmpdir
 from . import rw_context as context
 
@@ -90,3 +92,26 @@ def test_temp_queue(context, mocker):
     assert taskcluster.async.Queue.called_once_with({
         'credentials': context.temp_credentials,
     }, session=context.session)
+
+
+@pytest.mark.asyncio
+async def test_projects(context, mocker):
+    fake_projects = {"mozilla-central": "blah", "count": 0}
+
+    async def fake_load(*args):
+        fake_projects['count'] += 1
+        return deepcopy(fake_projects)
+
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=fake_load)
+    assert context.projects is None
+    await context.populate_projects()
+    assert context.projects == fake_projects
+    assert fake_projects['count'] == 1
+
+    await context.populate_projects(force=True)
+    assert context.projects == fake_projects
+    assert fake_projects['count'] == 2
+
+    await context.populate_projects()
+    assert context.projects == fake_projects
+    assert fake_projects['count'] == 2
