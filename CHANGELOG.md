@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+### Changed
+- `create_artifact` now has a default expiration of the task expiration date.
+
+### Removed
+- removed the config for `artifact_expiration_hours`.
+
 ## [9.0.0] - 2018-02-27
 ### Added
 - added support for bouncer scriptworker
