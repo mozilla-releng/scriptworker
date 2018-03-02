@@ -21,7 +21,12 @@ import shutil
 from urllib.parse import unquote, urlparse
 import yaml
 from taskcluster.client import createTemporaryCredentials
-from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
+from scriptworker.exceptions import (
+    DownloadError,
+    ScriptWorkerException,
+    ScriptWorkerRetryException,
+    ScriptWorkerTaskException,
+)
 
 log = logging.getLogger(__name__)
 
@@ -222,7 +227,7 @@ def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max
 
 # retry_async {{{1
 async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
-                      retry_exceptions=(Exception, ), args=(), kwargs=None,
+                      retry_exceptions=Exception, args=(), kwargs=None,
                       sleeptime_kwargs=None):
     """Retry ``func``, where ``func`` is an awaitable.
 
@@ -231,8 +236,8 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
         attempts (int, optional): the number of attempts to make.  Default is 5.
         sleeptime_callback (function, optional): the function to use to determine
             how long to sleep after each attempt.  Defaults to ``calculateSleepTime``.
-        retry_exceptions (list, optional): the exceptions to retry on.  Defaults
-            to (Exception, )
+        retry_exceptions (list or exception, optional): the exception(s) to retry on.
+            Defaults to ``Exception``.
         args (list, optional): the args to pass to ``function``.  Defaults to ()
         kwargs (dict, optional): the kwargs to pass to ``function``.  Defaults to
             {}.
@@ -540,6 +545,7 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
     if not overwrite or not os.path.exists(path):
         await retry_async(
             download_file, args=(context, url, path),
+            retry_exceptions=(DownloadError, aiohttp.ClientError),
         )
     return load_json_or_yaml(path, is_path=True, file_type=file_type)
 

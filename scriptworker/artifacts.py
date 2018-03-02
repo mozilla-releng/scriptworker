@@ -14,7 +14,7 @@ import mimetypes
 import os
 
 from scriptworker.client import validate_artifact_url
-from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
+from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
@@ -310,6 +310,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             asyncio.ensure_future(
                 retry_async(
                     download_func, args=(context, file_url, abs_file_path),
+                    retry_exceptions=(DownloadError, aiohttp.ClientError),
                     kwargs={'session': session},
                 )
             )
