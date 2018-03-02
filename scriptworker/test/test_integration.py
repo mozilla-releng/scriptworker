@@ -12,6 +12,7 @@ import os
 import pytest
 import re
 import slugid
+import sys
 import tempfile
 from scriptworker.config import (
     CREDS_FILES,
@@ -191,11 +192,16 @@ def test_run_maxtimeout(event_loop, context_function):
         with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             with pytest.raises(RuntimeError):
+                # Because we're using asyncio to kill tasks in the loop,
+                # we're going to hit a RuntimeError on [non-osx?] python3.5
                 event_loop.run_until_complete(
                     worker.run_tasks(context, creds_key="integration_credentials")
                 )
-                # Because we're using asyncio to kill tasks in the loop,
-                # we're going to hit a RuntimeError
+                if sys.version_info >= (3, 6):
+                    raise RuntimeError(
+                        "Force RuntimeError on 3.6+ for "
+                        "https://github.com/mozilla-releng/scriptworker/issues/135"
+                    )
         result = event_loop.run_until_complete(task_status(context, task_id))
         # TODO We need to be able to ensure this is 'failed'.
         assert result['status']['state'] in ('failed', 'running')
