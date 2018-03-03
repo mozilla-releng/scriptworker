@@ -8,6 +8,7 @@ modules, to avoid circular imports.
 """
 import jsonschema
 import os
+from urllib.parse import unquote
 
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerTaskException
@@ -92,4 +93,4 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
             "Can't validate url {}".format(url),
             exit_code=STATUSES['malformed-payload']
         )
-    return filepath.lstrip('/')
+    return unquote(filepath).lstrip('/')
