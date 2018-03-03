@@ -31,8 +31,8 @@ BASIC_TASK = os.path.join(TEST_DATA_DIR, "basic_task.json")
 LEGAL_URLS = ((
     deepcopy(DEFAULT_CONFIG['valid_artifact_rules']),
     ["VALID_TASK_ID1", "VALID_TASK_ID2"],
-    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID2/artifacts/FILE_PATH",
-    "FILE_PATH",
+    "https://queue.taskcluster.net/v1/task/VALID_TASK_ID2/artifacts/FILE_DIR%2FFILE_PATH",
+    "FILE_DIR/FILE_PATH",
 ), (
     ({
         'schemes': ("ftp", "http"),
