@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - `create_artifact` now has a default expiration of the task expiration date.
 
+### Fixed
+- fix integration tests for osx py36 [#135](https://github.com/mozilla-releng/scriptworker/issues/135)
+
 ### Removed
 - removed the config for `artifact_expiration_hours`.
 
