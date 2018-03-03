@@ -686,8 +686,9 @@ Skipping download of this artifact'.format(path, task_id))
 
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
+    # Don't log the url, which may be signed/private
+    log.info("Downloading Chain of Trust artifact:\n{} {}".format(task_id, path))
     url = get_artifact_url(chain.context, task_id, path)
-    log.info("Downloading Chain of Trust artifact:\n{}".format(url))
     await download_artifacts(
         chain.context, [url], parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
     )
