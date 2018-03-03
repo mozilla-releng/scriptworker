@@ -3,14 +3,22 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- added `get_loggable_url` to avoid logging secrets
+- added integration test for private artifacts
+
 ### Changed
 - `create_artifact` now has a default expiration of the task expiration date.
+- `get_artifact_url` now supports signed URLs for private artifacts
+- `get_artifact_url` no longer returns unquoted urls (breaks signed urls)
+- `validate_artifact_url` unquotes paths before returning them
 
 ### Fixed
 - fix integration tests for osx py36 [#135](https://github.com/mozilla-releng/scriptworker/issues/135)
 
 ### Removed
 - removed the config for `artifact_expiration_hours`.
+- removed support for taskcluster 0.3.x
 
 ## [9.0.0] - 2018-02-27
 ### Added
