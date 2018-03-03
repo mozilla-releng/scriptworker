@@ -55,8 +55,9 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
 
     """
     session = context.session
+    loggable_url = get_loggable_url(url)
     with aiohttp.Timeout(timeout):
-        log.debug("{} {}".format(method.upper(), url))
+        log.debug("{} {}".format(method.upper(), loggable_url))
         async with session.request(method, url, **kwargs) as resp:
             log.debug("Status {}".format(resp.status))
             message = "Bad status {}".format(resp.status)
@@ -475,11 +476,12 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
 
     """
     session = session or context.session
-    log.info("Downloading %s", url)
+    loggable_url = get_loggable_url(url)
+    log.info("Downloading %s", loggable_url)
     parent_dir = os.path.dirname(abs_filename)
     async with session.get(url) as resp:
         if resp.status != 200:
-            raise DownloadError("{} status {} is not 200!".format(url, resp.status))
+            raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
         makedirs(parent_dir)
         with open(abs_filename, 'wb') as fd:
             while True:
@@ -488,6 +490,26 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
                     break
                 fd.write(chunk)
     log.info("Done")
+
+
+# get_loggable_url {{{1
+def get_loggable_url(url):
+    """Strip out secrets from taskcluster urls.
+
+    Args:
+        url (str): the url to strip
+
+    Returns:
+        str: the loggable url
+
+    """
+    loggable_url = url
+    for secret_string in ("bewit=", "AWSAccessKeyId="):
+        parts = loggable_url.split(secret_string)
+        loggable_url = parts[0]
+    if loggable_url != url:
+        loggable_url = "{}<snip>".format(loggable_url)
+    return loggable_url
 
 
 # load_json_or_yaml_from_url {{{1
