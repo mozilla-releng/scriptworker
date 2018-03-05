@@ -52,6 +52,7 @@ from scriptworker.task import (
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
     get_hash,
+    get_loggable_url,
     get_results_and_future_exceptions,
     format_json,
     load_json_or_yaml,
@@ -686,9 +687,9 @@ Skipping download of this artifact'.format(path, task_id))
 
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
-    # Don't log the url, which may be signed/private
-    log.info("Downloading Chain of Trust artifact:\n{} {}".format(task_id, path))
     url = get_artifact_url(chain.context, task_id, path)
+    loggable_url = get_loggable_url(url)
+    log.info("Downloading Chain of Trust artifact:\n{}".format(loggable_url))
     await download_artifacts(
         chain.context, [url], parent_dir=link.cot_dir, valid_artifact_task_ids=[task_id]
     )

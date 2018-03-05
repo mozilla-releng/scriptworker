@@ -503,7 +503,7 @@ def get_loggable_url(url):
         str: the loggable url
 
     """
-    loggable_url = url
+    loggable_url = url or ""
     for secret_string in ("bewit=", "AWSAccessKeyId="):
         parts = loggable_url.split(secret_string)
         loggable_url = parts[0]

@@ -409,11 +409,13 @@ async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type,
     ) == {"credentials": ["blah"]}
 
 
-# get_loggable_url
+# get_loggable_url {{{1
 @pytest.mark.parametrize("url,expected",((
     "https://foo/bar", "https://foo/bar"
 ), (
     "https://foo/bar?bewit=foobar", "https://foo/bar?<snip>"
+), (
+    "https://bar/baz?AWSAccessKeyId=foobar", "https://bar/baz?<snip>"
 )))
 def test_get_loggable_url(url, expected):
     assert utils.get_loggable_url(url) == expected
