@@ -12,12 +12,17 @@ import logging
 import mimetypes
 import os
 
-from urllib.parse import unquote, urljoin
-
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
-from scriptworker.utils import download_file, filepaths_in_dir, raise_future_exceptions, retry_async, add_enumerable_item_to_dict
+from scriptworker.utils import (
+    add_enumerable_item_to_dict,
+    download_file,
+    filepaths_in_dir,
+    get_loggable_url,
+    raise_future_exceptions,
+    retry_async,
+)
 
 
 log = logging.getLogger(__name__)
@@ -188,7 +193,8 @@ async def create_artifact(context, path, target_path, content_type, content_enco
 
     tc_response = await context.temp_queue.createArtifact(*args)
     skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
-    log.info("uploading {path} to {url}...".format(path=path, url=tc_response['putUrl']))
+    loggable_url = get_loggable_url(tc_response['putUrl'])
+    log.info("uploading {path} to {url}...".format(path=path, url=loggable_url))
     with open(path, "rb") as fh:
         with aiohttp.Timeout(context.config['artifact_upload_timeout']):
             async with context.session.put(
@@ -232,18 +238,13 @@ def get_artifact_url(context, task_id, path):
         TaskClusterFailure: on failure.
 
     """
-    try:
-        url = unquote(context.queue.buildUrl('getLatestArtifact', task_id, path))
-    except AttributeError:
-        # taskcluster client 0.3.x
-        # XXX remove when we no longer want to support taskcluster<1.0.0
-        url = urljoin(
-            context.queue.options['baseUrl'],
-            'v1/' +
-            unquote(context.queue.makeRoute('getLatestArtifact', replDict={
-                'taskId': task_id,
-                'name': path
-            }))
+    if path.startswith("public/"):
+        url = context.queue.buildUrl('getLatestArtifact', task_id, path)
+    else:
+        url = context.queue.buildSignedUrl(
+            'getLatestArtifact', task_id, path,
+            # XXX Can set expiration kwarg in (int) seconds from now;
+            # defaults to 15min.
         )
 
     return url

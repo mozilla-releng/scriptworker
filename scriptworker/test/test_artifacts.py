@@ -163,24 +163,25 @@ def test_craft_artifact_put_headers():
 
 
 # get_artifact_url {{{1
-@pytest.mark.parametrize("tc03x", (True, False))
-def test_get_artifact_url(tc03x):
+@pytest.mark.parametrize("path", ("public/rel/path", "private/foo"))
+def test_get_artifact_url(path):
+
+    expected = "https://netloc/v1/{}".format(path)
 
     def buildUrl(*args, **kwargs):
-        if tc03x:
-            raise AttributeError("foo")
-        else:
-            return "https://netloc/v1/rel/path"
+        if path.startswith('public/'):
+            return expected
 
-    def makeRoute(*args, **kwargs):
-        return "rel/path"
+    def buildSignedUrl(*args, **kwargs):
+        if not path.startswith('public/'):
+            return expected
 
     context = mock.MagicMock()
     context.queue = mock.MagicMock()
     context.queue.options = {'baseUrl': 'https://netloc/'}
-    context.queue.makeRoute = makeRoute
     context.queue.buildUrl = buildUrl
-    assert get_artifact_url(context, "x", "y") == "https://netloc/v1/rel/path"
+    context.queue.buildSignedUrl = buildSignedUrl
+    assert get_artifact_url(context, "x", path) == expected
 
 
 # download_artifacts {{{1

@@ -24,6 +24,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 import scriptworker.log as swlog
+import scriptworker.artifacts as artifacts
 import scriptworker.worker as worker
 import scriptworker.utils as utils
 from taskcluster.async import Index, Queue
@@ -314,3 +315,36 @@ async def test_verify_production_cot(branch_context):
             await verify_cot(name, task_id, task_type)
     else:
         await verify_cot(branch_context['name'], task_id, branch_context['task_type'])
+
+
+# private artifacts {{{1
+@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.asyncio
+async def test_private_artifacts(context_function):
+    task_group_id = task_id = slugid.nice().decode('utf-8')
+    override = {
+        'task_script': (
+            'bash', '-c',
+            '>&2 echo'
+        ),
+    }
+    with context_function(override) as context:
+        result = await create_task(context, task_id, task_group_id)
+        assert result['status']['state'] == 'pending'
+        path = os.path.join(context.config['artifact_dir'], 'SampleArtifacts/_/X.txt')
+        utils.makedirs(os.path.dirname(path))
+        with open(path, "w") as fh:
+            fh.write("bar")
+        with remember_cwd():
+            os.chdir(os.path.dirname(context.config['work_dir']))
+            status = await worker.run_tasks(context, creds_key="integration_credentials")
+        assert status == 0
+        result = await task_status(context, task_id)
+        assert result['status']['state'] == 'completed'
+        url = artifacts.get_artifact_url(context, task_id, 'SampleArtifacts/_/X.txt')
+        path2 = os.path.join(context.config['work_dir'], 'downloaded_file')
+        await utils.download_file(context, url, path2)
+        with open(path2, "r") as fh:
+            contents = fh.read().strip()
+        assert contents == 'bar'
