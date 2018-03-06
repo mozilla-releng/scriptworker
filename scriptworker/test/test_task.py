@@ -15,9 +15,12 @@ import scriptworker.log as log
 import sys
 import taskcluster.exceptions
 import taskcluster.async
+import tempfile
 import time
 from . import event_loop, fake_session, fake_session_500, noop_async, rw_context, \
     successful_queue, unsuccessful_queue, read
+
+from scriptworker.exceptions import TaskVerificationError
 
 assert event_loop, rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
@@ -341,3 +344,53 @@ async def test_claim_work(event_loop, raises, context):
     else:
         context.queue.claimWork = noop_async
     assert await swtask.claim_work(context) is None
+
+
+_TASK_SCHEMA = {
+    'title': 'Task minimal schema',
+    'type': 'object',
+    'properties': {
+        'scopes': {
+            'type': 'array',
+            'minItems': 1,
+            'uniqueItems': True,
+            'items': {
+                'type': 'string',
+            },
+        },
+    },
+    'required': ['scopes'],
+}
+
+@pytest.mark.parametrize('raises, task', (
+    (True, {}),
+    (False, {'scopes': ['one:scope']}),
+))
+def test_validate_task_schema(context, raises, task):
+    context.task = task
+
+    with tempfile.NamedTemporaryFile('w+') as f:
+        json.dump(_TASK_SCHEMA, f)
+        f.seek(0)
+
+        context.config = {'schema_file': f.name}
+        if raises:
+            with pytest.raises(TaskVerificationError):
+                swtask.validate_task_schema(context)
+        else:
+            swtask.validate_task_schema(context)
+
+
+def test_validate_task_schema_with_deep_key(context):
+    context.task = {'scopes': ['one:scope']}
+
+    with tempfile.NamedTemporaryFile('w+') as f:
+        json.dump(_TASK_SCHEMA, f)
+        f.seek(0)
+
+        context.config = {
+            'first_layer': {
+                'second_layer': f.name,
+            }
+        }
+        swtask.validate_task_schema(context, schema_key='first_layer.second_layer')
