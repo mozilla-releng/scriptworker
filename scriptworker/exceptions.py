@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """scriptworker exceptions."""
 
+from scriptworker.constants import STATUSES
+
 
 class ScriptWorkerException(Exception):
     """The base exception in scriptworker.
@@ -68,6 +70,23 @@ class ScriptWorkerTaskException(ScriptWorkerException):
         """
         self.exit_code = exit_code
         super(ScriptWorkerTaskException, self).__init__(*args, **kwargs)
+
+
+class TaskVerificationError(ScriptWorkerTaskException):
+    """Verification error on a Taskcluster task.
+
+    Use it when your script fails to validate any input from the task definition
+
+    """
+
+    def __init__(self, msg):
+        """Initialize TaskVerificationError.
+
+        Args:
+            msg (string): the error message
+
+        """
+        super().__init__(msg, exit_code=STATUSES['malformed-payload'])
 
 
 class DownloadError(ScriptWorkerTaskException):
