@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.1.0] - 2018-03-07
+### Added
+- added functions used in script depending on scriptworker.
+  - added `utils.get_single_item_from_sequence()`
+  - added `script.sync_main()` and `script.validate_task_schema()`
+  - added `exceptions.TaskVerificationError`
+
 ## [10.0.0] - 2018-03-05
 ### Added
 - added `get_loggable_url` to avoid logging secrets
