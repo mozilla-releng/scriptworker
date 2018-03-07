@@ -80,7 +80,7 @@ async def run_tasks(context, creds_key="credentials"):
     return status
 
 
-async def async_main(context):
+async def async_main(context, credentials):
     """Set up and run tasks for this iteration.
 
     http://docs.taskcluster.net/queue/worker-interaction/
@@ -88,15 +88,19 @@ async def async_main(context):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
     """
-    tmp_gpg_home = get_tmp_base_gpg_home_dir(context)
-    state = is_lockfile_present(context, "scriptworker", logging.DEBUG)
-    if os.path.exists(tmp_gpg_home) and state == "ready":
-        try:
-            rm(context.config['base_gpg_home_dir'])
-            os.rename(tmp_gpg_home, context.config['base_gpg_home_dir'])
-        finally:
-            rm_lockfile(context)
-    await run_tasks(context)
+    conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
+    async with aiohttp.ClientSession(connector=conn) as session:
+        context.session = session
+        context.credentials = credentials
+        tmp_gpg_home = get_tmp_base_gpg_home_dir(context)
+        state = is_lockfile_present(context, "scriptworker", logging.DEBUG)
+        if os.path.exists(tmp_gpg_home) and state == "ready":
+            try:
+                rm(context.config['base_gpg_home_dir'])
+                os.rename(tmp_gpg_home, context.config['base_gpg_home_dir'])
+            finally:
+                rm_lockfile(context)
+        await run_tasks(context)
 
 
 def main():
@@ -104,7 +108,6 @@ def main():
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
     cleanup(context)
-    conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     loop = asyncio.get_event_loop()
 
     done = False
@@ -116,12 +119,9 @@ def main():
 
     signal.signal(signal.SIGTERM, _handle_sigterm)
 
-    with aiohttp.ClientSession(connector=conn) as session:
-        context.session = session
-        context.credentials = credentials
-        while not done:
-            try:
-                loop.run_until_complete(async_main(context))
-            except Exception:
-                log.critical("Fatal exception", exc_info=1)
-                raise
+    while not done:
+        try:
+            loop.run_until_complete(async_main(context, credentials))
+        except Exception:
+            log.critical("Fatal exception", exc_info=1)
+            raise

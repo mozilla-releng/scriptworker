@@ -7,6 +7,7 @@ in S3.
 import aiohttp
 import arrow
 import asyncio
+import async_timeout
 import gzip
 import logging
 import mimetypes
@@ -196,7 +197,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
     loggable_url = get_loggable_url(tc_response['putUrl'])
     log.info("uploading {path} to {url}...".format(path=path, url=loggable_url))
     with open(path, "rb") as fh:
-        with aiohttp.Timeout(context.config['artifact_upload_timeout']):
+        async with async_timeout.timeout(context.config['artifact_upload_timeout']):
             async with context.session.put(
                 tc_response['putUrl'], data=fh, headers=_craft_artifact_put_headers(content_type, content_encoding),
                 skip_auto_headers=skip_auto_headers, compress=False

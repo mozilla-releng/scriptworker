@@ -105,10 +105,11 @@ def get_context(config_override):
         context.config, credentials = build_config(config_override, basedir=tmp)
         swlog.update_logging_config(context)
         utils.cleanup(context)
-        with aiohttp.ClientSession() as session:
-            context.session = session
-            context.credentials = credentials
-            yield context
+        session = aiohttp.ClientSession()
+        context.session = session
+        context.credentials = credentials
+        yield context
+        session.close()
 
 
 def get_temp_creds(context):

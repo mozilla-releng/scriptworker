@@ -17,7 +17,7 @@ if {'register', 'upload'}.intersection(set(sys.argv)):
     sys.exit(1)
 
 reqs = [
-    "aiohttp>=2.0.0,<3",
+    "aiohttp",
     "arrow",
     "defusedxml",
     "dictdiffer",

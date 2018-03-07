@@ -8,6 +8,7 @@ Attributes:
 import aiohttp
 import arrow
 import asyncio
+import async_timeout
 from copy import deepcopy
 import functools
 import hashlib
@@ -56,7 +57,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
     """
     session = context.session
     loggable_url = get_loggable_url(url)
-    with aiohttp.Timeout(timeout):
+    async with async_timeout.timeout(timeout):
         log.debug("{} {}".format(method.upper(), loggable_url))
         async with session.request(method, url, **kwargs) as resp:
             log.debug("Status {}".format(resp.status))

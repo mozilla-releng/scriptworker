@@ -1889,30 +1889,29 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     loop = asyncio.get_event_loop()
     conn = aiohttp.TCPConnector()
     try:
-        with aiohttp.ClientSession(connector=conn) as session:
-            context = Context()
-            context.session = session
-            context.credentials = read_worker_creds()
-            context.task = loop.run_until_complete(context.queue.task(opts.task_id))
-            context.config = dict(deepcopy(DEFAULT_CONFIG))
-            context.config.update({
-                'cot_product': opts.cot_product,
-                'work_dir': os.path.join(tmp, 'work'),
-                'artifact_dir': os.path.join(tmp, 'artifacts'),
-                'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
-                'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
-                'verify_cot_signature': False,
-            })
-            context.config = apply_product_config(context.config)
-            cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-            loop.run_until_complete(verify_chain_of_trust(cot))
-            log.info(format_json(cot.dependent_task_ids()))
-            log.info("{} : {}".format(cot.name, cot.task_id))
-            for link in cot.links:
-                log.info("{} : {}".format(link.name, link.task_id))
-            context.session.close()
+        session = aiohttp.ClientSession(connector=conn)
+        context = Context()
+        context.session = session
+        context.credentials = read_worker_creds()
+        context.task = loop.run_until_complete(context.queue.task(opts.task_id))
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.config.update({
+            'cot_product': opts.cot_product,
+            'work_dir': os.path.join(tmp, 'work'),
+            'artifact_dir': os.path.join(tmp, 'artifacts'),
+            'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
+            'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
+            'verify_cot_signature': False,
+        })
+        context.config = apply_product_config(context.config)
+        cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
+        loop.run_until_complete(verify_chain_of_trust(cot))
+        log.info(format_json(cot.dependent_task_ids()))
+        log.info("{} : {}".format(cot.name, cot.task_id))
+        for link in cot.links:
+            log.info("{} : {}".format(link.name, link.task_id))
+        context.session.close()
         context.queue.session.close()
-        loop.close()
     finally:
         if opts.cleanup:
             rm(tmp)
