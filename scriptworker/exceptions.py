@@ -15,7 +15,7 @@ class ScriptWorkerException(Exception):
 
     """
 
-    exit_code = 5
+    exit_code = STATUSES['internal-error']
 
 
 class ScriptWorkerGPGException(ScriptWorkerException):
@@ -26,7 +26,7 @@ class ScriptWorkerGPGException(ScriptWorkerException):
 
     """
 
-    exit_code = 5
+    exit_code = STATUSES['internal-error']
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
@@ -37,7 +37,7 @@ class ScriptWorkerRetryException(ScriptWorkerException):
 
     """
 
-    exit_code = 4
+    exit_code = STATUSES['resource-unavailable']
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
@@ -105,7 +105,7 @@ class DownloadError(ScriptWorkerTaskException):
 
         """
         super(DownloadError, self).__init__(
-            msg, exit_code=4
+            msg, exit_code=STATUSES['resource-unavailable']
         )
 
 
@@ -125,7 +125,7 @@ class CoTError(ScriptWorkerTaskException, KeyError):
 
         """
         super(CoTError, self).__init__(
-            msg, exit_code=3
+            msg, exit_code=STATUSES['malformed-payload']
         )
 
 
