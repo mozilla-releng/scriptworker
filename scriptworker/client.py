@@ -20,7 +20,7 @@ from urllib.parse import unquote
 
 from scriptworker.constants import STATUSES
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 from scriptworker.utils import load_json_or_yaml, match_url_regex
 
 log = logging.getLogger(__name__)
@@ -67,6 +67,33 @@ def validate_json_schema(data, schema, name="task"):
             "Can't validate {} schema!\n{}".format(name, str(exc)),
             exit_code=STATUSES['malformed-payload']
         )
+
+
+def validate_task_schema(context, schema_key='schema_file'):
+    """Validate the task definition.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context. It must contain a task and
+            the config pointing to the schema file
+        schema_key: the key in `context.config` where the path to the schema file is. Key can contain
+            dots (e.g.: 'schema_files.file_a'), in which case
+
+    Raises:
+        TaskVerificationError: if the task doesn't match the schema
+
+    """
+    schema_path = context.config
+    schema_keys = schema_key.split('.')
+    for key in schema_keys:
+        schema_path = schema_path[key]
+
+    task_schema = load_json_or_yaml(schema_path, is_path=True)
+    log.debug('Task is validated against this schema: {}'.format(task_schema))
+
+    try:
+        validate_json_schema(context.task, task_schema)
+    except ScriptWorkerTaskException as e:
+        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(context.task)) from e
 
 
 def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
