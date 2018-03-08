@@ -38,9 +38,9 @@ def test_main(mocker, context, event_loop):
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
 
-    async def foo(arg):
+    async def foo(arg, credentials):
         # arg.credentials will be a dict copy of a frozendict.
-        assert arg.credentials == dict(creds)
+        assert credentials == dict(creds)
         raise ScriptWorkerException("foo")
 
     try:
@@ -64,7 +64,7 @@ def test_main_sigterm(mocker, context, event_loop):
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
 
-    async def async_main(arg):
+    async def async_main(*args):
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
         return True
@@ -108,11 +108,11 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         mocker.patch.object(worker, 'rm', new=noop_sync)
         mocker.patch.object(os, 'rename', new=noop_sync)
         mocker.patch.object(worker, 'rm_lockfile', new=exit)
-        event_loop.run_until_complete(worker.async_main(context))
-        event_loop.run_until_complete(worker.async_main(context))
+        event_loop.run_until_complete(worker.async_main(context, {}))
+        event_loop.run_until_complete(worker.async_main(context, {}))
         with pytest.raises(SystemExit):
             event_loop.run_until_complete(
-                worker.async_main(context)
+                worker.async_main(context, {})
             )
     finally:
         if os.path.exists(path):

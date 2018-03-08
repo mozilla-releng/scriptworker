@@ -109,7 +109,7 @@ def get_context(config_override):
         context.session = session
         context.credentials = credentials
         yield context
-        session.close()
+        # session.close() - to do this we need to make this function async!!
 
 
 def get_temp_creds(context):
