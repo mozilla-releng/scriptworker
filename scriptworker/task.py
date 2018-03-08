@@ -19,11 +19,9 @@ from urllib.parse import unquote, urlparse
 import taskcluster
 import taskcluster.exceptions
 
-from scriptworker.client import validate_json_schema
 from scriptworker.constants import REVERSED_STATUSES
-from scriptworker.exceptions import ScriptWorkerTaskException, TaskVerificationError
 from scriptworker.log import get_log_filehandle, pipe_to_log
-from scriptworker.utils import match_url_path_callback, match_url_regex, load_json_or_yaml
+from scriptworker.utils import match_url_path_callback, match_url_regex
 
 log = logging.getLogger(__name__)
 
@@ -537,30 +535,3 @@ async def claim_work(context):
         )
     except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:
         log.warning("{} {}".format(exc.__class__, exc))
-
-
-def validate_task_schema(context, schema_key='schema_file'):
-    """Validate the task definition.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context. It must contain a task and
-            the config pointing to the schema file
-        schema_key: the key in `context.config` where the path to the schema file is. Key can contain
-            dots (e.g.: 'schema_files.file_a'), in which case
-
-    Raises:
-        TaskVerificationError: if the task doesn't match the schema
-
-    """
-    schema_path = context.config
-    schema_keys = schema_key.split('.')
-    for key in schema_keys:
-        schema_path = schema_path[key]
-
-    task_schema = load_json_or_yaml(schema_path, is_path=True)
-    log.debug('Task is validated against this schema: {}'.format(task_schema))
-
-    try:
-        validate_json_schema(context.task, task_schema)
-    except ScriptWorkerTaskException as e:
-        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(context.task)) from e

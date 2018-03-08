@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 
 from . import tmpdir, event_loop
 
@@ -139,6 +139,59 @@ def test_invalid_task(schema):
         task = json.load(fh)
     with pytest.raises(ScriptWorkerTaskException):
         client.validate_json_schema({'foo': task}, schema)
+
+
+_TASK_SCHEMA = {
+    'title': 'Task minimal schema',
+    'type': 'object',
+    'properties': {
+        'scopes': {
+            'type': 'array',
+            'minItems': 1,
+            'uniqueItems': True,
+            'items': {
+                'type': 'string',
+            },
+        },
+    },
+    'required': ['scopes'],
+}
+
+
+@pytest.mark.parametrize('raises, task', (
+    (True, {}),
+    (False, {'scopes': ['one:scope']}),
+))
+def test_validate_task_schema(raises, task):
+    context = MagicMock()
+    context.task = task
+
+    with tempfile.NamedTemporaryFile('w+') as f:
+        json.dump(_TASK_SCHEMA, f)
+        f.seek(0)
+
+        context.config = {'schema_file': f.name}
+        if raises:
+            with pytest.raises(TaskVerificationError):
+                client.validate_task_schema(context)
+        else:
+            client.validate_task_schema(context)
+
+
+def test_validate_task_schema_with_deep_key():
+    context = MagicMock()
+    context.task = {'scopes': ['one:scope']}
+
+    with tempfile.NamedTemporaryFile('w+') as f:
+        json.dump(_TASK_SCHEMA, f)
+        f.seek(0)
+
+        context.config = {
+            'first_layer': {
+                'second_layer': f.name,
+            }
+        }
+        client.validate_task_schema(context, schema_key='first_layer.second_layer')
 
 
 @pytest.mark.parametrize("valid_artifact_rules,valid_artifact_task_ids,url,expected", LEGAL_URLS)
