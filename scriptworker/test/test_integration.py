@@ -5,7 +5,8 @@
 import aiohttp
 import arrow
 import asyncio
-from contextlib import contextmanager
+from asyncio_extras.contextmanager import async_contextmanager
+from async_generator import yield_
 import json
 import logging
 import os
@@ -98,18 +99,17 @@ def build_config(override, basedir):
     return config, creds
 
 
-@contextmanager
-def get_context(config_override):
+@async_contextmanager
+async def get_context(config_override):
     context = Context()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
         swlog.update_logging_config(context)
         utils.cleanup(context)
-        session = aiohttp.ClientSession()
-        context.session = session
-        context.credentials = credentials
-        yield context
-        # session.close() - to do this we need to make this function async!!
+        async with aiohttp.ClientSession() as session:
+            context.session = session
+            context.credentials = credentials
+            await yield_(context)
 
 
 def get_temp_creds(context):
@@ -127,11 +127,11 @@ def get_temp_creds(context):
         raise Exception("Can't get temp_creds!")
 
 
-@contextmanager
-def get_temp_creds_context(config_override):
-    with get_context(config_override) as context:
+@async_contextmanager
+async def get_temp_creds_context(config_override):
+    async with get_context(config_override) as context:
         get_temp_creds(context)
-        yield context
+        await yield_(context)
 
 
 async def create_task(context, task_id, task_group_id):
@@ -143,13 +143,13 @@ async def task_status(context, task_id):
     return await context.queue.status(task_id)
 
 
-@contextmanager
-def remember_cwd():
+@async_contextmanager
+async def remember_cwd():
     """http://stackoverflow.com/a/170174
     """
     curdir = os.getcwd()
     try:
-        yield
+        await yield_()
     finally:
         os.chdir(curdir)
 
@@ -157,83 +157,77 @@ def remember_cwd():
 # run_successful_task {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-def test_run_successful_task(event_loop, context_function):
+@pytest.mark.asyncio
+async def test_run_successful_task(context_function):
     task_id = slugid.nice().decode('utf-8')
     task_group_id = slugid.nice().decode('utf-8')
-    with context_function(None) as context:
-        result = event_loop.run_until_complete(
-            create_task(context, task_id, task_group_id)
-        )
+    async with context_function(None) as context:
+        result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
-        with remember_cwd():
+        async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = event_loop.run_until_complete(
-                worker.run_tasks(context, creds_key="integration_credentials")
-            )
+            status = await worker.run_tasks(context, creds_key="integration_credentials")
         assert status == 1
-        result = event_loop.run_until_complete(
-            task_status(context, task_id)
-        )
+        result = await task_status(context, task_id)
         assert result['status']['state'] == 'failed'
 
 
 # run_maxtimeout {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-def test_run_maxtimeout(event_loop, context_function):
-    task_id = slugid.nice().decode('utf-8')
-    task_group_id = slugid.nice().decode('utf-8')
-    partial_config = {
-        'task_max_timeout': 2,
-    }
-    with context_function(partial_config) as context:
-        result = event_loop.run_until_complete(
-            create_task(context, task_id, task_group_id)
-        )
+async def maxtimeout_helper(context_function, partial_config, task_id):
+    async with context_function(partial_config) as context:
+        result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
-        with remember_cwd():
+        async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             with pytest.raises(RuntimeError):
                 # Because we're using asyncio to kill tasks in the loop,
                 # we're going to hit a RuntimeError on [non-osx?] python3.5
-                event_loop.run_until_complete(
-                    worker.run_tasks(context, creds_key="integration_credentials")
-                )
+                await worker.run_tasks(context, creds_key="integration_credentials")
                 if sys.version_info >= (3, 6):
                     raise RuntimeError(
                         "Force RuntimeError on 3.6+ for "
                         "https://github.com/mozilla-releng/scriptworker/issues/135"
                     )
-        result = event_loop.run_until_complete(task_status(context, task_id))
+        result = await task_status(context, task_id)
         # TODO We need to be able to ensure this is 'failed'.
         assert result['status']['state'] in ('failed', 'running')
+
+
+@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+def test_run_maxtimeout(event_loop, context_function):
+    task_id = slugid.nice().decode('utf-8')
+    partial_config = {
+        'task_max_timeout': 2,
+    }
+    event_loop.run_until_complete(maxtimeout_helper(context_function, partial_config, task_id))
 
 
 # empty_queue {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-def test_empty_queue(event_loop, context_function):
-    with context_function(None) as context:
-        with remember_cwd():
+@pytest.mark.asyncio
+async def test_empty_queue(context_function):
+    async with context_function(None) as context:
+        async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = event_loop.run_until_complete(
-                worker.run_tasks(context, creds_key="integration_credentials")
-            )
+            status = await worker.run_tasks(context, creds_key="integration_credentials")
         assert status is None
 
 
 # temp_creds {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-def test_temp_creds(event_loop, context_function):
-    with context_function(None) as context:
-        with remember_cwd():
+@pytest.mark.asyncio
+async def test_temp_creds(context_function):
+    async with context_function(None) as context:
+        async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             context.temp_credentials = utils.create_temp_creds(
                 context.credentials['clientId'], context.credentials['accessToken'],
                 expires=arrow.utcnow().replace(minutes=10).datetime
             )
-            result = event_loop.run_until_complete(context.temp_queue.ping())
+            result = await context.temp_queue.ping()
             assert result['alive']
 
 
@@ -298,7 +292,7 @@ async def test_verify_production_cot(branch_context):
 
     async def verify_cot(name, task_id, task_type):
         log.info("Verifying {} {} {}...".format(name, task_id, task_type))
-        with get_context({'verify_cot_signature': False}) as context:
+        async with get_context({'verify_cot_signature': False}) as context:
             context.task = await queue.task(task_id)
             cot = ChainOfTrust(context, task_type, task_id=task_id)
             await verify_chain_of_trust(cot)
@@ -330,14 +324,14 @@ async def test_private_artifacts(context_function):
             '>&2 echo'
         ),
     }
-    with context_function(override) as context:
+    async with context_function(override) as context:
         result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
         path = os.path.join(context.config['artifact_dir'], 'SampleArtifacts/_/X.txt')
         utils.makedirs(os.path.dirname(path))
         with open(path, "w") as fh:
             fh.write("bar")
-        with remember_cwd():
+        async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
             status = await worker.run_tasks(context, creds_key="integration_credentials")
         assert status == 0

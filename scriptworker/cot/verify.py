@@ -1910,8 +1910,6 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
         log.info("{} : {}".format(cot.name, cot.task_id))
         for link in cot.links:
             log.info("{} : {}".format(link.name, link.task_id))
-        context.session.close()
-        context.queue.session.close()
     finally:
         if opts.cleanup:
             rm(tmp)
