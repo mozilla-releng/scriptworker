@@ -153,20 +153,7 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
         client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
 
 
-@pytest.mark.parametrize('name', (__name__, 'random-name'))
-def test_sync_main_early_returns(event_loop, name):
-    generator = (n for n in range(0, 2))
-
-    async def async_main(_):
-        next(generator)
-
-    client.sync_main(async_main, name=__name__, config_path=None)
-
-    assert next(generator) == 0 # async_main was never called
-
-
-@pytest.mark.parametrize('name', (None, '__main__'))
-def test_sync_main_runs_fully(event_loop, name):
+def test_sync_main_runs_fully(event_loop):
     generator = (n for n in range(0, 2))
 
     async def async_main(_):
@@ -176,7 +163,7 @@ def test_sync_main_runs_fully(event_loop, name):
         json.dump({'some': 'json_config'}, f)
         f.seek(0)
 
-        client.sync_main(async_main, name=name, config_path=f.name)
+        client.sync_main(async_main, config_path=f.name)
 
     assert next(generator) == 1 # async_main was called once
 
