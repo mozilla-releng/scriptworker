@@ -107,11 +107,10 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     return unquote(filepath).lstrip('/')
 
 
-def sync_main(async_main, name=None, config_path=None):
+def sync_main(async_main, config_path=None):
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
-        * it checks sync_main runs under a known namespace
         * it creates the scriptworker context and initializes it with the provided config
         * the path to the config file is either taken from `config_path` or from `sys.argv[1]`.
         * it verifies `sys.argv` doesn't have more arguments than the config path.
@@ -119,13 +118,9 @@ def sync_main(async_main, name=None, config_path=None):
 
     Args:
         async_main (function): The function to call once everything is set up
-        name (str): The name of the namespace to run. Must be either `None` or `'__main__'`. Otherwise function returns early.
         config_path (str): The path to the file to load the config from. Loads from `sys.argv[1]` if `None`
         close_loop (bool): Closes the event loop at the end of the run. Not closing it allows to run several tests on main()
     """
-    if name not in (None, '__main__'):
-        return
-
     context = _init_context(config_path)
     _init_logging(context)
     _handle_asyncio_loop(async_main, context)
