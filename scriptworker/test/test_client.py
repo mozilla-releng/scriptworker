@@ -206,14 +206,15 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
         client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
 
 
-def test_sync_main_runs_fully(event_loop):
+def test_sync_main_runs_fully(config, event_loop):
+    copyfile(BASIC_TASK, os.path.join(config['work_dir'], 'task.json'))
     generator = (n for n in range(0, 2))
 
     async def async_main(_):
         next(generator)
 
     with tempfile.NamedTemporaryFile('w+') as f:
-        json.dump({'some': 'json_config'}, f)
+        json.dump(config, f)
         f.seek(0)
 
         client.sync_main(async_main, config_path=f.name)
@@ -222,9 +223,10 @@ def test_sync_main_runs_fully(event_loop):
 
 
 @pytest.mark.parametrize('does_use_argv', (True, False))
-def test_init_context(monkeypatch, does_use_argv):
+def test_init_context(config, monkeypatch, does_use_argv):
+    copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
     with tempfile.NamedTemporaryFile('w+') as f:
-        json.dump({'some': 'json_config'}, f)
+        json.dump(config, f)
         f.seek(0)
 
         if does_use_argv:
@@ -234,7 +236,8 @@ def test_init_context(monkeypatch, does_use_argv):
             context = client._init_context(config_path=f.name)
 
     assert isinstance(context, Context)
-    assert context.config == {'some': 'json_config'}
+    assert context.config == config
+    assert context.task['this_is_a_task'] is True
 
 
 def test_fail_init_context(capsys, monkeypatch):

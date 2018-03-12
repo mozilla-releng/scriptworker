@@ -161,6 +161,7 @@ def _init_context(config_path=None):
         config_path = sys.argv[1]
 
     context.config = load_json_or_yaml(config_path, is_path=True)
+    context.task = get_task(context.config)
     return context
 
 
