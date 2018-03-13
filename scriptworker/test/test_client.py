@@ -206,18 +206,30 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
         client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
 
 
-def test_sync_main_runs_fully(config, event_loop):
+@pytest.mark.parametrize('should_validate_task', (True, False))
+def test_sync_main_runs_fully(config, event_loop, should_validate_task):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], 'task.json'))
     generator = (n for n in range(0, 2))
 
     async def async_main(_):
         next(generator)
 
+    kwargs = {}
+
+    if should_validate_task:
+        schema_path = os.path.join(config['work_dir'], 'schema.json')
+        copyfile(SCHEMA, schema_path)
+        config['schema_file'] = schema_path
+    else:
+        # Task is validated by default
+        kwargs['should_validate_task'] = False
+
     with tempfile.NamedTemporaryFile('w+') as f:
         json.dump(config, f)
         f.seek(0)
 
-        client.sync_main(async_main, config_path=f.name)
+        kwargs['config_path'] = f.name
+        client.sync_main(async_main, **kwargs)
 
     assert next(generator) == 1 # async_main was called once
 

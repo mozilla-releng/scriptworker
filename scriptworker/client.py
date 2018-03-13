@@ -134,7 +134,7 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     return unquote(filepath).lstrip('/')
 
 
-def sync_main(async_main, config_path=None):
+def sync_main(async_main, config_path=None, should_validate_task=True):
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
@@ -150,6 +150,8 @@ def sync_main(async_main, config_path=None):
     """
     context = _init_context(config_path)
     _init_logging(context)
+    if should_validate_task:
+        validate_task_schema(context)
     _handle_asyncio_loop(async_main, context)
 
 
