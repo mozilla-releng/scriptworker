@@ -234,22 +234,36 @@ def test_sync_main_runs_fully(config, event_loop, should_validate_task):
     assert next(generator) == 1 # async_main was called once
 
 
-@pytest.mark.parametrize('does_use_argv', (True, False))
-def test_init_context(config, monkeypatch, does_use_argv):
+@pytest.mark.parametrize('does_use_argv, default_config', (
+    (True, None),
+    (True, {'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}),
+    (False, None),
+    (True, {'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}),
+))
+def test_init_context(config, monkeypatch, does_use_argv, default_config):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
     with tempfile.NamedTemporaryFile('w+') as f:
         json.dump(config, f)
         f.seek(0)
 
+        kwargs = {'default_config': default_config}
+
         if does_use_argv:
             monkeypatch.setattr(sys, 'argv', ['some_binary_name', f.name])
-            context = client._init_context()
         else:
-            context = client._init_context(config_path=f.name)
+            kwargs['config_path'] = f.name
+
+        context = client._init_context(**kwargs)
 
     assert isinstance(context, Context)
-    assert context.config == config
     assert context.task['this_is_a_task'] is True
+
+    expected_config = deepcopy(config)
+    if default_config:
+        expected_config['some_param_only_in_default'] = 'default_value'
+
+    assert context.config == expected_config
+    assert context.config['worker_type'] != 'default_value'
 
 
 def test_fail_init_context(capsys, monkeypatch):

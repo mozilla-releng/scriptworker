@@ -134,7 +134,7 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     return unquote(filepath).lstrip('/')
 
 
-def sync_main(async_main, config_path=None, should_validate_task=True):
+def sync_main(async_main, config_path=None, default_config=None, should_validate_task=True):
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
@@ -148,21 +148,23 @@ def sync_main(async_main, config_path=None, should_validate_task=True):
         config_path (str): The path to the file to load the config from. Loads from `sys.argv[1]` if `None`
         close_loop (bool): Closes the event loop at the end of the run. Not closing it allows to run several tests on main()
     """
-    context = _init_context(config_path)
+    context = _init_context(config_path, default_config)
     _init_logging(context)
     if should_validate_task:
         validate_task_schema(context)
     _handle_asyncio_loop(async_main, context)
 
 
-def _init_context(config_path=None):
+def _init_context(config_path=None, default_config=None):
     context = Context()
     if config_path is None:
         if len(sys.argv) != 2:
             _usage()
         config_path = sys.argv[1]
 
-    context.config = load_json_or_yaml(config_path, is_path=True)
+    context.config = {} if default_config is None else default_config
+    context.config.update(load_json_or_yaml(config_path, is_path=True))
+
     context.task = get_task(context.config)
     return context
 
