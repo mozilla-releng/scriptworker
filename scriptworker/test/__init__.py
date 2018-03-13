@@ -15,7 +15,7 @@ import taskcluster.exceptions
 from scriptworker.config import get_unfrozen_copy, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.utils import makedirs
+from scriptworker.utils import makedirs, noop_sync
 try:
     import yarl
     YARL = True
@@ -278,8 +278,4 @@ def rw_context(request):
 
 
 async def noop_async(*args, **kwargs):
-    pass
-
-
-def noop_sync(*args, **kwargs):
     pass
