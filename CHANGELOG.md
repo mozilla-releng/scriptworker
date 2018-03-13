@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.2.0] - 2018-03-14
+### Changed
+- `client.sync_main()` now loads the task
+- `client.sync_main()` optionally verifies the loaded task
+- `client.sync_main()` accepts optional default configuration
+- `client.sync_main()` stubs out `context.write_json()`
+
 ## [10.1.0] - 2018-03-07
 ### Added
 - added functions used in script depending on scriptworker.
