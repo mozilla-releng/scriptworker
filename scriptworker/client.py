@@ -21,7 +21,7 @@ from urllib.parse import unquote
 from scriptworker.constants import STATUSES
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-from scriptworker.utils import load_json_or_yaml, match_url_regex
+from scriptworker.utils import load_json_or_yaml, match_url_regex, noop_sync
 
 log = logging.getLogger(__name__)
 
@@ -157,6 +157,10 @@ def sync_main(async_main, config_path=None, default_config=None, should_validate
 
 def _init_context(config_path=None, default_config=None):
     context = Context()
+
+    # This prevents *script from pasting the whole context.
+    context.write_json = noop_sync
+
     if config_path is None:
         if len(sys.argv) != 2:
             _usage()
@@ -166,6 +170,7 @@ def _init_context(config_path=None, default_config=None):
     context.config.update(load_json_or_yaml(config_path, is_path=True))
 
     context.task = get_task(context.config)
+
     return context
 
 

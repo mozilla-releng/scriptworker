@@ -690,3 +690,8 @@ def get_single_item_from_sequence(
     if append_sequence_to_error_message:
         error_message = '{}. Given: {}'.format(error_message, sequence)
     raise ErrorClass(error_message)
+
+
+def noop_sync(*args, **kwargs):
+    """Do nothing."""
+    pass

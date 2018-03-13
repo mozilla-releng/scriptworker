@@ -23,6 +23,7 @@ import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
+from scriptworker.utils import noop_sync
 
 from . import tmpdir, event_loop
 
@@ -264,6 +265,8 @@ def test_init_context(config, monkeypatch, does_use_argv, default_config):
 
     assert context.config == expected_config
     assert context.config['worker_type'] != 'default_value'
+
+    assert context.write_json == noop_sync
 
 
 def test_fail_init_context(capsys, monkeypatch):
