@@ -139,7 +139,6 @@ def test_create_artifact(context, fake_session, successful_queue, event_loop):
 
     # TODO: Assert the content of the PUT request is valid. This can easily be done once MagicMock supports async
     # context managers. See http://bugs.python.org/issue26467 and https://github.com/Martiusweb/asynctest/issues/29.
-    context.session.close()
 
 
 def test_create_artifact_retry(context, fake_session_500, successful_queue,
@@ -153,7 +152,6 @@ def test_create_artifact_retry(context, fake_session_500, successful_queue,
         event_loop.run_until_complete(
             create_artifact(context, path, "public/env/one.log", content_type='text/plain', content_encoding=None, expires=expires)
         )
-    context.session.close()
 
 
 def test_craft_artifact_put_headers():

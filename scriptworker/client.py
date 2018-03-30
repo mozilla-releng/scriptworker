@@ -145,8 +145,13 @@ def sync_main(async_main, config_path=None, default_config=None, should_validate
 
     Args:
         async_main (function): The function to call once everything is set up
-        config_path (str): The path to the file to load the config from. Loads from `sys.argv[1]` if `None`
-        close_loop (bool): Closes the event loop at the end of the run. Not closing it allows to run several tests on main()
+        config_path (str, optional): The path to the file to load the config from.
+            Loads from `sys.argv[1]` if `None`. Defaults to None.
+        default_config (dict, optional): the default config to use for `_init_context`.
+            defaults to None.
+        should_validate_task (bool, optional): whether we should validate the task
+            schema. Defaults to True.
+
     """
     context = _init_context(config_path, default_config)
     _init_logging(context)
@@ -196,5 +201,3 @@ async def _handle_asyncio_loop(async_main, context):
         except ScriptWorkerException as exc:
             traceback.print_exc()
             sys.exit(exc.exit_code)
-
-    loop.close()

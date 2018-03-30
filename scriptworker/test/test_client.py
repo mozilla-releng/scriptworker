@@ -315,20 +315,22 @@ def test_init_logging(monkeypatch, is_verbose, log_level):
     assert logging.getLogger('taskcluster').level == logging.WARNING
 
 
-def test_handle_asyncio_loop(event_loop):
+@pytest.mark.asyncio
+async def test_handle_asyncio_loop():
     context = MagicMock()
     context.was_async_main_called = False
 
     async def async_main(context):
         context.was_async_main_called = True
 
-    client._handle_asyncio_loop(async_main, context)
+    await client._handle_asyncio_loop(async_main, context)
 
     assert isinstance(context.session, aiohttp.ClientSession)
     assert context.was_async_main_called is True
 
 
-def test_fail_handle_asyncio_loop(event_loop, capsys):
+@pytest.mark.asyncio
+async def test_fail_handle_asyncio_loop(capsys):
     context = MagicMock()
 
     async def async_error(context):
@@ -337,7 +339,7 @@ def test_fail_handle_asyncio_loop(event_loop, capsys):
         raise exception
 
     with pytest.raises(SystemExit) as excinfo:
-        client._handle_asyncio_loop(async_error, context)
+        await client._handle_asyncio_loop(async_error, context)
 
     assert excinfo.value.code == 42
 
@@ -345,14 +347,3 @@ def test_fail_handle_asyncio_loop(event_loop, capsys):
     assert captured.out == ''
     assert 'Traceback' in captured.err
     assert 'ScriptWorkerException: async_error!' in captured.err
-
-
-def test_handle_asyncio_loop_closes_loop(event_loop):
-    context = MagicMock()
-    event_loop.close = MagicMock()
-
-    async def dummy_main(_):
-        pass
-
-    client._handle_asyncio_loop(dummy_main, context)
-    event_loop.close.assert_called_once_with()

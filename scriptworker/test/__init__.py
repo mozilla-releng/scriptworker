@@ -171,9 +171,10 @@ def fake_session(event_loop):
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=event_loop)
     session._request = _fake_request
-    return session
+    yield session
+    event_loop.run_until_complete(session.close())
 
 
 @pytest.fixture(scope='function')
@@ -184,9 +185,10 @@ def fake_session_500(event_loop):
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    session = aiohttp.ClientSession()
+    session = aiohttp.ClientSession(loop=event_loop)
     session._request = _fake_request
-    return session
+    yield session
+    event_loop.run_until_complete(session.close())
 
 
 def integration_create_task_payload(config, task_group_id, scopes=None,
@@ -231,16 +233,21 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
 def event_loop():
     """Create an instance of the default event loop for each test case.
     From https://github.com/pytest-dev/pytest-asyncio/issues/29#issuecomment-226947296
+
+    In general, we should use @pytest.mark.asyncio, but we sometimes need to
+    do something like kill tasks that benefits from clean event loops.
+
     """
+    orig_loop = asyncio.get_event_loop()
     policy = asyncio.get_event_loop_policy()
     res = policy.new_event_loop()
     asyncio.set_event_loop(res)
     res._close = res.close
     res.close = lambda: None
-
     yield res
-
     res._close()
+    asyncio.set_event_loop(orig_loop)
+
 
 
 @pytest.yield_fixture(scope='function')
@@ -281,6 +288,11 @@ def rw_context(request):
             if key.endswith("key_path") or key in ("gpg_home", ):
                 context.config[key] = os.path.join(tmp, key)
         yield context
+        try:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(context.session.close())
+        except:
+            pass
 
 
 async def noop_async(*args, **kwargs):

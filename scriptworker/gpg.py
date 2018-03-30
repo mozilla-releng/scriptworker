@@ -1511,6 +1511,3 @@ def rebuild_gpg_homedirs():
             create_lockfile(context, message="ready")
         else:
             rm_lockfile(context)
-        event_loop = asyncio.get_event_loop()
-        # Get rid of spurious event_loop errors.
-        event_loop.close()

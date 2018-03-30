@@ -179,18 +179,7 @@ async def maxtimeout_helper(context_function, partial_config, task_id):
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            with pytest.raises(RuntimeError):
-                # Because we're using asyncio to kill tasks in the loop,
-                # we're going to hit a RuntimeError on [non-osx?] python3.5
-                await worker.run_tasks(context, creds_key="integration_credentials")
-                if sys.version_info >= (3, 6):
-                    raise RuntimeError(
-                        "Force RuntimeError on 3.6+ for "
-                        "https://github.com/mozilla-releng/scriptworker/issues/135"
-                    )
-        result = await task_status(context, task_id)
-        # TODO We need to be able to ensure this is 'failed'.
-        assert result['status']['state'] in ('failed', 'running')
+            await worker.run_tasks(context, creds_key="integration_credentials")
 
 
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
@@ -200,7 +189,13 @@ def test_run_maxtimeout(event_loop, context_function):
     partial_config = {
         'task_max_timeout': 2,
     }
-    event_loop.run_until_complete(maxtimeout_helper(context_function, partial_config, task_id))
+    pre = arrow.utcnow()
+    try:
+        event_loop.run_until_complete(maxtimeout_helper(context_function, partial_config, task_id))
+    except RuntimeError:
+        pass
+    post = arrow.utcnow()
+    assert post.timestamp - pre.timestamp < 8
 
 
 # empty_queue {{{1
