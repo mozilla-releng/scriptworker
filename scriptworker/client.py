@@ -152,7 +152,8 @@ def sync_main(async_main, config_path=None, default_config=None, should_validate
     _init_logging(context)
     if should_validate_task:
         validate_task_schema(context)
-    _handle_asyncio_loop(async_main, context)
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_handle_asyncio_loop(async_main, context))
 
 
 def _init_context(config_path=None, default_config=None):
@@ -187,13 +188,11 @@ def _init_logging(context):
     logging.getLogger('taskcluster').setLevel(logging.WARNING)
 
 
-def _handle_asyncio_loop(async_main, context):
-    loop = asyncio.get_event_loop()
-
-    with aiohttp.ClientSession() as session:
+async def _handle_asyncio_loop(async_main, context):
+    async with aiohttp.ClientSession() as session:
         context.session = session
         try:
-            loop.run_until_complete(async_main(context))
+            await async_main(context)
         except ScriptWorkerException as exc:
             traceback.print_exc()
             sys.exit(exc.exit_code)
