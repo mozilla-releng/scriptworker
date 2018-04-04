@@ -422,6 +422,7 @@ def get_valid_task_types():
         'decision': verify_parent_task,
         'docker-image': verify_docker_image_task,
         'pushapk': verify_pushapk_task,
+        'pushsnap': verify_pushsnap_task,
         'shipit': verify_shipit_task,
         'signing': verify_signing_task,
         'partials': verify_partials_task,
@@ -1512,6 +1513,22 @@ async def verify_pushapk_task(chain, obj):
     Args:
         chain (ChainOfTrust): the chain we're operating on
         obj (ChainOfTrust or LinkOfTrust): the trust object for the pushapk task.
+
+    Raises:
+        CoTError: on error.
+
+    """
+    return await verify_scriptworker_task(chain, obj)
+
+
+async def verify_pushsnap_task(chain, obj):
+    """Verify the pushsnap trust object.
+
+    Currently the only check is to make sure it was run on a scriptworker.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        obj (ChainOfTrust or LinkOfTrust): the trust object for the pushsnap task.
 
     Raises:
         CoTError: on error.

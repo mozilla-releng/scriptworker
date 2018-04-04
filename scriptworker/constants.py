@@ -245,6 +245,10 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
                 'project:releng:signing:cert:release-signing': 'all-release-branches',
 
+                'project:releng:snapcraft:firefox:beta': 'beta',
+                'project:releng:snapcraft:firefox:candidate': 'release',
+                'project:releng:snapcraft:firefox:mock': 'all-staging-branches',
+
                 'project:releng:ship-it:production': 'all-production-branches',
                 'project:releng:ship-it:staging': 'all-staging-branches',
 
