@@ -100,27 +100,25 @@ Someone with access to the scriptworker package on `pypi.python.org` needs to do
     # cleartext auth!
     # Using a python with `twine` in the virtualenv:
     VERSION=4.1.2
-    # create the source tarball
-    python setup.py sdist
-    # sign the source tarball
-    gpg --detach-sign -a dist/scriptworker-${VERSION}.tar.gz
+    # create the source tarball and wheel
+    python setup.py sdist bdist_wheel
     # upload the source tarball + signature
-    twine upload dist/scriptworker-${VERSION}.tar.gz{,.asc}
+    twine upload dist/scriptworker-${VERSION}.tar.gz dist/scriptworker-${VERSION}-py2.py3-none-any.whl
 ```
 
-That creates source tarball, and uploads it.
+That creates source tarball and wheel, and uploads it.
 
 ## Puppet
 
 Connect to Releng VPN.
 
-Copy the tarball from `dist/` to `releng-puppet2.srv.releng.scl3.mozilla.com`:
+Copy the wheel from `dist/` to `releng-puppet2.srv.releng.scl3.mozilla.com`:
 
 ```bash
-scp dist/scriptworker-$VERSION.tar.gz releng-puppet2.srv.releng.scl3.mozilla.com:
+scp dist/scriptworker-$VERSION-py2.py3-none-any.whl releng-puppet2.srv.releng.scl3.mozilla.com:
 ssh releng-puppet2.srv.releng.scl3.mozilla.com
 cd /data/python/packages-3.5
-sudo mv ~/scriptworker-$VERSION.tar.gz .
+sudo mv ~/scriptworker-$VERSION-py2.py3-none-any.whl
 ```
 
 Bump the [scriptworker version](https://hg.mozilla.org/build/puppet/file/b67965cc83e6/modules/signing_scriptworker/manifests/init.pp#l43) in the appropriate scriptworker instance puppet configs.
