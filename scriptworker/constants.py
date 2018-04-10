@@ -255,6 +255,17 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:treescript:action:push': 'all-release-branches',
             }),
             'thunderbird': frozendict({
+                'project:comm:thunderbird:releng:balrog:server:nightly': 'all-nightly-branches',
+                'project:comm:thunderbird:releng:balrog:server:beta': 'beta',
+                'project:comm:thunderbird:releng:balrog:server:esr': 'esr',
+
+                'project:comm:thunderbird:releng:beetmover:bucket:nightly': 'all-nightly-branches',
+                'project:comm:thunderbird:releng:beetmover:bucket:release': 'all-release-branches',
+
+                'project:comm:thunderbird:releng:bouncer:server:production': 'all-release-branches',
+
+                'project:comm:thunderbird:releng:signing:cert:nightly-signing': 'all-nightly-branches',
+                'project:comm:thunderbird:releng:signing:cert:release-signing': 'all-release-branches',
             }),
         }),
     },
@@ -320,6 +331,24 @@ DEFAULT_CONFIG = frozendict({
                 ),
             }),
             'thunderbird': frozendict({
+                'all-release-branches': (
+                    "/releases/comm-beta",
+                    "/releases/comm-esr60",
+                ),
+                'beta': (
+                    "/releases/comm-beta",
+                ),
+                'esr': (
+                    "/releases/comm-esr60",
+                ),
+                'all-nightly-branches': (
+                    "/comm-central",
+                    "/releases/comm-beta",
+                    "/releases/comm-esr60",
+                ),
+                'nightly': (
+                    "/comm-central",
+                ),
             }),
         }),
     },
