@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.4.0] - 2018-04-13
+### Added
+- added restricted scopes for thunderbird
+
+### Changed
+- update the output filenames of `create_gpg_keys`
+- updated the docs to not hardcode cltsign.
+- update release instructions to generate and use wheels
+
 ## [10.3.0] - 2018-04-04
 ### Added
 - added support for addon_scriptworker
