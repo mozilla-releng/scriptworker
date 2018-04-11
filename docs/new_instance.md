@@ -6,7 +6,7 @@ We don't yet have a scriptworker provisioner, so spinning up new instances of a 
 ### gpg keypair
 If this is a chain of trust enabled scriptworker, you'll need to generate a gpg keypair.  Otherwise (dev or dep scriptworker), skip to the next step.
 
-Generate and sign a gpg keypair for cltsign@**fqdn**, per [these docs](chain_of_trust.html#adding-new-worker-gpg-keys).
+Generate and sign a gpg keypair for user@**fqdn**, per [these docs](chain_of_trust.html#adding-new-worker-gpg-keys).
 
 The pubkey will need to land in the [cot-gpg-keys repo](https://github.com/mozilla-releng/cot-gpg-keys), in the `scriptworker/valid` directory.  The keypair will need to go into puppet hiera, as specified below.
 

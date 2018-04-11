@@ -65,8 +65,8 @@ for host in hosts:
     log.info("Writing to %s.{pub,sec}", name)
     for pvt in (True, False):
         key = scriptworker.gpg.export_key(gpg, fingerprint, private=pvt)
-        suffix = ".pub"
+        filename = "{}@{}.pub".format(user, host)
         if pvt:
-            suffix = ".sec"
-        with open("{}{}".format(name, suffix), "w") as fh:
+            filename = "{}.sec".format(host)
+        with open(filename, "w") as fh:
             print(key, file=fh, end='')
