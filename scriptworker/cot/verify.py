@@ -1816,8 +1816,9 @@ async def verify_chain_of_trust(chain):
 
     """
     log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
+    scriptworker_log = logging.getLogger('scriptworker')
     with contextual_log_handler(
-        chain.context, path=log_path, log_obj=log,
+        chain.context, path=log_path, log_obj=scriptworker_log,
         formatter=AuditLogFormatter(
             fmt=chain.context.config['log_fmt'],
             datefmt=chain.context.config['log_datefmt'],
