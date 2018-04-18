@@ -130,6 +130,8 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
+        self._url = args[1]
+        self._history = ()
         if YARL:
             # fix aiohttp 1.1.0
             self._url_obj = yarl.URL(args[1])
