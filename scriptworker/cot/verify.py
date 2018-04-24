@@ -1165,7 +1165,7 @@ async def _get_additional_cron_jsone_context(parent_link, decision_link):
     jsone_context["push"] = {
         "revision": rev,
         "comment": '',
-        "owner": 'nobody',
+        "owner": 'cron',
         "pushlog_id": '-1',
         "pushdate": '0',
     }

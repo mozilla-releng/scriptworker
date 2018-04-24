@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.5.0] - 2018-04-24
+### Added
+- added decision docker 2.1.0 to the allowlist
+
+### Fixed
+- cot logging now shows retries
+- updated cron user to `cron`
+
 ## [10.4.0] - 2018-04-13
 ### Added
 - added restricted scopes for thunderbird
