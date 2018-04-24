@@ -1,6 +1,7 @@
 aiohttp>=2.0.0,<3
 arrow
 defusedxml
+dephash
 dictdiffer
 frozendict
 jsonschema
@@ -10,3 +11,4 @@ python-gnupg
 PyYAML
 taskcluster
 virtualenv
+wheel
