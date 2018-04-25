@@ -1187,6 +1187,20 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
 
 
 @pytest.mark.asyncio
+async def test_skip_verify_parent_task_definition(chain, caplog):
+    chain.context.config['cot_product'] = 'mobile'
+    link = cotverify.LinkOfTrust(chain.context, 'decision', 'some-task-id',)
+
+    await cotverify.verify_parent_task_definition(chain, link)
+
+    assert caplog.record_tuples == [(
+        'scriptworker.cot.verify',
+        logging.WARN,
+        '"cot_product: mobile" does not support JSON-e yet. Skipping parent task verifications'
+    )]
+
+
+@pytest.mark.asyncio
 async def test_verify_parent_task_definition_bad_project(chain, mocker):
     link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
     link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
@@ -1524,6 +1538,21 @@ async def test_verify_docker_worker_task(mocker):
     await cotverify.verify_docker_worker_task(chain, link)
     check.method1.assert_called_once_with(link)
     check.method2.assert_called_once_with(chain, link)
+
+
+@pytest.mark.asyncio
+async def test_skip_verify_docker_worker_task(mocker, caplog):
+    chain = mock.MagicMock()
+    chain.context.config = {'cot_product': 'mobile'}
+
+    link = mock.MagicMock()
+    await cotverify.verify_docker_worker_task(chain, link)
+
+    assert caplog.record_tuples == [(
+        'scriptworker.cot.verify',
+        logging.WARN,
+        '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
+    )]
 
 
 # verify_generic_worker_task {{{1
