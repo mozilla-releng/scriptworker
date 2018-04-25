@@ -1287,6 +1287,12 @@ async def verify_parent_task_definition(chain, parent_link):
         CoTError: on failure.
 
     """
+    if chain.context.config['cot_product'] == 'mobile':
+        log.warn(
+            '"cot_product: mobile" does not support JSON-e yet. Skipping parent task verifications'
+        )
+        return
+
     log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
     decision_link = chain.get_link(parent_link.decision_task_id)
     try:
@@ -1637,6 +1643,12 @@ async def verify_docker_worker_task(chain, link):
         CoTError: on failure.
 
     """
+    if chain.context.config['cot_product'] == 'mobile':
+        log.warn(
+            '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
+        )
+        return
+
     if chain != link:
         # These two checks will die on `link.cot` if `link` is a ChainOfTrust
         # object (e.g., the task we're running `verify_cot` against is a

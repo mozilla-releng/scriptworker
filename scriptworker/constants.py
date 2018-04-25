@@ -181,6 +181,9 @@ DEFAULT_CONFIG = frozendict({
         "gecko-2-decision",
         "gecko-3-decision",
         "gecko-decision",  # legacy
+        # gecko-focus is for mozilla-mobile releases. It's named this way because it's a worker type
+        # but using the gecko ChainOfTrust keys. See bug 1455290 for more details.
+        "gecko-focus",
     ),
 
     # docker-image cot
@@ -215,6 +218,13 @@ DEFAULT_CONFIG = frozendict({
                     "^(?P<path>/comm-central)(/|$)",
                     "^(?P<path>/releases/comm-(beta|esr\d+))(/|$)",
                     "^(?P<path>/(try-comm-central))(/|$)",
+                ),
+            }),),
+            'mobile': (frozendict({
+                "schemes": ("https", "ssh", ),
+                "netlocs": ("github.com", ),
+                "path_regexes": (
+                    "^(?P<path>/mozilla-mobile/focus-android)(/|.git|$)",
                 ),
             }),),
         }),
@@ -268,6 +278,10 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:comm:thunderbird:releng:signing:cert:nightly-signing': 'all-nightly-branches',
                 'project:comm:thunderbird:releng:signing:cert:release-signing': 'all-release-branches',
+            }),
+            'mobile': frozendict({
+                'project:mobile:focus:googleplay:product:focus': 'focus-repo',
+                'project:mobile:focus:releng:signing:cert:release-signing': 'focus-repo',
             }),
         }),
     },
@@ -356,18 +370,25 @@ DEFAULT_CONFIG = frozendict({
                     "/comm-central",
                 ),
             }),
+            'mobile': frozendict({
+                'focus-repo': (
+                    '/mozilla-mobile/focus-android',
+                ),
+            }),
         }),
     },
     'source_env_prefix': {
         'by-cot-product': frozendict({
             'firefox': 'GECKO',
             'thunderbird': 'COMM',
+            'mobile': '',   # mozilla-mobile projects are built on GitHub instead of hg.m.o
         })
     },
     'extra_run_task_arguments': {
         'by-cot-product': frozendict({
             'firefox': (),
             'thunderbird': ('--comm-checkout=',),
+            'mobile': (),
         })
     },
 })
