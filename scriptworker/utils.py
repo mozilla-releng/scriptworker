@@ -251,16 +251,15 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
     attempt = 1
     while True:
         try:
-            log.debug("retry_async: Calling {}, attempt {}".format(func, attempt))
             return await func(*args, **kwargs)
         except retry_exceptions:
             attempt += 1
             if attempt > attempts:
-                log.warning("retry_async: {}: too many retries!".format(func))
+                log.warning("retry_async: {}: too many retries!".format(func.__name__))
                 raise
             sleeptime_kwargs = sleeptime_kwargs or {}
             sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
-            log.debug("retry_async: {}: sleeping {} seconds before retry".format(func, sleep_time))
+            log.debug("retry_async: {}: sleeping {} seconds before retry".format(func.__name__, sleep_time))
             await asyncio.sleep(sleep_time)
 
 
@@ -481,9 +480,12 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
     parent_dir = os.path.dirname(abs_filename)
     async with session.get(url) as resp:
         if resp.status != 200:
+            log.debug("Failed to download %s: %s; headers=%s; body=%s", get_loggable_url(str(resp.url)), resp.status, resp.headers, (await resp.text())[:1000])
+            for i, h in enumerate(resp.history):
+                log.debug("Redirect history %s: %s; headers=%s; body=%s", get_loggable_url(str(h.url)), h.status, h.headers, (await h.text())[:1000])
             raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
         makedirs(parent_dir)
-        with open(abs_filename, 'wb') as fd:
+        with open(abs_filename, "wb") as fd:
             while True:
                 chunk = await resp.content.read(chunk_size)
                 if not chunk:

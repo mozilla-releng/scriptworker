@@ -130,6 +130,8 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
+        self._url = args[1]
+        self._history = ()
         if YARL:
             # fix aiohttp 1.1.0
             self._url_obj = yarl.URL(args[1])
@@ -165,7 +167,9 @@ def unsuccessful_queue():
 def fake_session(event_loop):
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
-        return FakeResponse(method, url)
+        resp = FakeResponse(method, url)
+        resp._history = (FakeResponse(method, url, status=302),)
+        return resp
 
     session = aiohttp.ClientSession()
     session._request = _fake_request
@@ -176,7 +180,9 @@ def fake_session(event_loop):
 def fake_session_500(event_loop):
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
-        return FakeResponse(method, url, status=500)
+        resp = FakeResponse(method, url, status=500)
+        resp._history = (FakeResponse(method, url, status=302),)
+        return resp
 
     session = aiohttp.ClientSession()
     session._request = _fake_request
