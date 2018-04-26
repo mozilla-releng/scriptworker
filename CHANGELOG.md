@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.6.0] - 2018-04-26
+### Added
+- added mozilla-esr60 to restricted branches
+
+### Changed
+- changed `retry_async` logging to be more informative
+
 ## [10.5.0] - 2018-04-24
 ### Added
 - added decision docker 2.1.0 to the allowlist
