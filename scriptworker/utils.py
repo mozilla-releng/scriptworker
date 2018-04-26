@@ -480,9 +480,9 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
     parent_dir = os.path.dirname(abs_filename)
     async with session.get(url) as resp:
         if resp.status != 200:
-            log.debug("Failed to download %s: %s; headers=%s; body=%s", get_loggable_url(str(resp.url)), resp.status, resp.headers, (await resp.text())[:1000])
+            log.debug("Failed to download %s: %s; body=%s", get_loggable_url(str(resp.url)), resp.status, (await resp.text())[:1000])
             for i, h in enumerate(resp.history):
-                log.debug("Redirect history %s: %s; headers=%s; body=%s", get_loggable_url(str(h.url)), h.status, h.headers, (await h.text())[:1000])
+                log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
             raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
         makedirs(parent_dir)
         with open(abs_filename, "wb") as fd:
