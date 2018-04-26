@@ -129,6 +129,8 @@ DEFAULT_CONFIG = frozendict({
             "sha256:ab5127144973f6370b139a666c9431b2eaac0d03951e9cef1043468f3b03877c",
             # 2.0.0
             "sha256:f49aeaeffe6a5053d1b3d09aaa140b13418f760e661424404a1a8b4021ff6203",
+            # 2.1.0
+            "sha256:8f741a0f0a372adac5cddbd21fed385cece7ac5a0edde129e69d11757945dcd7",
         ),
         "docker-image": (
             "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
