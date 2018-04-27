@@ -1140,11 +1140,11 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
     push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
     # try syntax uses the first line of the commit.
     first_line = push_comment.split('\n')[0]
-    if decision_comment not in (' ', push_comment, first_line):
+    if decision_comment not in (' ', first_line):
         raise CoTError(
             "Decision task {} comment doesn't match the push comment!\n"
             "Decision comment: \n{}\nPush comment: \n{}".format(
-                decision_link.name, decision_comment, push_comment
+                decision_link.name, decision_comment, first_line
             )
         )
     return {
