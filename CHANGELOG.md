@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [10.6.1] - 2018-04-30
+### Fixed
+- restrict compariston to  the first line of hg push comments for try
+
 ## [10.6.0] - 2018-04-26
 ### Added
 - added mozilla-esr60 to restricted branches
