@@ -1290,6 +1290,8 @@ async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
 ), (
     'blah blah blah blah try: a b c', 'try: a b c', False
 ), (
+    'blah blah blah blah\nlbah blha try: [a] b c\nblah blah', 'try: [a] b c', False
+), (
     'asdfsadfsad', '', True
 )))
 async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
