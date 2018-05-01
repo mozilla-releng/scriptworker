@@ -1139,6 +1139,8 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
     decision_comment = get_commit_message(decision_link.task)
     push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
     allowed_comments = [' ']
+    # try logic from
+    # https://searchfox.org/mozilla-central/rev/795575287259a370d00518098472eaa5b362bfa7/taskcluster/taskgraph/try_option_syntax.py#184-188  # noqa
     if 'try:' in push_comment:
         try_idx = push_comment.index('try:')
         allowed_comments.append(push_comment[try_idx:].split('\n')[0])
@@ -1146,7 +1148,7 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
         raise CoTError(
             "Decision task {} comment doesn't match the push comment!\n"
             "Decision comment: \n{}\nPush comment: \n{}".format(
-                decision_link.name, decision_comment, first_line
+                decision_link.name, decision_comment, push_comment
             )
         )
     return {
