@@ -1139,11 +1139,9 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
     decision_comment = get_commit_message(decision_link.task)
     push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
     allowed_comments = [' ']
-    # try syntax uses the first line of the commit.
-    first_line = push_comment.split('\n')[0]
-    if 'try:' in first_line:
-        parts = first_line.split('try:')
-        allowed_comments.append('try:{}'.format(parts[-1]))
+    if 'try:' in push_comment:
+        try_idx = push_comment.index('try:')
+        allowed_comments.append(push_comment[try_idx:].split('\n')[0])
     if decision_comment not in allowed_comments:
         raise CoTError(
             "Decision task {} comment doesn't match the push comment!\n"
