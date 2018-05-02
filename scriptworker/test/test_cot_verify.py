@@ -1282,6 +1282,61 @@ async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
         )
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("push_comment,task_comment,raises", ((
+    'foo bar baz', ' ', False
+), (
+    'try: a b c', 'try: a b c', False
+), (
+    'blah blah blah blah try: a b c', 'try: a b c', False
+), (
+    'blah blah blah blah\nlbah blha try: [a] b c\nblah blah', 'try: [a] b c', False
+), (
+    'asdfsadfsad', '', True
+)))
+async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
+                                                   task_comment, raises):
+
+    async def fake_pushlog(*args):
+        return {
+            'pushes': {
+                '123': {
+                    'user': 'myuser',
+                    'date': 'mydate',
+                    'changesets': [{
+                        'desc': push_comment
+                    }]
+                }
+            }
+        }
+
+    def fake_commit_msg(*args):
+        return task_comment
+
+    mocker.patch.object(cotverify, 'get_revision', return_value="myrev")
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=fake_pushlog)
+    mocker.patch.object(cotverify, 'get_commit_message', new=fake_commit_msg)
+
+    if raises:
+        with pytest.raises(CoTError):
+            await cotverify._get_additional_hgpush_jsone_context(
+                chain, chain
+            )
+    else:
+        expected = {
+            "push": {
+                "revision": "myrev",
+                "comment": task_comment,
+                "owner": "myuser",
+                "pushlog_id": "123",
+                "pushdate": "mydate",
+            }
+        }
+        assert expected == await cotverify._get_additional_hgpush_jsone_context(
+            chain, chain
+        )
+
+
 # verify_parent_task {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("defn_fn,min_cot_version,raises", ((
