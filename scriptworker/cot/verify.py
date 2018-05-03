@@ -1906,6 +1906,8 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
         context.config = apply_product_config(context.config)
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
         loop.run_until_complete(verify_chain_of_trust(cot))
+        loop.run_until_complete(context.session.close())
+        conn.close()
         log.info(format_json(cot.dependent_task_ids()))
         log.info("{} : {}".format(cot.name, cot.task_id))
         for link in cot.links:
