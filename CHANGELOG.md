@@ -2,6 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [11.0.0] - 2018-05-10
+### Changed
+- updated docs to reflect python 3.6.5 update
+- updated to add aiohttp 3 support. aiohttp <3 is likely busted.
+- stopped closing the event loop.
+
+### Removed
+- dropped python 3.5 support.
+
 ## [10.6.2] - 2018-05-01
 ### Fixed
 - find try: in any line of an hg push comment, and strip any preceding characters

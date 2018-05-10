@@ -9,7 +9,9 @@ Attributes:
     log (logging.Logger): the log object for the module.
 
 """
+import aiohttp
 import arrow
+import asyncio
 from copy import deepcopy
 import json
 import logging
@@ -112,9 +114,12 @@ class Context(object):
 
         """
         if credentials:
+            session = self.session or aiohttp.ClientSession(
+                loop=asyncio.get_event_loop()
+            )
             return Queue({
                 'credentials': credentials,
-            }, session=self.session)
+            }, session=session)
 
     @property
     def reclaim_task(self):

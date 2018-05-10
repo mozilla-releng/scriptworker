@@ -7,13 +7,14 @@ in S3.
 import aiohttp
 import arrow
 import asyncio
+import async_timeout
 import gzip
 import logging
 import mimetypes
 import os
 
 from scriptworker.client import validate_artifact_url
-from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
+from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
@@ -196,7 +197,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
     loggable_url = get_loggable_url(tc_response['putUrl'])
     log.info("uploading {path} to {url}...".format(path=path, url=loggable_url))
     with open(path, "rb") as fh:
-        with aiohttp.Timeout(context.config['artifact_upload_timeout']):
+        async with async_timeout.timeout(context.config['artifact_upload_timeout']):
             async with context.session.put(
                 tc_response['putUrl'], data=fh, headers=_craft_artifact_put_headers(content_type, content_encoding),
                 skip_auto_headers=skip_auto_headers, compress=False
@@ -309,6 +310,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             asyncio.ensure_future(
                 retry_async(
                     download_func, args=(context, file_url, abs_file_path),
+                    retry_exceptions=(DownloadError, aiohttp.ClientError),
                     kwargs={'session': session},
                 )
             )

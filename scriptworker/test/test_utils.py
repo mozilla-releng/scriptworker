@@ -115,7 +115,6 @@ def test_request(context, fake_session, event_loop):
         utils.request(context, "url")
     )
     assert result == '{}'
-    context.session.close()
 
 
 def test_request_json(context, fake_session, event_loop):
@@ -124,7 +123,6 @@ def test_request_json(context, fake_session, event_loop):
         utils.request(context, "url", return_type="json")
     )
     assert result == {}
-    context.session.close()
 
 
 def test_request_response(context, fake_session, event_loop):
@@ -133,7 +131,6 @@ def test_request_response(context, fake_session, event_loop):
         utils.request(context, "url", return_type="response")
     )
     assert isinstance(result, FakeResponse)
-    context.session.close()
 
 
 def test_request_retry(context, fake_session_500, event_loop):
@@ -142,7 +139,6 @@ def test_request_retry(context, fake_session_500, event_loop):
         event_loop.run_until_complete(
             utils.request(context, "url")
         )
-    context.session.close()
 
 
 def test_request_exception(context, fake_session_500, event_loop):
@@ -151,7 +147,6 @@ def test_request_exception(context, fake_session_500, event_loop):
         event_loop.run_until_complete(
             utils.request(context, "url", retry=())
         )
-    context.session.close()
 
 
 def test_retry_request(context, fake_session, event_loop):
@@ -160,7 +155,6 @@ def test_retry_request(context, fake_session, event_loop):
         utils.retry_request(context, "url")
     )
     assert result == '{}'
-    context.session.close()
 
 
 # calculate_sleep_time {{{1

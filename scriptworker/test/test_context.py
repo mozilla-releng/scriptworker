@@ -115,3 +115,9 @@ async def test_projects(context, mocker):
     await context.populate_projects()
     assert context.projects == fake_projects
     assert fake_projects['count'] == 2
+
+
+def test_get_credentials(context):
+    expected = {'asdf': 'foobar'}
+    context._credentials = expected
+    assert context.credentials == expected
