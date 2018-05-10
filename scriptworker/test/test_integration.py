@@ -6,7 +6,6 @@ import aiohttp
 import arrow
 import asyncio
 from asyncio_extras.contextmanager import async_contextmanager
-from async_generator import yield_
 import json
 import logging
 import os
@@ -109,7 +108,7 @@ async def get_context(config_override):
         async with aiohttp.ClientSession() as session:
             context.session = session
             context.credentials = credentials
-            await yield_(context)
+            yield context
 
 
 def get_temp_creds(context):
@@ -131,7 +130,7 @@ def get_temp_creds(context):
 async def get_temp_creds_context(config_override):
     async with get_context(config_override) as context:
         get_temp_creds(context)
-        await yield_(context)
+        yield context
 
 
 async def create_task(context, task_id, task_group_id):
@@ -149,7 +148,7 @@ async def remember_cwd():
     """
     curdir = os.getcwd()
     try:
-        await yield_()
+        yield
     finally:
         os.chdir(curdir)
 

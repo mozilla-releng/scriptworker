@@ -42,7 +42,7 @@ Note: GPG tests require gpg 2.0.x!
 
 Without integration tests, install tox, then
 
-``NO_TESTS_OVER_WIRE=1 tox -e py35``
+``NO_TESTS_OVER_WIRE=1 tox -e py36``
 
 With integration tests, first create a client with the ``assume:project:taskcluster:worker-test-scopes`` scope.
 

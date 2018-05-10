@@ -17,7 +17,7 @@ if {'register', 'upload'}.intersection(set(sys.argv)):
     sys.exit(1)
 
 reqs = [
-    "aiohttp",
+    "aiohttp>=3",
     "arrow",
     "defusedxml",
     "dictdiffer",
@@ -87,10 +87,11 @@ setup(
     license="MPL 2.0",
     install_requires=reqs,
     tests_require=tests_require,
+    python_requires=">=3.6",
     cmdclass={'test': Tox},
     classifiers=(
         'Intended Audience :: Developers',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
     ),
 )
