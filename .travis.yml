@@ -1,9 +1,14 @@
 language: python
 
 matrix:
+  fast_finish: true
   include:
     - python: 3.6
       env: TOXENV=py36 NO_TESTS_OVER_WIRE=1
+    - python: 3.7-dev
+      env: TOXENV=py37 NO_TESTS_OVER_WIRE=1
+  allow_failures:
+    - python: 3.7-dev
 
 install:
   - python -mpip install tox
