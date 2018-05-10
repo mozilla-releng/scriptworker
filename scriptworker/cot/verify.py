@@ -1,10 +1,6 @@
 """Chain of Trust artifact verification.
 
 Attributes:
-    ACTION_MACH_COMMANDS (tuple): the allowlisted mach commands for an action task,
-        ignoring options.
-    DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
-        ignoring options.
     DECISION_TASK_TYPES (tuple): the decision task types.
     PARENT_TASK_TYPES (tuple): the parent task types.
     log (logging.Logger): the log object for this module.
@@ -20,7 +16,6 @@ import jsone
 import logging
 import os
 import pprint
-import shlex
 import sys
 import tempfile
 from scriptworker.artifacts import (
@@ -69,17 +64,6 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
-# XXX Remove all mach command hardcodes when all trees are 59+
-DECISION_MACH_COMMANDS = ((
-    './mach', 'taskgraph', 'decision'
-), )
-ACTION_MACH_COMMANDS = ((
-    './mach', 'taskgraph', 'add-tasks'
-), (
-    './mach', 'taskgraph', 'backfill'
-), (
-    './mach', 'taskgraph', 'action-callback'
-))
 DECISION_TASK_TYPES = ('decision', )
 PARENT_TASK_TYPES = ('decision', 'action')
 
@@ -457,10 +441,7 @@ def check_interactive_docker_worker(link):
 
 # verify_docker_image_sha {{{1
 def verify_docker_image_sha(chain, link):
-    """Verify that pre-built docker shas are in allowlists.
-
-    Decision and docker-image tasks use pre-built docker images from docker hub.
-    Verify that these pre-built docker image shas are in the allowlists.
+    """Verify that built docker shas match the artifact.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on.
@@ -510,18 +491,8 @@ Skipping docker image sha verification'.format(task['taskId']))
             else:
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
-        # Using downloaded image from docker hub
-        task_type = link.task_type
-        image_hash = cot['environment']['imageHash']
-        # Use the decision docker_image_allowlist for action tasks.
-        if task_type == 'action':
-            task_type = 'decision'
-        if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
-            errors.append("{} {} docker imageHash {} not in the allowlist!\n{}".format(
-                link.name, link.task_id, image_hash, cot
-            ))
-        else:
-            log.debug("Found allowlisted image_hash {}".format(image_hash))
+        # TODO verify we're a decision or docker image?
+        pass
     raise_on_errors(errors)
 
 
@@ -887,11 +858,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
-    # Allow for a subset of dependencies in a retriggered task.  The current use case
-    # is release promotion: we may hit the expiration deadline for a task (e.g. pushapk),
-    # and a breakpoint task in the graph may also hit its expiration.  To kick off
-    # the pushapk task, we can clone the task, update timestamps, and remove the
-    # breakpoint dependency.
+    # Allow for the decision task ID in the dependencies
     bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
     # it's OK if a task depends on the decision task
     bad_deps = bad_deps - {task_link.decision_task_id}
@@ -938,11 +905,6 @@ def _take_expires_out_from_artifacts_in_payload(payload):
 def verify_link_in_task_graph(chain, decision_link, task_link):
     """Compare the runtime task definition against the decision task graph.
 
-    If the ``task_link.task_id`` is in the task graph, match directly against
-    that task definition.  Otherwise, "fuzzy match" by trying to match against
-    any definition in the task graph.  This is to support retriggers, where
-    the task definition stays the same, but the datestrings and taskIds change.
-
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         decision_link (LinkOfTrust): the decision task link
@@ -960,111 +922,9 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         verify_task_in_task_graph(task_link, graph_defn)
         log.info("Found {} in the graph; it's a match".format(task_link.task_id))
         return
-    # Fall back to fuzzy matching to support retriggers: the taskId and
-    # datestrings will change but the task definition shouldn't.
-    for task_id, graph_defn in decision_link.task_graph.items():
-        log.debug("Fuzzy matching against {} ...".format(task_id))
-        try:
-            verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
-            log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
-            return
-        except CoTError:
-            pass
-    else:
-        raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
-            task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
-        )])
-
-
-# verify_decision_command {{{1
-def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS):
-    r"""Verify the decision command for a decision task.
-
-    This is deprecated, but still very much in use.
-    Let's stop needing it.
-
-    Some example commands::
-
-        "/builds/worker/bin/run-task",
-        "--vcs-checkout=/builds/worker/checkouts/gecko",
-        "--",
-        "bash",
-        "-cx",
-        "cd /builds/worker/checkouts/gecko &&
-        ln -s /builds/worker/artifacts artifacts &&
-        ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
-        --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
-        --base-repository='https://hg.mozilla.org/mozilla-central'
-        --head-repository='https://hg.mozilla.org/integration/mozilla-inbound/'
-        --head-ref='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-        --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-        --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
-
-        "/builds/worker/bin/run-task",
-        "--vcs-checkout=/builds/worker/checkouts/gecko",
-        "--",
-        "bash",
-        "-cx",
-        "cd /builds/worker/checkouts/gecko &&
-        ln -s /builds/worker/artifacts artifacts &&
-        ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
-        --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
-        --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
-        --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
-        --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
-
-    This is very firefox-centric and potentially fragile, but decision tasks are
-    important enough to need to monitor.  The ideal fix would maybe be to simplify
-    the commandline if possible.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        decision_link (LinkOfTrust): the decision link to test.
-        mach_commands (tuple): a tuple of tuples, specifying the allowlisted
-            mach commands for a decision task, ignoring options.
-
-    Raises:
-        CoTError: on chain of trust verification error.
-
-    """
-    log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
-    errors = []
-    command = decision_link.task['payload']['command']
-    allowed_args = ('--', 'bash', '/bin/bash', '-cx')
-    # /home/worker is an old path, before https://bugzilla.mozilla.org/show_bug.cgi?id=1338651#c195
-    if command[0] not in('/home/worker/bin/run-task', '/builds/worker/bin/run-task'):
-        errors.append("{} {} command must start with /builds/worker/bin/run-task!".format(
-            decision_link.name, decision_link.task_id
-        ))
-    for item in command[1:-1]:
-        if item in allowed_args:
-            continue
-        if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
-            continue
-        if item.startswith(tuple(decision_link.context.config['extra_run_task_arguments'])):
-            continue
-        errors.append("{} {} illegal option {} in the command!".format(
-            decision_link.name, decision_link.task_id, item
-        ))
-    bash_commands = command[-1].split('&&')
-    allowed_commands = ('cd', 'ln')
-    for bash_command in bash_commands:
-        parts = shlex.split(bash_command)
-        non_options = []
-        if parts[0] in allowed_commands:
-            continue
-        for part in parts:
-            if part.startswith('--'):
-                continue
-            non_options.append(part)
-        for mach_command in mach_commands:
-            if tuple(non_options) == mach_command:
-                break
-        else:
-            errors.append("{} {} Illegal command ``{}``".format(
-                decision_link.name, decision_link.task_id, bash_command
-            ))
-    raise_on_errors(errors)
+    raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
+        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+    )])
 
 
 # get_pushlog_info {{{1
@@ -1395,21 +1255,9 @@ async def verify_parent_task(chain, link):
                     target_link.task_type not in PARENT_TASK_TYPES:
                 verify_link_in_task_graph(chain, link, target_link)
     try:
-        # Try verifying decision task via json-e (cot v2)
         await verify_parent_task_definition(chain, link)
-    except (CoTError, DownloadError, KeyError) as e:
-        if chain.context.config['min_cot_version'] > 1:
-            raise CoTError(e)
-        # Fall back to cot v1.
-        # XXX Get rid of the fallback when all trees are Fx59+.
-        log.exception("Falling back to non-json-e decision task verification for {}!".format(link.task_id))
-        if is_action(link.task):
-            mach_commands = ACTION_MACH_COMMANDS
-        else:
-            mach_commands = DECISION_MACH_COMMANDS
-        verify_decision_command(link, mach_commands=mach_commands)
-        # log message for easy papertrail parsing
-        log.warning("DEPRECATED_DECISION_TASK {} while verifying task {}".format(link.task_id, chain.task_id))
+    except (DownloadError, KeyError) as e:
+        raise CoTError(e)
 
 
 # verify_build_task {{{1
@@ -1442,9 +1290,6 @@ async def verify_docker_image_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_docker_image_worker_types']:
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
-    # XXX remove the command checks once we require json-e cot verification.
-    if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
-        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
 
 
@@ -1729,13 +1574,7 @@ def get_source_url(obj):
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task['metadata']['source']
-    # XXX We hit this for hooks - still needed? Remove when json-e cot
-    # verification is required.
-    # XXX .startswith() is not the ideal check here.
-    # XXX this will break the new json-e cot verification. We could hardcode
-    # a `{repo}/raw-file/{revision}/.taskcluster.yml` path, but that assumes
-    # hg.m.o. A better approach may be to let misconfigured hooks break, and
-    # either obsolete or fix them.
+    # TODO real check here - urlsplit; match host, path startswith
     if repo and not source.startswith(repo):
         log.warning("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}... returning {repo}".format(
             name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source,

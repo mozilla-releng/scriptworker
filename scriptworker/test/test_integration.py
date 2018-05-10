@@ -194,7 +194,7 @@ def test_run_maxtimeout(event_loop, context_function):
     except RuntimeError:
         pass
     post = arrow.utcnow()
-    assert post.timestamp - pre.timestamp < 8
+    assert post.timestamp - pre.timestamp <= 8
 
 
 # empty_queue {{{1

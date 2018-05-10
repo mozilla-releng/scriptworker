@@ -43,10 +43,6 @@ async def die_async(*args, **kwargs):
 def chain(rw_context):
     rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
     rw_context.config['scriptworker_worker_types'] = [rw_context.config['worker_type']]
-    rw_context.config['docker_image_allowlists'] = {
-        "decision": ["sha256:decision_image_sha"],
-        "docker-image": ["sha256:docker_image_sha"],
-    }
     rw_context.task = {
         'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
         'dependencies': ['decision_task_id'],
@@ -479,14 +475,6 @@ def test_verify_docker_image_sha_wrong_task_id(chain, build_link, decision_link,
     build_link.task['extra']['chainOfTrust']['inputs']['docker-image'] = "wrong_task_id"
     with pytest.raises(CoTError):
         cotverify.verify_docker_image_sha(chain, build_link)
-
-
-def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link, docker_image_link):
-    chain.links = [build_link, decision_link, docker_image_link]
-    # wrong docker hub sha
-    decision_link.cot['environment']['imageHash'] = "sha256:not_allowlisted"
-    with pytest.raises(CoTError):
-        cotverify.verify_docker_image_sha(chain, decision_link)
 
 
 def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_link, docker_image_link):
@@ -993,149 +981,28 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
         }
     }
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-@pytest.mark.parametrize("zero_deps", (True, False))
-def test_verify_link_in_task_graph_fuzzy_match(chain, decision_link, build_link, zero_deps):
-    chain.links = [decision_link, build_link]
-    task_defn1 = deepcopy(build_link.task)
-    task_defn2 = deepcopy(chain.task)
-    if zero_deps:
-        build_link.task['dependencies'] = []
-        chain.task['dependencies'] = []
-    decision_link.task_graph = {
-        'bogus-task-id': {
-            'task': task_defn1
-        },
-        'bogus-task-id2': {
-            'task': task_defn2
-        }
-    }
+    build_link.task['dependencies'].append('decision_task_id')
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
 
-def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
+@pytest.mark.parametrize("in_chain", (True, False))
+def test_verify_link_in_task_graph_exception(chain, decision_link, build_link, in_chain):
     chain.links = [decision_link, build_link]
     bad_task = deepcopy(build_link.task)
-    bad_task['dependencies'].append("foo")
+    build_link.task['dependencies'].append("foo")
     bad_task['x'] = 'y'
     build_link.task['x'] = 'z'
     decision_link.task_graph = {
-        build_link.task_id: {
-            'task': bad_task
-        },
         chain.task_id: {
             'task': deepcopy(chain.task)
         },
     }
-    with pytest.raises(CoTError):
-        cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, build_link):
-    chain.links = [decision_link, build_link]
-    bad_task = deepcopy(build_link.task)
-    bad_task['dependencies'].append("foo")
-    bad_task['x'] = 'y'
-    build_link.task['x'] = 'z'
-    decision_link.task_graph = {
-        'bogus-task-id': {
+    if in_chain:
+        decision_link.task_graph[build_link.task_id] = {
             'task': bad_task
-        },
-        'bogus-task-id2': {
-            'task': deepcopy(chain.task)
-        },
-    }
+        }
     with pytest.raises(CoTError):
         cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-# verify_decision_command {{{1
-@pytest.mark.parametrize("command,raises,rw_context", ((
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'firefox',
-), (
-    [
-        '/bad/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--bad-option=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--bad-option=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && -s x y && ./mach bad command',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--comm-checkout=foo/comm',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--comm-checkout=foo/comm',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'thunderbird',
-)),
-indirect=['rw_context'],
-)
-def test_verify_decision_command(decision_link, command, raises):
-    decision_link.task['payload']['command'] = command
-    if raises:
-        with pytest.raises(CoTError):
-            cotverify.verify_decision_command(decision_link)
-    else:
-        cotverify.verify_decision_command(decision_link)
 
 
 # get_pushlog_info {{{1
@@ -1353,17 +1220,14 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
 
 # verify_parent_task {{{1
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defn_fn,min_cot_version,raises", ((
-    noop_async, 1, False
+@pytest.mark.parametrize("defn_fn,raises", ((
+    noop_async, False
 ), (
-    die_async, 1, False
-), (
-    die_async, 2, True
+    die_async, True
 )))
 async def test_verify_parent_task(chain, action_link, cron_link,
                                   decision_link, build_link, mocker, defn_fn,
-                                  min_cot_version, raises):
-    chain.context.config['min_cot_version'] = min_cot_version
+                                  raises):
     for parent_link in (action_link, cron_link, decision_link):
         build_link.decision_task_id = parent_link.decision_task_id
         build_link.parent_task_id = parent_link.task_id
@@ -1388,7 +1252,6 @@ async def test_verify_parent_task(chain, action_link, cron_link,
         chain.links = [parent_link, build_link]
         parent_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
         mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
-        mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
         mocker.patch.object(cotverify, 'verify_parent_task_definition', new=defn_fn)
         if raises:
             with pytest.raises(CoTError):
@@ -1422,7 +1285,6 @@ async def test_verify_parent_task_worker_type(chain, decision_link, build_link, 
     chain.links = [decision_link, build_link]
     decision_link.task['workerType'] = 'bad-worker-type'
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
-    mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
     mocker.patch.object(cotverify, 'verify_parent_task_definition', new=noop_async)
     with pytest.raises(CoTError):
         await cotverify.verify_parent_task(chain, decision_link)
@@ -1470,14 +1332,6 @@ async def test_verify_docker_image_task(chain, docker_image_link):
 @pytest.mark.asyncio
 async def test_verify_docker_image_task_worker_type(chain, docker_image_link):
     docker_image_link.task['workerType'] = 'bad-worker-type'
-    with pytest.raises(CoTError):
-        await cotverify.verify_docker_image_task(chain, docker_image_link)
-
-
-@pytest.mark.asyncio
-async def test_verify_docker_image_task_command(chain, docker_image_link):
-    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
-    docker_image_link.task['payload']['command'] = ["illegal", "command!"]
     with pytest.raises(CoTError):
         await cotverify.verify_docker_image_task(chain, docker_image_link)
 
