@@ -985,9 +985,9 @@ async def _get_additional_action_jsone_context(parent_link, decision_link):
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
     jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
+    jsone_context['ownTaskId'] = parent_link.task_id
     jsone_context['parameters'] = parameters
     jsone_context['task'] = None
-    jsone_context['ownTaskId'] = parent_link.task_id
     return jsone_context
 
 
@@ -1093,36 +1093,80 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
 
 
 # get_jsone_template {{{1
-async def get_jsone_template(parent_link, decision_link, tasks_for):
-    """Get the appropriate json-e template.
+async def get_in_tree_template(link):
+    """
+    """
+    context = link.context
+    source_url = get_source_url(link)
+    if not source_url.endswith(('.yml', '.yaml')):
+        raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(
+            link.name, source_url
+        ))
+    tmpl = await load_json_or_yaml_from_url(
+        context, source_url, os.path.join(
+            context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
+        )
+    )
+    return tmpl['tasks'][0]
+
+
+async def get_action_context_and_template(chain, parent_link, decision_link):
+    """Get the appropriate json-e context and template for an action task.
 
     Args:
+        chain (ChainOfTrust): the chain of trust.
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the parent link's decision task link.
         tasks_for (str): the reason the parent link was created (cron,
             hg-push, action)
 
     Returns:
-        dict: the json-e template.
+        (dict, dict): the json-e context and template.
+    """
+    actions_path = decision_link.get_artifact_full_path('public/actions.json')
+    all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
+    action_name = get_action_name(parent_link.task)
+    action_defn = [d for d in all_actions if d['name'] == action_name][0]
+    jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
+    if 'task' in action_defn:
+        tmpl = action_defn['task']
+    else:
+        tmpl = await get_in_tree_template(decision_link)
+        for k in ('action', 'push', 'repository'):
+            jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'][k])
+        # XXX FIXME
+        jsone_context['action']['repo_scope'] = 'assume:repo:hg.mozilla.org/try:action:generic'
 
+    return jsone_context, tmpl
+
+
+async def get_jsone_context_and_template(chain, parent_link, decision_link, tasks_for):
+    """Get the appropriate json-e context and template for any parent task.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust.
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the parent link's decision task link.
+        tasks_for (str): the reason the parent link was created (cron,
+            hg-push, action)
+
+    Returns:
+        (dict, dict): the json-e context and template.
     """
     if tasks_for == 'action':
-        actions_path = decision_link.get_artifact_full_path('public/actions.json')
-        all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
-        action_name = get_action_name(parent_link.task)
-        tmpl = [d for d in all_actions if d['name'] == action_name][0]['task']
-    else:
-        context = decision_link.context
-        source_url = get_source_url(decision_link)
-        tmpl = await load_json_or_yaml_from_url(
-            context, source_url, os.path.join(
-                context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
-            )
+        jsone_context, tmpl = await get_action_context_and_template(
+            chain, parent_link, decision_link
         )
-        tmpl = tmpl['tasks'][0]
+    else:
+        tmpl = await get_in_tree_template(decision_link)
+        jsone_context = await populate_jsone_context(
+            chain, parent_link, decision_link, tasks_for
+        )
     log.debug("{} json-e template:".format(parent_link.name))
     log.debug(format_json(tmpl))
-    return tmpl
+    log.debug("{} json-e context:".format(parent_link.name))
+    log.debug(pprint.pformat(jsone_context, indent=2))
+    return jsone_context, tmpl
 
 
 # verify_parent_task_definition {{{1
@@ -1159,8 +1203,7 @@ async def verify_parent_task_definition(chain, parent_link):
         tasks_for = get_and_check_tasks_for(
             parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
         )
-        tmpl = await get_jsone_template(parent_link, decision_link, tasks_for)
-        jsone_context = await populate_jsone_context(
+        jsone_context, tmpl = await get_jsone_context_and_template(
             chain, parent_link, decision_link, tasks_for
         )
         rebuilt_definition = jsone.render(tmpl, jsone_context)
@@ -1197,6 +1240,9 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
+        # XXX FIXME
+        runtime_definition['taskGroupId'] = compare_definition['taskGroupId']
+
         log.debug("Compare_definition:\n{}".format(format_json(compare_definition)))
         log.debug("Runtime definition:\n{}".format(format_json(runtime_definition)))
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
