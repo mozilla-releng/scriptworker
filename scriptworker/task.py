@@ -114,6 +114,9 @@ def get_decision_task_id(task):
         str: the taskId of the decision task.
 
     """
+    # XXX this is only needed if we don't match the taskGroupId to the decision taskId
+    if is_action(task):
+        return task['extra']['parent']
     return task['taskGroupId']
 
 
