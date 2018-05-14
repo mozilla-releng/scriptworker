@@ -73,7 +73,21 @@ def test_get_commit_message(message, expected):
 
 
 # get_decision_task_id {{{1
-@pytest.mark.parametrize("task,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
+@pytest.mark.parametrize("task,result", ((
+    {"taskGroupId": "one", "payload": {}}, "one"
+), (
+    {"taskGroupId": "two", "payload": {}}, "two"
+), (
+    {
+        "taskGroupId": "three",
+        "payload": {},
+        "extra": {
+            "action": {},
+            "parent": "two"
+        }
+    },
+    "two"
+)))
 def test_get_decision_task_id(task, result):
     assert swtask.get_decision_task_id(task) == result
 
@@ -81,7 +95,7 @@ def test_get_decision_task_id(task, result):
 # get_parent_task_id {{{1
 @pytest.mark.parametrize("set_parent", (True, False))
 def test_get_parent_task_id(set_parent):
-    task = {'taskGroupId': 'parent_task_id', 'extra': {}}
+    task = {'taskGroupId': 'parent_task_id', 'extra': {}, 'payload': {}}
     if set_parent:
         task['extra']['parent'] = 'parent_task_id'
     assert swtask.get_parent_task_id(task) == 'parent_task_id'

@@ -23,6 +23,8 @@ except ImportError:
     YARL = False
 
 
+VERBOSE = os.environ.get("SCRIPTWORKER_VERBOSE_TESTS", False)
+
 GOOD_GPG_KEYS = {
     "docker.root@example.com": {
         "fingerprint": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
@@ -287,6 +289,7 @@ def rw_context(request):
                 makedirs(context.config[key])
             if key.endswith("key_path") or key in ("gpg_home", ):
                 context.config[key] = os.path.join(tmp, key)
+        context.config['verbose'] = VERBOSE
         yield context
         try:
             loop = asyncio.get_event_loop()
