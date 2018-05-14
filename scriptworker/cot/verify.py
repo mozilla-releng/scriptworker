@@ -1107,6 +1107,7 @@ async def get_in_tree_template(link):
 
     Returns:
         dict: the first task in the template.
+
     """
     context = link.context
     source_url = get_source_url(link)
@@ -1134,6 +1135,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
 
     Returns:
         (dict, dict): the json-e context and template.
+
     """
     actions_path = decision_link.get_artifact_full_path('public/actions.json')
     all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
@@ -1164,6 +1166,7 @@ async def get_jsone_context_and_template(chain, parent_link, decision_link, task
 
     Returns:
         (dict, dict): the json-e context and template.
+
     """
     if tasks_for == 'action':
         jsone_context, tmpl = await get_action_context_and_template(
