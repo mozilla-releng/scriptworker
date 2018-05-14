@@ -1094,7 +1094,19 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
 
 # get_jsone_template {{{1
 async def get_in_tree_template(link):
-    """
+    """Get the in-tree json-e template for a given link.
+
+    By convention, this template is SOURCE_REPO/.taskcluster.yml.
+
+    Args:
+        link (LinkOfTrust): the parent link to get the source url from.
+
+    Raises:
+        CoTError: on non-yaml `source_url`
+        KeyError: on non-well-formed source template
+
+    Returns:
+        dict: the first task in the template.
     """
     context = link.context
     source_url = get_source_url(link)
