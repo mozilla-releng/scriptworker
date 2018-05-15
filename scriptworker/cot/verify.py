@@ -1142,7 +1142,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     action_name = get_action_name(parent_link.task)
     action_defn = [d for d in all_actions if d['name'] == action_name][0]
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
-    if 'task' in action_defn:
+    if 'task' in action_defn and context.config['min_cot_version'] <= 2:
         tmpl = action_defn['task']
     else:
         tmpl = await get_in_tree_template(decision_link)
