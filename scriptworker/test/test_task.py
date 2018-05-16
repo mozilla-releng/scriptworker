@@ -131,6 +131,27 @@ def test_get_worker_type(task, result):
     assert swtask.get_worker_type(task) == result
 
 
+# get_and_check_project {{{1
+@pytest.mark.parametrize("source_url,expected,raises", ((
+    "https://hg.mozilla.org/mozilla-central", "mozilla-central", False
+), (
+    "ssh://hg.mozilla.org/projects/foo", "foo", False
+), (
+    "ssh://hg.mozilla.org/releases/mozilla-esr60", "mozilla-esr60", False
+), (
+    "https://hg.mozilla.org/try", "try", False
+), (
+    "https://hg.mozilla.org/releases/unknown", "", True
+)))
+def test_get_and_check_project(context, source_url, expected, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
+    else:
+        assert expected == \
+            swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
+
+
 # is_try {{{1
 @pytest.mark.parametrize("task,source_env_prefix", (
     ({'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"}, 'GECKO'),
