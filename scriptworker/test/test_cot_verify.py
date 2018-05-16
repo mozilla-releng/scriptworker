@@ -477,13 +477,6 @@ def test_verify_docker_image_sha_wrong_task_id(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, build_link)
 
 
-def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_link, docker_image_link):
-    decision_link._cot = None
-    chain.links = [build_link, decision_link, docker_image_link]
-    # Non-downloaded CoT may happen on non-exiting optional artifacts
-    cotverify.verify_docker_image_sha(chain, decision_link)
-
-
 # TODO add mobile task-type check
 
 

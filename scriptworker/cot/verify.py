@@ -455,11 +455,6 @@ def verify_docker_image_sha(chain, link):
     task = link.task
     errors = []
 
-    if not cot:
-        log.warn('Chain of Trust for {} does not exist. See above log for more details. \
-Skipping docker image sha verification'.format(task['taskId']))
-        return
-
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
