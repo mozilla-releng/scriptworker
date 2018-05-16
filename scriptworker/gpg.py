@@ -1288,7 +1288,7 @@ async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
         exec_function(["git", "tag", "-v", tag], cwd=path)
     except subprocess.CalledProcessError as exc:
         raise ScriptWorkerGPGException(
-            "Can't verify tag {} signature at {}!".format(tag, path)
+            "Can't verify tag {} signature at {}: {}".format(tag, path, str(exc))
         )
     tag_revision = await get_git_revision(path, tag)
     head_revision = await get_git_revision(path, "HEAD")

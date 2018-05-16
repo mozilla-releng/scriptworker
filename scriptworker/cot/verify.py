@@ -491,7 +491,7 @@ Skipping docker image sha verification'.format(task['taskId']))
             else:
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
-        prebuilt_task_types = context.config['prebuilt_docker_image_task_types')
+        prebuilt_task_types = chain.context.config['prebuilt_docker_image_task_types']
         if prebuilt_task_types is not None and link.task_type not in prebuilt_task_types:
             errors.append(
                 "Task type {} not allowed to use a prebuilt docker image!".format(
@@ -1147,7 +1147,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     action_name = get_action_name(parent_link.task)
     action_defn = [d for d in all_actions if d['name'] == action_name][0]
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
-    if 'task' in action_defn and context.config['min_cot_version'] <= 2:
+    if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
         tmpl = action_defn['task']
     else:
         tmpl = await get_in_tree_template(decision_link)
