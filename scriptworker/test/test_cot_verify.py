@@ -484,6 +484,9 @@ def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_l
     cotverify.verify_docker_image_sha(chain, decision_link)
 
 
+# TODO add mobile task-type check
+
+
 # find_sorted_task_dependencies{{{1
 @pytest.mark.parametrize("task,expected,task_type", ((
     # Make sure we don't follow other_task_id on a decision task
@@ -1392,21 +1395,6 @@ async def test_verify_docker_worker_task(mocker):
     await cotverify.verify_docker_worker_task(chain, link)
     check.method1.assert_called_once_with(link)
     check.method2.assert_called_once_with(chain, link)
-
-
-@pytest.mark.asyncio
-async def test_skip_verify_docker_worker_task(mocker, caplog):
-    chain = mock.MagicMock()
-    chain.context.config = {'cot_product': 'mobile'}
-
-    link = mock.MagicMock()
-    await cotverify.verify_docker_worker_task(chain, link)
-
-    assert caplog.record_tuples == [(
-        'scriptworker.cot.verify',
-        logging.WARN,
-        '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
-    )]
 
 
 # verify_generic_worker_task {{{1

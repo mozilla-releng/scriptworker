@@ -491,8 +491,13 @@ Skipping docker image sha verification'.format(task['taskId']))
             else:
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
-        # TODO verify we're a decision or docker image?
-        pass
+        prebuilt_task_types = context.config['prebuilt_docker_image_task_types')
+        if prebuilt_task_types is not None and link.task_type not in prebuilt_task_types:
+            errors.append(
+                "Task type {} not allowed to use a prebuilt docker image!".format(
+                    link.task_type
+                )
+            )
     raise_on_errors(errors)
 
 
@@ -1549,12 +1554,6 @@ async def verify_docker_worker_task(chain, link):
         CoTError: on failure.
 
     """
-    if chain.context.config['cot_product'] == 'mobile':
-        log.warn(
-            '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
-        )
-        return
-
     if chain != link:
         # These two checks will die on `link.cot` if `link` is a ChainOfTrust
         # object (e.g., the task we're running `verify_cot` against is a

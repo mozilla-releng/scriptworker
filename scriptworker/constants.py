@@ -339,6 +339,13 @@ DEFAULT_CONFIG = frozendict({
             }),
         }),
     },
+    'prebuilt_docker_image_task_types': {
+        'by-cot-product': frozendict({
+            'firefox': ('decision', 'action', 'docker-image'),
+            'thunderbird': ('decision', 'action', 'docker-image'),
+            'mobile': None,  # all allowed
+        }),
+    },
     'source_env_prefix': {
         'by-cot-product': frozendict({
             'firefox': 'GECKO',
