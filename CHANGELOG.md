@@ -2,9 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [11.1.0] - 2018-05-16
 ### Added
 - added py37 testing. This is currently broken due to `ldna_ssl` and `PyYAML`; marked this test in `allow_failures`.
+- Support for `mobile` projects and more precisely Firefox Focus
 
 ## [11.0.0] - 2018-05-10
 ### Changed
