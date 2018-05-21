@@ -3,6 +3,7 @@
 
 Attributes:
     KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
+    REPO_SCOPE_REGEX (regex): the regex for the ``repo_scope`` of a task
     log (logging.Logger): the log object for the module
 
 """
@@ -13,6 +14,7 @@ from copy import deepcopy
 import logging
 import os
 import pprint
+import re
 import signal
 from urllib.parse import unquote, urlparse
 
@@ -26,6 +28,7 @@ from scriptworker.utils import match_url_path_callback, match_url_regex
 log = logging.getLogger(__name__)
 
 KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
+REPO_SCOPE_REGEX = re.compile("^assume:repo:[^:]+:action:[^:]+$")
 
 
 # worst_level {{{1
@@ -241,6 +244,25 @@ def get_and_check_tasks_for(task, msg_prefix=''):
             '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
         )
     return tasks_for
+
+
+# get_repo_scope {{{1
+def get_repo_scope(task):
+    """Given a parent task, return the repo scope for the task.
+
+    Background in https://bugzilla.mozilla.org/show_bug.cgi?id=1459705#c3
+
+    Args:
+        task (dict): the task definition.
+
+    Returns:
+        str: the ``repo_scope``
+        None: if no ``repo_scope`` is found
+
+    """
+    for scope in task['scopes']:
+        if REPO_SCOPE_REGEX.match(scope):
+            return scope
 
 
 # is_try {{{1

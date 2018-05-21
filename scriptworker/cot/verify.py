@@ -38,6 +38,7 @@ from scriptworker.task import (
     get_decision_task_id,
     get_parent_task_id,
     get_repo,
+    get_repo_scope,
     get_revision,
     get_task_id,
     get_worker_type,
@@ -1140,8 +1141,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
         tmpl = await get_in_tree_template(decision_link)
         for k in ('action', 'push', 'repository'):
             jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'][k])
-        # XXX FIXME
-        jsone_context['action']['repo_scope'] = 'assume:repo:hg.mozilla.org/try:action:generic'
+        jsone_context['action']['repo_scope'] = get_repo_scope(parent_link.task)
 
     return jsone_context, tmpl
 

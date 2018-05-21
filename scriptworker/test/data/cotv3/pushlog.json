@@ -1,0 +1,4 @@
+{
+"lastpushid": 273045,
+"pushes": {"272718": {"changesets": [{"author": "Dustin J. Mitchell \u003cdustin@mozilla.com\u003e", "branch": "default", "desc": "Fuzzy query='lint\n\nPushed via `mach try fuzzy`", "files": ["try_task_config.json"], "node": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0", "parents": ["bc8c3900d1badf9b71f5c71e2c410608fc9c9196"], "tags": []}], "date": 1526682222, "user": "dmitchell@mozilla.com"}}
+}

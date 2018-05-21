@@ -1,0 +1,148 @@
+{
+  "provisionerId": "aws-provisioner-v1",
+  "workerType": "gecko-1-decision",
+  "schedulerId": "gecko-level-1",
+  "taskGroupId": "c5nn2xbNS9mJxeVC0uNElg",
+  "dependencies": [],
+  "requires": "all-completed",
+  "routes": [
+    "tc-treeherder.v2.try.f41b2f50ff48ef4265e7be391a6e5e4b212f96a0.272718",
+    "index.gecko.v2.try.pushlog-id.272718.actions.NdzxKw8bS5Sw5DRhoiM14w"
+  ],
+  "priority": "lowest",
+  "retries": 5,
+  "created": "2018-05-18T22:37:56.796Z",
+  "deadline": "2018-05-19T22:37:56.796Z",
+  "expires": "2019-05-18T22:37:57.796Z",
+  "scopes": [
+    "assume:repo:hg.mozilla.org/try:action:generic"
+  ],
+  "payload": {
+    "env": {
+      "GECKO_BASE_REPOSITORY": "https://hg.mozilla.org/mozilla-unified",
+      "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/try",
+      "GECKO_HEAD_REF": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+      "GECKO_HEAD_REV": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+      "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
+      "TASKCLUSTER_CACHES": "/builds/worker/checkouts",
+      "ACTION_TASK_GROUP_ID": "c5nn2xbNS9mJxeVC0uNElg",
+      "ACTION_TASK_ID": "\"H1mVqFQbS3Sqwo5tWMLtYw\"",
+      "ACTION_INPUT": "{\"downstream\":false,\"times\":1}",
+      "ACTION_CALLBACK": "retrigger_action",
+      "ACTION_PARAMETERS": "{\"app_version\":\"62.0a1\",\"base_repository\":\"https://hg.mozilla.org/mozilla-unified\",\"build_date\":1526682222,\"build_number\":1,\"do_not_optimize\":[],\"existing_tasks\":{},\"filters\":[\"check_servo\",\"target_tasks_method\"],\"head_ref\":\"f41b2f50ff48ef4265e7be391a6e5e4b212f96a0\",\"head_repository\":\"https://hg.mozilla.org/try\",\"head_rev\":\"f41b2f50ff48ef4265e7be391a6e5e4b212f96a0\",\"include_nightly\":true,\"level\":\"1\",\"message\":\" \",\"moz_build_date\":\"20180518222342\",\"next_version\":null,\"optimize_target_tasks\":false,\"owner\":\"dmitchell@mozilla.com\",\"project\":\"try\",\"pushdate\":1526682222,\"pushlog_id\":\"272718\",\"release_enable_emefree\":false,\"release_enable_partners\":false,\"release_eta\":\"\",\"release_history\":{},\"release_partner_build_number\":1,\"release_partner_config\":{},\"release_partners\":[],\"release_product\":null,\"release_type\":\"\",\"target_tasks_method\":\"try_tasks\",\"try_mode\":\"try_task_config\",\"try_options\":null,\"try_task_config\":{\"tasks\":[\"build-android-lint/opt\",\"source-test-mocha-eslint-plugin-mozilla\",\"source-test-mozlint-codespell\",\"source-test-mozlint-cpp-virtual-final\",\"source-test-mozlint-eslint\",\"source-test-mozlint-mingw-cap\",\"source-test-mozlint-py-compat\",\"source-test-mozlint-py-flake8\",\"source-test-mozlint-shellcheck\",\"source-test-mozlint-test-manifest\",\"source-test-mozlint-wptlint-gecko\",\"source-test-mozlint-yaml\",\"source-test-python-mozlint\"]},\"version\":\"62.0a1\"}"
+    },
+    "cache": {
+      "level-1-checkouts-sparse-v2": "/builds/worker/checkouts"
+    },
+    "features": {
+      "taskclusterProxy": true,
+      "chainOfTrust": true
+    },
+    "image": "taskcluster/decision:2.1.0@sha256:6db3b697d7a3c7aba440d72f04199331b872111cefff57206b8b8b1d53230360",
+    "maxRunTime": 1800,
+    "command": [
+      "/builds/worker/bin/run-task",
+      "--vcs-checkout=/builds/worker/checkouts/gecko",
+      "--sparse-profile=build/sparse-profiles/taskgraph",
+      "--",
+      "bash",
+      "-cx",
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph action-callback\n"
+    ],
+    "artifacts": {
+      "public": {
+        "type": "directory",
+        "path": "/builds/worker/artifacts",
+        "expires": "2019-05-18T22:37:56.796Z"
+      }
+    }
+  },
+  "metadata": {
+    "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+    "source": "https://hg.mozilla.org/try/raw-file/f41b2f50ff48ef4265e7be391a6e5e4b212f96a0/.taskcluster.yml",
+    "name": "Action: Retrigger",
+    "description": "Create a clone of the task."
+  },
+  "tags": {
+    "createdForUser": "mozilla-taskcluster-maintenance@mozilla.com",
+    "kind": "action-callback"
+  },
+  "extra": {
+    "treeherder": {
+      "machine": {
+        "platform": "gecko-decision"
+      },
+      "groupName": "action-callback",
+      "groupSymbol": "AC",
+      "symbol": "rt"
+    },
+    "parent": "c5nn2xbNS9mJxeVC0uNElg",
+    "action": {
+      "name": "retrigger",
+      "context": {
+        "taskGroupId": "c5nn2xbNS9mJxeVC0uNElg",
+        "taskId": "H1mVqFQbS3Sqwo5tWMLtYw",
+        "input": {
+          "downstream": false,
+          "times": 1
+        },
+        "parameters": {
+          "app_version": "62.0a1",
+          "base_repository": "https://hg.mozilla.org/mozilla-unified",
+          "build_date": 1526682222,
+          "build_number": 1,
+          "do_not_optimize": [],
+          "existing_tasks": {},
+          "filters": [
+            "check_servo",
+            "target_tasks_method"
+          ],
+          "head_ref": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+          "head_repository": "https://hg.mozilla.org/try",
+          "head_rev": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+          "include_nightly": true,
+          "level": "1",
+          "message": " ",
+          "moz_build_date": "20180518222342",
+          "next_version": null,
+          "optimize_target_tasks": false,
+          "owner": "dmitchell@mozilla.com",
+          "project": "try",
+          "pushdate": 1526682222,
+          "pushlog_id": "272718",
+          "release_enable_emefree": false,
+          "release_enable_partners": false,
+          "release_eta": "",
+          "release_history": {},
+          "release_partner_build_number": 1,
+          "release_partner_config": {},
+          "release_partners": [],
+          "release_product": null,
+          "release_type": "",
+          "target_tasks_method": "try_tasks",
+          "try_mode": "try_task_config",
+          "try_options": null,
+          "try_task_config": {
+            "tasks": [
+              "build-android-lint/opt",
+              "source-test-mocha-eslint-plugin-mozilla",
+              "source-test-mozlint-codespell",
+              "source-test-mozlint-cpp-virtual-final",
+              "source-test-mozlint-eslint",
+              "source-test-mozlint-mingw-cap",
+              "source-test-mozlint-py-compat",
+              "source-test-mozlint-py-flake8",
+              "source-test-mozlint-shellcheck",
+              "source-test-mozlint-test-manifest",
+              "source-test-mozlint-wptlint-gecko",
+              "source-test-mozlint-yaml",
+              "source-test-python-mozlint"
+            ]
+          },
+          "version": "62.0a1"
+        }
+      }
+    },
+    "tasks_for": "action"
+  }
+}

@@ -33,6 +33,7 @@ VALID_WORKER_IMPLS = (
 
 
 COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
+COTV3_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv3")
 
 
 async def die_async(*args, **kwargs):
@@ -158,7 +159,10 @@ def action_link(chain):
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
         'dependencies': [],
-        'scopes': [],
+        'scopes': [
+            'fake_first',
+            'assume:repo:foo:action:bar',
+        ],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
         },
@@ -256,29 +260,43 @@ def get_cot(task_defn, task_id="task_id"):
         "workerId": "..."
     }
 
-async def cotv2_load_url(context, url, path, **kwargs):
+
+async def cotv2_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
     if path.endswith("taskcluster.yml"):
         return load_json_or_yaml(
-            os.path.join(COTV2_DIR, ".taskcluster.yml"), is_path=True, file_type='yaml'
+            os.path.join(parent_path, ".taskcluster.yml"), is_path=True, file_type='yaml'
         )
     elif path.endswith("projects.yml"):
         return load_json_or_yaml(
-            os.path.join(COTV2_DIR, "projects.yml"), is_path=True, file_type='yaml'
+            os.path.join(parent_path, "projects.yml"), is_path=True, file_type='yaml'
         )
 
-def cotv2_load(string, is_path=False, **kwargs):
+
+async def cotv3_load_url(context, url, path, **kwargs):
+    return await cotv2_load_url(context, url, path, parent_path=COTV3_DIR, **kwargs)
+
+
+def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
     if is_path:
         if string.endswith("parameters.yml"):
             return load_json_or_yaml(
-                os.path.join(COTV2_DIR, "parameters.yml"), is_path=True, file_type='yaml'
+                os.path.join(parent_dir, "parameters.yml"), is_path=True, file_type='yaml'
             )
         elif string.endswith("actions.json"):
-            return load_json_or_yaml(os.path.join(COTV2_DIR, "actions.json"), is_path=True)
+            return load_json_or_yaml(os.path.join(parent_dir, "actions.json"), is_path=True)
     else:
         return load_json_or_yaml(string)
 
-async def cotv2_pushlog(_):
-    return load_json_or_yaml(os.path.join(COTV2_DIR, "pushlog.json"), is_path=True)
+
+def cotv3_load(string, **kwargs):
+    return cotv2_load(string, parent_dir=COTV3_DIR, **kwargs)
+
+
+async def cotv2_pushlog(_, parent_dir=COTV2_DIR):
+    return load_json_or_yaml(os.path.join(parent_dir, "pushlog.json"), is_path=True)
+
+async def cotv3_pushlog(_):
+    return await cotv2_pushlog(parent_dir=COTV3_DIR)
 
 
 # dependent_task_ids {{{1
@@ -1030,6 +1048,92 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=fake_load)
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
+
+
+# get_action_context_and_template {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
+    "action", "NdzxKw8bS5Sw5DRhoiM14w", os.path.join(COTV3_DIR, "action_retrigger.json"),
+    "c5nn2xbNS9mJxeVC0uNElg", os.path.join(COTV3_DIR, "decision_try.json"),
+),
+))
+async def test_get_action_context_and_template(chain, name, task_id, path,
+                                               decision_task_id, decision_path, mocker):
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, name, task_id)
+    link.task = load_json_or_yaml(path, is_path=True)
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
+    decision_link.task = load_json_or_yaml(decision_path, is_path=True)
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv3_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv3_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv3_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv3_pushlog)
+    chain.links = list(set([decision_link, link]))
+
+    fake_template = dict(
+        await cotv3_load_url(chain.context, None, 'taskcluster.yml')
+    )['tasks'][0]
+    fake_context = {
+        'action': {
+            'cb_name': 'retrigger_action',
+            'description': 'Create a clone of the task.',
+            'name': 'retrigger',
+            'repo_scope': 'assume:repo:hg.mozilla.org/try:action:generic',
+            'symbol': 'rt',
+            'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
+            'title': 'Retrigger'
+        },
+        'input': {'downstream': False, 'times': 1},
+        'now': '2018-05-18T22:37:56.796Z',
+        'ownTaskId': 'NdzxKw8bS5Sw5DRhoiM14w',
+        'parameters': {
+            'base_repository': 'https://hg.mozilla.org/mozilla-unified',
+            'build_date': 1515524845,
+            'build_number': 1,
+            'desktop_release_type': '',
+            'do_not_optimize': [],
+            'existing_tasks': {},
+            'filters': ['check_servo', 'target_tasks_method'],
+            'head_ref': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
+            'head_repository': 'https://hg.mozilla.org/projects/maple',
+            'head_rev': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
+            'include_nightly': True,
+            'level': '3',
+            'message': ' ',
+            'moz_build_date': '20180109190725',
+            'next_version': None,
+            'optimize_target_tasks': True,
+            'owner': 'asasaki@mozilla.com',
+            'project': 'maple',
+            'pushdate': 1515524845,
+            'pushlog_id': '343',
+            'release_history': {},
+            'target_tasks_method': 'mozilla_beta_tasks',
+            'try_mode': None,
+            'try_options': None,
+            'try_task_config': None
+        },
+        'push': {
+            'owner': 'mozilla-taskcluster-maintenance@mozilla.com',
+            'pushlog_id': '272718',
+            'revision': 'f41b2f50ff48ef4265e7be391a6e5e4b212f96a0'
+        },
+        'repository': {
+            'level': '1',
+            'project': 'try',
+            'url': 'https://hg.mozilla.org/try'
+        },
+        'task': None,
+        'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
+        'taskId': 'H1mVqFQbS3Sqwo5tWMLtYw',
+        'tasks_for': 'action',
+    }
+
+    result = await cotverify.get_action_context_and_template(chain, link, decision_link)
+    assert result[1] == fake_template
+    # can't easily compare a lambda
+    del(result[0]['as_slugid'])
+    assert result[0] == fake_context
 
 
 # verify_parent_task_definition {{{1

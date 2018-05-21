@@ -1,0 +1,82 @@
+{
+  "provisionerId": "aws-provisioner-v1",
+  "workerType": "gecko-1-decision",
+  "schedulerId": "gecko-level-1",
+  "taskGroupId": "c5nn2xbNS9mJxeVC0uNElg",
+  "dependencies": [],
+  "requires": "all-completed",
+  "routes": [
+    "tc-treeherder.v2.try.f41b2f50ff48ef4265e7be391a6e5e4b212f96a0.272718",
+    "index.gecko.v2.try.latest.taskgraph.decision",
+    "index.gecko.v2.try.revision.f41b2f50ff48ef4265e7be391a6e5e4b212f96a0.taskgraph.decision",
+    "index.gecko.v2.try.pushlog-id.272718.decision",
+    "notify.email.dmitchell@mozilla.com.on-failed",
+    "notify.email.dmitchell@mozilla.com.on-exception",
+    "index.gecko.v2.try.latest.firefox.decision",
+    "index.gecko.v2.try.revision.f41b2f50ff48ef4265e7be391a6e5e4b212f96a0.firefox.decision"
+  ],
+  "priority": "lowest",
+  "retries": 5,
+  "created": "2018-05-18T22:24:29.160Z",
+  "deadline": "2018-05-19T22:24:29.160Z",
+  "expires": "2019-05-18T22:24:30.160Z",
+  "scopes": [
+    "assume:repo:hg.mozilla.org/try:branch:default",
+    "queue:route:notify.email.dmitchell@mozilla.com.*",
+    "in-tree:hook-action:project-gecko/in-tree-action-1-*"
+  ],
+  "payload": {
+    "env": {
+      "GECKO_BASE_REPOSITORY": "https://hg.mozilla.org/mozilla-unified",
+      "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/try",
+      "GECKO_HEAD_REF": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+      "GECKO_HEAD_REV": "f41b2f50ff48ef4265e7be391a6e5e4b212f96a0",
+      "GECKO_COMMIT_MSG": " ",
+      "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
+      "TASKCLUSTER_CACHES": "/builds/worker/checkouts"
+    },
+    "cache": {
+      "level-1-checkouts-sparse-v2": "/builds/worker/checkouts"
+    },
+    "features": {
+      "taskclusterProxy": true,
+      "chainOfTrust": true
+    },
+    "image": "taskcluster/decision:2.1.0@sha256:6db3b697d7a3c7aba440d72f04199331b872111cefff57206b8b8b1d53230360",
+    "maxRunTime": 1800,
+    "command": [
+      "/builds/worker/bin/run-task",
+      "--vcs-checkout=/builds/worker/checkouts/gecko",
+      "--sparse-profile=build/sparse-profiles/taskgraph",
+      "--",
+      "bash",
+      "-cx",
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph decision --pushlog-id='272718' --pushdate='1526682222' --project='try' --message=\"$GECKO_COMMIT_MSG\" --owner='dmitchell@mozilla.com' --level='1' --base-repository=\"$GECKO_BASE_REPOSITORY\" --head-repository=\"$GECKO_HEAD_REPOSITORY\" --head-ref=\"$GECKO_HEAD_REF\" --head-rev=\"$GECKO_HEAD_REV\" \n"
+    ],
+    "artifacts": {
+      "public": {
+        "type": "directory",
+        "path": "/builds/worker/artifacts",
+        "expires": "2019-05-18T22:24:29.160Z"
+      }
+    }
+  },
+  "metadata": {
+    "owner": "dmitchell@mozilla.com",
+    "source": "https://hg.mozilla.org/try/raw-file/f41b2f50ff48ef4265e7be391a6e5e4b212f96a0/.taskcluster.yml",
+    "name": "Gecko Decision Task",
+    "description": "The task that creates all of the other tasks in the task graph"
+  },
+  "tags": {
+    "createdForUser": "dmitchell@mozilla.com"
+  },
+  "extra": {
+    "treeherder": {
+      "machine": {
+        "platform": "gecko-decision"
+      },
+      "symbol": "D"
+    },
+    "tasks_for": "hg-push"
+  }
+}
