@@ -86,7 +86,7 @@ def test_get_commit_message(message, expected):
             "parent": "two"
         }
     },
-    "two"
+    "three"
 )))
 def test_get_decision_task_id(task, result):
     assert swtask.get_decision_task_id(task) == result
