@@ -500,7 +500,7 @@ def test_verify_docker_image_sha_wrong_task_type(chain, build_link, decision_lin
 @pytest.mark.parametrize("task,expected,task_type", ((
     # Make sure we don't follow other_task_id on a decision task
     {'taskGroupId': 'other_task_id', 'extra': {}, 'payload': {}},
-    [('decision:decision', 'task_id')],
+    [('decision:parent', 'other_task_id')],
     'decision'
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},

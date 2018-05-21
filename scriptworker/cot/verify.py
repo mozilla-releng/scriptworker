@@ -524,16 +524,8 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     dependencies = [*cot_input_dependencies, *upstream_artifacts_dependencies]
     dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
 
-    # bug 1396517 - Decision tasks are standalone; don't point at another task
-    # even if the taskGroupId doesn't match.
-    # XXX remove this workaround when all trees are 59+
-    task_type = guess_task_type(task_name, task)
-    if task_type in DECISION_TASK_TYPES:
-        parent_task_id = task_id
-        parent_task_type = 'decision'
-    else:
-        parent_task_id = get_parent_task_id(task) or get_decision_task_id(task)
-        parent_task_type = 'parent'
+    parent_task_id = get_parent_task_id(task) or get_decision_task_id(task)
+    parent_task_type = 'parent'
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
     parent_tuple = _craft_dependency_tuple(task_name, parent_task_type, parent_task_id)
