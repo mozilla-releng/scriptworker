@@ -234,6 +234,8 @@ DEFAULT_CONFIG = frozendict({
     'cot_restricted_scopes': {
         'by-cot-product': frozendict({
             'firefox': frozendict({
+                'project:releng:addons.mozilla.org:server:production': 'all-release-branches',
+
                 'project:releng:balrog:server:nightly': 'all-nightly-branches',
                 'project:releng:balrog:server:beta': 'beta',
                 'project:releng:balrog:server:release': 'release',
