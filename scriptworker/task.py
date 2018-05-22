@@ -244,7 +244,7 @@ def get_and_check_tasks_for(task, msg_prefix=''):
 
 
 # get_repo_scope {{{1
-def get_repo_scope(task):
+def get_repo_scope(task, name):
     """Given a parent task, return the repo scope for the task.
 
     Background in https://bugzilla.mozilla.org/show_bug.cgi?id=1459705#c3
@@ -252,14 +252,24 @@ def get_repo_scope(task):
     Args:
         task (dict): the task definition.
 
+    Raises:
+        ValueError: on too many `repo_scope`s (we allow for 1 or 0).
+
     Returns:
         str: the ``repo_scope``
         None: if no ``repo_scope`` is found
 
     """
+    repo_scopes = []
     for scope in task['scopes']:
         if REPO_SCOPE_REGEX.match(scope):
-            return scope
+            repo_scopes.append(scope)
+    if len(repo_scopes) > 1:
+        raise ValueError(
+            "{}: Too many repo_scopes: {}!".format(name, repo_scopes)
+        )
+    if repo_scopes:
+        return repo_scopes[0]
 
 
 # is_try {{{1

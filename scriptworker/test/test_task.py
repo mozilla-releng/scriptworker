@@ -152,6 +152,28 @@ def test_get_and_check_project(context, source_url, expected, raises):
             swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
 
 
+# get_repo_scope {{{1
+@pytest.mark.parametrize("scopes,expected,raises", ((
+    [], None, False
+), (
+    ['assume:repo:foo:action:bar'], 'assume:repo:foo:action:bar', False
+), (
+    ['foo', 'assume:repo:foo:action:bar'], 'assume:repo:foo:action:bar', False
+), (
+    ['assume:repo:bar:action:baz', 'assume:repo:foo:action:bar'], None, True
+)))
+def test_get_repo_scope(scopes, expected, raises):
+    task = {"scopes": scopes}
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.get_repo_scope(task, "x")
+    else:
+        if expected is None:
+            assert swtask.get_repo_scope(task, "x") is None
+        else:
+            assert swtask.get_repo_scope(task, "x") == expected
+
+
 # is_try {{{1
 @pytest.mark.parametrize("task,source_env_prefix", (
     ({'payload': {'env': {'GECKO_HEAD_REPOSITORY': "https://hg.mozilla.org/try/blahblah"}}, 'metadata': {}, 'schedulerId': "x"}, 'GECKO'),
@@ -360,7 +382,7 @@ def test_max_timeout(context, event_loop):
     for path in glob.glob(os.path.join(temp_dir, '*')):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
-    assert len(files.keys()) == 6
+    assert len(list(files.keys())) == 6
 
 
 # claim_work {{{1

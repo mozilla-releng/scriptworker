@@ -160,7 +160,6 @@ def action_link(chain):
         'workerType': 'workerType',
         'dependencies': [],
         'scopes': [
-            'fake_first',
             'assume:repo:foo:action:bar',
         ],
         'metadata': {

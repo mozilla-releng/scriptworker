@@ -88,8 +88,7 @@ async def test_set_reset_task(context, claim_task, reclaim_task):
     assert context.temp_queue is None
 
 
-@pytest.mark.asyncio
-async def test_temp_queue(context, mocker):
+def test_temp_queue(context, mocker):
     mocker.patch('taskcluster.async.Queue')
     context.session = {'c': 'd'}
     context.temp_credentials = {'a': 'b'}
