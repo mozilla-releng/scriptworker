@@ -1527,7 +1527,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
 
 
 # get_source_url {{{1
-@pytest.mark.parametrize("task,expected,source_env_prefix", ((
+@pytest.mark.parametrize("task,expected,source_env_prefix,raises", ((
     {
         'payload': {
             'env': {
@@ -1538,6 +1538,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     },
     "https://example.com/blah/blah",
     'GECKO',
+    False,
 ), (
     {
         'payload': {
@@ -1547,8 +1548,9 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
         },
         'metadata': {'source': 'https://task/blah'}
     },
-    "https://example.com/blah/blah",
+    None,
     'GECKO',
+    True,
 ), (
     {
         'payload': {
@@ -1558,6 +1560,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     },
     "https://example.com/blah",
     'GECKO',
+    False,
 ), (
     {
         'payload': {
@@ -1566,16 +1569,21 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
                 'COMM_HEAD_REPOSITORY': 'https://example.com/blah/comm',
             },
         },
-        'metadata': {'source': 'https://example.com/blah'}
+        'metadata': {'source': 'https://example.com/blah/comm'}
     },
     "https://example.com/blah/comm",
     'COMM',
+    False,
 )))
-def test_get_source_url(task, expected, source_env_prefix):
+def test_get_source_url(task, expected, source_env_prefix, raises):
     obj = mock.MagicMock()
     obj.task = task
     obj.context.config = {'source_env_prefix': source_env_prefix}
-    assert expected == cotverify.get_source_url(obj)
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.get_source_url(obj)
+    else:
+        assert expected == cotverify.get_source_url(obj)
 
 
 # trace_back_to_tree {{{1

@@ -18,6 +18,7 @@ import os
 import pprint
 import sys
 import tempfile
+from urllib.parse import urlparse
 from scriptworker.artifacts import (
     download_artifacts,
     get_artifact_url,
@@ -1603,17 +1604,51 @@ async def verify_worker_impls(chain):
 
 
 # get_source_url {{{1
+def verify_repo_matches_url(repo, url):
+    """Verify ``url`` is a part of ``repo``.
+
+    We were using ``startswith()`` for a while, which isn't a good comparison.
+    This function allows us to ``urlparse`` and compare host and path.
+
+    Args:
+        repo (str): the repo url
+        url (str): the url to verify is part of the repo
+
+    Returns:
+        bool: ``True`` if the repo matches the url.
+
+    """
+    repo_parts = urlparse(repo)
+    url_parts = urlparse(url)
+    errors = []
+    repo_path_parts = repo_parts.path.split('/')
+    url_path_parts = url_parts.path.split('/')
+    if repo_parts.hostname != url_parts.hostname:
+        errors.append("verify_repo_matches_url: Hostnames don't match! {} {}".format(
+            repo_parts.hostname, url_parts.hostname
+        ))
+    if not url_parts.path.startswith(repo_parts.path) or \
+            url_path_parts[:len(repo_path_parts)] != repo_path_parts:
+        errors.append("verify_repo_matches_url: Paths don't match! {} {}".format(
+            repo_parts.path, url_parts.path
+        ))
+    if errors:
+        log.warning("\n".join(errors))
+        return False
+    return True
+
+
 def get_source_url(obj):
     """Get the source url for a Trust object.
 
     Args:
         obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
 
-    Returns:
-        str: the source url.
-
     Raises:
         CoTError: if repo and source are defined and don't match
+
+    Returns:
+        str: the source url.
 
     """
     source_env_prefix = obj.context.config['source_env_prefix']
@@ -1621,12 +1656,10 @@ def get_source_url(obj):
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task['metadata']['source']
-    # TODO real check here - urlsplit; match host, path startswith
-    if repo and not source.startswith(repo):
-        log.warning("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}... returning {repo}".format(
-            name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source,
+    if repo and not verify_repo_matches_url(repo, source):
+        raise CoTError("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
+            name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
         ))
-        return repo
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
     return source
 
