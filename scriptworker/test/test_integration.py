@@ -103,7 +103,7 @@ async def get_context(config_override):
     context = Context()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
-        # swlog.update_logging_config(context)
+        swlog.update_logging_config(context)
         utils.cleanup(context)
         async with aiohttp.ClientSession() as session:
             context.session = session
@@ -194,6 +194,7 @@ def test_run_maxtimeout(event_loop, context_function):
     except RuntimeError:
         pass
     post = arrow.utcnow()
+    # This may be flaky because claimWork can take up to 20 seconds..?
     assert post.timestamp - pre.timestamp <= 8
 
 
