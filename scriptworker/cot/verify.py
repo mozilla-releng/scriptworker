@@ -1082,11 +1082,12 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             await _get_additional_cron_jsone_context(parent_link, decision_link)
         )
     log.debug("{} json-e context:".format(parent_link.name))
+    # format_json() breaks on lambda values; use pprint.pformat here.
     log.debug(pprint.pformat(jsone_context))
     return jsone_context
 
 
-# get_jsone_template {{{1
+# get_jsone_context_and_template {{{1
 async def get_in_tree_template(link):
     """Get the in-tree json-e template for a given link.
 
@@ -1173,6 +1174,7 @@ async def get_jsone_context_and_template(chain, parent_link, decision_link, task
     log.debug("{} json-e template:".format(parent_link.name))
     log.debug(format_json(tmpl))
     log.debug("{} json-e context:".format(parent_link.name))
+    # format_json() breaks on lambda values; use pprint.pformat here.
     log.debug(pprint.pformat(jsone_context, indent=2))
     return jsone_context, tmpl
 
@@ -1248,8 +1250,6 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
-        # XXX FIXME
-        runtime_definition['taskGroupId'] = compare_definition['taskGroupId']
 
         log.debug("Compare_definition:\n{}".format(format_json(compare_definition)))
         log.debug("Runtime definition:\n{}".format(format_json(runtime_definition)))
