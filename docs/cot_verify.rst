@@ -12,7 +12,7 @@ Decision Task
 
 The decision task is a special task that generates a taskgraph, then submits it to the Taskcluster queue.  This graph contains task definitions and dependencies.  The decision task uploads its generated graph json as an artifact, which can be inspected during chain of trust verification.
 
-Ideally, we would be able to verify the decision task's task definition matches the in-tree settings for its revision; that's `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Currently we make do with task inspection and an allowlist of docker image shas that the decision task can run on.
+We rebuild the decision task's task definition via `json-e`_, and verify that it matches the runtime task definition.
 
 GPG homedir management
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -54,7 +54,7 @@ This is currently only for scriptworker.
 Building the chain
 ~~~~~~~~~~~~~~~~~~
 
-First, scriptworker inspects the [signing/balrog/pushapk/beetmover] task that it claimed from the Taskcluster queue.  It adds itself and its :ref:`decision-task` to the chain.
+First, scriptworker inspects the [signing/balrog/pushapk/beetmover/etc] task that it claimed from the Taskcluster queue.  It adds itself and its :ref:`decision-task` to the chain.
 
 Any task that generates artifacts for the scriptworker then needs to be inspected.  For scriptworker tasks, we have ``task.payload.upstreamArtifacts``, which looks like
 
@@ -81,14 +81,16 @@ Verifying the chain
 
 Scriptworker:
 
--  downloads the chain of trust artifacts for each upstream task in the chain, and verifies their signatures.  This requires detecting which worker implementation each task is run on, to know which gpg homedir to use.  At some point in the future, we may use ``workerType`` to worker implementation mappings.
+-  downloads the chain of trust artifacts for each upstream task in the chain, and verifies their signatures.  This requires detecting which worker implementation each task is run on, to know which gpg homedir to use.  At some point in the future, we may switch to an OpenSSL CA.
 -  downloads each of the ``upstreamArtifacts`` and verify their shas against the corresponding task's chain of trust's artifact shas.  the downloaded files live in ``cot/TASKID/PATH`` , so the script doesn't have to re-download and re-verify.
--  downloads each decision task's ``task-graph.json``.  For every *other* task in the chain, we make sure that their task definition matches a task in their decision task's task graph.  There's some fuzzy matching going on here, to allow for datestring changes, as well as retriggering, which results in a new ``taskId``.
--  verifies each decision task command and ``workerType``, and makes sure its docker image sha is in the allowlist.
--  verifies each docker-image task command and docker image sha against the allowlist, until we resolve `bug 1328719 <https://bugzilla.mozilla.org/show_bug.cgi?id=1328719>`__.  Every other docker-worker task downloads its image from a previous docker-image task, so these two allowlists help us verify every docker image used by docker-worker.
+-  downloads each decision task's ``task-graph.json``.  For every *other* task in the chain, we make sure that their task definition matches a task in their decision task's task graph.
+-  rebuilds decision and action task definitions using `json-e`_, and verifies the rebuilt task definition matches the runtime definition.
+-  verifies each docker-worker task is either part of the ``prebuild_docker_image_task_types``, or that it downloads its image from a previous docker-image task.
 -  verifies each docker-worker task's docker image sha.
 -  makes sure the ``interactive`` flag isn't on any docker-worker task.
 -  determines which repo we're building off of.
 -  matches its task's scopes against the tree; restricted scopes require specific branches.
 
 Once all verification passes, it launches the task script.  If chain of trust verification fails, it exits before launching the task script.
+
+.. _json-e: https://github.com/taskcluster/json-e
