@@ -1333,6 +1333,49 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
         )
 
 
+# check_and_update_action_task_group_id {{{1
+@pytest.mark.parametrize("rebuilt_gid,runtime_gid,action_taskid,decision_taskid,raises", ((
+    "decision", "decision", "action", "decision", False
+), (
+    "action", "decision", "action", "decision", False
+), (
+    "other", "other", "action", "decision", True
+), (
+    "other", "decision", "action", "decision", True
+)))
+def test_check_and_update_action_task_group_id(rebuilt_gid, runtime_gid, action_taskid,
+                                               decision_taskid, raises):
+    rebuilt_definition = {
+        "payload": {
+            "env": {
+                "ACTION_TASK_GROUP_ID": rebuilt_gid
+            }
+        }
+    }
+    runtime_definition = {
+        "payload": {
+            "env": {
+                "ACTION_TASK_GROUP_ID": runtime_gid
+            }
+        }
+    }
+    parent_link = mock.MagicMock()
+    parent_link.task_id = action_taskid
+    parent_link.task = runtime_definition
+    decision_link = mock.MagicMock()
+    decision_link.task_id = decision_taskid
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.check_and_update_action_task_group_id(
+                parent_link, decision_link, rebuilt_definition
+            )
+    else:
+        cotverify.check_and_update_action_task_group_id(
+            parent_link, decision_link, rebuilt_definition
+        )
+        assert rebuilt_definition == runtime_definition
+
+
 # verify_parent_task {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("defn_fn,raises", ((

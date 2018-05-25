@@ -1217,6 +1217,8 @@ async def verify_parent_task_definition(chain, parent_link):
             chain, parent_link, decision_link, tasks_for
         )
         rebuilt_definition = jsone.render(tmpl, jsone_context)
+        if tasks_for == 'action':
+            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
         raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
@@ -1228,6 +1230,46 @@ async def verify_parent_task_definition(chain, parent_link):
         raise CoTError(msg + "\n{}".format(str(e)))
 
     compare_jsone_task_definition(parent_link, rebuilt_definition)
+
+
+# check_and_update_action_task_group_id {{{1
+def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition):
+    """Update the ``ACTION_TASK_GROUP_ID`` of an action after verifying.
+
+    Actions have varying ``ACTION_TASK_GROUP_ID`` behavior.  Release Promotion
+    action tasks set the ``ACTION_TASK_GROUP_ID`` to match the action ``taskId``
+    so the large set of release tasks have their own taskgroup. Non-relpro
+    action tasks set the ``ACTION_TASK_GROUP_ID`` to match the decision
+    ``taskId``, so tasks are more discoverable inside the original on-push
+    taskgroup.
+
+    This poses a json-e task definition problem, hence this function.
+
+    This function first checks to make sure the ``ACTION_TASK_GROUP_ID`` is
+    a member of ``{action_task_id, decision_task_id}``. Then it makes sure
+    the ``ACTION_TASK_GROUP_ID`` in the ``rebuilt_definition`` is set to the
+    ``parent_link.task``'s ``ACTION_TASK_GROUP_ID`` so the json-e comparison
+    doesn't fail out.
+
+    Args:
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the decision link to test.
+        rebuilt_definition (dict): the rebuilt definition to check and update.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    rebuilt_gid = rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID']
+    runtime_gid = parent_link.task['payload']['env']['ACTION_TASK_GROUP_ID']
+    acceptable_gids = {parent_link.task_id, decision_link.task_id}
+    if rebuilt_gid not in acceptable_gids:
+        raise CoTError("{} ACTION_TASK_GROUP_ID {} not in {}!".format(
+            parent_link.name, rebuilt_gid, acceptable_gids
+        ))
+    if runtime_gid != rebuilt_gid:
+        log.debug("runtime gid {} rebuilt gid {}".format(runtime_gid, rebuilt_gid))
+    rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
 
 
 # compare_jsone_task_definition {{{1
