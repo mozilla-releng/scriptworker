@@ -243,15 +243,8 @@ def event_loop():
     do something like kill tasks that benefits from clean event loops.
 
     """
-    orig_loop = asyncio.get_event_loop()
-    policy = asyncio.get_event_loop_policy()
-    res = policy.new_event_loop()
-    asyncio.set_event_loop(res)
-    res._close = res.close
-    res.close = lambda: None
-    yield res
-    res._close()
-    asyncio.set_event_loop(orig_loop)
+    loop = asyncio.get_event_loop()
+    yield loop
 
 
 
