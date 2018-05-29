@@ -22,7 +22,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `get_source_url` now throws a `CoTError` if both the source url and repo are defined, and the source url doesn't match the repo.
 - quieted the test output significantly.
 - default test verbosity is toggled on by the `SCRIPTWORKER_VERBOSE_TESTS` env var.
-- by default, tests now run concurrently for faster results.
+- by default, tests now run concurrently for faster results. To allow this, we no longer close the event loop anywhere.
 
 ### Fixed
 - we now log the exception at bad git tag signature verification.
