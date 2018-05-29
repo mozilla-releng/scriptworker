@@ -1,10 +1,6 @@
 """Chain of Trust artifact verification.
 
 Attributes:
-    ACTION_MACH_COMMANDS (tuple): the allowlisted mach commands for an action task,
-        ignoring options.
-    DECISION_MACH_COMMANDS (tuple): the allowlisted mach commands for a decision task,
-        ignoring options.
     DECISION_TASK_TYPES (tuple): the decision task types.
     PARENT_TASK_TYPES (tuple): the parent task types.
     log (logging.Logger): the log object for this module.
@@ -20,9 +16,9 @@ import jsone
 import logging
 import os
 import pprint
-import shlex
 import sys
 import tempfile
+from urllib.parse import urlparse
 from scriptworker.artifacts import (
     download_artifacts,
     get_artifact_url,
@@ -43,6 +39,7 @@ from scriptworker.task import (
     get_decision_task_id,
     get_parent_task_id,
     get_repo,
+    get_repo_scope,
     get_revision,
     get_task_id,
     get_worker_type,
@@ -69,17 +66,6 @@ from taskcluster.exceptions import TaskclusterFailure
 log = logging.getLogger(__name__)
 
 
-# XXX Remove all mach command hardcodes when all trees are 59+
-DECISION_MACH_COMMANDS = ((
-    './mach', 'taskgraph', 'decision'
-), )
-ACTION_MACH_COMMANDS = ((
-    './mach', 'taskgraph', 'add-tasks'
-), (
-    './mach', 'taskgraph', 'backfill'
-), (
-    './mach', 'taskgraph', 'action-callback'
-))
 DECISION_TASK_TYPES = ('decision', )
 PARENT_TASK_TYPES = ('decision', 'action')
 
@@ -457,10 +443,7 @@ def check_interactive_docker_worker(link):
 
 # verify_docker_image_sha {{{1
 def verify_docker_image_sha(chain, link):
-    """Verify that pre-built docker shas are in allowlists.
-
-    Decision and docker-image tasks use pre-built docker images from docker hub.
-    Verify that these pre-built docker image shas are in the allowlists.
+    """Verify that built docker shas match the artifact.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on.
@@ -473,11 +456,6 @@ def verify_docker_image_sha(chain, link):
     cot = link.cot
     task = link.task
     errors = []
-
-    if not cot:
-        log.warn('Chain of Trust for {} does not exist. See above log for more details. \
-Skipping docker image sha verification'.format(task['taskId']))
-        return
 
     if isinstance(task['payload'].get('image'), dict):
         # Using pre-built image from docker-image task
@@ -510,18 +488,13 @@ Skipping docker image sha verification'.format(task['taskId']))
             else:
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
-        # Using downloaded image from docker hub
-        task_type = link.task_type
-        image_hash = cot['environment']['imageHash']
-        # Use the decision docker_image_allowlist for action tasks.
-        if task_type == 'action':
-            task_type = 'decision'
-        if image_hash not in link.context.config['docker_image_allowlists'][task_type]:
-            errors.append("{} {} docker imageHash {} not in the allowlist!\n{}".format(
-                link.name, link.task_id, image_hash, cot
-            ))
-        else:
-            log.debug("Found allowlisted image_hash {}".format(image_hash))
+        prebuilt_task_types = chain.context.config['prebuilt_docker_image_task_types']
+        if prebuilt_task_types is not None and link.task_type not in prebuilt_task_types:
+            errors.append(
+                "Task type {} not allowed to use a prebuilt docker image!".format(
+                    link.task_type
+                )
+            )
     raise_on_errors(errors)
 
 
@@ -553,16 +526,8 @@ def find_sorted_task_dependencies(task, task_name, task_id):
     dependencies = [*cot_input_dependencies, *upstream_artifacts_dependencies]
     dependencies = _sort_dependencies_by_name_then_task_id(dependencies)
 
-    # bug 1396517 - Decision tasks are standalone; don't point at another task
-    # even if the taskGroupId doesn't match.
-    # XXX remove this workaround when all trees are 59+
-    task_type = guess_task_type(task_name, task)
-    if task_type in DECISION_TASK_TYPES:
-        parent_task_id = task_id
-        parent_task_type = 'decision'
-    else:
-        parent_task_id = get_parent_task_id(task) or get_decision_task_id(task)
-        parent_task_type = 'parent'
+    parent_task_id = get_parent_task_id(task) or get_decision_task_id(task)
+    parent_task_type = 'parent'
     # make sure we deal with the decision task first, or we may populate
     # signing:build0:decision before signing:decision
     parent_tuple = _craft_dependency_tuple(task_name, parent_task_type, parent_task_id)
@@ -887,11 +852,8 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
-    # Allow for a subset of dependencies in a retriggered task.  The current use case
-    # is release promotion: we may hit the expiration deadline for a task (e.g. pushapk),
-    # and a breakpoint task in the graph may also hit its expiration.  To kick off
-    # the pushapk task, we can clone the task, update timestamps, and remove the
-    # breakpoint dependency.
+    # Allow for the decision task ID in the dependencies; otherwise the runtime
+    # dependencies must be a subset of the graph dependencies.
     bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
     # it's OK if a task depends on the decision task
     bad_deps = bad_deps - {task_link.decision_task_id}
@@ -938,11 +900,6 @@ def _take_expires_out_from_artifacts_in_payload(payload):
 def verify_link_in_task_graph(chain, decision_link, task_link):
     """Compare the runtime task definition against the decision task graph.
 
-    If the ``task_link.task_id`` is in the task graph, match directly against
-    that task definition.  Otherwise, "fuzzy match" by trying to match against
-    any definition in the task graph.  This is to support retriggers, where
-    the task definition stays the same, but the datestrings and taskIds change.
-
     Args:
         chain (ChainOfTrust): the chain we're operating on.
         decision_link (LinkOfTrust): the decision task link
@@ -960,111 +917,9 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
         verify_task_in_task_graph(task_link, graph_defn)
         log.info("Found {} in the graph; it's a match".format(task_link.task_id))
         return
-    # Fall back to fuzzy matching to support retriggers: the taskId and
-    # datestrings will change but the task definition shouldn't.
-    for task_id, graph_defn in decision_link.task_graph.items():
-        log.debug("Fuzzy matching against {} ...".format(task_id))
-        try:
-            verify_task_in_task_graph(task_link, graph_defn, level=logging.DEBUG)
-            log.info("Found a {} fuzzy match with {} ...".format(task_link.task_id, task_id))
-            return
-        except CoTError:
-            pass
-    else:
-        raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
-            task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
-        )])
-
-
-# verify_decision_command {{{1
-def verify_decision_command(decision_link, mach_commands=DECISION_MACH_COMMANDS):
-    r"""Verify the decision command for a decision task.
-
-    This is deprecated, but still very much in use.
-    Let's stop needing it.
-
-    Some example commands::
-
-        "/builds/worker/bin/run-task",
-        "--vcs-checkout=/builds/worker/checkouts/gecko",
-        "--",
-        "bash",
-        "-cx",
-        "cd /builds/worker/checkouts/gecko &&
-        ln -s /builds/worker/artifacts artifacts &&
-        ./mach --log-no-times taskgraph decision --pushlog-id='83445' --pushdate='1478146854'
-        --project='mozilla-inbound' --message=' ' --owner='cpeterson@mozilla.com' --level='3'
-        --base-repository='https://hg.mozilla.org/mozilla-central'
-        --head-repository='https://hg.mozilla.org/integration/mozilla-inbound/'
-        --head-ref='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-        --head-rev='e7023fe48f7c48e33ef3b91747647f0873e306d6'
-        --revision-hash='e3e8f6327079496707658adc381c142c6575b280'\n"
-
-        "/builds/worker/bin/run-task",
-        "--vcs-checkout=/builds/worker/checkouts/gecko",
-        "--",
-        "bash",
-        "-cx",
-        "cd /builds/worker/checkouts/gecko &&
-        ln -s /builds/worker/artifacts artifacts &&
-        ./mach --log-no-times taskgraph decision --pushlog-id='0' --pushdate='0' --project='date'
-        --message='try: -b o -p foo -u none -t none' --owner='amiyaguchi@mozilla.com' --level='2'
-        --base-repository=$GECKO_BASE_REPOSITORY --head-repository=$GECKO_HEAD_REPOSITORY
-        --head-ref=$GECKO_HEAD_REF --head-rev=$GECKO_HEAD_REV --revision-hash=$GECKO_HEAD_REV
-        --triggered-by='nightly' --target-tasks-method='nightly_linux'\n"
-
-    This is very firefox-centric and potentially fragile, but decision tasks are
-    important enough to need to monitor.  The ideal fix would maybe be to simplify
-    the commandline if possible.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on.
-        decision_link (LinkOfTrust): the decision link to test.
-        mach_commands (tuple): a tuple of tuples, specifying the allowlisted
-            mach commands for a decision task, ignoring options.
-
-    Raises:
-        CoTError: on chain of trust verification error.
-
-    """
-    log.info("Verifying {} {} command...".format(decision_link.name, decision_link.task_id))
-    errors = []
-    command = decision_link.task['payload']['command']
-    allowed_args = ('--', 'bash', '/bin/bash', '-cx')
-    # /home/worker is an old path, before https://bugzilla.mozilla.org/show_bug.cgi?id=1338651#c195
-    if command[0] not in('/home/worker/bin/run-task', '/builds/worker/bin/run-task'):
-        errors.append("{} {} command must start with /builds/worker/bin/run-task!".format(
-            decision_link.name, decision_link.task_id
-        ))
-    for item in command[1:-1]:
-        if item in allowed_args:
-            continue
-        if item.startswith(('--vcs-checkout=', '--sparse-profile=')):
-            continue
-        if item.startswith(tuple(decision_link.context.config['extra_run_task_arguments'])):
-            continue
-        errors.append("{} {} illegal option {} in the command!".format(
-            decision_link.name, decision_link.task_id, item
-        ))
-    bash_commands = command[-1].split('&&')
-    allowed_commands = ('cd', 'ln')
-    for bash_command in bash_commands:
-        parts = shlex.split(bash_command)
-        non_options = []
-        if parts[0] in allowed_commands:
-            continue
-        for part in parts:
-            if part.startswith('--'):
-                continue
-            non_options.append(part)
-        for mach_command in mach_commands:
-            if tuple(non_options) == mach_command:
-                break
-        else:
-            errors.append("{} {} Illegal command ``{}``".format(
-                decision_link.name, decision_link.task_id, bash_command
-            ))
-    raise_on_errors(errors)
+    raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(
+        task_link.name, task_link.task_id, decision_link.name, decision_link.task_id
+    )])
 
 
 # get_pushlog_info {{{1
@@ -1125,9 +980,9 @@ async def _get_additional_action_jsone_context(parent_link, decision_link):
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
     jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
+    jsone_context['ownTaskId'] = parent_link.task_id
     jsone_context['parameters'] = parameters
     jsone_context['task'] = None
-    jsone_context['ownTaskId'] = parent_link.task_id
     return jsone_context
 
 
@@ -1228,41 +1083,101 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             await _get_additional_cron_jsone_context(parent_link, decision_link)
         )
     log.debug("{} json-e context:".format(parent_link.name))
+    # format_json() breaks on lambda values; use pprint.pformat here.
     log.debug(pprint.pformat(jsone_context))
     return jsone_context
 
 
-# get_jsone_template {{{1
-async def get_jsone_template(parent_link, decision_link, tasks_for):
-    """Get the appropriate json-e template.
+# get_jsone_context_and_template {{{1
+async def get_in_tree_template(link):
+    """Get the in-tree json-e template for a given link.
+
+    By convention, this template is SOURCE_REPO/.taskcluster.yml.
 
     Args:
+        link (LinkOfTrust): the parent link to get the source url from.
+
+    Raises:
+        CoTError: on non-yaml `source_url`
+        KeyError: on non-well-formed source template
+
+    Returns:
+        dict: the first task in the template.
+
+    """
+    context = link.context
+    source_url = get_source_url(link)
+    if not source_url.endswith(('.yml', '.yaml')):
+        raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(
+            link.name, source_url
+        ))
+    tmpl = await load_json_or_yaml_from_url(
+        context, source_url, os.path.join(
+            context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
+        )
+    )
+    return tmpl['tasks'][0]
+
+
+async def get_action_context_and_template(chain, parent_link, decision_link):
+    """Get the appropriate json-e context and template for an action task.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust.
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the parent link's decision task link.
         tasks_for (str): the reason the parent link was created (cron,
             hg-push, action)
 
     Returns:
-        dict: the json-e template.
+        (dict, dict): the json-e context and template.
+
+    """
+    actions_path = decision_link.get_artifact_full_path('public/actions.json')
+    all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
+    action_name = get_action_name(parent_link.task)
+    action_defn = [d for d in all_actions if d['name'] == action_name][0]
+    jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
+    if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
+        tmpl = action_defn['task']
+    else:
+        tmpl = await get_in_tree_template(decision_link)
+        for k in ('action', 'push', 'repository'):
+            jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'][k])
+        jsone_context['action']['repo_scope'] = get_repo_scope(parent_link.task, parent_link.name)
+
+    return jsone_context, tmpl
+
+
+async def get_jsone_context_and_template(chain, parent_link, decision_link, tasks_for):
+    """Get the appropriate json-e context and template for any parent task.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust.
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the parent link's decision task link.
+        tasks_for (str): the reason the parent link was created (cron,
+            hg-push, action)
+
+    Returns:
+        (dict, dict): the json-e context and template.
 
     """
     if tasks_for == 'action':
-        actions_path = decision_link.get_artifact_full_path('public/actions.json')
-        all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
-        action_name = get_action_name(parent_link.task)
-        tmpl = [d for d in all_actions if d['name'] == action_name][0]['task']
-    else:
-        context = decision_link.context
-        source_url = get_source_url(decision_link)
-        tmpl = await load_json_or_yaml_from_url(
-            context, source_url, os.path.join(
-                context.config["work_dir"], "{}_taskcluster.yml".format(decision_link.name)
-            )
+        jsone_context, tmpl = await get_action_context_and_template(
+            chain, parent_link, decision_link
         )
-        tmpl = tmpl['tasks'][0]
+    else:
+        tmpl = await get_in_tree_template(decision_link)
+        jsone_context = await populate_jsone_context(
+            chain, parent_link, decision_link, tasks_for
+        )
     log.debug("{} json-e template:".format(parent_link.name))
     log.debug(format_json(tmpl))
-    return tmpl
+    log.debug("{} json-e context:".format(parent_link.name))
+    # format_json() breaks on lambda values; use pprint.pformat here.
+    log.debug(pprint.pformat(jsone_context, indent=2))
+    return jsone_context, tmpl
 
 
 # verify_parent_task_definition {{{1
@@ -1299,11 +1214,12 @@ async def verify_parent_task_definition(chain, parent_link):
         tasks_for = get_and_check_tasks_for(
             parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
         )
-        tmpl = await get_jsone_template(parent_link, decision_link, tasks_for)
-        jsone_context = await populate_jsone_context(
+        jsone_context, tmpl = await get_jsone_context_and_template(
             chain, parent_link, decision_link, tasks_for
         )
         rebuilt_definition = jsone.render(tmpl, jsone_context)
+        if tasks_for == 'action':
+            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
         raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
@@ -1315,6 +1231,46 @@ async def verify_parent_task_definition(chain, parent_link):
         raise CoTError(msg + "\n{}".format(str(e)))
 
     compare_jsone_task_definition(parent_link, rebuilt_definition)
+
+
+# check_and_update_action_task_group_id {{{1
+def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition):
+    """Update the ``ACTION_TASK_GROUP_ID`` of an action after verifying.
+
+    Actions have varying ``ACTION_TASK_GROUP_ID`` behavior.  Release Promotion
+    action tasks set the ``ACTION_TASK_GROUP_ID`` to match the action ``taskId``
+    so the large set of release tasks have their own taskgroup. Non-relpro
+    action tasks set the ``ACTION_TASK_GROUP_ID`` to match the decision
+    ``taskId``, so tasks are more discoverable inside the original on-push
+    taskgroup.
+
+    This poses a json-e task definition problem, hence this function.
+
+    This function first checks to make sure the ``ACTION_TASK_GROUP_ID`` is
+    a member of ``{action_task_id, decision_task_id}``. Then it makes sure
+    the ``ACTION_TASK_GROUP_ID`` in the ``rebuilt_definition`` is set to the
+    ``parent_link.task``'s ``ACTION_TASK_GROUP_ID`` so the json-e comparison
+    doesn't fail out.
+
+    Args:
+        parent_link (LinkOfTrust): the parent link to test.
+        decision_link (LinkOfTrust): the decision link to test.
+        rebuilt_definition (dict): the rebuilt definition to check and update.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    rebuilt_gid = rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID']
+    runtime_gid = parent_link.task['payload']['env']['ACTION_TASK_GROUP_ID']
+    acceptable_gids = {parent_link.task_id, decision_link.task_id}
+    if rebuilt_gid not in acceptable_gids:
+        raise CoTError("{} ACTION_TASK_GROUP_ID {} not in {}!".format(
+            parent_link.name, rebuilt_gid, acceptable_gids
+        ))
+    if runtime_gid != rebuilt_gid:
+        log.debug("runtime gid {} rebuilt gid {}".format(runtime_gid, rebuilt_gid))
+    rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
 
 
 # compare_jsone_task_definition {{{1
@@ -1337,6 +1293,7 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
+
         log.debug("Compare_definition:\n{}".format(format_json(compare_definition)))
         log.debug("Runtime definition:\n{}".format(format_json(runtime_definition)))
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
@@ -1395,21 +1352,9 @@ async def verify_parent_task(chain, link):
                     target_link.task_type not in PARENT_TASK_TYPES:
                 verify_link_in_task_graph(chain, link, target_link)
     try:
-        # Try verifying decision task via json-e (cot v2)
         await verify_parent_task_definition(chain, link)
-    except (CoTError, DownloadError, KeyError) as e:
-        if chain.context.config['min_cot_version'] > 1:
-            raise CoTError(e)
-        # Fall back to cot v1.
-        # XXX Get rid of the fallback when all trees are Fx59+.
-        log.exception("Falling back to non-json-e decision task verification for {}!".format(link.task_id))
-        if is_action(link.task):
-            mach_commands = ACTION_MACH_COMMANDS
-        else:
-            mach_commands = DECISION_MACH_COMMANDS
-        verify_decision_command(link, mach_commands=mach_commands)
-        # log message for easy papertrail parsing
-        log.warning("DEPRECATED_DECISION_TASK {} while verifying task {}".format(link.task_id, chain.task_id))
+    except (DownloadError, KeyError) as e:
+        raise CoTError(e)
 
 
 # verify_build_task {{{1
@@ -1442,9 +1387,6 @@ async def verify_docker_image_task(chain, link):
     worker_type = get_worker_type(link.task)
     if worker_type not in chain.context.config['valid_docker_image_worker_types']:
         errors.append("{} is not a valid docker-image workerType!".format(worker_type))
-    # XXX remove the command checks once we require json-e cot verification.
-    if link.task['payload'].get('command') and link.task['payload']['command'] != ["/bin/bash", "-c", "/home/worker/bin/build_image.sh"]:
-        errors.append("{} {} illegal command {}!".format(link.name, link.task_id, link.task['payload']['command']))
     raise_on_errors(errors)
 
 
@@ -1643,12 +1585,6 @@ async def verify_docker_worker_task(chain, link):
         CoTError: on failure.
 
     """
-    if chain.context.config['cot_product'] == 'mobile':
-        log.warn(
-            '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
-        )
-        return
-
     if chain != link:
         # These two checks will die on `link.cot` if `link` is a ChainOfTrust
         # object (e.g., the task we're running `verify_cot` against is a
@@ -1711,17 +1647,51 @@ async def verify_worker_impls(chain):
 
 
 # get_source_url {{{1
+def verify_repo_matches_url(repo, url):
+    """Verify ``url`` is a part of ``repo``.
+
+    We were using ``startswith()`` for a while, which isn't a good comparison.
+    This function allows us to ``urlparse`` and compare host and path.
+
+    Args:
+        repo (str): the repo url
+        url (str): the url to verify is part of the repo
+
+    Returns:
+        bool: ``True`` if the repo matches the url.
+
+    """
+    repo_parts = urlparse(repo)
+    url_parts = urlparse(url)
+    errors = []
+    repo_path_parts = repo_parts.path.split('/')
+    url_path_parts = url_parts.path.split('/')
+    if repo_parts.hostname != url_parts.hostname:
+        errors.append("verify_repo_matches_url: Hostnames don't match! {} {}".format(
+            repo_parts.hostname, url_parts.hostname
+        ))
+    if not url_parts.path.startswith(repo_parts.path) or \
+            url_path_parts[:len(repo_path_parts)] != repo_path_parts:
+        errors.append("verify_repo_matches_url: Paths don't match! {} {}".format(
+            repo_parts.path, url_parts.path
+        ))
+    if errors:
+        log.warning("\n".join(errors))
+        return False
+    return True
+
+
 def get_source_url(obj):
     """Get the source url for a Trust object.
 
     Args:
         obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
 
-    Returns:
-        str: the source url.
-
     Raises:
         CoTError: if repo and source are defined and don't match
+
+    Returns:
+        str: the source url.
 
     """
     source_env_prefix = obj.context.config['source_env_prefix']
@@ -1729,18 +1699,10 @@ def get_source_url(obj):
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task['metadata']['source']
-    # XXX We hit this for hooks - still needed? Remove when json-e cot
-    # verification is required.
-    # XXX .startswith() is not the ideal check here.
-    # XXX this will break the new json-e cot verification. We could hardcode
-    # a `{repo}/raw-file/{revision}/.taskcluster.yml` path, but that assumes
-    # hg.m.o. A better approach may be to let misconfigured hooks break, and
-    # either obsolete or fix them.
-    if repo and not source.startswith(repo):
-        log.warning("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}... returning {repo}".format(
-            name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source,
+    if repo and not verify_repo_matches_url(repo, source):
+        raise CoTError("{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
+            name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
         ))
-        return repo
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
     return source
 

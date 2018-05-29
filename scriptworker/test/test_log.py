@@ -67,6 +67,7 @@ def test_pipe_to_log(context, event_loop):
 
 
 def test_update_logging_config_verbose(context):
+    context.config['verbose'] = True
     swlog.update_logging_config(context, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.DEBUG
@@ -78,6 +79,7 @@ def test_update_logging_config_verbose_existing_handler(context):
     log = logging.getLogger(context.config['log_dir'])
     log.addHandler(logging.NullHandler())
     log.addHandler(logging.NullHandler())
+    context.config['verbose'] = True
     swlog.update_logging_config(context, log_name=context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 4

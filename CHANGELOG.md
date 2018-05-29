@@ -2,6 +2,43 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+### Added
+- added a restriction on a.m.o. production scopes.
+- added `prebuilt_docker_image_task_types`. These are the task types that allow non-artifact docker images; if `None`, all task types are allowed.
+- added `get_in_tree_template`, `get_action_context_and_template`, `get_jsone_context_and_template` to help support new action hooks.
+- added `verify_repo_matches_url` to stop using `.startswith()` to compare urls
+- added `REPO_SCOPE_REGEX` to allow us to find the `repo_scope` in a task's scopes.
+- added `get_repo_scope` to return the `repo_scope` in a task's scopes (or `None`)
+- added a `test/data/cotv3` dir for action hook test data.
+
+### Changed
+- set `cot_version` to 3.
+- set `min_cot_version` to 2.
+- we now require cot artifacts in `verify_docker_image_sha`.
+- we no longer check docker image shas against an allowlist; they either match chain of trust artifact shas, or they're a task type that allows prebuilt docker images. If these are defined in-tree, we trace the request to the tree, so these should be as trustable as the tree in question.
+- we no longer allow for ignoring decision tasks' `taskGroupId`s. If they differ from the `taskId`, we follow the chain back.
+- we no longer skip `verify_docker_worker_task` for `mobile` `cot_product`; but we do allow for prebuilt docker images on all task types.
+- `get_source_url` now throws a `CoTError` if both the source url and repo are defined, and the source url doesn't match the repo.
+- quieted the test output significantly.
+- default test verbosity is toggled on by the `SCRIPTWORKER_VERBOSE_TESTS` env var.
+- by default, tests now run concurrently for faster results. To allow this, we no longer close the event loop anywhere.
+
+### Fixed
+- we now log the exception at bad git tag signature verification.
+
+### Removed
+- removed cotv1 support
+- removed `docker_image_allowlists`
+- removed `gecko-decision` from the decision `workerType`s
+- removed `ACTION_MACH_COMMANDS` and `DECISION_MACH_COMMANDS`
+- removed "fuzzy matching" task definitions in `task-graph.json`. With json-e enabled actions, we should be able to match the `taskId` exactly.
+- removed `verify_decision_command`; rebuilding the task definition via json-e is more precise.
+- removed `get_jsone_template` in favor of the other, more specific template functions.
+
+### Fixed
+- added `.pytest_cache` to `.gitignore`
+
 ## [11.1.0] - 2018-05-16
 ### Added
 - added py37 testing. This is currently broken due to `ldna_ssl` and `PyYAML`; marked this test in `allow_failures`.

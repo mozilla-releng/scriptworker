@@ -55,7 +55,8 @@ def test_empty_context(context):
     assert context.temp_credentials is None
 
 
-def test_set_task(context, claim_task):
+@pytest.mark.asyncio
+async def test_set_task(context, claim_task):
     context.claim_task = claim_task
     assert context.claim_task == claim_task
     assert context.reclaim_task is None
@@ -63,7 +64,8 @@ def test_set_task(context, claim_task):
     assert get_json(get_task_file(context)) == claim_task['task']
 
 
-def test_set_reclaim_task(context, claim_task, reclaim_task):
+@pytest.mark.asyncio
+async def test_set_reclaim_task(context, claim_task, reclaim_task):
     context.claim_task = claim_task
     context.reclaim_task = reclaim_task
     assert context.claim_task == claim_task
@@ -73,7 +75,8 @@ def test_set_reclaim_task(context, claim_task, reclaim_task):
     assert get_json(get_task_file(context)) == claim_task['task']
 
 
-def test_set_reset_task(context, claim_task, reclaim_task):
+@pytest.mark.asyncio
+async def test_set_reset_task(context, claim_task, reclaim_task):
     context.claim_task = claim_task
     context.reclaim_task = reclaim_task
     context.claim_task = None

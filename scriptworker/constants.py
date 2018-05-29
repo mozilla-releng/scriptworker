@@ -63,8 +63,8 @@ DEFAULT_CONFIG = frozendict({
     "verify_cot_signature": False,
     "cot_job_type": "unknown",  # e.g., signing
     "cot_product": "firefox",
-    "cot_version": 2,
-    "min_cot_version": 1,
+    "cot_version": 3,
+    "min_cot_version": 2,
     "max_chain_length": 20,
 
     # Specify a default gpg home other than ~/.gnupg
@@ -101,45 +101,6 @@ DEFAULT_CONFIG = frozendict({
         "netlocs": ("queue.taskcluster.net", ),
         "path_regexes": ("^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
     }), ),
-
-    # docker image shas
-    #
-    # these shas are the *runtime* shas, not the generation shas.
-    #
-    # 10:04 <•garndt> $ docker inspect taskcluster/decision@sha256:4039fd878e5700b326d4a636e28c595c053fbcb53909c1db84ad1f513cf644ef | jq '.[0].Id'
-    # 10:04 <•garndt> "sha256:f49aeaeffe6a5053d1b3d09aaa140b13418f760e661424404a1a8b4021ff6203"
-    # 10:05 <•garndt> so that last hash is the one I think cot and puppet need to have
-    # 10:05 <•garndt> you can find it like above, or `docker images --no-trunc`
-    # 10:05 <•garndt> you can do the same for the image builder image
-    #
-    "docker_image_allowlists": frozendict({
-        "decision": (
-            # NOTE: these hashes are NOT the same as the hashes in task.payload.image
-            # 0.1.6
-            "sha256:31035ed23eba3ede02b988be39027668d965b9fc45b74b932b2338a4e7936cf9",
-            # 0.1.5
-            "sha256:7320c720c770e9f93df26f7da742db72b334b7ded77539fb240fc4a28363de5a",
-            # 0.1.7
-            "sha256:9db282317340838f0015335d74ed56c4ee0dbad588be33e6999928a181548587",
-            # 0.1.8
-            "sha256:a22b90c7e16191a701760ef4f9159e86289ba598bf8ff5b22b7b94867530460d",
-            # 0.1.9
-            "sha256:d29a75b7bf6a00df12964bc1ada203c64700be3cc00836a2c016e30603ebe9e2",
-            # 0.1.10
-            "sha256:ab5127144973f6370b139a666c9431b2eaac0d03951e9cef1043468f3b03877c",
-            # 2.0.0
-            "sha256:f49aeaeffe6a5053d1b3d09aaa140b13418f760e661424404a1a8b4021ff6203",
-            # 2.1.0
-            "sha256:8f741a0f0a372adac5cddbd21fed385cece7ac5a0edde129e69d11757945dcd7",
-        ),
-        "docker-image": (
-            "sha256:74c5a18ce1768605ce9b1b5f009abac1ff11b55a007e2d03733cd6e95847c747",
-            "sha256:d438d7818b6a47a0b1d49943ab12b5c504b65161806658e4c28f5f2aac821b9e",
-            "sha256:13b80a7a6b8e10c6096aba5a435529fbc99b405f56012e57cc6835facf4b40fb",
-            "sha256:f5e7548ca4313beb7a324681a5f6adf9adfeabbc7b8ad63ce170cf3010546851",
-            "sha256:c21b5467fb1b48c353e29cd2d552ae66dbab6a8e8bf431cab1570e26a1ac4a44",
-        )
-    }),
 
     # git gpg homedir layout
     "gpg_homedirs": frozendict({
@@ -180,7 +141,6 @@ DEFAULT_CONFIG = frozendict({
         "gecko-1-decision",
         "gecko-2-decision",
         "gecko-3-decision",
-        "gecko-decision",  # legacy
         # gecko-focus is for mozilla-mobile releases. It's named this way because it's a worker type
         # but using the gecko ChainOfTrust keys. See bug 1455290 for more details.
         "gecko-focus",
@@ -377,6 +337,13 @@ DEFAULT_CONFIG = frozendict({
                     '/mozilla-mobile/focus-android',
                 ),
             }),
+        }),
+    },
+    'prebuilt_docker_image_task_types': {
+        'by-cot-product': frozendict({
+            'firefox': ('decision', 'action', 'docker-image'),
+            'thunderbird': ('decision', 'action', 'docker-image'),
+            'mobile': None,  # all allowed
         }),
     },
     'source_env_prefix': {

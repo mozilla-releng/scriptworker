@@ -194,7 +194,8 @@ def test_run_maxtimeout(event_loop, context_function):
     except RuntimeError:
         pass
     post = arrow.utcnow()
-    assert post.timestamp - pre.timestamp < 8
+    # This may be flaky because claimWork can take up to 20 seconds..?
+    assert post.timestamp - pre.timestamp <= 8
 
 
 # empty_queue {{{1

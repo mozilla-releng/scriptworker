@@ -23,6 +23,8 @@ except ImportError:
     YARL = False
 
 
+VERBOSE = os.environ.get("SCRIPTWORKER_VERBOSE_TESTS", False)
+
 GOOD_GPG_KEYS = {
     "docker.root@example.com": {
         "fingerprint": "BFCEA6E98A1C2EC4918CBDEE9DA033D5FFFABCCF",
@@ -164,17 +166,19 @@ def unsuccessful_queue():
 
 
 @pytest.fixture(scope='function')
-def fake_session(event_loop):
+def fake_session():
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
         resp = FakeResponse(method, url)
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    session = aiohttp.ClientSession(loop=event_loop)
+    loop = asyncio.get_event_loop()
+    session = aiohttp.ClientSession(loop=loop)
     session._request = _fake_request
     yield session
-    event_loop.run_until_complete(session.close())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(session.close())
 
 
 @pytest.fixture(scope='function')
@@ -185,10 +189,11 @@ def fake_session_500(event_loop):
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    session = aiohttp.ClientSession(loop=event_loop)
+    loop = asyncio.get_event_loop()
+    session = aiohttp.ClientSession(loop=loop)
     session._request = _fake_request
     yield session
-    event_loop.run_until_complete(session.close())
+    loop.run_until_complete(session.close())
 
 
 def integration_create_task_payload(config, task_group_id, scopes=None,
@@ -238,15 +243,8 @@ def event_loop():
     do something like kill tasks that benefits from clean event loops.
 
     """
-    orig_loop = asyncio.get_event_loop()
-    policy = asyncio.get_event_loop_policy()
-    res = policy.new_event_loop()
-    asyncio.set_event_loop(res)
-    res._close = res.close
-    res.close = lambda: None
-    yield res
-    res._close()
-    asyncio.set_event_loop(orig_loop)
+    loop = asyncio.get_event_loop()
+    yield loop
 
 
 
@@ -287,6 +285,7 @@ def rw_context(request):
                 makedirs(context.config[key])
             if key.endswith("key_path") or key in ("gpg_home", ):
                 context.config[key] = os.path.join(tmp, key)
+        context.config['verbose'] = VERBOSE
         yield context
         try:
             loop = asyncio.get_event_loop()

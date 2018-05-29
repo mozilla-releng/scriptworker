@@ -33,6 +33,7 @@ VALID_WORKER_IMPLS = (
 
 
 COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
+COTV3_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv3")
 
 
 async def die_async(*args, **kwargs):
@@ -43,10 +44,6 @@ async def die_async(*args, **kwargs):
 def chain(rw_context):
     rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
     rw_context.config['scriptworker_worker_types'] = [rw_context.config['worker_type']]
-    rw_context.config['docker_image_allowlists'] = {
-        "decision": ["sha256:decision_image_sha"],
-        "docker-image": ["sha256:docker_image_sha"],
-    }
     rw_context.task = {
         'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
         'dependencies': ['decision_task_id'],
@@ -162,7 +159,9 @@ def action_link(chain):
         'provisionerId': 'provisioner_id',
         'workerType': 'workerType',
         'dependencies': [],
-        'scopes': [],
+        'scopes': [
+            'assume:repo:foo:action:bar',
+        ],
         'metadata': {
             'source': 'https://hg.mozilla.org/mozilla-central',
         },
@@ -260,29 +259,43 @@ def get_cot(task_defn, task_id="task_id"):
         "workerId": "..."
     }
 
-async def cotv2_load_url(context, url, path, **kwargs):
+
+async def cotv2_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
     if path.endswith("taskcluster.yml"):
         return load_json_or_yaml(
-            os.path.join(COTV2_DIR, ".taskcluster.yml"), is_path=True, file_type='yaml'
+            os.path.join(parent_path, ".taskcluster.yml"), is_path=True, file_type='yaml'
         )
     elif path.endswith("projects.yml"):
         return load_json_or_yaml(
-            os.path.join(COTV2_DIR, "projects.yml"), is_path=True, file_type='yaml'
+            os.path.join(parent_path, "projects.yml"), is_path=True, file_type='yaml'
         )
 
-def cotv2_load(string, is_path=False, **kwargs):
+
+async def cotv3_load_url(context, url, path, **kwargs):
+    return await cotv2_load_url(context, url, path, parent_path=COTV3_DIR, **kwargs)
+
+
+def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
     if is_path:
         if string.endswith("parameters.yml"):
             return load_json_or_yaml(
-                os.path.join(COTV2_DIR, "parameters.yml"), is_path=True, file_type='yaml'
+                os.path.join(parent_dir, "parameters.yml"), is_path=True, file_type='yaml'
             )
         elif string.endswith("actions.json"):
-            return load_json_or_yaml(os.path.join(COTV2_DIR, "actions.json"), is_path=True)
+            return load_json_or_yaml(os.path.join(parent_dir, "actions.json"), is_path=True)
     else:
         return load_json_or_yaml(string)
 
-async def cotv2_pushlog(_):
-    return load_json_or_yaml(os.path.join(COTV2_DIR, "pushlog.json"), is_path=True)
+
+def cotv3_load(string, **kwargs):
+    return cotv2_load(string, parent_dir=COTV3_DIR, **kwargs)
+
+
+async def cotv2_pushlog(_, parent_dir=COTV2_DIR):
+    return load_json_or_yaml(os.path.join(parent_dir, "pushlog.json"), is_path=True)
+
+async def cotv3_pushlog(_):
+    return await cotv2_pushlog(parent_dir=COTV3_DIR)
 
 
 # dependent_task_ids {{{1
@@ -481,26 +494,30 @@ def test_verify_docker_image_sha_wrong_task_id(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, build_link)
 
 
-def test_verify_docker_image_sha_bad_allowlist(chain, build_link, decision_link, docker_image_link):
-    chain.links = [build_link, decision_link, docker_image_link]
-    # wrong docker hub sha
-    decision_link.cot['environment']['imageHash'] = "sha256:not_allowlisted"
-    with pytest.raises(CoTError):
-        cotverify.verify_docker_image_sha(chain, decision_link)
-
-
-def test_verify_docker_image_sha_no_downloaded_cot(chain, build_link, decision_link, docker_image_link):
-    decision_link._cot = None
-    chain.links = [build_link, decision_link, docker_image_link]
-    # Non-downloaded CoT may happen on non-exiting optional artifacts
-    cotverify.verify_docker_image_sha(chain, decision_link)
+@pytest.mark.parametrize("prebuilt_none,raises", ((
+    False, True
+), (
+    True, False
+)))
+def test_verify_docker_image_sha_wrong_task_type(chain, build_link, decision_link,
+                                                 prebuilt_none, raises):
+    chain.links = [build_link, decision_link]
+    # non-dict
+    build_link.task['payload']['image'] = 'string'
+    if prebuilt_none:
+        chain.context.config['prebuilt_docker_image_task_types'] = None
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.verify_docker_image_sha(chain, build_link)
+    else:
+        cotverify.verify_docker_image_sha(chain, build_link)
 
 
 # find_sorted_task_dependencies{{{1
 @pytest.mark.parametrize("task,expected,task_type", ((
     # Make sure we don't follow other_task_id on a decision task
     {'taskGroupId': 'other_task_id', 'extra': {}, 'payload': {}},
-    [('decision:decision', 'task_id')],
+    [('decision:parent', 'other_task_id')],
     'decision'
 ), (
     {'taskGroupId': 'decision_task_id', 'extra': {}, 'payload': {}},
@@ -993,149 +1010,28 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
         }
     }
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-@pytest.mark.parametrize("zero_deps", (True, False))
-def test_verify_link_in_task_graph_fuzzy_match(chain, decision_link, build_link, zero_deps):
-    chain.links = [decision_link, build_link]
-    task_defn1 = deepcopy(build_link.task)
-    task_defn2 = deepcopy(chain.task)
-    if zero_deps:
-        build_link.task['dependencies'] = []
-        chain.task['dependencies'] = []
-    decision_link.task_graph = {
-        'bogus-task-id': {
-            'task': task_defn1
-        },
-        'bogus-task-id2': {
-            'task': task_defn2
-        }
-    }
+    build_link.task['dependencies'].append('decision_task_id')
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
 
 
-def test_verify_link_in_task_graph_exception(chain, decision_link, build_link):
+@pytest.mark.parametrize("in_chain", (True, False))
+def test_verify_link_in_task_graph_exception(chain, decision_link, build_link, in_chain):
     chain.links = [decision_link, build_link]
     bad_task = deepcopy(build_link.task)
-    bad_task['dependencies'].append("foo")
+    build_link.task['dependencies'].append("foo")
     bad_task['x'] = 'y'
     build_link.task['x'] = 'z'
     decision_link.task_graph = {
-        build_link.task_id: {
-            'task': bad_task
-        },
         chain.task_id: {
             'task': deepcopy(chain.task)
         },
     }
-    with pytest.raises(CoTError):
-        cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-def test_verify_link_in_task_graph_fuzzy_match_exception(chain, decision_link, build_link):
-    chain.links = [decision_link, build_link]
-    bad_task = deepcopy(build_link.task)
-    bad_task['dependencies'].append("foo")
-    bad_task['x'] = 'y'
-    build_link.task['x'] = 'z'
-    decision_link.task_graph = {
-        'bogus-task-id': {
+    if in_chain:
+        decision_link.task_graph[build_link.task_id] = {
             'task': bad_task
-        },
-        'bogus-task-id2': {
-            'task': deepcopy(chain.task)
-        },
-    }
+        }
     with pytest.raises(CoTError):
         cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
-
-
-# verify_decision_command {{{1
-@pytest.mark.parametrize("command,raises,rw_context", ((
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'firefox',
-), (
-    [
-        '/bad/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--bad-option=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--bad-option=foo',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && -s x y && ./mach bad command',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--comm-checkout=foo/comm',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], True,
-    'firefox',
-), (
-    [
-        '/home/worker/bin/run-task',
-        '--vcs-checkout=foo',
-        '--sparse-profile=taskgraph',
-        '--comm-checkout=foo/comm',
-        '--',
-        'bash',
-        '-cx',
-        'cd foo && ln -s x y && ./mach --foo taskgraph decision --bar --baz',
-    ], False,
-    'thunderbird',
-)),
-indirect=['rw_context'],
-)
-def test_verify_decision_command(decision_link, command, raises):
-    decision_link.task['payload']['command'] = command
-    if raises:
-        with pytest.raises(CoTError):
-            cotverify.verify_decision_command(decision_link)
-    else:
-        cotverify.verify_decision_command(decision_link)
 
 
 # get_pushlog_info {{{1
@@ -1151,6 +1047,92 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=fake_load)
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
+
+
+# get_action_context_and_template {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
+    "action", "NdzxKw8bS5Sw5DRhoiM14w", os.path.join(COTV3_DIR, "action_retrigger.json"),
+    "c5nn2xbNS9mJxeVC0uNElg", os.path.join(COTV3_DIR, "decision_try.json"),
+),
+))
+async def test_get_action_context_and_template(chain, name, task_id, path,
+                                               decision_task_id, decision_path, mocker):
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, name, task_id)
+    link.task = load_json_or_yaml(path, is_path=True)
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
+    decision_link.task = load_json_or_yaml(decision_path, is_path=True)
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv3_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv3_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv3_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv3_pushlog)
+    chain.links = list(set([decision_link, link]))
+
+    fake_template = dict(
+        await cotv3_load_url(chain.context, None, 'taskcluster.yml')
+    )['tasks'][0]
+    fake_context = {
+        'action': {
+            'cb_name': 'retrigger_action',
+            'description': 'Create a clone of the task.',
+            'name': 'retrigger',
+            'repo_scope': 'assume:repo:hg.mozilla.org/try:action:generic',
+            'symbol': 'rt',
+            'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
+            'title': 'Retrigger'
+        },
+        'input': {'downstream': False, 'times': 1},
+        'now': '2018-05-18T22:37:56.796Z',
+        'ownTaskId': 'NdzxKw8bS5Sw5DRhoiM14w',
+        'parameters': {
+            'base_repository': 'https://hg.mozilla.org/mozilla-unified',
+            'build_date': 1515524845,
+            'build_number': 1,
+            'desktop_release_type': '',
+            'do_not_optimize': [],
+            'existing_tasks': {},
+            'filters': ['check_servo', 'target_tasks_method'],
+            'head_ref': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
+            'head_repository': 'https://hg.mozilla.org/projects/maple',
+            'head_rev': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
+            'include_nightly': True,
+            'level': '3',
+            'message': ' ',
+            'moz_build_date': '20180109190725',
+            'next_version': None,
+            'optimize_target_tasks': True,
+            'owner': 'asasaki@mozilla.com',
+            'project': 'maple',
+            'pushdate': 1515524845,
+            'pushlog_id': '343',
+            'release_history': {},
+            'target_tasks_method': 'mozilla_beta_tasks',
+            'try_mode': None,
+            'try_options': None,
+            'try_task_config': None
+        },
+        'push': {
+            'owner': 'mozilla-taskcluster-maintenance@mozilla.com',
+            'pushlog_id': '272718',
+            'revision': 'f41b2f50ff48ef4265e7be391a6e5e4b212f96a0'
+        },
+        'repository': {
+            'level': '1',
+            'project': 'try',
+            'url': 'https://hg.mozilla.org/try'
+        },
+        'task': None,
+        'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
+        'taskId': 'H1mVqFQbS3Sqwo5tWMLtYw',
+        'tasks_for': 'action',
+    }
+
+    result = await cotverify.get_action_context_and_template(chain, link, decision_link)
+    assert result[1] == fake_template
+    # can't easily compare a lambda
+    del(result[0]['as_slugid'])
+    assert result[0] == fake_context
 
 
 # verify_parent_task_definition {{{1
@@ -1351,19 +1333,59 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
         )
 
 
+# check_and_update_action_task_group_id {{{1
+@pytest.mark.parametrize("rebuilt_gid,runtime_gid,action_taskid,decision_taskid,raises", ((
+    "decision", "decision", "action", "decision", False
+), (
+    "action", "decision", "action", "decision", False
+), (
+    "other", "other", "action", "decision", True
+), (
+    "other", "decision", "action", "decision", True
+)))
+def test_check_and_update_action_task_group_id(rebuilt_gid, runtime_gid, action_taskid,
+                                               decision_taskid, raises):
+    rebuilt_definition = {
+        "payload": {
+            "env": {
+                "ACTION_TASK_GROUP_ID": rebuilt_gid
+            }
+        }
+    }
+    runtime_definition = {
+        "payload": {
+            "env": {
+                "ACTION_TASK_GROUP_ID": runtime_gid
+            }
+        }
+    }
+    parent_link = mock.MagicMock()
+    parent_link.task_id = action_taskid
+    parent_link.task = runtime_definition
+    decision_link = mock.MagicMock()
+    decision_link.task_id = decision_taskid
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.check_and_update_action_task_group_id(
+                parent_link, decision_link, rebuilt_definition
+            )
+    else:
+        cotverify.check_and_update_action_task_group_id(
+            parent_link, decision_link, rebuilt_definition
+        )
+        assert rebuilt_definition == runtime_definition
+
+
 # verify_parent_task {{{1
 @pytest.mark.asyncio
-@pytest.mark.parametrize("defn_fn,min_cot_version,raises", ((
-    noop_async, 1, False
+@pytest.mark.parametrize("defn_fn,raises", ((
+    noop_async, False
 ), (
-    die_async, 1, False
-), (
-    die_async, 2, True
+    die_async, True
 )))
 async def test_verify_parent_task(chain, action_link, cron_link,
                                   decision_link, build_link, mocker, defn_fn,
-                                  min_cot_version, raises):
-    chain.context.config['min_cot_version'] = min_cot_version
+                                  raises):
     for parent_link in (action_link, cron_link, decision_link):
         build_link.decision_task_id = parent_link.decision_task_id
         build_link.parent_task_id = parent_link.task_id
@@ -1388,7 +1410,6 @@ async def test_verify_parent_task(chain, action_link, cron_link,
         chain.links = [parent_link, build_link]
         parent_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
         mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
-        mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
         mocker.patch.object(cotverify, 'verify_parent_task_definition', new=defn_fn)
         if raises:
             with pytest.raises(CoTError):
@@ -1422,7 +1443,6 @@ async def test_verify_parent_task_worker_type(chain, decision_link, build_link, 
     chain.links = [decision_link, build_link]
     decision_link.task['workerType'] = 'bad-worker-type'
     mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
-    mocker.patch.object(cotverify, 'verify_decision_command', new=noop_sync)
     mocker.patch.object(cotverify, 'verify_parent_task_definition', new=noop_async)
     with pytest.raises(CoTError):
         await cotverify.verify_parent_task(chain, decision_link)
@@ -1470,14 +1490,6 @@ async def test_verify_docker_image_task(chain, docker_image_link):
 @pytest.mark.asyncio
 async def test_verify_docker_image_task_worker_type(chain, docker_image_link):
     docker_image_link.task['workerType'] = 'bad-worker-type'
-    with pytest.raises(CoTError):
-        await cotverify.verify_docker_image_task(chain, docker_image_link)
-
-
-@pytest.mark.asyncio
-async def test_verify_docker_image_task_command(chain, docker_image_link):
-    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
-    docker_image_link.task['payload']['command'] = ["illegal", "command!"]
     with pytest.raises(CoTError):
         await cotverify.verify_docker_image_task(chain, docker_image_link)
 
@@ -1540,21 +1552,6 @@ async def test_verify_docker_worker_task(mocker):
     check.method2.assert_called_once_with(chain, link)
 
 
-@pytest.mark.asyncio
-async def test_skip_verify_docker_worker_task(mocker, caplog):
-    chain = mock.MagicMock()
-    chain.context.config = {'cot_product': 'mobile'}
-
-    link = mock.MagicMock()
-    await cotverify.verify_docker_worker_task(chain, link)
-
-    assert caplog.record_tuples == [(
-        'scriptworker.cot.verify',
-        logging.WARN,
-        '"cot_product: mobile" does not support CoTv1. Skipping docker worker verifications'
-    )]
-
-
 # verify_generic_worker_task {{{1
 @pytest.mark.asyncio
 async def test_verify_generic_worker_task(mocker):
@@ -1572,7 +1569,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
 
 
 # get_source_url {{{1
-@pytest.mark.parametrize("task,expected,source_env_prefix", ((
+@pytest.mark.parametrize("task,expected,source_env_prefix,raises", ((
     {
         'payload': {
             'env': {
@@ -1583,6 +1580,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     },
     "https://example.com/blah/blah",
     'GECKO',
+    False,
 ), (
     {
         'payload': {
@@ -1592,8 +1590,9 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
         },
         'metadata': {'source': 'https://task/blah'}
     },
-    "https://example.com/blah/blah",
+    None,
     'GECKO',
+    True,
 ), (
     {
         'payload': {
@@ -1603,6 +1602,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     },
     "https://example.com/blah",
     'GECKO',
+    False,
 ), (
     {
         'payload': {
@@ -1611,16 +1611,21 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
                 'COMM_HEAD_REPOSITORY': 'https://example.com/blah/comm',
             },
         },
-        'metadata': {'source': 'https://example.com/blah'}
+        'metadata': {'source': 'https://example.com/blah/comm'}
     },
     "https://example.com/blah/comm",
     'COMM',
+    False,
 )))
-def test_get_source_url(task, expected, source_env_prefix):
+def test_get_source_url(task, expected, source_env_prefix, raises):
     obj = mock.MagicMock()
     obj.task = task
     obj.context.config = {'source_env_prefix': source_env_prefix}
-    assert expected == cotverify.get_source_url(obj)
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.get_source_url(obj)
+    else:
+        assert expected == cotverify.get_source_url(obj)
 
 
 # trace_back_to_tree {{{1

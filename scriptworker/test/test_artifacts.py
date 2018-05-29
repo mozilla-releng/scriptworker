@@ -32,6 +32,7 @@ def context(rw_context):
             'expires': now.replace(days=2).isoformat(),
             'dependencies': ['dependency1', 'dependency2'],
             'taskGroupId': 'dependency0',
+            'payload': {},
         },
         'runId': 'runId',
     }

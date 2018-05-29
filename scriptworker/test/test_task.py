@@ -73,7 +73,21 @@ def test_get_commit_message(message, expected):
 
 
 # get_decision_task_id {{{1
-@pytest.mark.parametrize("task,result", (({"taskGroupId": "one"}, "one"), ({"taskGroupId": "two"}, "two")))
+@pytest.mark.parametrize("task,result", ((
+    {"taskGroupId": "one", "payload": {}}, "one"
+), (
+    {"taskGroupId": "two", "payload": {}}, "two"
+), (
+    {
+        "taskGroupId": "three",
+        "payload": {},
+        "extra": {
+            "action": {},
+            "parent": "two"
+        }
+    },
+    "three"
+)))
 def test_get_decision_task_id(task, result):
     assert swtask.get_decision_task_id(task) == result
 
@@ -81,7 +95,7 @@ def test_get_decision_task_id(task, result):
 # get_parent_task_id {{{1
 @pytest.mark.parametrize("set_parent", (True, False))
 def test_get_parent_task_id(set_parent):
-    task = {'taskGroupId': 'parent_task_id', 'extra': {}}
+    task = {'taskGroupId': 'parent_task_id', 'extra': {}, 'payload': {}}
     if set_parent:
         task['extra']['parent'] = 'parent_task_id'
     assert swtask.get_parent_task_id(task) == 'parent_task_id'
@@ -115,6 +129,49 @@ def test_get_revision(rev):
 @pytest.mark.parametrize("task,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
 def test_get_worker_type(task, result):
     assert swtask.get_worker_type(task) == result
+
+
+# get_and_check_project {{{1
+@pytest.mark.parametrize("source_url,expected,raises", ((
+    "https://hg.mozilla.org/mozilla-central", "mozilla-central", False
+), (
+    "ssh://hg.mozilla.org/projects/foo", "foo", False
+), (
+    "ssh://hg.mozilla.org/releases/mozilla-esr60", "mozilla-esr60", False
+), (
+    "https://hg.mozilla.org/try", "try", False
+), (
+    "https://hg.mozilla.org/releases/unknown", "", True
+)))
+def test_get_and_check_project(context, source_url, expected, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
+    else:
+        assert expected == \
+            swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
+
+
+# get_repo_scope {{{1
+@pytest.mark.parametrize("scopes,expected,raises", ((
+    [], None, False
+), (
+    ['assume:repo:foo:action:bar'], 'assume:repo:foo:action:bar', False
+), (
+    ['foo', 'assume:repo:foo:action:bar'], 'assume:repo:foo:action:bar', False
+), (
+    ['assume:repo:bar:action:baz', 'assume:repo:foo:action:bar'], None, True
+)))
+def test_get_repo_scope(scopes, expected, raises):
+    task = {"scopes": scopes}
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.get_repo_scope(task, "x")
+    else:
+        if expected is None:
+            assert swtask.get_repo_scope(task, "x") is None
+        else:
+            assert swtask.get_repo_scope(task, "x") == expected
 
 
 # is_try {{{1
@@ -325,7 +382,7 @@ def test_max_timeout(context, event_loop):
     for path in glob.glob(os.path.join(temp_dir, '*')):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
-    assert len(files.keys()) == 6
+    assert len(list(files.keys())) == 6
 
 
 # claim_work {{{1

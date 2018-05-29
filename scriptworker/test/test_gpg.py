@@ -497,7 +497,8 @@ def test_parse_pub_line_failure():
         sgpg._parse_pub_line(line, "foo")
 
 
-def test_parse_list_sigs_failure():
+@pytest.mark.parametrize("uid", ("bad_uid", "Docker Embedded (embedded key for the docker ami) <docker@example.com>"))
+def test_parse_list_sigs_failure(uid):
     output = """tru::1:1472242430:0:3:1:5
 pub:f:2048:1:CD3C13EFBEAB7ED4:1472242430:::-:::escaESCA:
 fpr:::::::::F612354DFAF46BAADAE23801CD3C13EFBEAB7ED4:
@@ -511,7 +512,7 @@ rvk:
             output, "foo", expected={
                 "keyid": "bad_keyid",
                 "fingerprint": "bad_fingerprint",
-                "uid": "bad uid",
+                "uid": uid,
                 "sig_keyids": ["bad sig keyid"],
             }
         )

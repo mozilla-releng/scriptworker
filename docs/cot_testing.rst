@@ -7,7 +7,7 @@ verification without running a scriptworker instance locally.
 Create the virtualenv
 ~~~~~~~~~~~~~~~~~~~~~
 
--  Install git, ``python>=3.5``, and python3 virtualenv.
+-  Install git, ``python>=3.6``, and python3 virtualenv.
 
 -  Clone scriptworker and create virtualenv:
 
