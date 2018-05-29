@@ -50,7 +50,7 @@ class ScriptWorkerTaskException(ScriptWorkerException):
         try:
             ...
         except ScriptWorkerTaskException as exc:
-            traceback.print_exc()
+            log.exception("log message")
             sys.exit(exc.exit_code)
 
     Attributes:
