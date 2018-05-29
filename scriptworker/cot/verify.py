@@ -852,7 +852,8 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
-    # Allow for the decision task ID in the dependencies
+    # Allow for the decision task ID in the dependencies; otherwise the runtime
+    # dependencies must be a subset of the graph dependencies.
     bad_deps = set(runtime_defn['dependencies']) - set(graph_defn['task']['dependencies'])
     # it's OK if a task depends on the decision task
     bad_deps = bad_deps - {task_link.decision_task_id}
