@@ -46,7 +46,6 @@ class ScriptWorkerTaskException(ScriptWorkerException):
     To use::
 
         import sys
-        import traceback
         try:
             ...
         except ScriptWorkerTaskException as exc:

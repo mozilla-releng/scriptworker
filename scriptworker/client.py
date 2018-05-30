@@ -15,7 +15,6 @@ import jsonschema
 import logging
 import os
 import sys
-import traceback
 from urllib.parse import unquote
 
 from scriptworker.constants import STATUSES
@@ -199,5 +198,5 @@ async def _handle_asyncio_loop(async_main, context):
         try:
             await async_main(context)
         except ScriptWorkerException as exc:
-            traceback.print_exc()
+            log.exception("Failed to run async_main")
             sys.exit(exc.exit_code)

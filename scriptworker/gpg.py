@@ -25,7 +25,6 @@ import pprint
 import subprocess
 import sys
 import tempfile
-import traceback
 
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
