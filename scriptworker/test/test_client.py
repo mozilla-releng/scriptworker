@@ -330,8 +330,10 @@ async def test_handle_asyncio_loop():
 
 
 @pytest.mark.asyncio
-async def test_fail_handle_asyncio_loop(capsys):
+async def test_fail_handle_asyncio_loop(mocker):
     context = MagicMock()
+
+    m = mocker.patch.object(client, "log")
 
     async def async_error(context):
         exception = ScriptWorkerException('async_error!')
@@ -342,8 +344,4 @@ async def test_fail_handle_asyncio_loop(capsys):
         await client._handle_asyncio_loop(async_error, context)
 
     assert excinfo.value.code == 42
-
-    captured = capsys.readouterr()
-    assert captured.out == ''
-    assert 'Traceback' in captured.err
-    assert 'ScriptWorkerException: async_error!' in captured.err
+    m.exception.assert_called_once_with("Failed to run async_main")
