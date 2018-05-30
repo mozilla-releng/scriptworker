@@ -136,7 +136,7 @@ def check_config(config, path):
             else:
                 value_type = type(value)
                 if isinstance(DEFAULT_CONFIG[key], Mapping) and 'by-cot-product' in DEFAULT_CONFIG[key]:
-                    default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][DEFAULT_CONFIG['cot_product']])
+                    default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][config['cot_product']])
                 else:
                     default_type = type(DEFAULT_CONFIG[key])
                 if value_type is not default_type:
