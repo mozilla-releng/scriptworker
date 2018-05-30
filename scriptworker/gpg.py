@@ -25,7 +25,6 @@ import pprint
 import subprocess
 import sys
 import tempfile
-import traceback
 
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerGPGException, \
@@ -1504,7 +1503,7 @@ def rebuild_gpg_homedirs():
     try:
         new_revision = _update_git_and_rebuild_homedirs(context, basedir=basedir)
     except ScriptWorkerException as exc:
-        traceback.print_exc()
+        log.exception("Failed to run _update_git_and_rebuild_homedirs")
         sys.exit(exc.exit_code)
     finally:
         if new_revision:
