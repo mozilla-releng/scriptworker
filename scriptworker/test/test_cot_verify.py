@@ -494,18 +494,18 @@ def test_verify_docker_image_sha_wrong_task_id(chain, build_link, decision_link,
         cotverify.verify_docker_image_sha(chain, build_link)
 
 
-@pytest.mark.parametrize("prebuilt_none,raises", ((
+@pytest.mark.parametrize("prebuilt_any,raises", ((
     False, True
 ), (
     True, False
 )))
 def test_verify_docker_image_sha_wrong_task_type(chain, build_link, decision_link,
-                                                 prebuilt_none, raises):
+                                                 prebuilt_any, raises):
     chain.links = [build_link, decision_link]
     # non-dict
     build_link.task['payload']['image'] = 'string'
-    if prebuilt_none:
-        chain.context.config['prebuilt_docker_image_task_types'] = None
+    if prebuilt_any:
+        chain.context.config['prebuilt_docker_image_task_types'] = "any"
     if raises:
         with pytest.raises(CoTError):
             cotverify.verify_docker_image_sha(chain, build_link)

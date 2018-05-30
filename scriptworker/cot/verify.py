@@ -489,7 +489,7 @@ def verify_docker_image_sha(chain, link):
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
     else:
         prebuilt_task_types = chain.context.config['prebuilt_docker_image_task_types']
-        if prebuilt_task_types is not None and link.task_type not in prebuilt_task_types:
+        if prebuilt_task_types != "any" and link.task_type not in prebuilt_task_types:
             errors.append(
                 "Task type {} not allowed to use a prebuilt docker image!".format(
                     link.task_type
