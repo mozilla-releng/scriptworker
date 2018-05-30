@@ -344,4 +344,4 @@ async def test_fail_handle_asyncio_loop(capsys):
         await client._handle_asyncio_loop(async_error, context)
 
     assert excinfo.value.code == 42
-    m.exception.assert_called_once_with("Failed to run async_main)
+    m.exception.assert_called_once_with("Failed to run async_main")
