@@ -330,7 +330,7 @@ async def test_handle_asyncio_loop():
 
 
 @pytest.mark.asyncio
-async def test_fail_handle_asyncio_loop(capsys):
+async def test_fail_handle_asyncio_loop(mocker):
     context = MagicMock()
 
     m = mocker.patch.object(client, "log")
