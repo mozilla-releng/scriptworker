@@ -1,7 +1,6 @@
 aiohttp
 arrow
 defusedxml
-dephash
 dictdiffer
 frozendict
 jsonschema

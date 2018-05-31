@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [12.0.1] - 2018-05-31
+### Fixed
+- fixed `mobile` `prebuilt_docker_image_task_types`
+- we now log exceptions rather than printing a traceback to stderr
+
+## [12.0.0] - 2018-05-29
 ### Added
 - added a restriction on a.m.o. production scopes.
 - added `prebuilt_docker_image_task_types`. These are the task types that allow non-artifact docker images; if `None`, all task types are allowed.

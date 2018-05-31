@@ -343,7 +343,7 @@ DEFAULT_CONFIG = frozendict({
         'by-cot-product': frozendict({
             'firefox': ('decision', 'action', 'docker-image'),
             'thunderbird': ('decision', 'action', 'docker-image'),
-            'mobile': None,  # all allowed
+            'mobile': 'any',  # all allowed
         }),
     },
     'source_env_prefix': {
