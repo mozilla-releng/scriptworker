@@ -1696,15 +1696,12 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
-def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker):
     context = mock.MagicMock()
     context.queue = mock.MagicMock()
     context.queue.task = noop_async
     path = os.path.join(tmpdir, 'x')
     makedirs(path)
-
-    def eloop():
-        return event_loop
 
     def get_context():
         return context
@@ -1719,7 +1716,6 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
         return m
 
     mocker.patch.object(tempfile, 'mkdtemp', new=mkdtemp)
-    mocker.patch.object(asyncio, 'get_event_loop', new=eloop)
     mocker.patch.object(cotverify, 'read_worker_creds', new=noop_sync)
     mocker.patch.object(cotverify, 'Context', new=get_context)
     mocker.patch.object(cotverify, 'ChainOfTrust', new=cot)
