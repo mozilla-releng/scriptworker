@@ -133,7 +133,8 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     return unquote(filepath).lstrip('/')
 
 
-def sync_main(async_main, config_path=None, default_config=None, should_validate_task=True):
+def sync_main(async_main, config_path=None, default_config=None,
+              should_validate_task=True, loop_function=asyncio.get_event_loop):
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
@@ -145,18 +146,21 @@ def sync_main(async_main, config_path=None, default_config=None, should_validate
     Args:
         async_main (function): The function to call once everything is set up
         config_path (str, optional): The path to the file to load the config from.
-            Loads from `sys.argv[1]` if `None`. Defaults to None.
-        default_config (dict, optional): the default config to use for `_init_context`.
+            Loads from ``sys.argv[1]`` if ``None``. Defaults to None.
+        default_config (dict, optional): the default config to use for ``_init_context``.
             defaults to None.
         should_validate_task (bool, optional): whether we should validate the task
             schema. Defaults to True.
+        loop_function (function, optional): the function to call to get the
+            event loop; here for testing purposes. Defaults to
+            ``asyncio.get_event_loop``.
 
     """
     context = _init_context(config_path, default_config)
     _init_logging(context)
     if should_validate_task:
         validate_task_schema(context)
-    loop = asyncio.get_event_loop()
+    loop = loop_function()
     loop.run_until_complete(_handle_asyncio_loop(async_main, context))
 
 

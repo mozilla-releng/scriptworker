@@ -211,11 +211,21 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
 def test_sync_main_runs_fully(config, event_loop, should_validate_task):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], 'task.json'))
     generator = (n for n in range(0, 2))
+    count = []
 
     async def async_main(_):
         next(generator)
 
-    kwargs = {}
+    def counter(arg1):
+        count.append(arg1)
+
+    fake_loop = MagicMock()
+    fake_loop.run_until_complete = counter
+
+    def loop_function():
+        return fake_loop
+
+    kwargs = {'loop_function': loop_function}
 
     if should_validate_task:
         schema_path = os.path.join(config['work_dir'], 'schema.json')
@@ -232,7 +242,7 @@ def test_sync_main_runs_fully(config, event_loop, should_validate_task):
         kwargs['config_path'] = f.name
         client.sync_main(async_main, **kwargs)
 
-    assert next(generator) == 1 # async_main was called once
+    assert len(count) == 1  # run_until_complete was called once
 
 
 @pytest.mark.parametrize('does_use_argv, default_config', (
