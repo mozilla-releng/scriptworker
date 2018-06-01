@@ -207,8 +207,9 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
         client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('should_validate_task', (True, False))
-def test_sync_main_runs_fully(config, event_loop, should_validate_task):
+async def test_sync_main_runs_fully(config, event_loop, should_validate_task):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], 'task.json'))
     async_main_calls = []
     run_until_complete_calls = []
