@@ -128,7 +128,8 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._connection = mock.MagicMock()
         self._payload = payload or {}
         self.status = status
-        self.headers = {'content-type': 'application/json'}
+        self._headers = {'content-type': 'application/json'}
+        self._cache = {}
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
