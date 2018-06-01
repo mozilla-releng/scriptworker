@@ -207,15 +207,26 @@ def test_bad_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
         client.validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('should_validate_task', (True, False))
-def test_sync_main_runs_fully(config, event_loop, should_validate_task):
+async def test_sync_main_runs_fully(config, event_loop, should_validate_task):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], 'task.json'))
-    generator = (n for n in range(0, 2))
+    async_main_calls = []
+    run_until_complete_calls = []
 
-    async def async_main(_):
-        next(generator)
+    async def async_main(*args):
+        async_main_calls.append(args)
 
-    kwargs = {}
+    def count_run_until_complete(arg1):
+        run_until_complete_calls.append(arg1)
+
+    fake_loop = MagicMock()
+    fake_loop.run_until_complete = count_run_until_complete
+
+    def loop_function():
+        return fake_loop
+
+    kwargs = {'loop_function': loop_function}
 
     if should_validate_task:
         schema_path = os.path.join(config['work_dir'], 'schema.json')
@@ -232,7 +243,10 @@ def test_sync_main_runs_fully(config, event_loop, should_validate_task):
         kwargs['config_path'] = f.name
         client.sync_main(async_main, **kwargs)
 
-    assert next(generator) == 1 # async_main was called once
+    for i in run_until_complete_calls:
+        await i  # suppress coroutine not awaited warning
+    assert len(run_until_complete_calls) == 1  # run_until_complete was called once
+    assert len(async_main_calls) == 1  # async_main was called once
 
 
 @pytest.mark.parametrize('does_use_argv, default_config', (

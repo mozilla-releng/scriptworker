@@ -128,7 +128,8 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
         self._connection = mock.MagicMock()
         self._payload = payload or {}
         self.status = status
-        self.headers = {'content-type': 'application/json'}
+        self._headers = {'content-type': 'application/json'}
+        self._cache = {}
         self._loop = mock.MagicMock()
         self.content = self
         self.resp = [b"asdf", b"asdf"]
@@ -165,35 +166,34 @@ def unsuccessful_queue():
     return UnsuccessfulQueue()
 
 
+@pytest.mark.asyncio
 @pytest.fixture(scope='function')
-def fake_session():
+async def fake_session():
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
         resp = FakeResponse(method, url)
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    loop = asyncio.get_event_loop()
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     session._request = _fake_request
     yield session
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(session.close())
+    await session.close()
 
 
+@pytest.mark.asyncio
 @pytest.fixture(scope='function')
-def fake_session_500(event_loop):
+async def fake_session_500():
     @asyncio.coroutine
     def _fake_request(method, url, *args, **kwargs):
         resp = FakeResponse(method, url, status=500)
         resp._history = (FakeResponse(method, url, status=302),)
         return resp
 
-    loop = asyncio.get_event_loop()
-    session = aiohttp.ClientSession(loop=loop)
+    session = aiohttp.ClientSession()
     session._request = _fake_request
     yield session
-    loop.run_until_complete(session.close())
+    await session.close()
 
 
 def integration_create_task_payload(config, task_group_id, scopes=None,
@@ -270,8 +270,9 @@ def tmpdir2():
         yield tmp
 
 
+@pytest.mark.asyncio
 @pytest.yield_fixture(scope='function', params=['firefox'])
-def rw_context(request):
+async def rw_context(request):
     with tempfile.TemporaryDirectory() as tmp:
         config = get_unfrozen_copy(DEFAULT_CONFIG)
         config['cot_product'] = request.param
@@ -288,8 +289,7 @@ def rw_context(request):
         context.config['verbose'] = VERBOSE
         yield context
         try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(context.session.close())
+            await context.session.close()
         except:
             pass
 
