@@ -1912,7 +1912,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         CoTError: on failure
 
     """
-    log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
+    log_path = os.path.join(chain.context.config["task_log_dir"], "live_backing.log")
     scriptworker_log = logging.getLogger("scriptworker")
     with contextual_log_handler(
         chain.context,

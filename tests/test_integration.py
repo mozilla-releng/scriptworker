@@ -262,11 +262,8 @@ async def test_shutdown():
     async with get_context(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result["status"]["state"] == "pending"
-        fake_cot_log = os.path.join(context.config["artifact_dir"], "public", "logs", "chain_of_trust.log")
         fake_other_artifact = os.path.join(context.config["artifact_dir"], "public", "artifact.apk")
 
-        with open(fake_cot_log, "w") as file:
-            file.write("CoT logs")
         with open(fake_other_artifact, "w") as file:
             file.write("unrelated artifact")
         cancel_fut = asyncio.ensure_future(do_shutdown(context))
@@ -277,23 +274,16 @@ async def test_shutdown():
         assert status["status"]["runs"][0]["state"] == "exception"
         assert status["status"]["runs"][0]["reasonResolved"] == "worker-shutdown"
         log_url = context.queue.buildUrl("getArtifact", task_id, 0, "public/logs/live_backing.log")
-        cot_log_url = context.queue.buildUrl("getArtifact", task_id, 0, "public/logs/chain_of_trust.log")
         other_artifact_url = context.queue.buildUrl("getArtifact", task_id, 0, "public/artifact.apk")
         log_path = os.path.join(context.config["work_dir"], "log")
-        cot_log_path = os.path.join(context.config["work_dir"], "cot_log")
         other_artifact_path = os.path.join(context.config["work_dir"], "artifact.apk")
         await utils.download_file(context, log_url, log_path)
-        await utils.download_file(context, cot_log_url, cot_log_path)
         with pytest.raises(Download404):
             await utils.download_file(context, other_artifact_url, other_artifact_path)
 
         with open(log_path) as fh:
             contents = fh.read()
         assert contents.rstrip() == "running task script\nAutomation Error: python exited with signal -15"
-
-        with open(cot_log_path) as fh:
-            contents = fh.read()
-        assert contents.rstrip() == "CoT logs"
 
 
 # empty_queue {{{1
