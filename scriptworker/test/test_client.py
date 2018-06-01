@@ -242,7 +242,10 @@ def test_sync_main_runs_fully(config, event_loop, should_validate_task):
         kwargs['config_path'] = f.name
         client.sync_main(async_main, **kwargs)
 
+    for i in count:
+        await i  # suppress coroutine not awaited warning
     assert len(count) == 1  # run_until_complete was called once
+    assert next(generator) == 1  # async_main was called once
 
 
 @pytest.mark.parametrize('does_use_argv, default_config', (
