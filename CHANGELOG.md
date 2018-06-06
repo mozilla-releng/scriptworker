@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [12.1.0] - 2018-06-05
+### Changed
+- added `loop_function` kwarg to `sync_main` for testing
+
+### Fixed
+- fixed tests against aiohttp 3.3.0
+- fixed concurrent test intermittent errors
+
 ## [12.0.1] - 2018-05-31
 ### Fixed
 - fixed `mobile` `prebuilt_docker_image_task_types`
