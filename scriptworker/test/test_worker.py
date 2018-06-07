@@ -129,7 +129,7 @@ def test_mocker_run_tasks(context, successful_queue, event_loop, verify_cot, moc
         return {'tasks': [deepcopy(task)]}
 
     async def run_task(*args, **kwargs):
-        return task
+        return 19
 
     fake_cot = mock.MagicMock
 
@@ -146,7 +146,7 @@ def test_mocker_run_tasks(context, successful_queue, event_loop, verify_cot, moc
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = event_loop.run_until_complete(worker.run_tasks(context))
-    assert status == task
+    assert status == 19
 
 
 def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):

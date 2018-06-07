@@ -27,6 +27,70 @@ from scriptworker.utils import cleanup, rm
 log = logging.getLogger(__name__)
 
 
+# do_run_task {{{1
+async def do_run_task(context):
+    """Run the task logic.
+
+    Returns the integer status of the task.
+
+    args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        Exception: on unexpected exception.
+
+    Returns:
+        int: exit status
+
+    """
+    status = 0
+    try:
+        if context.config['verify_chain_of_trust']:
+            chain = ChainOfTrust(context, context.config['cot_job_type'])
+            await verify_chain_of_trust(chain)
+        status = await run_task(context)
+        generate_cot(context)
+    except ScriptWorkerException as e:
+        status = worst_level(status, e.exit_code)
+        log.error("Hit ScriptWorkerException: {}".format(e))
+    except Exception as e:
+        log.exception("SCRIPTWORKER_UNEXPECTED_EXCEPTION task {}".format(e))
+        raise
+    return status
+
+
+# do_upload {{{1
+async def do_upload(context):
+    """Upload artifacts and return status.
+
+    Returns the integer status of the upload.
+
+    args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Raises:
+        Exception: on unexpected exception.
+
+    Returns:
+        int: exit status
+
+    """
+    status = 0
+    try:
+        await upload_artifacts(context)
+    except ScriptWorkerException as e:
+        status = worst_level(status, e.exit_code)
+        log.error("Hit ScriptWorkerException: {}".format(e))
+    except aiohttp.ClientError as e:
+        status = worst_level(status, STATUSES['intermittent-task'])
+        log.error("Hit aiohttp error: {}".format(e))
+    except Exception as e:
+        log.exception("SCRIPTWORKER_UNEXPECTED_EXCEPTION upload {}".format(e))
+        raise
+    return status
+
+
+# run_tasks {{{1
 async def run_tasks(context, creds_key="credentials"):
     """Run any tasks returned by claimWork.
 
@@ -39,8 +103,11 @@ async def run_tasks(context, creds_key="credentials"):
             corresponds to the credentials value we want to use.  Defaults to
             "credentials".
 
+    Raises:
+        Exception: on unexpected exception.
+
     Returns:
-        int: status
+        int: exit status
         None: if no task run.
 
     """
@@ -57,29 +124,16 @@ async def run_tasks(context, creds_key="credentials"):
     for task_defn in tasks.get('tasks', []):
         status = 0
         prepare_to_run_task(context, task_defn)
-        loop.create_task(reclaim_task(context, context.task))
-        try:
-            if context.config['verify_chain_of_trust']:
-                chain = ChainOfTrust(context, context.config['cot_job_type'])
-                await verify_chain_of_trust(chain)
-            status = await run_task(context)
-            generate_cot(context)
-        except ScriptWorkerException as e:
-            status = worst_level(status, e.exit_code)
-            log.error("Hit ScriptWorkerException: {}".format(e))
-        try:
-            await upload_artifacts(context)
-        except ScriptWorkerException as e:
-            status = worst_level(status, e.exit_code)
-            log.error("Hit ScriptWorkerException: {}".format(e))
-        except aiohttp.ClientError as e:
-            status = worst_level(status, STATUSES['intermittent-task'])
-            log.error("Hit aiohttp error: {}".format(e))
+        reclaim_fut = loop.create_task(reclaim_task(context, context.task))
+        status = await do_run_task(context)
+        status = worst_level(status, await do_upload(context))
         await complete_task(context, status)
+        reclaim_fut.cancel()
         cleanup(context)
     return status
 
 
+# async_main {{{1
 async def async_main(context, credentials):
     """Set up and run tasks for this iteration.
 
@@ -103,6 +157,7 @@ async def async_main(context, credentials):
         await run_tasks(context)
 
 
+# main {{{1
 def main():
     """Scriptworker entry point: get everything set up, then enter the main loop."""
     context, credentials = get_context_from_cmdln(sys.argv[1:])
