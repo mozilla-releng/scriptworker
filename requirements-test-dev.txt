@@ -1,5 +1,6 @@
 # Specifically for testing
 -r requirements-dev.txt
+asyncio_extras
 coverage>=4.2
 flake8
 flake8_docstrings
@@ -8,5 +9,7 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-mock
+pytest-random-order
+pytest-xdist
 tox
 virtualenv
