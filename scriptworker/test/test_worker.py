@@ -18,7 +18,8 @@ import signal
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-from . import event_loop, noop_async, noop_sync, rw_context, successful_queue, tmpdir
+from . import event_loop, noop_async, noop_sync, rw_context, successful_queue, \
+    tmpdir, TIMEOUT_SCRIPT
 
 assert rw_context, tmpdir  # silence flake8
 assert successful_queue, event_loop  # silence flake8
@@ -163,15 +164,22 @@ def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
     assert status is None
 
 
-@pytest.mark.parametrize("func_to_raise,exc,expected", ((
-    'run_task', ScriptWorkerException, ScriptWorkerException.exit_code
+@pytest.mark.parametrize("func_to_raise,exc,expected,raises", ((
+    'run_task', ScriptWorkerException, ScriptWorkerException.exit_code, False
 ), (
-    'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code
+    'run_task', ValueError, None, True
 ), (
-    'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task']
+    'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code,
+    False
+), (
+    'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task'],
+    False
+), (
+    'upload_artifacts', OSError, None, True
 )))
-def test_mocker_run_tasks_exception(context, successful_queue, event_loop,
-                                   mocker, func_to_raise, exc, expected):
+@pytest.mark.asyncio
+async def test_mocker_run_tasks_exception(context, successful_queue, mocker,
+                                          func_to_raise, exc, expected, raises):
     """Raise an exception within the run_tasks try/excepts and make sure the
     status is changed
     """
@@ -200,5 +208,32 @@ def test_mocker_run_tasks_exception(context, successful_queue, event_loop,
     else:
         mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_tasks(context))
-    assert status == expected
+    if raises:
+        with pytest.raises(exc):
+            await worker.run_tasks(context)
+    else:
+        status = await worker.run_tasks(context)
+        assert status == expected
+
+
+@pytest.mark.asyncio
+async def test_run_tasks_timeout(context, successful_queue, mocker):
+    temp_dir = os.path.join(context.config['work_dir'], "timeout")
+    task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
+    context.config['task_script'] = (
+        sys.executable, TIMEOUT_SCRIPT, temp_dir
+    )
+    context.config['task_max_timeout'] = 1
+    context.queue = successful_queue
+
+    async def claim_work(*args, **kwargs):
+        return {'tasks': [task]}
+
+    mocker.patch.object(worker, "claim_work", new=claim_work)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
+    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
+    status = await worker.run_tasks(context)
+    assert status == context.config['task_max_timeout_status']
