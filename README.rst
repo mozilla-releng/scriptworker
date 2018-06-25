@@ -44,7 +44,10 @@ Without integration tests, install tox, then
 
 ``NO_TESTS_OVER_WIRE=1 tox -e py36``
 
-With integration tests, first create a client with the ``assume:project:taskcluster:worker-test-scopes`` scope.
+With integration tests, first create a client with the scopes::
+
+    assume:project:taskcluster:worker-test-scopes
+    queue:cancel-task:test-dummy-scheduler/*
 
 Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 

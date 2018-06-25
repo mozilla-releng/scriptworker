@@ -28,13 +28,11 @@ import scriptworker.artifacts as artifacts
 import scriptworker.worker as worker
 import scriptworker.utils as utils
 from taskcluster.async import Index, Queue
-from . import event_loop, integration_create_task_payload
+from . import integration_create_task_payload
 
-assert event_loop  # silence pyflakes
 log = logging.getLogger(__name__)
 
 # constants helpers and fixtures {{{1
-TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
 SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
 
 
@@ -83,6 +81,7 @@ def build_config(override, basedir):
         "gpg_public_keyring": os.path.join(GPG_HOME, "pubring.gpg"),
         "gpg_secret_keyring": os.path.join(GPG_HOME, "secring.gpg"),
         "gpg_use_agent": None,
+        'poll_interval': 5,
         'reclaim_interval': 5,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
@@ -99,7 +98,7 @@ def build_config(override, basedir):
 
 
 @async_contextmanager
-async def get_context(config_override):
+async def get_context(config_override=None):
     context = Context()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
@@ -127,7 +126,7 @@ def get_temp_creds(context):
 
 
 @async_contextmanager
-async def get_temp_creds_context(config_override):
+async def get_temp_creds_context(config_override=None):
     async with get_context(config_override) as context:
         get_temp_creds(context)
         yield context
@@ -172,30 +171,71 @@ async def test_run_successful_task(context_function):
 
 
 # run_maxtimeout {{{1
-async def maxtimeout_helper(context_function, partial_config, task_id):
+@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.asyncio
+async def test_run_maxtimeout(context_function):
+    task_id = slugid.nice().decode('utf-8')
+    partial_config = {
+        'task_max_timeout': 2,
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
+    }
     async with context_function(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            assert status == context.config['task_max_timeout_status']
+
+
+# cancel task {{{1
+async def do_cancel(context, task_id):
+    count = 0
+    while True:
+        await asyncio.sleep(1)
+        count += 1
+        assert count < 30, "do_cancel Timeout!"
+        if not context.task or not context.proc:
+            continue
+        await context.queue.cancelTask(task_id)
+        break
+
+
+async def run_task_to_cancel(context):
+    async with remember_cwd():
+        os.chdir(os.path.dirname(context.config['work_dir']))
+        status = await worker.run_tasks(context, creds_key="integration_credentials")
+        return status
 
 
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
-def test_run_maxtimeout(event_loop, context_function):
+@pytest.mark.asyncio
+async def test_cancel_task():
     task_id = slugid.nice().decode('utf-8')
     partial_config = {
-        'task_max_timeout': 2,
+        'invalid_reclaim_status': 19,
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
     }
-    pre = arrow.utcnow()
-    try:
-        event_loop.run_until_complete(maxtimeout_helper(context_function, partial_config, task_id))
-    except RuntimeError:
-        pass
-    post = arrow.utcnow()
-    # This may be flaky because claimWork can take up to 20 seconds..?
-    assert post.timestamp - pre.timestamp <= 8
+    # No temp_creds context because we won't have cancel scopes
+    async with get_context(partial_config) as context:
+        result = await create_task(context, task_id, task_id)
+        assert result['status']['state'] == 'pending'
+        cancel_fut = asyncio.ensure_future(do_cancel(context, task_id))
+        task_fut = asyncio.ensure_future(run_task_to_cancel(context))
+        await utils.raise_future_exceptions([cancel_fut, task_fut])
+        status = await context.queue.status(task_id)
+        assert len(status['status']['runs']) == 1
+        assert status['status']['state'] == 'exception'
+        assert status['status']['runs'][0]['reasonResolved'] == 'canceled'
+        log_url = context.queue.buildUrl(
+            'getLatestArtifact', task_id, 'public/logs/live_backing.log'
+        )
+        log_path = os.path.join(context.config['work_dir'], 'log')
+        await utils.download_file(context, log_url, log_path)
+        with open(log_path) as fh:
+            contents = fh.read()
+        assert contents.rstrip() == "bar\nfoo\nexit code: -15"
 
 
 # empty_queue {{{1
