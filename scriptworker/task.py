@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 import taskcluster
 import taskcluster.exceptions
 
-from scriptworker.constants import REVERSED_STATUSES
+from scriptworker.constants import get_reversed_statuses
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.utils import match_url_path_callback, match_url_regex
 
@@ -470,12 +470,13 @@ async def complete_task(context, result):
 
     """
     args = [get_task_id(context.claim_task), get_run_id(context.claim_task)]
+    reversed_statuses = get_reversed_statuses(context)
     try:
         if result == 0:
             log.info("Reporting task complete...")
             response = await context.temp_queue.reportCompleted(*args)
-        elif result != 1 and result in REVERSED_STATUSES:
-            reason = REVERSED_STATUSES[result]
+        elif result != 1 and result in reversed_statuses:
+            reason = reversed_statuses[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
             response = await context.temp_queue.reportException(*args, payload)
