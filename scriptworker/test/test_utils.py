@@ -67,6 +67,7 @@ async def fail_first(*args, **kwargs):
 
 async def always_fail(*args, **kwargs):
     global retry_count
+    retry_count.setdefault('always_fail', 0)
     retry_count['always_fail'] += 1
     raise ScriptWorkerException("fail")
 
@@ -262,6 +263,25 @@ async def test_get_results_and_future_exceptions(exc):
     else:
         assert passed_results == ['passed2']
         assert [str(error) for error in error_results] == [str(exc('failed'))]
+
+
+# get_future_exception {{{1
+@pytest.mark.asyncio
+async def test_get_future_exception():
+    fut1 = asyncio.ensure_future(noop_async())
+    fut2 = asyncio.ensure_future(always_fail())
+
+    # incomplete
+    assert utils.get_future_exception(fut1) is False
+    assert utils.get_future_exception(fut2) is False
+
+    await asyncio.wait([fut1, fut2])
+    # successful
+    assert utils.get_future_exception(fut1) is None
+    # exception
+    exc = utils.get_future_exception(fut2)
+    assert isinstance(exc, ScriptWorkerException)
+    assert str(exc) == 'fail'
 
 
 # filepaths_in_dir {{{1

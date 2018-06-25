@@ -320,8 +320,7 @@ async def raise_future_exceptions(tasks):
         list: the list of results from the futures.
 
     Raises:
-        Exception: any exceptions in task.exception(), or CancelledError if
-            the task was cancelled
+        Exception: any exceptions in task.exception()
 
     """
     succeeded_results, _ = await _process_future_exceptions(tasks, raise_at_first_error=True)
@@ -355,17 +354,38 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
     if tasks:
         await asyncio.wait(tasks)
         for task in tasks:
-            exc = task.exception()
-            if exc is None:
-                succeeded_results.append(task.result())
-            else:
+            exc = get_future_exception(task)
+            if exc:
                 if raise_at_first_error:
                     raise exc
                 else:
                     log.warn('Async task failed with error: {}'.format(exc))
                     error_results.append(exc)
+            else:
+                # We shouldn't be able to get an incomplete task
+                succeeded_results.append(task.result())
 
     return succeeded_results, error_results
+
+
+# get_future_exception {{{1
+def get_future_exception(fut):
+    """Get the exception from a future.
+
+    Args:
+        fut (asyncio.Future): the future to retrieve the exception from.
+
+    Returns:
+        Exception: if an exception has been raised in the future.
+        None: if the future completed with no exception.
+        False: if the future has not completed.
+
+    """
+    try:
+        exc = fut.exception()
+        return exc
+    except asyncio.InvalidStateError:
+        return False
 
 
 # filepaths_in_dir {{{1
