@@ -112,11 +112,11 @@ That creates source tarball and wheel, and uploads it.
 
 Connect to Releng VPN.
 
-Copy the wheel from `dist/` to `releng-puppet2.srv.releng.scl3.mozilla.com`:
+Copy the wheel from `dist/` to `releng-puppet2.srv.releng.mdc1.mozilla.com`:
 
 ```bash
-scp dist/scriptworker-$VERSION-py2.py3-none-any.whl releng-puppet2.srv.releng.scl3.mozilla.com:
-ssh releng-puppet2.srv.releng.scl3.mozilla.com
+scp dist/scriptworker-$VERSION-py2.py3-none-any.whl releng-puppet2.srv.releng.mdc1.mozilla.com:
+ssh releng-puppet2.srv.releng.mdc1.mozilla.com
 cd /data/python/packages-3.x
 sudo mv -n ~/scriptworker-$VERSION-py2.py3-none-any.whl .
 ```
