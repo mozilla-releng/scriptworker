@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [13.0.0] - unreleased
+### Added
+- added `task_max_timeout_status`, `reversed_statuses`, and `invalid_reclaim_status` to `DEFAULT_CONFIG`
+- added `get_reversed_statuses` for config-driven reversed statuses
+- added `task.kill_pid` to kill a process tree
+- added `task.kill_task` to kill a subprocess proc
+- added unit and integration tests for user cancel
+- added `utils.get_future_exception` to get the status of a single future
+
+### Changed
+- integration tests now require the `queue:cancel-task:test-dummy-scheduler/*` scope
+- unit tests now run in random order
+- `max_timeout` is now an async function with sleeps rather than a synchronous function using `call_later`
+- split `run_tasks` into several helper functions
+
+### Fixed
+- task timeouts should result in an `intermittent-task`, rather than a crashed scriptworker
+- we now kill the task on a `reclaim_task` result of 409, allowing for user cancellation
+- added logging for uncaught exceptions in `run_tasks`
+- cancelled the `reclaim_task` future on task completion
+
+### Removed
+- `REVERSED_STATUSES` is removed, in favor of `get_reversed_statuses`
+- `task.kill` has been removed in favor of `kill_pid` and `kill_task`.
+
 ## [12.1.0] - 2018-06-05
 ### Changed
 - added `loop_function` kwarg to `sync_main` for testing
