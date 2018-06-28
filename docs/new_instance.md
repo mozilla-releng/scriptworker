@@ -40,7 +40,7 @@ ssh into the instance as root, using the ssh keypair you specified above.
 Install puppet:
 
 ```bash
-    # first, edit /etc/yum-local.cfg to replace `puppetagain.*/data/` with `releng-puppet2.srv.releng.scl3.mozilla.com`
+    # first, edit /etc/yum-local.cfg to replace `puppetagain.*/data/` with `releng-puppet2.srv.releng.mdc1.mozilla.com`
     yum -c /etc/yum-local.cfg install puppet
 ```
 
@@ -52,9 +52,9 @@ Then puppetize (you need the deploy pass for this):
     # grab puppetize.sh and run it
     wget https://hg.mozilla.org/build/puppet/raw-file/tip/modules/puppet/files/puppetize.sh
     # if we're doing a standard puppetize
-    PUPPET_SERVER=releng-puppet2.srv.releng.scl3.mozilla.com sh puppetize.sh
+    PUPPET_SERVER=releng-puppet2.srv.releng.mdc1.mozilla.com sh puppetize.sh
     # if we want to puppetize against an environment
-    PUPPET_SERVER=releng-puppet2.srv.releng.scl3.mozilla.com PUPPET_EXTRA_OPTIONS="--environment=USER" sh puppetize.sh
+    PUPPET_SERVER=releng-puppet2.srv.releng.mdc1.mozilla.com PUPPET_EXTRA_OPTIONS="--environment=USER" sh puppetize.sh
     # run puppet
     puppet agent --test
 ```
