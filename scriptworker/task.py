@@ -466,8 +466,8 @@ async def reclaim_task(context, task):
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
                 if context.proc and task == context.task:
-                    await kill_task(
-                        context,
+                    await kill_proc(
+                        context.proc,
                         "Killing task after receiving 409 status in reclaim_task",
                         context.config['invalid_reclaim_status']
                     )
@@ -533,9 +533,12 @@ async def max_timeout(context, proc, timeout):
     """
     await asyncio.sleep(timeout)
     if proc is not context.proc:
+        # Since this coroutine is run in parallel to the task, it's possible
+        # the running task is no longer the task we were assigned to monitor
+        # for timeout. If `context.proc` doesn't match `proc`, bail.
         return
-    await kill_task(
-        context,
+    await kill_proc(
+        proc,
         "Exceeded task_max_timeout of {} seconds".format(timeout),
         context.config['task_max_timeout_status']
     )
@@ -565,8 +568,8 @@ async def kill_pid(pid, sleep_time=1):
             break
 
 
-# kill_task {{{1
-async def kill_task(context, message, exit_code):
+# kill_proc {{{1
+async def kill_proc(proc, message, exit_code):
     """Make sure the proc pid's process and process group are killed.
 
     First, terminate the process, then kill the process group (-pid), then
@@ -575,7 +578,7 @@ async def kill_task(context, message, exit_code):
     Then raise a ``ScriptWorkerTaskException`` with ``exit_code``.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        proc (asyncio.subprocess.Process): the process to kill
         message (str): the error message
         exit_code (int): the exit code to specify in ``ScriptWorkerTaskException``
             (should be part of ``STATUSES``)
@@ -587,16 +590,16 @@ async def kill_task(context, message, exit_code):
         None: if no proc to kill
 
     """
-    pid = context.proc.pid
+    pid = proc.pid
     log.warning("{}: pid {}; killing".format(message, pid))
     try:
-        context.proc.terminate()
+        proc.terminate()
     except ProcessLookupError:
         return
     await kill_pid(-pid)
     try:
         # Kill context.proc if the `kill_pid` didn't work
-        context.proc.kill()
+        proc.kill()
     except ProcessLookupError:
         # No process to kill; `kill_pid` must have worked
         pass

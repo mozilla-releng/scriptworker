@@ -7,7 +7,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - added `task_max_timeout_status`, `reversed_statuses`, and `invalid_reclaim_status` to `DEFAULT_CONFIG`
 - added `get_reversed_statuses` for config-driven reversed statuses
 - added `task.kill_pid` to kill a process tree
-- added `task.kill_task` to kill a subprocess proc
+- added `task.kill_proc` to kill a subprocess proc
 - added unit and integration tests for user cancel
 - added `utils.get_future_exception` to get the status of a single future
 
@@ -25,7 +25,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 - `REVERSED_STATUSES` is removed, in favor of `get_reversed_statuses`
-- `task.kill` has been removed in favor of `kill_pid` and `kill_task`.
+- `task.kill` has been removed in favor of `kill_pid` and `kill_proc`.
 
 ## [12.1.0] - 2018-06-05
 ### Changed
