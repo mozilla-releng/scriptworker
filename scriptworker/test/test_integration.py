@@ -217,7 +217,8 @@ async def test_cancel_task():
         'invalid_reclaim_status': 19,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
     }
-    # No temp_creds context because we won't have cancel scopes
+    # Don't bother testing with temp_creds context because temp_creds don't
+    # have cancel scopes (testing would be perma-red)
     async with get_context(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'

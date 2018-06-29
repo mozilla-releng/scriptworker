@@ -374,7 +374,10 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
 @pytest.mark.parametrize("proc", (None, 1))
 @pytest.mark.asyncio
 async def test_reclaim_task_mock(context, mocker, proc):
+    """Raise a TaskclusterRestFailure during reclaim, and optionally kill proc
+    if the proc parameter is set.
 
+    """
     count = []
 
     async def fake_reclaim(*args, **kwargs):
