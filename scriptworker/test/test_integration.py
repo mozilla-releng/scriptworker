@@ -235,7 +235,7 @@ async def test_cancel_task():
         await utils.download_file(context, log_url, log_path)
         with open(log_path) as fh:
             contents = fh.read()
-        assert contents.rstrip() == "bar\nfoo\nexit code: -15"
+        assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
 
 
 # empty_queue {{{1

@@ -65,7 +65,9 @@ def test_get_action_name(name):
     "foo bar", "foo bar"
 )))
 def test_get_commit_message(message, expected):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if message is not None:
         task['payload']['env']['GECKO_COMMIT_MSG'] = message
     assert swtask.get_commit_message(task) == expected
@@ -107,7 +109,9 @@ def test_get_parent_task_id(set_parent):
     "https://hg.mozilla.org/mozilla-central/",
 ))
 def test_get_repo(repo):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if repo:
         task['payload']['env']['GECKO_HEAD_REPOSITORY'] = repo
         assert swtask.get_repo(task, 'GECKO') == 'https://hg.mozilla.org/mozilla-central'
@@ -118,7 +122,9 @@ def test_get_repo(repo):
 # get_revision {{{1
 @pytest.mark.parametrize("rev", (None, "revision!"))
 def test_get_revision(rev):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if rev:
         task['payload']['env']['GECKO_HEAD_REV'] = rev
     assert swtask.get_revision(task, 'GECKO') == rev
@@ -384,7 +390,7 @@ async def test_reclaim_task_mock(context, mocker, proc):
     context.temp_queue = mock.MagicMock()
     context.temp_queue.reclaimTask = fake_reclaim
     mocker.patch.object(pprint, 'pformat', new=die)
-    mocker.patch.object(swproc, 'kill_proc', new=fake_kill_proc)
+    mocker.patch.object(swtask, 'kill_proc', new=fake_kill_proc)
     await swtask.reclaim_task(context, context.task)
     if proc:
         assert len(count) == 1
@@ -395,7 +401,6 @@ async def test_reclaim_task_mock(context, mocker, proc):
 # max_timeout {{{1
 @pytest.mark.asyncio
 async def test_max_timeout_noop(context, mocker):
-
     called = []
 
     async def fake_kill(*args):
@@ -409,7 +414,6 @@ async def test_max_timeout_noop(context, mocker):
 @pytest.mark.asyncio
 async def test_max_timeout_mock(context, mocker):
 
-
     async def fake_kill_proc(_, msg, status):
         assert msg == "Exceeded task_max_timeout of 1 seconds"
         assert status == context.config['task_max_timeout_status']
@@ -418,7 +422,7 @@ async def test_max_timeout_mock(context, mocker):
     proc.pid = 10000
     context.proc = proc
     context.config['task_max_timeout'] = 1
-    mocker.patch.object(swproc, "kill_proc", new=fake_kill_proc)
+    mocker.patch.object(swtask, "kill_proc", new=fake_kill_proc)
     await swtask.max_timeout(context, proc, 1)
 
 
