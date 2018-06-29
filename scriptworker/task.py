@@ -417,7 +417,7 @@ async def run_task(context):
         await asyncio.wait(tasks)
         exitcode = await context.proc.wait()
         status_line = "exit code: {}".format(exitcode)
-        if exitcode == -11:
+        if exitcode < 0:
             status_line = "Automation Error: python exited with signal {}".format(exitcode)
         log.info(status_line)
         print(status_line, file=log_filehandle)

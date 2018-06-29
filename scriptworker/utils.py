@@ -354,7 +354,7 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
     if tasks:
         await asyncio.wait(tasks)
         for task in tasks:
-            exc = get_future_exception(task)
+            exc = task.exception()
             if exc:
                 if raise_at_first_error:
                     raise exc
