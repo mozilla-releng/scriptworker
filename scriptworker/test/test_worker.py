@@ -181,7 +181,7 @@ def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
 async def test_mocker_run_tasks_exception(context, successful_queue, mocker,
                                           func_to_raise, exc, expected, raises):
     """Raise an exception within the run_tasks try/excepts and make sure the
-    status is changed
+    status is changed when an unexpected exception is not raised
     """
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
