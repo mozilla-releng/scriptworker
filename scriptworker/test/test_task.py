@@ -378,9 +378,12 @@ async def test_reclaim_task_mock(context, mocker, proc):
     returns. If there is a running process, `reclaim_task` tries to kill it
     before returning.
 
+    Run a good queue.reclaim_task first, so we get full test coverage.
+
     """
     kill_count = []
     reclaim_count = []
+    temp_queue = mock.MagicMock()
 
     def die(*args):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
@@ -389,14 +392,18 @@ async def test_reclaim_task_mock(context, mocker, proc):
         if reclaim_count:
             die()
         reclaim_count.append([args, kwargs])
-        return {'credentials': 'SENSITIVE_DATA'}
+        return {'credentials': {'foo': 'bar'}}
 
     async def fake_kill_proc(*args):
         kill_count.append(args)
 
+    def fake_create_queue(*args):
+        return temp_queue
+
     context.proc = proc
-    context.temp_queue = mock.MagicMock()
-    context.temp_queue.reclaimTask = fake_reclaim
+    context.create_queue = fake_create_queue
+    temp_queue.reclaimTask = fake_reclaim
+    context.temp_queue = temp_queue
     mocker.patch.object(swtask, 'kill_proc', new=fake_kill_proc)
     await swtask.reclaim_task(context, context.task)
     if proc:
