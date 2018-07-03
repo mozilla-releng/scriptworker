@@ -374,31 +374,35 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
 @pytest.mark.parametrize("proc", (None, 1))
 @pytest.mark.asyncio
 async def test_reclaim_task_mock(context, mocker, proc):
-    """Raise a TaskclusterRestFailure during reclaim, and optionally kill proc
-    if the proc parameter is set.
+    """When `queue.reclaim_task` raises an error with status 409, `reclaim_task`
+    returns. If there is a running process, `reclaim_task` tries to kill it
+    before returning.
 
     """
-    count = []
-
-    async def fake_reclaim(*args, **kwargs):
-        return {'credentials': context.credentials}
-
-    async def fake_kill_proc(*args):
-        count.append(args)
+    kill_count = []
+    reclaim_count = []
 
     def die(*args):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
 
+    async def fake_reclaim(*args, **kwargs):
+        if reclaim_count:
+            die()
+        reclaim_count.append([args, kwargs])
+        return {'credentials': 'SENSITIVE_DATA'}
+
+    async def fake_kill_proc(*args):
+        kill_count.append(args)
+
     context.proc = proc
     context.temp_queue = mock.MagicMock()
     context.temp_queue.reclaimTask = fake_reclaim
-    mocker.patch.object(pprint, 'pformat', new=die)
     mocker.patch.object(swtask, 'kill_proc', new=fake_kill_proc)
     await swtask.reclaim_task(context, context.task)
     if proc:
-        assert len(count) == 1
+        assert len(kill_count) == 1
     else:
-        assert len(count) == 0
+        assert len(kill_count) == 0
 
 
 # max_timeout {{{1

@@ -164,24 +164,9 @@ def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
     assert status is None
 
 
-@pytest.mark.parametrize("func_to_raise,exc,expected,raises", ((
-    'run_task', ScriptWorkerException, ScriptWorkerException.exit_code, False
-), (
-    'run_task', ValueError, None, True
-), (
-    'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code,
-    False
-), (
-    'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task'],
-    False
-), (
-    'upload_artifacts', OSError, None, True
-)))
-@pytest.mark.asyncio
-async def test_mocker_run_tasks_exception(context, successful_queue, mocker,
-                                          func_to_raise, exc, expected, raises):
-    """Raise an exception within the run_tasks try/excepts and make sure the
-    status is changed when an unexpected exception is not raised
+def _mocker_run_tasks_helper(mocker, exc, func_to_raise):
+    """Mock run_tasks for the test_mocker_run_tasks_* tests.
+
     """
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
@@ -194,7 +179,6 @@ async def test_mocker_run_tasks_exception(context, successful_queue, mocker,
     async def run_task(*args, **kwargs):
         return 0
 
-    context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
@@ -208,12 +192,44 @@ async def test_mocker_run_tasks_exception(context, successful_queue, mocker,
     else:
         mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    if raises:
-        with pytest.raises(exc):
-            await worker.run_tasks(context)
-    else:
-        status = await worker.run_tasks(context)
-        assert status == expected
+
+
+@pytest.mark.parametrize("func_to_raise,exc,expected", ((
+    'run_task', ScriptWorkerException, ScriptWorkerException.exit_code
+), (
+    'upload_artifacts', ScriptWorkerException, ScriptWorkerException.exit_code
+), (
+    'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task']
+)))
+@pytest.mark.asyncio
+async def test_mocker_run_tasks_caught_exception(context, successful_queue, mocker,
+                                                 func_to_raise, exc, expected):
+    """Raise an exception within the run_tasks try/excepts and return status.
+
+    """
+    _mocker_run_tasks_helper(mocker, exc, func_to_raise)
+
+    context.queue = successful_queue
+    status = await worker.run_tasks(context)
+    assert status == expected
+
+
+@pytest.mark.parametrize("func_to_raise,exc", ((
+    'run_task', ValueError
+), (
+    'upload_artifacts', OSError
+)))
+@pytest.mark.asyncio
+async def test_mocker_run_tasks_uncaught_exception(context, successful_queue, mocker,
+                                                 func_to_raise, exc):
+    """Raise an uncaught exception within the run_tasks try/excepts.
+
+    """
+    _mocker_run_tasks_helper(mocker, exc, func_to_raise)
+
+    context.queue = successful_queue
+    with pytest.raises(exc):
+        await worker.run_tasks(context)
 
 
 @pytest.mark.asyncio
