@@ -10,6 +10,7 @@ import mock
 import os
 import pprint
 import pytest
+from scriptworker.exceptions import ScriptWorkerTaskException
 import scriptworker.task as swtask
 import scriptworker.log as log
 import sys
@@ -17,20 +18,18 @@ import taskcluster.exceptions
 import taskcluster.async
 import time
 from . import event_loop, fake_session, fake_session_500, noop_async, rw_context, \
-    successful_queue, unsuccessful_queue, read
+    successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
 assert event_loop, rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
+
 # constants helpers and fixtures {{{1
-TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
-
-
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
     rw_context.config['reclaim_interval'] = 0.001
-    rw_context.config['task_max_timeout'] = .1
+    rw_context.config['task_max_timeout'] = 1
     rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
     rw_context.claim_task = {
         'credentials': {'a': 'b'},
@@ -66,7 +65,9 @@ def test_get_action_name(name):
     "foo bar", "foo bar"
 )))
 def test_get_commit_message(message, expected):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if message is not None:
         task['payload']['env']['GECKO_COMMIT_MSG'] = message
     assert swtask.get_commit_message(task) == expected
@@ -108,7 +109,9 @@ def test_get_parent_task_id(set_parent):
     "https://hg.mozilla.org/mozilla-central/",
 ))
 def test_get_repo(repo):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if repo:
         task['payload']['env']['GECKO_HEAD_REPOSITORY'] = repo
         assert swtask.get_repo(task, 'GECKO') == 'https://hg.mozilla.org/mozilla-central'
@@ -119,7 +122,9 @@ def test_get_repo(repo):
 # get_revision {{{1
 @pytest.mark.parametrize("rev", (None, "revision!"))
 def test_get_revision(rev):
-    task = {'payload': {'env': {}}}
+    task = {
+        'payload': {'env': {}}
+    }
     if rev:
         task['payload']['env']['GECKO_HEAD_REV'] = rev
     assert swtask.get_revision(task, 'GECKO') == rev
@@ -150,6 +155,29 @@ def test_get_and_check_project(context, source_url, expected, raises):
     else:
         assert expected == \
             swtask.get_and_check_project(context.config['valid_vcs_rules'], source_url)
+
+
+# get_and_check_tasks_for {{{1
+@pytest.mark.parametrize("tasks_for,raises", ((
+    "hg-push", False,
+), (
+    "cron", False,
+), (
+    "action", False,
+), (
+    "foobar", True,
+)))
+def test_get_and_check_tasks_for(tasks_for, raises):
+    task = {
+        "extra": {
+            "tasks_for": tasks_for
+        },
+    }
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.get_and_check_tasks_for(task)
+    else:
+        assert swtask.get_and_check_tasks_for(task) == tasks_for
 
 
 # get_repo_scope {{{1
@@ -269,6 +297,7 @@ async def test_run_task_negative_11(context, mocker):
         return fake_proc
 
     mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
+    mocker.patch.object(swtask, 'max_timeout', new=noop_async)
 
     status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
@@ -342,39 +371,85 @@ def test_reclaim_task_non_409(context, successful_queue, event_loop):
         )
 
 
+@pytest.mark.parametrize("proc", (None, 1))
 @pytest.mark.asyncio
-async def test_reclaim_task_mock(context, mocker, event_loop):
+async def test_reclaim_task_mock(context, mocker, proc):
+    """When `queue.reclaim_task` raises an error with status 409, `reclaim_task`
+    returns. If there is a running process, `reclaim_task` tries to kill it
+    before returning.
 
-    async def fake_reclaim(*args, **kwargs):
-        return {'credentials': context.credentials}
+    Run a good queue.reclaim_task first, so we get full test coverage.
+
+    """
+    kill_count = []
+    reclaim_count = []
+    temp_queue = mock.MagicMock()
 
     def die(*args):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
 
-    context.temp_queue = mock.MagicMock()
-    context.temp_queue.reclaimTask = fake_reclaim
-    mocker.patch.object(pprint, 'pformat', new=die)
+    async def fake_reclaim(*args, **kwargs):
+        if reclaim_count:
+            die()
+        reclaim_count.append([args, kwargs])
+        return {'credentials': {'foo': 'bar'}}
+
+    async def fake_kill_proc(*args):
+        kill_count.append(args)
+
+    def fake_create_queue(*args):
+        return temp_queue
+
+    context.proc = proc
+    context.create_queue = fake_create_queue
+    temp_queue.reclaimTask = fake_reclaim
+    context.temp_queue = temp_queue
+    mocker.patch.object(swtask, 'kill_proc', new=fake_kill_proc)
     await swtask.reclaim_task(context, context.task)
+    if proc:
+        assert len(kill_count) == 1
+    else:
+        assert len(kill_count) == 0
 
 
 # max_timeout {{{1
-def test_max_timeout_noop(context):
-    with mock.patch.object(swtask.log, 'debug') as p:
-        swtask.max_timeout(context, "invalid_proc", 0)
-        assert not p.called
+@pytest.mark.asyncio
+async def test_max_timeout_noop(context, mocker):
+    called = []
+
+    async def fake_kill(*args):
+        called.append(args)
+
+    mocker.patch.object(swtask, 'kill_proc', new=fake_kill)
+    await swtask.max_timeout(context, "invalid_proc", 0)
+    assert called == []
 
 
-def test_max_timeout(context, event_loop):
+@pytest.mark.asyncio
+async def test_max_timeout_mock(context, mocker):
+
+    async def fake_kill_proc(_, msg, status):
+        assert msg == "Exceeded task_max_timeout of 1 seconds"
+        assert status == context.config['task_max_timeout_status']
+
+    proc = mock.MagicMock()
+    proc.pid = 10000
+    context.proc = proc
+    context.config['task_max_timeout'] = 1
+    mocker.patch.object(swtask, "kill_proc", new=fake_kill_proc)
+    await swtask.max_timeout(context, proc, 1)
+
+
+@pytest.mark.asyncio
+async def test_max_timeout(context):
     temp_dir = os.path.join(context.config['work_dir'], "timeout")
     context.config['task_script'] = (
         sys.executable, TIMEOUT_SCRIPT, temp_dir
     )
-    context.config['task_max_timeout'] = 3
-    event_loop.run_until_complete(swtask.run_task(context))
-    try:
-        event_loop.run_until_complete(asyncio.sleep(10))  # Let kill() calls run
-    except RuntimeError:
-        pass
+    context.config['task_max_timeout'] = 2
+
+    with pytest.raises(ScriptWorkerTaskException):
+        await swtask.run_task(context)
     files = {}
     for path in glob.glob(os.path.join(temp_dir, '*')):
         files[path] = (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)

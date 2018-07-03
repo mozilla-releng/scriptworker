@@ -5,12 +5,22 @@ Attributes:
     DEFAULT_CONFIG (frozendict): the default config for scriptworker.  Running configs
         are validated against this.
     STATUSES (dict): maps taskcluster status (string) to exit code (int).
-    REVERSED_STATUSES (dict): the same as STATUSES, except it maps the exit code
-        (int) to the taskcluster status (string).
 
 """
 from frozendict import frozendict
 import os
+
+# STATUSES {{{1
+STATUSES = {
+    'success': 0,
+    'failure': 1,
+    'worker-shutdown': 2,
+    'malformed-payload': 3,
+    'resource-unavailable': 4,
+    'internal-error': 5,
+    'superseded': 6,
+    'intermittent-task': 7,
+}
 
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
@@ -43,6 +53,16 @@ DEFAULT_CONFIG = frozendict({
     "reclaim_interval": 300,
     "poll_interval": 10,
     "sign_key_timeout": 60 * 2,
+
+    "reversed_statuses": frozendict({
+        -11: STATUSES['intermittent-task'],
+        -15: STATUSES['intermittent-task'],
+    }),
+    # Report this status on max_timeout. `intermittent-task` will rerun the
+    # task automatically. `internal-error` or other will require manual
+    # intervention.
+    "task_max_timeout_status": STATUSES['intermittent-task'],
+    "invalid_reclaim_status": STATUSES['intermittent-task'],
 
     "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
 
@@ -362,18 +382,18 @@ DEFAULT_CONFIG = frozendict({
     },
 })
 
-# STATUSES and REVERSED_STATUSES {{{1
-STATUSES = {
-    'success': 0,
-    'failure': 1,
-    'worker-shutdown': 2,
-    'malformed-payload': 3,
-    'resource-unavailable': 4,
-    'internal-error': 5,
-    'superseded': 6,
-    'intermittent-task': 7,
-}
-# Retry on python segfault
-_rev = {v: k for k, v in STATUSES.items()}
-_rev[-11] = 'intermittent-task'
-REVERSED_STATUSES = _rev
+
+# get_reversed_statuses {{{1
+def get_reversed_statuses(context):
+    """Return a mapping of exit codes to status strings.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context
+
+    Returns:
+        dict: the mapping of exit codes to status strings.
+
+    """
+    _rev = {v: k for k, v in STATUSES.items()}
+    _rev.update(dict(context.config['reversed_statuses']))
+    return _rev

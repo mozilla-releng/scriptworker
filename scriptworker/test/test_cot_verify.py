@@ -1672,6 +1672,18 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link,
     await cotverify.trace_back_to_tree(chain)
 
 
+# AuditLogFormatter {{{1
+@pytest.mark.parametrize("level,expected", ((
+logging.INFO, "foo",
+), (
+logging.DEBUG, " foo",
+)))
+def test_audit_log_formatter(level, expected):
+    formatter = cotverify.AuditLogFormatter()
+    record = logging.LogRecord("a", level, "", 1, "foo", [], None)
+    assert formatter.format(record) == expected
+
+
 # verify_chain_of_trust {{{1
 @pytest.mark.parametrize("exc", (None, KeyError, CoTError))
 @pytest.mark.asyncio

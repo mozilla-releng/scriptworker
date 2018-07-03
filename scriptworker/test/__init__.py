@@ -53,6 +53,8 @@ ARTIFACT_SHAS = {
     "public/logs/bar": "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730",
 }
 
+TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
+
 
 def read(path):
     """Return the contents of a file.
