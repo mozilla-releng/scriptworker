@@ -1212,9 +1212,9 @@ async def verify_parent_task_definition(chain, parent_link):
         jsone_context, tmpl = await get_jsone_context_and_template(
             chain, parent_link, decision_link, tasks_for
         )
-        rebuilt_definition = jsone.render(tmpl, jsone_context)
+        rebuilt_definitions = jsone.render(tmpl, jsone_context)
         if tasks_for == 'action':
-            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition)
+            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definitions)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
         raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
@@ -1225,11 +1225,11 @@ async def verify_parent_task_definition(chain, parent_link):
         log.exception(msg)
         raise CoTError(msg + "\n{}".format(str(e)))
 
-    compare_jsone_task_definition(parent_link, rebuilt_definition)
+    compare_jsone_task_definition(parent_link, rebuilt_definitions)
 
 
 # check_and_update_action_task_group_id {{{1
-def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition):
+def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definitions):
     """Update the ``ACTION_TASK_GROUP_ID`` of an action after verifying.
 
     Actions have varying ``ACTION_TASK_GROUP_ID`` behavior.  Release Promotion
@@ -1252,13 +1252,13 @@ def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_de
     Args:
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the decision link to test.
-        rebuilt_definition (dict): the rebuilt definition to check and update.
+        rebuilt_definitions (dict): the rebuilt definitions to check and update.
 
     Raises:
         CoTError: on failure.
 
     """
-    rebuilt_gid = rebuilt_definition['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID']
+    rebuilt_gid = rebuilt_definitions['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID']
     runtime_gid = parent_link.task['payload']['env']['ACTION_TASK_GROUP_ID']
     acceptable_gids = {parent_link.task_id, decision_link.task_id}
     if rebuilt_gid not in acceptable_gids:
@@ -1267,23 +1267,23 @@ def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_de
         ))
     if runtime_gid != rebuilt_gid:
         log.debug("runtime gid {} rebuilt gid {}".format(runtime_gid, rebuilt_gid))
-    rebuilt_definition['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
+    rebuilt_definitions['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
 
 
 # compare_jsone_task_definition {{{1
-def compare_jsone_task_definition(parent_link, rebuilt_definition):
+def compare_jsone_task_definition(parent_link, rebuilt_definitions):
     """Compare the json-e rebuilt task definition vs the runtime definition.
 
     Args:
         parent_link (LinkOfTrust): the parent link to test.
-        rebuilt_definition (dict): the rebuilt task definitions.
+        rebuilt_definitions (dict): the rebuilt task definitions.
 
     Raises:
         CoTError: on failure.
 
     """
-    error_msg = None
-    for compare_definition in rebuilt_definition['tasks']:
+    diffs = []
+    for compare_definition in rebuilt_definitions['tasks']:
         # Rebuilt decision tasks have an extra `taskId`; remove
         if 'taskId' in compare_definition:
             del(compare_definition['taskId'])
@@ -1294,13 +1294,14 @@ def compare_jsone_task_definition(parent_link, rebuilt_definition):
 
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
         if diff:
-            error_msg = "{} {}: the rebuilt definition doesn't match the runtime task!\n{}".format(
-                parent_link.name, parent_link.task_id, pprint.pformat(diff)
-            )
+            diffs.append(pprint.pformat(diff))
             continue
         log.info("{}: Good.".format(parent_link.name))
         break
     else:
+        error_msg = "{} {}: the runtime task doesn't match any rebuilt definition!\n{}".format(
+            parent_link.name, parent_link.task_id, pprint.pformat(diffs)
+        )
         log.critical(error_msg)
         raise CoTError(error_msg)
 
