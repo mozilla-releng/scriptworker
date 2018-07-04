@@ -18,11 +18,11 @@ import signal
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
-from . import event_loop, noop_async, noop_sync, rw_context, successful_queue, \
+from . import noop_async, noop_sync, rw_context, successful_queue, \
     tmpdir, TIMEOUT_SCRIPT
 
 assert rw_context, tmpdir  # silence flake8
-assert successful_queue, event_loop  # silence flake8
+assert successful_queue  # silence flake8
 
 
 # constants helpers and fixtures {{{1
@@ -33,7 +33,7 @@ def context(rw_context):
 
 
 # main {{{1
-def test_main(mocker, context, event_loop):
+def test_main(mocker, context):
     config = dict(context.config)
     config['poll_interval'] = 1
     creds = {'fake_creds': True}
@@ -57,7 +57,7 @@ def test_main(mocker, context, event_loop):
         os.remove(tmp)
 
 
-def test_main_sigterm(mocker, context, event_loop):
+def test_main_sigterm(mocker, context):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
     config = dict(context.config)
@@ -83,7 +83,8 @@ def test_main_sigterm(mocker, context, event_loop):
 
 
 # async_main {{{1
-def test_async_main(context, event_loop, mocker, tmpdir):
+@pytest.mark.asyncio
+async def test_async_main(context, mocker, tmpdir):
     path = "{}.tmp".format(context.config['base_gpg_home_dir'])
 
     async def tweak_lockfile(_):
@@ -109,20 +110,19 @@ def test_async_main(context, event_loop, mocker, tmpdir):
         mocker.patch.object(worker, 'rm', new=noop_sync)
         mocker.patch.object(os, 'rename', new=noop_sync)
         mocker.patch.object(worker, 'rm_lockfile', new=exit)
-        event_loop.run_until_complete(worker.async_main(context, {}))
-        event_loop.run_until_complete(worker.async_main(context, {}))
+        await worker.async_main(context, {})
+        await worker.async_main(context, {})
         with pytest.raises(SystemExit):
-            event_loop.run_until_complete(
-                worker.async_main(context, {})
-            )
+            await worker.async_main(context, {})
     finally:
         if os.path.exists(path):
             shutil.rmtree(path)
 
 
 # run_tasks {{{1
+@pytest.mark.asyncio
 @pytest.mark.parametrize("verify_cot", (True, False))
-def test_mocker_run_tasks(context, successful_queue, event_loop, verify_cot, mocker):
+async def test_mocker_run_tasks(context, successful_queue, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
     successful_queue.task = task
@@ -146,11 +146,12 @@ def test_mocker_run_tasks(context, successful_queue, event_loop, verify_cot, moc
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_tasks(context))
+    status = await worker.run_tasks(context)
     assert status == 19
 
 
-def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
+@pytest.mark.asyncio
+async def test_mocker_run_tasks_noop(context, successful_queue, mocker):
     context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
@@ -159,7 +160,7 @@ def test_mocker_run_tasks_noop(context, successful_queue, event_loop, mocker):
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = event_loop.run_until_complete(worker.run_tasks(context))
+    status = await worker.run_tasks(context)
     assert context.credentials is None
     assert status is None
 

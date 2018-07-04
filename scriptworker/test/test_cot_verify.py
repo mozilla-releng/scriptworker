@@ -592,7 +592,7 @@ def test_find_sorted_task_dependencies(task, expected, task_type):
 
 # build_task_dependencies {{{1
 @pytest.mark.asyncio
-async def test_build_task_dependencies(chain, mocker, event_loop):
+async def test_build_task_dependencies(chain, mocker):
 
     async def fake_task(task_id):
         if task_id == 'die':
@@ -665,7 +665,7 @@ async def test_build_task_dependencies(chain, mocker, event_loop):
     None,
 )))
 @pytest.mark.asyncio
-async def test_download_cot(chain, mocker, event_loop, upstream_artifacts, raises, download_artifacts_mock):
+async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_artifacts_mock):
     async def down(*args, **kwargs):
         return ['x']
 
@@ -702,7 +702,7 @@ async def test_download_cot(chain, mocker, event_loop, upstream_artifacts, raise
     "missing", "bad_sha", True
 )))
 @pytest.mark.asyncio
-async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loop):
+async def test_download_cot_artifact(chain, path, sha, raises, mocker):
 
     def fake_get_hash(*args, **kwargs):
         return sha
@@ -734,7 +734,7 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker, event_loo
 
 
 @pytest.mark.asyncio
-async def test_download_cot_artifact_no_downloaded_cot(chain, mocker, event_loop):
+async def test_download_cot_artifact_no_downloaded_cot(chain, mocker):
     link = mock.MagicMock()
     link.task_id = 'task_id'
     link.cot = None
@@ -757,7 +757,7 @@ async def test_download_cot_artifact_no_downloaded_cot(chain, mocker, event_loop
     False,
 )))
 @pytest.mark.asyncio
-async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts, event_loop):
+async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
 
     async def fake_download(x, y, path):
         if path == 'failed_path':
@@ -884,7 +884,7 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
 @pytest.mark.asyncio
 async def test_get_all_artifacts_per_task_id(chain, decision_link, build_link,
                                              upstream_artifacts, expected,
-                                             docker_image_link, mocker, event_loop):
+                                             docker_image_link, mocker):
 
     chain.links = [decision_link, build_link, docker_image_link]
     assert expected == cotverify.get_all_artifacts_per_task_id(chain, upstream_artifacts)

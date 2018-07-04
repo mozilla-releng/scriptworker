@@ -8,10 +8,10 @@ import logging
 import os
 import pytest
 import scriptworker.log as swlog
-from . import event_loop, read
+from . import read
 from . import rw_context as context
 
-assert event_loop, context  # silence pyflakes
+assert context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1
@@ -48,20 +48,19 @@ def test_get_log_filehandle(context, text):
     assert read(log_file) == text + text
 
 
-def test_pipe_to_log(context, event_loop):
+@pytest.mark.asyncio
+async def test_pipe_to_log(context):
     cmd = r""">&2 echo "foo" && echo "bar" && exit 0"""
-    proc = event_loop.run_until_complete(
-        asyncio.create_subprocess_exec(
-            "bash", "-c", cmd,
-            stdout=PIPE, stderr=PIPE, stdin=None
-        )
+    proc = await asyncio.create_subprocess_exec(
+        "bash", "-c", cmd,
+        stdout=PIPE, stderr=PIPE, stdin=None
     )
     tasks = []
     with swlog.get_log_filehandle(context) as log_fh:
         tasks.append(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh]))
         tasks.append(swlog.pipe_to_log(proc.stdout, filehandles=[log_fh]))
-        event_loop.run_until_complete(asyncio.wait(tasks))
-        event_loop.run_until_complete(proc.wait())
+        await asyncio.wait(tasks)
+        await proc.wait()
     log_file = swlog.get_log_filename(context)
     assert read(log_file) in ("foo\nbar\n", "bar\nfoo\n")
 

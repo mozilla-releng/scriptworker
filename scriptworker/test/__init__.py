@@ -237,20 +237,6 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
 
 
 @pytest.yield_fixture(scope='function')
-def event_loop():
-    """Create an instance of the default event loop for each test case.
-    From https://github.com/pytest-dev/pytest-asyncio/issues/29#issuecomment-226947296
-
-    In general, we should use @pytest.mark.asyncio, but we sometimes need to
-    do something like kill tasks that benefits from clean event loops.
-
-    """
-    loop = asyncio.get_event_loop()
-    yield loop
-
-
-
-@pytest.yield_fixture(scope='function')
 def tmpdir():
     """Yield a tmpdir that gets cleaned up afterwards.
 

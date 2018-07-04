@@ -16,7 +16,7 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
 
-from . import touch, rw_context, event_loop, fake_session, fake_session_500, successful_queue
+from . import touch, rw_context, fake_session, fake_session_500, successful_queue
 
 
 @pytest.yield_fixture(scope='function')
@@ -71,7 +71,8 @@ def test_expiration_arrow(context):
 
 
 # upload_artifacts {{{1
-def test_upload_artifacts(context, event_loop):
+@pytest.mark.asyncio
+async def test_upload_artifacts(context):
     args = []
     os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
     paths = [
@@ -85,11 +86,10 @@ def test_upload_artifacts(context, event_loop):
         args.append(path)
 
     with mock.patch('scriptworker.artifacts.create_artifact', new=foo):
-        event_loop.run_until_complete(
-            upload_artifacts(context)
-        )
+        await upload_artifacts(context)
 
     assert sorted(args) == sorted(paths)
+
 
 @pytest.mark.parametrize('filename, original_content, expected_content_type, expected_encoding', (
     ('file.txt', 'Foo bar', 'text/plain', 'gzip'),
@@ -120,15 +120,18 @@ def test_compress_artifact_if_supported(filename, original_content, expected_con
 def _get_number_of_children_in_directory(directory):
     return len([name for name in os.listdir(directory)])
 
+
 # create_artifact {{{1
-def test_create_artifact(context, fake_session, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_create_artifact(context, fake_session, successful_queue):
     path = os.path.join(context.config['artifact_dir'], "one.txt")
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        create_artifact(context, path, "public/env/one.txt", content_type='text/plain', content_encoding=None, expires=expires)
+    await create_artifact(
+        context, path, "public/env/one.txt", content_type='text/plain',
+        content_encoding=None, expires=expires
     )
     assert successful_queue.info == [
         "createArtifact", ('taskId', 'runId', "public/env/one.txt", {
@@ -142,16 +145,17 @@ def test_create_artifact(context, fake_session, successful_queue, event_loop):
     # context managers. See http://bugs.python.org/issue26467 and https://github.com/Martiusweb/asynctest/issues/29.
 
 
-def test_create_artifact_retry(context, fake_session_500, successful_queue,
-                               event_loop):
+@pytest.mark.asyncio
+async def test_create_artifact_retry(context, fake_session_500, successful_queue):
     path = os.path.join(context.config['artifact_dir'], "one.log")
     touch(path)
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
     with pytest.raises(ScriptWorkerRetryException):
         context.temp_queue = successful_queue
-        event_loop.run_until_complete(
-            create_artifact(context, path, "public/env/one.log", content_type='text/plain', content_encoding=None, expires=expires)
+        await create_artifact(
+            context, path, "public/env/one.log", content_type='text/plain',
+            content_encoding=None, expires=expires
         )
 
 
@@ -184,7 +188,8 @@ def test_get_artifact_url(path):
 
 
 # download_artifacts {{{1
-def test_download_artifacts(context, event_loop):
+@pytest.mark.asyncio
+async def test_download_artifacts(context):
     urls = []
     paths = []
 
@@ -201,9 +206,7 @@ def test_download_artifacts(context, event_loop):
         urls.append(url)
         paths.append(path)
 
-    result = event_loop.run_until_complete(
-        download_artifacts(context, expected_urls, download_func=foo)
-    )
+    result = await download_artifacts(context, expected_urls, download_func=foo)
 
     assert sorted(result) == sorted(expected_paths)
     assert sorted(paths) == sorted(expected_paths)
