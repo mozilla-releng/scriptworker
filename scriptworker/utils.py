@@ -362,7 +362,6 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
                     log.warn('Async task failed with error: {}'.format(exc))
                     error_results.append(exc)
             else:
-                # We shouldn't be able to get an incomplete task
                 succeeded_results.append(task.result())
 
     return succeeded_results, error_results

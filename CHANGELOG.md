@@ -16,16 +16,20 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - unit tests now run in random order
 - `max_timeout` is now an async function with sleeps rather than a synchronous function using `call_later`
 - split `run_tasks` into several helper functions
+- all negative exit statuses now log `Automation Error`
 
 ### Fixed
 - task timeouts should result in an `intermittent-task`, rather than a crashed scriptworker
 - we now kill the task on a `reclaim_task` result of 409, allowing for user cancellation
 - added logging for uncaught exceptions in `run_tasks`
 - cancelled the `reclaim_task` future on task completion
+- pointed docs at the new `mdc1` puppet server
+- cot verification now renders the entire template rather than the first task
 
 ### Removed
 - `REVERSED_STATUSES` is removed, in favor of `get_reversed_statuses`
 - `task.kill` has been removed in favor of `kill_pid` and `kill_proc`.
+- quieted cot verification a bit by removing some `log.debug` lines
 
 ## [12.1.0] - 2018-06-05
 ### Changed

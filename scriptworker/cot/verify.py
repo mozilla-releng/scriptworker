@@ -1116,7 +1116,7 @@ async def get_in_tree_template(link):
             context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
         )
     )
-    return tmpl['tasks'][0]
+    return tmpl
 
 
 async def get_action_context_and_template(chain, parent_link, decision_link):
@@ -1139,7 +1139,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     action_defn = [d for d in all_actions if d['name'] == action_name][0]
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
     if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
-        tmpl = action_defn['task']
+        tmpl = {'tasks': [action_defn['task']]}
     else:
         tmpl = await get_in_tree_template(decision_link)
         for k in ('action', 'push', 'repository'):
@@ -1172,11 +1172,6 @@ async def get_jsone_context_and_template(chain, parent_link, decision_link, task
         jsone_context = await populate_jsone_context(
             chain, parent_link, decision_link, tasks_for
         )
-    log.debug("{} json-e template:".format(parent_link.name))
-    log.debug(format_json(tmpl))
-    log.debug("{} json-e context:".format(parent_link.name))
-    # format_json() breaks on lambda values; use pprint.pformat here.
-    log.debug(pprint.pformat(jsone_context, indent=2))
     return jsone_context, tmpl
 
 
@@ -1217,9 +1212,9 @@ async def verify_parent_task_definition(chain, parent_link):
         jsone_context, tmpl = await get_jsone_context_and_template(
             chain, parent_link, decision_link, tasks_for
         )
-        rebuilt_definition = jsone.render(tmpl, jsone_context)
+        rebuilt_definitions = jsone.render(tmpl, jsone_context)
         if tasks_for == 'action':
-            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition)
+            check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definitions)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
         raise CoTError("JSON-e error while rebuilding {} task definition: {}".format(parent_link.name, str(e)))
@@ -1230,11 +1225,11 @@ async def verify_parent_task_definition(chain, parent_link):
         log.exception(msg)
         raise CoTError(msg + "\n{}".format(str(e)))
 
-    compare_jsone_task_definition(parent_link, rebuilt_definition)
+    compare_jsone_task_definition(parent_link, rebuilt_definitions)
 
 
 # check_and_update_action_task_group_id {{{1
-def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definition):
+def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definitions):
     """Update the ``ACTION_TASK_GROUP_ID`` of an action after verifying.
 
     Actions have varying ``ACTION_TASK_GROUP_ID`` behavior.  Release Promotion
@@ -1252,16 +1247,18 @@ def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_de
     ``parent_link.task``'s ``ACTION_TASK_GROUP_ID`` so the json-e comparison
     doesn't fail out.
 
+    Ideally, we want to obsolete and remove this function.
+
     Args:
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the decision link to test.
-        rebuilt_definition (dict): the rebuilt definition to check and update.
+        rebuilt_definitions (dict): the rebuilt definitions to check and update.
 
     Raises:
         CoTError: on failure.
 
     """
-    rebuilt_gid = rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID']
+    rebuilt_gid = rebuilt_definitions['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID']
     runtime_gid = parent_link.task['payload']['env']['ACTION_TASK_GROUP_ID']
     acceptable_gids = {parent_link.task_id, decision_link.task_id}
     if rebuilt_gid not in acceptable_gids:
@@ -1270,22 +1267,23 @@ def check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_de
         ))
     if runtime_gid != rebuilt_gid:
         log.debug("runtime gid {} rebuilt gid {}".format(runtime_gid, rebuilt_gid))
-    rebuilt_definition['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
+    rebuilt_definitions['tasks'][0]['payload']['env']['ACTION_TASK_GROUP_ID'] = runtime_gid
 
 
 # compare_jsone_task_definition {{{1
-def compare_jsone_task_definition(parent_link, compare_definition):
+def compare_jsone_task_definition(parent_link, rebuilt_definitions):
     """Compare the json-e rebuilt task definition vs the runtime definition.
 
     Args:
         parent_link (LinkOfTrust): the parent link to test.
-        compare_definition (dict): the rebuilt task definition.
+        rebuilt_definitions (dict): the rebuilt task definitions.
 
     Raises:
         CoTError: on failure.
 
     """
-    try:
+    diffs = []
+    for compare_definition in rebuilt_definitions['tasks']:
         # Rebuilt decision tasks have an extra `taskId`; remove
         if 'taskId' in compare_definition:
             del(compare_definition['taskId'])
@@ -1294,18 +1292,18 @@ def compare_jsone_task_definition(parent_link, compare_definition):
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
 
-        log.debug("Compare_definition:\n{}".format(format_json(compare_definition)))
-        log.debug("Runtime definition:\n{}".format(format_json(runtime_definition)))
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
         if diff:
-            raise AssertionError(pprint.pformat(diff))
+            diffs.append(pprint.pformat(diff))
+            continue
         log.info("{}: Good.".format(parent_link.name))
-    except (AssertionError, KeyError):
-        msg = "{} {}: the rebuilt definition doesn't match the runtime task!".format(
-            parent_link.name, parent_link.task_id
+        break
+    else:
+        error_msg = "{} {}: the runtime task doesn't match any rebuilt definition!\n{}".format(
+            parent_link.name, parent_link.task_id, pprint.pformat(diffs)
         )
-        log.exception(msg)
-        raise CoTError(msg)
+        log.critical(error_msg)
+        raise CoTError(error_msg)
 
 
 # verify_parent_task {{{1

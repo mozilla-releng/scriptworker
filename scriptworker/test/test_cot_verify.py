@@ -1071,7 +1071,7 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
 
     fake_template = dict(
         await cotv3_load_url(chain.context, None, 'taskcluster.yml')
-    )['tasks'][0]
+    )
     fake_context = {
         'action': {
             'cb_name': 'retrigger_action',
@@ -1129,7 +1129,9 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
     }
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
+    log.info("result:\n{}".format(result))
     assert result[1] == fake_template
+    log.info("fake_template:\n{}".format(fake_template))
     # can't easily compare a lambda
     del(result[0]['as_slugid'])
     assert result[0] == fake_context
@@ -1345,13 +1347,13 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
 )))
 def test_check_and_update_action_task_group_id(rebuilt_gid, runtime_gid, action_taskid,
                                                decision_taskid, raises):
-    rebuilt_definition = {
+    rebuilt_definition = {'tasks': [{
         "payload": {
             "env": {
                 "ACTION_TASK_GROUP_ID": rebuilt_gid
             }
         }
-    }
+    }]}
     runtime_definition = {
         "payload": {
             "env": {
@@ -1373,7 +1375,7 @@ def test_check_and_update_action_task_group_id(rebuilt_gid, runtime_gid, action_
         cotverify.check_and_update_action_task_group_id(
             parent_link, decision_link, rebuilt_definition
         )
-        assert rebuilt_definition == runtime_definition
+        assert rebuilt_definition['tasks'][0] == runtime_definition
 
 
 # verify_parent_task {{{1
