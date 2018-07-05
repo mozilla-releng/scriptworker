@@ -3,6 +3,7 @@
 """Test scriptworker.task
 """
 import aiohttp
+import arrow
 import asyncio
 import glob
 import json
@@ -297,7 +298,6 @@ async def test_run_task_negative_11(context, mocker):
         return fake_proc
 
     mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
-    mocker.patch.object(swtask, 'kill_proc', new=noop_async)
 
     status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
@@ -306,15 +306,31 @@ async def test_run_task_negative_11(context, mocker):
 
 
 @pytest.mark.asyncio
-async def test_max_timeout(context):
+async def test_run_task_timeout(context):
+    """`run_task` raises `ScriptWorkerTaskException` and kills the process
+    after exceeding `task_max_timeout`.
+    """
     temp_dir = os.path.join(context.config['work_dir'], "timeout")
     context.config['task_script'] = (
         sys.executable, TIMEOUT_SCRIPT, temp_dir
     )
-    context.config['task_max_timeout'] = 2
+    # With shorter timeouts we hit issues with the script not managing to
+    # create all 6 files
+    context.config['task_max_timeout'] = 5
 
+    pre = arrow.utcnow().timestamp
     with pytest.raises(ScriptWorkerTaskException):
         await swtask.run_task(context)
+    post = arrow.utcnow().timestamp
+    # I don't love these checks, because timing issues may cause this test
+    # to be flaky. However, I don't want a non- or long- running test to pass.
+    # Did this run at all?
+    assert post - pre >= 5
+    # Did this run too long? e.g. did it exit on its own rather than killed
+    # If this is set too low (too close to the timeout), it may not be enough
+    # time for kill_proc, kill_pid, and the `finally` block to run
+    assert post - pre < 10
+    # Did the script generate the expected output?
     files = {}
     for path in glob.glob(os.path.join(temp_dir, '*')):
         files[path] = (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
@@ -323,8 +339,8 @@ async def test_max_timeout(context):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(list(files.keys())) == 6
-
-
+    # Did we clean up?
+    assert context.proc is None
 
 
 # report* {{{1
