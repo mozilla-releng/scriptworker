@@ -25,7 +25,6 @@ from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.utils import (
-    get_future_exception,
     match_url_path_callback,
     match_url_regex,
 )
@@ -400,34 +399,40 @@ async def run_task(context):
         'preexec_fn': lambda: os.setsid(),
     }
     context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    timeout = context.config['task_max_timeout']
 
-    tasks = []
-    timeout_exc = None
     with get_log_filehandle(context) as log_filehandle:
-        tasks.append(asyncio.ensure_future(
+        stderr_future = asyncio.ensure_future(
             pipe_to_log(context.proc.stderr, filehandles=[log_filehandle])
-        ))
-        tasks.append(asyncio.ensure_future(
-            pipe_to_log(context.proc.stdout, filehandles=[log_filehandle])
-        ))
-        timeout_task = asyncio.ensure_future(
-            max_timeout(context, context.proc, context.config['task_max_timeout'])
         )
-        tasks.append(timeout_task)
-        await asyncio.wait(tasks)
-        exitcode = await context.proc.wait()
-        status_line = "exit code: {}".format(exitcode)
-        if exitcode < 0:
-            status_line = "Automation Error: python exited with signal {}".format(exitcode)
-        log.info(status_line)
-        print(status_line, file=log_filehandle)
-        timeout_exc = get_future_exception(timeout_task)
-        for task in tasks:
-            task.cancel()
-
-    context.proc = None
-    if timeout_exc:
-        raise timeout_exc
+        stdout_future = asyncio.ensure_future(
+            pipe_to_log(context.proc.stdout, filehandles=[log_filehandle])
+        )
+        try:
+            _, pending = await asyncio.wait(
+                [stderr_future, stdout_future], timeout=timeout
+            )
+            if pending:
+                await kill_proc(
+                    context.proc,
+                    "Exceeded task_max_timeout of {} seconds".format(timeout),
+                    context.config['task_max_timeout_status']
+                )
+        finally:
+            # in the case of a timeout, this will be -15.
+            # this code is in the finally: block so we still get the final
+            # log lines.
+            exitcode = await context.proc.wait()
+            # make sure we haven't lost any of the logs
+            await asyncio.wait([stdout_future, stderr_future])
+            # add an exit code line at the end of the log
+            status_line = "exit code: {}".format(exitcode)
+            if exitcode < 0:
+                status_line = "Automation Error: python exited with signal {}".format(exitcode)
+            log.info(status_line)
+            print(status_line, file=log_filehandle)
+            # reset context.proc
+            context.proc = None
     return exitcode
 
 
@@ -512,36 +517,6 @@ async def complete_task(context, result):
             log.info("409: not reporting complete/failed.")
         else:
             raise
-
-
-# max_timeout {{{1
-async def max_timeout(context, proc, timeout):
-    """Kill the task if it takes longer than ``timeout`` seconds.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-        proc (subprocess.Process): the subprocess proc. This is compared against
-            context.proc to make sure we're killing the right task.
-        timeout (int): the timeout, in seconds, for the task.
-
-    Raises:
-        ScriptWorkerTaskException, if the task is killed.
-
-    Returns:
-        None, if the task finishes before the timeout.
-
-    """
-    await asyncio.sleep(timeout)
-    if proc is not context.proc:
-        # Since this coroutine is run in parallel to the task, it's possible
-        # the running task is no longer the task we were assigned to monitor
-        # for timeout. If `context.proc` doesn't match `proc`, bail.
-        return
-    await kill_proc(
-        proc,
-        "Exceeded task_max_timeout of {} seconds".format(timeout),
-        context.config['task_max_timeout_status']
-    )
 
 
 # kill_pid {{{1
