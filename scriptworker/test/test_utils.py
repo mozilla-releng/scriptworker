@@ -13,7 +13,6 @@ from scriptworker.exceptions import DownloadError, ScriptWorkerException, Script
 import scriptworker.utils as utils
 from . import (
     FakeResponse,
-    event_loop,
     fake_session,
     fake_session_500,
     noop_async,
@@ -22,8 +21,7 @@ from . import (
 )
 from . import rw_context as context
 
-assert event_loop, tmpdir  # silence flake8
-assert context  # silence flake8
+assert tmpdir, context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 
 # constants helpers and fixtures {{{1
@@ -110,51 +108,45 @@ def test_cleanup(context):
 
 
 # request and retry_request {{{1
-def test_request(context, fake_session, event_loop):
+@pytest.mark.asyncio
+async def test_request(context, fake_session):
     context.session = fake_session
-    result = event_loop.run_until_complete(
-        utils.request(context, "url")
-    )
+    result = await utils.request(context, "url")
     assert result == '{}'
 
 
-def test_request_json(context, fake_session, event_loop):
+@pytest.mark.asyncio
+async def test_request_json(context, fake_session):
     context.session = fake_session
-    result = event_loop.run_until_complete(
-        utils.request(context, "url", return_type="json")
-    )
+    result = await utils.request(context, "url", return_type="json")
     assert result == {}
 
 
-def test_request_response(context, fake_session, event_loop):
+@pytest.mark.asyncio
+async def test_request_response(context, fake_session):
     context.session = fake_session
-    result = event_loop.run_until_complete(
-        utils.request(context, "url", return_type="response")
-    )
+    result = await utils.request(context, "url", return_type="response")
     assert isinstance(result, FakeResponse)
 
 
-def test_request_retry(context, fake_session_500, event_loop):
+@pytest.mark.asyncio
+async def test_request_retry(context, fake_session_500):
     context.session = fake_session_500
     with pytest.raises(ScriptWorkerRetryException):
-        event_loop.run_until_complete(
-            utils.request(context, "url")
-        )
+        await utils.request(context, "url")
 
 
-def test_request_exception(context, fake_session_500, event_loop):
+@pytest.mark.asyncio
+async def test_request_exception(context, fake_session_500):
     context.session = fake_session_500
     with pytest.raises(ScriptWorkerException):
-        event_loop.run_until_complete(
-            utils.request(context, "url", retry=())
-        )
+        await utils.request(context, "url", retry=())
 
 
-def test_retry_request(context, fake_session, event_loop):
+@pytest.mark.asyncio
+async def test_retry_request(context, fake_session):
     context.session = fake_session
-    result = event_loop.run_until_complete(
-        utils.retry_request(context, "url")
-    )
+    result = await utils.retry_request(context, "url")
     assert result == '{}'
 
 
@@ -176,23 +168,23 @@ def test_calculate_sleep_time(attempt, kwargs, min_expected, max_expected):
 
 
 # retry_async {{{1
-def test_retry_async_fail_first(event_loop):
+@pytest.mark.asyncio
+async def test_retry_async_fail_first():
     global retry_count
     retry_count['fail_first'] = 0
-    status = event_loop.run_until_complete(
-        utils.retry_async(fail_first, sleeptime_kwargs={'delay_factor': 0})
-    )
+    status = await utils.retry_async(fail_first, sleeptime_kwargs={'delay_factor': 0})
     assert status == "yay"
     assert retry_count['fail_first'] == 2
 
 
-def test_retry_async_always_fail(event_loop):
+@pytest.mark.asyncio
+async def test_retry_async_always_fail():
     global retry_count
     retry_count['always_fail'] = 0
     with mock.patch('asyncio.sleep', new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
-            status = event_loop.run_until_complete(
-                utils.retry_async(always_fail, sleeptime_kwargs={'delay_factor': 0})
+            status = await utils.retry_async(
+                always_fail, sleeptime_kwargs={'delay_factor': 0}
             )
             assert status is None
     assert retry_count['always_fail'] == 5
@@ -214,8 +206,9 @@ def test_create_temp_creds():
 
 
 # raise_future_exceptions {{{1
+@pytest.mark.asyncio
 @pytest.mark.parametrize("exc", (IOError, SyntaxError, None))
-def test_raise_future_exceptions(event_loop, exc):
+async def test_raise_future_exceptions(exc):
 
     async def one():
         if exc is not None:
@@ -227,19 +220,14 @@ def test_raise_future_exceptions(event_loop, exc):
     tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
     if exc is not None:
         with pytest.raises(exc):
-            event_loop.run_until_complete(
-                utils.raise_future_exceptions(tasks)
-            )
+            await utils.raise_future_exceptions(tasks)
     else:
-        event_loop.run_until_complete(
-            utils.raise_future_exceptions(tasks)
-        )
+        await utils.raise_future_exceptions(tasks)
 
 
-def test_raise_future_exceptions_noop(event_loop):
-    event_loop.run_until_complete(
-        utils.raise_future_exceptions([])
-    )
+@pytest.mark.asyncio
+async def test_raise_future_exceptions_noop():
+    await utils.raise_future_exceptions([])
 
 
 @pytest.mark.asyncio
@@ -342,22 +330,20 @@ def test_rm_dir():
 
 
 # download_file {{{1
-def test_download_file(context, fake_session, tmpdir, event_loop):
+@pytest.mark.asyncio
+async def test_download_file(context, fake_session, tmpdir):
     path = os.path.join(tmpdir, "foo")
-    event_loop.run_until_complete(
-        utils.download_file(context, "url", path, session=fake_session)
-    )
+    await utils.download_file(context, "url", path, session=fake_session)
     with open(path, "r") as fh:
         contents = fh.read()
     assert contents == "asdfasdf"
 
 
-def test_download_file_exception(context, fake_session_500, tmpdir, event_loop):
+@pytest.mark.asyncio
+async def test_download_file_exception(context, fake_session_500, tmpdir):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(DownloadError):
-        event_loop.run_until_complete(
-            utils.download_file(context, "url", path, session=fake_session_500)
-        )
+        await utils.download_file(context, "url", path, session=fake_session_500)
 
 
 # format_json {{{1

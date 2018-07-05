@@ -237,20 +237,6 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
 
 
 @pytest.yield_fixture(scope='function')
-def event_loop():
-    """Create an instance of the default event loop for each test case.
-    From https://github.com/pytest-dev/pytest-asyncio/issues/29#issuecomment-226947296
-
-    In general, we should use @pytest.mark.asyncio, but we sometimes need to
-    do something like kill tasks that benefits from clean event loops.
-
-    """
-    loop = asyncio.get_event_loop()
-    yield loop
-
-
-
-@pytest.yield_fixture(scope='function')
 def tmpdir():
     """Yield a tmpdir that gets cleaned up afterwards.
 
@@ -272,6 +258,16 @@ def tmpdir2():
         yield tmp
 
 
+async def _close_session(obj):
+    """Get rid of all the unclosed session warnings.
+
+    """
+    if not hasattr(obj, 'session'):
+        return
+    if isinstance(obj.session, aiohttp.ClientSession):
+        await obj.session.close()
+
+
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function', params=['firefox'])
 async def rw_context(request):
@@ -290,10 +286,9 @@ async def rw_context(request):
                 context.config[key] = os.path.join(tmp, key)
         context.config['verbose'] = VERBOSE
         yield context
-        try:
-            await context.session.close()
-        except:
-            pass
+        await _close_session(context)
+        await _close_session(context.queue)
+        await _close_session(context.temp_queue)
 
 
 async def noop_async(*args, **kwargs):

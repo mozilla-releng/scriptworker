@@ -16,10 +16,10 @@ import tarfile
 from scriptworker.exceptions import ScriptWorkerGPGException, ScriptWorkerRetryException
 import scriptworker.gpg as sgpg
 from scriptworker.utils import rm
-from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, event_loop, noop_async, noop_sync, tmpdir, touch
+from . import GOOD_GPG_KEYS, BAD_GPG_KEYS, noop_async, noop_sync, tmpdir, touch
 from . import rw_context as context
 
-assert event_loop, tmpdir  # silence pyflakes
+assert tmpdir  # silence pyflakes
 assert context  # silence pyflakes
 
 
@@ -722,7 +722,7 @@ async def test_verify_signed_tag(context, mocker, valid_signed, head_rev, tag_re
 
 
 # build_gpg_homedirs_from_repo {{{1
-def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
+def test_build_gpg_homedirs_from_repo(context, mocker):
     homedirs = {'flat': [], 'signed': []}
     expected = {
         'flat': ['docker-worker', 'generic-worker'],
@@ -745,7 +745,7 @@ def test_build_gpg_homedirs_from_repo(context, mocker, event_loop):
 
 # rebuild_gpg_homedirs {{{1
 @pytest.mark.parametrize("new_rev_found", [True, False])
-def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_rev_found):
+def test_rebuild_gpg_homedirs(context, mocker, new_rev_found):
     def fake_context(*args):
         return (context, None)
 
@@ -771,7 +771,7 @@ def test_rebuild_gpg_homedirs(context, mocker, event_loop, new_rev_found):
 
 
 @pytest.mark.parametrize("nuke_dir", (True, False))
-def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop, nuke_dir):
+def test_rebuild_gpg_homedirs_exception(context, mocker, nuke_dir):
 
     def fake_context(*args):
         return (context, None)
@@ -793,7 +793,7 @@ def test_rebuild_gpg_homedirs_exception(context, mocker, event_loop, nuke_dir):
         sgpg.rebuild_gpg_homedirs()
 
 
-def test_rebuild_gpg_homedirs_lockfile(context, mocker, event_loop):
+def test_rebuild_gpg_homedirs_lockfile(context, mocker):
 
     def fake_context(*args):
         return (context, None)

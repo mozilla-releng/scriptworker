@@ -17,10 +17,10 @@ import sys
 import taskcluster.exceptions
 import taskcluster.async
 import time
-from . import event_loop, fake_session, fake_session_500, noop_async, rw_context, \
+from . import fake_session, fake_session_500, noop_async, rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
-assert event_loop, rw_context  # silence flake8
+assert rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
@@ -306,69 +306,61 @@ async def test_run_task_negative_11(context, mocker):
 
 
 # report* {{{1
-def test_reportCompleted(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_reportCompleted(context, successful_queue):
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        swtask.complete_task(context, 0)
-    )
+    await swtask.complete_task(context, 0)
     assert successful_queue.info == ["reportCompleted", ('taskId', 'runId'), {}]
 
 
-def test_reportFailed(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_reportFailed(context, successful_queue):
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        swtask.complete_task(context, 1)
-    )
+    await swtask.complete_task(context, 1)
     assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
 
 
-def test_reportException(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_reportException(context, successful_queue):
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        swtask.complete_task(context, 2)
-    )
+    await swtask.complete_task(context, 2)
     assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
 
 # complete_task {{{1
-def test_complete_task_409(context, unsuccessful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_complete_task_409(context, unsuccessful_queue):
     context.temp_queue = unsuccessful_queue
-    event_loop.run_until_complete(
-        swtask.complete_task(context, 0)
-    )
+    await swtask.complete_task(context, 0)
 
 
-def test_complete_task_non_409(context, unsuccessful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_complete_task_non_409(context, unsuccessful_queue):
     unsuccessful_queue.status = 500
     context.temp_queue = unsuccessful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
-        event_loop.run_until_complete(
-            swtask.complete_task(context, 0)
-        )
+        await swtask.complete_task(context, 0)
 
 
 # reclaim_task {{{1
-def test_reclaim_task(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_reclaim_task(context, successful_queue):
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        swtask.reclaim_task(context, context.task)
-    )
+    await swtask.reclaim_task(context, context.task)
 
 
-def test_skip_reclaim_task(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_skip_reclaim_task(context, successful_queue):
     context.temp_queue = successful_queue
-    event_loop.run_until_complete(
-        swtask.reclaim_task(context, {"unrelated": "task"})
-    )
+    await swtask.reclaim_task(context, {"unrelated": "task"})
 
 
-def test_reclaim_task_non_409(context, successful_queue, event_loop):
+@pytest.mark.asyncio
+async def test_reclaim_task_non_409(context, successful_queue):
     successful_queue.status = 500
     context.temp_queue = successful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
-        event_loop.run_until_complete(
-            swtask.reclaim_task(context, context.task)
-        )
+        await swtask.reclaim_task(context, context.task)
 
 
 @pytest.mark.parametrize("proc", (None, 1))
@@ -463,7 +455,7 @@ async def test_max_timeout(context):
 # claim_work {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("raises", (True, False))
-async def test_claim_work(event_loop, raises, context):
+async def test_claim_work(raises, context):
     context.queue = mock.MagicMock()
     if raises:
         async def foo(*args):
