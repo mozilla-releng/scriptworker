@@ -2,7 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [13.0.0] - unreleased
+## [14.0.0] - unreleased
+### Changed
+- tests that need an event loop are now all `@pytest.mark.asyncio` rather than using the now-removed `event_loop` fixture. This appears to have resolved our intermittent test failures
+
+### Fixed
+- fixed the hang in `run_task` -- we were waiting for the `max_timeout` future to exit, which it did after sleeping for `task_max_timeout` seconds, so every task took the full timeout to complete. Now we use `asyncio.wait(timeout=...)`.
+- fixed the unclosed session warnings in tests
+
+### Removed
+- removed `get_future_exception` after removing its last caller
+- removed `max_timeout` after moving timeout handling into `run_task` via `asyncio.wait`
+- removed the `event_loop` test fixture; this may have conflicted with the `pytest-asyncio` `event_loop` fixture
+
+## [13.0.0] - 2018-07-04
 ### Added
 - added `task_max_timeout_status`, `reversed_statuses`, and `invalid_reclaim_status` to `DEFAULT_CONFIG`
 - added `get_reversed_statuses` for config-driven reversed statuses
