@@ -2,7 +2,9 @@
 # coding=utf-8
 """Test scriptworker.context
 """
+import asyncio
 import json
+import mock
 import os
 import pytest
 import taskcluster
@@ -124,3 +126,23 @@ def test_get_credentials(context):
     expected = {'asdf': 'foobar'}
     context._credentials = expected
     assert context.credentials == expected
+
+
+def test_new_event_loop(mocker):
+    """The default context.event_loop is from `asyncio.get_event_loop`"""
+    fake_loop = mock.MagicMock()
+    mocker.patch.object(asyncio, 'get_event_loop', return_value=fake_loop)
+    context = swcontext.Context()
+    assert context.event_loop == fake_loop
+
+
+def test_set_event_loop(mocker):
+    """`context.event_loop` returns the same value once set.
+
+    (This may seem obvious, but this tests the correctness of the property.)
+
+    """
+    fake_loop = mock.MagicMock()
+    context = swcontext.Context()
+    context.event_loop = fake_loop
+    assert context.event_loop == fake_loop

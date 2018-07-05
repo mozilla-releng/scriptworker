@@ -270,7 +270,7 @@ async def _close_session(obj):
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function', params=['firefox'])
-async def rw_context(request):
+async def rw_context(request, event_loop):
     with tempfile.TemporaryDirectory() as tmp:
         config = get_unfrozen_copy(DEFAULT_CONFIG)
         config['cot_product'] = request.param
@@ -285,6 +285,7 @@ async def rw_context(request):
             if key.endswith("key_path") or key in ("gpg_home", ):
                 context.config[key] = os.path.join(tmp, key)
         context.config['verbose'] = VERBOSE
+        context.event_loop = event_loop
         yield context
         await _close_session(context)
         await _close_session(context.queue)

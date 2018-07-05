@@ -33,7 +33,7 @@ def context(rw_context):
 
 
 # main {{{1
-def test_main(mocker, context):
+def test_main(mocker, context, event_loop):
     config = dict(context.config)
     config['poll_interval'] = 1
     creds = {'fake_creds': True}
@@ -52,12 +52,12 @@ def test_main(mocker, context):
         mocker.patch.object(worker, 'async_main', new=foo)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         with pytest.raises(ScriptWorkerException):
-            worker.main()
+            worker.main(event_loop=event_loop)
     finally:
         os.remove(tmp)
 
 
-def test_main_sigterm(mocker, context):
+def test_main_sigterm(mocker, context, event_loop):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
     config = dict(context.config)
@@ -77,7 +77,7 @@ def test_main_sigterm(mocker, context):
         del(config['credentials'])
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
-        worker.main()
+        worker.main(event_loop=event_loop)
     finally:
         os.remove(tmp)
 
