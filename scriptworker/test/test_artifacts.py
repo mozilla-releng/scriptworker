@@ -215,12 +215,23 @@ async def test_download_artifacts(context):
 
 def test_get_upstream_artifacts_full_paths_per_task_id(context):
     artifacts_to_succeed = [{
-        'paths': ['public/file_a'],
+        'paths': ['public/file_a1'],
         'taskId': 'dependency1',
         'taskType': 'signing',
     }, {
-        'paths': ['public/file_b'],
+        'paths': ['public/file_b1', 'public/file_b2'],
         'taskId': 'dependency2',
+        'taskType': 'signing',
+    }, {
+        'paths': ['some_other_folder/file_c'],
+        'taskId': 'dependency3',
+        'taskType': 'signing',
+    }, {
+        # Case where the same taskId was given. In some occasion we may want to split
+        # upstreamArtifacts of the same taskId into 2. For instance: 1 taskId with a given
+        # parameter (like beetmover's "locale") but not the other
+        'paths': ['public/file_a2'],
+        'taskId': 'dependency1',
         'taskType': 'signing',
     }]
 
@@ -241,14 +252,28 @@ def test_get_upstream_artifacts_full_paths_per_task_id(context):
     context.task['payload']['upstreamArtifacts'].extend(artifacts_to_succeed)
     for artifact in artifacts_to_succeed:
         folder = os.path.join(context.config['work_dir'], 'cot', artifact['taskId'])
-        os.makedirs(os.path.join(folder, 'public'))
-        touch(os.path.join(folder, artifact['paths'][0]))
+
+        for path in artifact['paths']:
+            try:
+                os.makedirs(os.path.join(folder, os.path.dirname(path)))
+            except FileExistsError:
+                pass
+            touch(os.path.join(folder, path))
 
     succeeded_artifacts, failed_artifacts = get_upstream_artifacts_full_paths_per_task_id(context)
 
     assert succeeded_artifacts == {
-        'dependency1': [os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')],
-        'dependency2': [os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b')],
+        'dependency1': [
+            os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a1'),
+            os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a2'),
+        ],
+        'dependency2': [
+            os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b1'),
+            os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b2'),
+        ],
+        'dependency3': [
+            os.path.join(context.config['work_dir'], 'cot', 'dependency3', 'some_other_folder', 'file_c'),
+        ],
     }
     assert failed_artifacts == {
         'failedDependency1': ['public/failed_optional_file1'],
