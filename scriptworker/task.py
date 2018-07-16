@@ -450,7 +450,7 @@ async def reclaim_task(context, task):
 
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 status_code
-            from taskcluster.async.Queue.reclaimTask()
+            from taskcluster.aio.Queue.reclaimTask()
 
     """
     while True:

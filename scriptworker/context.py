@@ -19,7 +19,7 @@ import os
 import tempfile
 
 from scriptworker.utils import makedirs, load_json_or_yaml_from_url
-from taskcluster.async import Queue
+from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
 
@@ -37,11 +37,11 @@ class Context(object):
             our credentials.
         proc (asyncio.subprocess.Process): when launching the script, this is
             the process object.
-        queue (taskcluster.async.Queue): the taskcluster Queue object
+        queue (taskcluster.aio.Queue): the taskcluster Queue object
             containing the scriptworker credentials.
         session (aiohttp.ClientSession): the default aiohttp session
         task (dict): the task definition for the current task.
-        temp_queue (taskcluster.async.Queue): the taskcluster Queue object
+        temp_queue (taskcluster.aio.Queue): the taskcluster Queue object
             containing the task-specific temporary credentials.
 
     """

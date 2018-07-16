@@ -27,7 +27,7 @@ import scriptworker.log as swlog
 import scriptworker.artifacts as artifacts
 import scriptworker.worker as worker
 import scriptworker.utils as utils
-from taskcluster.async import Index, Queue
+from taskcluster.aio import Index, Queue
 from . import integration_create_task_payload
 
 log = logging.getLogger(__name__)
