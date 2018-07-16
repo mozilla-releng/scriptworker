@@ -2,7 +2,21 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [13.0.0] - unreleased
+## [14.0.0] - 2018-07-16
+### Changed
+- tests that need an event loop are now all `@pytest.mark.asyncio` and/or using the pytest-asyncio `event_loop` fixture, rather than using the now-removed local `event_loop` fixture. This addresses our intermittent test failures, though we need additional work (e.g., PR #244)
+- added more test cases around `get_upstream_artifacts_full_paths_per_task_id`, to allow for multiple `upstreamArtifacts` entries for a single `taskId`
+
+### Fixed
+- fixed the hang in `run_task` -- we were waiting for the `max_timeout` future to exit, which it did after sleeping for `task_max_timeout` seconds, so every task took the full timeout to complete. Now we use `asyncio.wait(timeout=...)`.
+- fixed the unclosed session warnings in tests
+
+### Removed
+- removed `get_future_exception` after removing its last caller
+- removed `max_timeout` after moving timeout handling into `run_task` via `asyncio.wait`
+- removed the `event_loop` test fixture; this may have conflicted with the `pytest-asyncio` `event_loop` fixture
+
+## [13.0.0] - 2018-07-04
 ### Added
 - added `task_max_timeout_status`, `reversed_statuses`, and `invalid_reclaim_status` to `DEFAULT_CONFIG`
 - added `get_reversed_statuses` for config-driven reversed statuses

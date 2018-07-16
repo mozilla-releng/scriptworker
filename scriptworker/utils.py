@@ -367,26 +367,6 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
     return succeeded_results, error_results
 
 
-# get_future_exception {{{1
-def get_future_exception(fut):
-    """Get the exception from a future.
-
-    Args:
-        fut (asyncio.Future): the future to retrieve the exception from.
-
-    Returns:
-        Exception: if an exception has been raised in the future.
-        None: if the future completed with no exception.
-        False: if the future has not completed.
-
-    """
-    try:
-        exc = fut.exception()
-        return exc
-    except asyncio.InvalidStateError:
-        return False
-
-
 # filepaths_in_dir {{{1
 def filepaths_in_dir(path):
     """Find all files in a directory, and return the relative paths to those files.
