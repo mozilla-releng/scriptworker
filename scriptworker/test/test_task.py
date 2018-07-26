@@ -16,7 +16,6 @@ import scriptworker.task as swtask
 import scriptworker.log as log
 import sys
 import taskcluster.exceptions
-import taskcluster.async
 import time
 from . import fake_session, fake_session_500, noop_async, rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
