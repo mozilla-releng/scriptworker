@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [15.0.0] - 2018-07-26
+### Changed
+- require py37 to be green
+- support and require taskcluster>=4.0.0 (`taskcluster.aio` rather than `taskcluster.async`, because `async` is a py37 keyword)
+
 ## [14.0.0] - 2018-07-16
 ### Changed
 - tests that need an event loop are now all `@pytest.mark.asyncio` and/or using the pytest-asyncio `event_loop` fixture, rather than using the now-removed local `event_loop` fixture. This addresses our intermittent test failures, though we need additional work (e.g., PR #244)

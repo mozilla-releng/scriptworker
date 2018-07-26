@@ -8,6 +8,6 @@ json-e>=2.5.0
 pexpect
 python-gnupg
 PyYAML
-taskcluster
+taskcluster>=4
 virtualenv
 wheel
