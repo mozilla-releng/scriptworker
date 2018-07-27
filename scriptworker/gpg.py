@@ -1358,13 +1358,12 @@ def build_gpg_homedirs_from_repo(
     """
     basedir = basedir or context.config['base_gpg_home_dir']
     repo_path = context.config['git_key_repo_dir']
-    event_loop = asyncio.get_event_loop()
     # verify our input.  Hardcoding the check before importing, as opposed
     # to expecting something else to run the check for us.
     # This currently runs twice, once to update to the tag and once before
     # we build the homedirs, in case we ever call this function without calling
     # ``update_signed_git_repo`` first.
-    event_loop.run_until_complete(verify_function(context, tag))
+    context.event_loop.run_until_complete(verify_function(context, tag))
     rm(basedir)
     makedirs(basedir)
     # create gpg homedirs
@@ -1405,9 +1404,8 @@ def _update_git_and_rebuild_homedirs(context, basedir=None):
             trusted_path
         )
         overwrite_gpg_home(tmp_gpg_home, guess_gpg_home(context))
-    event_loop = asyncio.get_event_loop()
     old_revision = get_last_good_git_revision(context)
-    new_revision, tag = event_loop.run_until_complete(
+    new_revision, tag = context.event_loop.run_until_complete(
         retry_async(
             update_signed_git_repo, retry_exceptions=(ScriptWorkerRetryException, ),
             args=(context, )
@@ -1483,16 +1481,21 @@ def rm_lockfile(context):
     rm(context.config['gpg_lockfile'])
 
 
-def rebuild_gpg_homedirs():
+def rebuild_gpg_homedirs(event_loop=None):
     """Rebuild the gpg homedirs in the background.
 
     This is an entry point, and should be called before scriptworker is run.
+
+    Args:
+        event_loop (asyncio.BaseEventLoop, optional): the event loop to use.
+            If None, use ``asyncio.get_event_loop()``. Defaults to None.
 
     Raises:
         SystemExit: on failure.
 
     """
     context, _ = get_context_from_cmdln(sys.argv[1:])
+    context.event_loop = event_loop or context.event_loop
     update_logging_config(context, file_name='rebuild_gpg_homedirs.log')
     log.info("rebuild_gpg_homedirs()...")
     basedir = get_tmp_base_gpg_home_dir(context)
@@ -1501,7 +1504,9 @@ def rebuild_gpg_homedirs():
     create_lockfile(context)
     new_revision = None
     try:
-        new_revision = _update_git_and_rebuild_homedirs(context, basedir=basedir)
+        new_revision = _update_git_and_rebuild_homedirs(
+            context, basedir=basedir
+        )
     except ScriptWorkerException as exc:
         log.exception("Failed to run _update_git_and_rebuild_homedirs")
         sys.exit(exc.exit_code)

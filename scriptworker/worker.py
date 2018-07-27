@@ -111,7 +111,6 @@ async def run_tasks(context, creds_key="credentials"):
         None: if no task run.
 
     """
-    loop = asyncio.get_event_loop()
     tasks = await claim_work(context)
     status = None
     if not tasks or not tasks.get('tasks', []):
@@ -124,7 +123,7 @@ async def run_tasks(context, creds_key="credentials"):
     for task_defn in tasks.get('tasks', []):
         status = 0
         prepare_to_run_task(context, task_defn)
-        reclaim_fut = loop.create_task(reclaim_task(context, context.task))
+        reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
         status = await do_run_task(context)
         status = worst_level(status, await do_upload(context))
         await complete_task(context, status)
@@ -158,12 +157,18 @@ async def async_main(context, credentials):
 
 
 # main {{{1
-def main():
-    """Scriptworker entry point: get everything set up, then enter the main loop."""
+def main(event_loop=None):
+    """Scriptworker entry point: get everything set up, then enter the main loop.
+
+    Args:
+        event_loop (asyncio.BaseEventLoop, optional): the event loop to use.
+            If None, use ``asyncio.get_event_loop()``. Defaults to None.
+
+    """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
     cleanup(context)
-    loop = asyncio.get_event_loop()
+    context.event_loop = event_loop or asyncio.get_event_loop()
 
     done = False
 
@@ -176,7 +181,7 @@ def main():
 
     while not done:
         try:
-            loop.run_until_complete(async_main(context, credentials))
+            context.event_loop.run_until_complete(async_main(context, credentials))
         except Exception:
             log.critical("Fatal exception", exc_info=1)
             raise

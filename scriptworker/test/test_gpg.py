@@ -767,7 +767,7 @@ def test_rebuild_gpg_homedirs(context, mocker, new_rev_found):
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
     mocker.patch.object(sgpg, "write_last_good_git_revision", new=noop_sync)
 
-    sgpg.rebuild_gpg_homedirs()
+    sgpg.rebuild_gpg_homedirs(event_loop=context.event_loop)
 
 
 @pytest.mark.parametrize("nuke_dir", (True, False))
@@ -790,7 +790,7 @@ def test_rebuild_gpg_homedirs_exception(context, mocker, nuke_dir):
     mocker.patch.object(sgpg, "build_gpg_homedirs_from_repo", new=noop_sync)
 
     with pytest.raises(SystemExit):
-        sgpg.rebuild_gpg_homedirs()
+        sgpg.rebuild_gpg_homedirs(event_loop=context.event_loop)
 
 
 def test_rebuild_gpg_homedirs_lockfile(context, mocker):
@@ -802,7 +802,7 @@ def test_rebuild_gpg_homedirs_lockfile(context, mocker):
     mocker.patch.object(sgpg, "update_logging_config", new=noop_sync)
 
     touch(context.config['gpg_lockfile'])
-    sgpg.rebuild_gpg_homedirs()
+    sgpg.rebuild_gpg_homedirs(event_loop=context.event_loop)
 
 
 # last_good_git_revision {{{1

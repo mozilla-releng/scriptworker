@@ -55,6 +55,7 @@ class Context(object):
     temp_queue = None
     _credentials = None
     _claim_task = None  # This assumes a single task per worker.
+    _event_loop = None
     _temp_credentials = None  # This assumes a single task per worker.
     _reclaim_task = None
     _projects = None
@@ -114,9 +115,7 @@ class Context(object):
 
         """
         if credentials:
-            session = self.session or aiohttp.ClientSession(
-                loop=asyncio.get_event_loop()
-            )
+            session = self.session or aiohttp.ClientSession(loop=self.event_loop)
             return Queue({
                 'credentials': credentials,
             }, session=session)
@@ -185,6 +184,21 @@ class Context(object):
     @projects.setter
     def projects(self, projects):
         self._projects = projects
+
+    @property
+    def event_loop(self):
+        """asyncio.BaseEventLoop: the running event loop.
+
+        This fixture mainly exists to allow for overrides during unit tests.
+
+        """
+        if not self._event_loop:
+            self._event_loop = asyncio.get_event_loop()
+        return self._event_loop
+
+    @event_loop.setter
+    def event_loop(self, event_loop):
+        self._event_loop = event_loop
 
     async def populate_projects(self, force=False):
         """Download the ``projects.yml`` file and populate ``self.projects``.
