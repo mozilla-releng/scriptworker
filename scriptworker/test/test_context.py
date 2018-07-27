@@ -133,7 +133,7 @@ def test_new_event_loop(mocker):
     fake_loop = mock.MagicMock()
     mocker.patch.object(asyncio, 'get_event_loop', return_value=fake_loop)
     context = swcontext.Context()
-    assert context.event_loop == fake_loop
+    assert context.event_loop is fake_loop
 
 
 def test_set_event_loop(mocker):
@@ -145,4 +145,4 @@ def test_set_event_loop(mocker):
     fake_loop = mock.MagicMock()
     context = swcontext.Context()
     context.event_loop = fake_loop
-    assert context.event_loop == fake_loop
+    assert context.event_loop is fake_loop
