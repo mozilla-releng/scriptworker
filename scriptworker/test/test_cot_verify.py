@@ -403,6 +403,12 @@ def test_raise_on_errors(errors, raises):
 ), (
     {'payload': {'image': 'x', 'osGroups': []}, 'provisionerId': '', 'workerType': '', 'scopes': []},
     None, True
+), (
+    {'payload': {}, 'provisionerId': '', 'workerType': '', 'scopes': [], 'tags': {'worker-implementation': 'generic-worker'}},
+    'generic-worker', False
+), (
+    {'payload': {'image': 'x'}, 'provisionerId': '', 'workerType': '', 'scopes': ['docker-worker:'], 'tags': {'worker-implementation': 'generic-worker'}},
+    None, True
 )))
 def test_guess_worker_impl(chain, task, expected, raises):
     link = mock.MagicMock()
