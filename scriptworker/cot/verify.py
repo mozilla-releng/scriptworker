@@ -325,6 +325,8 @@ def guess_worker_impl(link):
         worker_impls.append("generic-worker")
     if task['payload'].get("osGroups") is not None:
         worker_impls.append("generic-worker")
+    if task.get('tags', {}).get("worker-implementation", {}):
+        worker_impls.append(task['tags']['worker-implementation'])
 
     for scope in task['scopes']:
         if scope.startswith("docker-worker:"):
