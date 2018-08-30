@@ -292,9 +292,7 @@ def raise_on_errors(errors, level=logging.CRITICAL):
 def guess_worker_impl(link):
     """Given a task, determine which worker implementation (e.g., docker-worker) it was run on.
 
-    Currently there are no task markers for taskcluster-worker.  Those need to
-    be populated here once they're ready.
-
+    * check for the `worker-implementation` tag
     * docker-worker: ``task.payload.image`` is not None
     * check for scopes beginning with the worker type name.
     * generic-worker: ``task.payload.osGroups`` is not None
