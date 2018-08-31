@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [15.0.1] - 2018-08-31
+### Changed
+- use `task.tags.worker-implementation` as the worker implementation, if specified.
+
 ## [15.0.0] - 2018-07-26
 ### Changed
 - require py37 to be green

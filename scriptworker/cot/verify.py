@@ -292,9 +292,7 @@ def raise_on_errors(errors, level=logging.CRITICAL):
 def guess_worker_impl(link):
     """Given a task, determine which worker implementation (e.g., docker-worker) it was run on.
 
-    Currently there are no task markers for taskcluster-worker.  Those need to
-    be populated here once they're ready.
-
+    * check for the `worker-implementation` tag
     * docker-worker: ``task.payload.image`` is not None
     * check for scopes beginning with the worker type name.
     * generic-worker: ``task.payload.osGroups`` is not None
@@ -325,6 +323,8 @@ def guess_worker_impl(link):
         worker_impls.append("generic-worker")
     if task['payload'].get("osGroups") is not None:
         worker_impls.append("generic-worker")
+    if task.get('tags', {}).get("worker-implementation", {}):
+        worker_impls.append(task['tags']['worker-implementation'])
 
     for scope in task['scopes']:
         if scope.startswith("docker-worker:"):
@@ -1827,7 +1827,7 @@ async def verify_chain_of_trust(chain):
 
 
 # verify_cot_cmdln {{{1
-def verify_cot_cmdln(args=None):
+def verify_cot_cmdln(args=None, event_loop=None):
     """Test the chain of trust from the commandline, for debugging purposes.
 
     Args:
@@ -1858,14 +1858,14 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     log = logging.getLogger('scriptworker')
     log.setLevel(logging.DEBUG)
     logging.basicConfig()
-    loop = asyncio.get_event_loop()
+    event_loop = event_loop or asyncio.get_event_loop()
     conn = aiohttp.TCPConnector()
     try:
         session = aiohttp.ClientSession(connector=conn)
         context = Context()
         context.session = session
         context.credentials = read_worker_creds()
-        context.task = loop.run_until_complete(context.queue.task(opts.task_id))
+        context.task = event_loop.run_until_complete(context.queue.task(opts.task_id))
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.config.update({
             'cot_product': opts.cot_product,
@@ -1877,8 +1877,8 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
         })
         context.config = apply_product_config(context.config)
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-        loop.run_until_complete(verify_chain_of_trust(cot))
-        loop.run_until_complete(context.session.close())
+        event_loop.run_until_complete(verify_chain_of_trust(cot))
+        event_loop.run_until_complete(context.session.close())
         conn.close()
         log.info(format_json(cot.dependent_task_ids()))
         log.info("{} : {}".format(cot.name, cot.task_id))

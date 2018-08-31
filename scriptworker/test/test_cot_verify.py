@@ -403,6 +403,12 @@ def test_raise_on_errors(errors, raises):
 ), (
     {'payload': {'image': 'x', 'osGroups': []}, 'provisionerId': '', 'workerType': '', 'scopes': []},
     None, True
+), (
+    {'payload': {}, 'provisionerId': '', 'workerType': '', 'scopes': [], 'tags': {'worker-implementation': 'generic-worker'}},
+    'generic-worker', False
+), (
+    {'payload': {'image': 'x'}, 'provisionerId': '', 'workerType': '', 'scopes': ['docker-worker:'], 'tags': {'worker-implementation': 'generic-worker'}},
+    None, True
 )))
 def test_guess_worker_impl(chain, task, expected, raises):
     link = mock.MagicMock()
@@ -1710,7 +1716,7 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
-def test_verify_cot_cmdln(chain, args, tmpdir, mocker):
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
     context = mock.MagicMock()
     context.queue = mock.MagicMock()
     context.queue.task = noop_async
@@ -1735,4 +1741,4 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker):
     mocker.patch.object(cotverify, 'ChainOfTrust', new=cot)
     mocker.patch.object(cotverify, 'verify_chain_of_trust', new=noop_async)
 
-    cotverify.verify_cot_cmdln(args=args)
+    cotverify.verify_cot_cmdln(args=args, event_loop=event_loop)
