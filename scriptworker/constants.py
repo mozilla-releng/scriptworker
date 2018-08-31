@@ -225,7 +225,6 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:beetmover:bucket:release': 'all-release-branches',
 
                 'project:releng:bouncer:server:production': 'all-production-branches',
-                'project:releng:bouncer:server:staging': 'all-staging-branches',
 
                 # As part of the Dawn project we decided to use the Aurora Google Play
                 # app to ship Firefox Nightly. This means that the "nightly" trees need
