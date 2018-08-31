@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [15.0.2] - 2018-08-31
+### Added
+- Allow any branch access to the -dev bouncer scriptwork.
+
 ## [15.0.1] - 2018-08-31
 ### Changed
 - use `task.tags.worker-implementation` as the worker implementation, if specified.
