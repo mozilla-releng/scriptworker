@@ -665,7 +665,9 @@ Skipping download of this artifact'.format(path, task_id))
             raise CoTError("BAD HASH ALGORITHM: {}: {} {}!".format(link.name, alg, full_path))
         real_sha = get_hash(full_path, hash_alg=alg)
         if expected_sha != real_sha:
-            raise CoTError("BAD HASH: {}: Expected {} {}; got {}!".format(link.name, alg, expected_sha, real_sha))
+            raise CoTError("BAD HASH on file {}: {}: Expected {} {}; got {}!".format(
+                full_path, link.name, alg, expected_sha, real_sha
+            ))
         log.debug("{} matches the expected {} {}".format(full_path, alg, expected_sha))
     return full_path
 
