@@ -319,6 +319,7 @@ DEFAULT_CONFIG = frozendict({
                 ),
 
                 'all-production-branches': (
+                    "/mozilla-central",
                     "/releases/mozilla-beta",
                     "/releases/mozilla-release",
                     "/releases/mozilla-esr52",
