@@ -1150,8 +1150,8 @@ async def test_populate_jsone_context(mocker, chain, decision_link, action_link,
         'push': {
             'comment': '',
             'owner': 'cron',
-            'pushdate': '0',
-            'pushlog_id': '-1',
+            'pushdate': 1500000000,
+            'pushlog_id': 1,
             'revision': None,
         },
         'repository': {
@@ -1585,6 +1585,51 @@ def test_get_additional_github_releases_jsone_context(chain, mocker):
             },
         },
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("push_comment", (
+    'foo bar baz',
+    'try: a b c',
+    'blah blah blah blah try: a b c',
+    'blah blah blah blah\nlbah blha try: [a] b c\nblah blah',
+))
+async def test_get_additional_cron_jsone_context(cron_link, mocker, push_comment):
+
+    chain = cron_link
+    async def fake_pushlog(*args):
+        return {
+            'pushes': {
+                '123': {
+                    'user': 'myuser',
+                    'date': 'mydate',
+                    'changesets': [{
+                        'desc': push_comment
+                    }]
+                }
+            }
+        }
+
+    def fake_commit_msg(*args):
+        return push_comment
+
+    mocker.patch.object(cotverify, 'get_revision', return_value="myrev")
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=fake_pushlog)
+    mocker.patch.object(cotverify, 'get_commit_message', new=fake_commit_msg)
+
+    expected = {
+        "cron": {},
+        "push": {
+            "revision": "myrev",
+            "comment": '',
+            "owner": "cron",
+            "pushlog_id": "123",
+            "pushdate": "mydate",
+        }
+    }
+    assert expected == await cotverify._get_additional_cron_jsone_context(
+        chain, chain
+    )
 
 
 # check_and_update_action_task_group_id {{{1
