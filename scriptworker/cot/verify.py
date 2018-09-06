@@ -62,6 +62,7 @@ from scriptworker.utils import (
     rm,
 )
 from taskcluster.exceptions import TaskclusterFailure
+from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
 
@@ -1867,6 +1868,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
         context = Context()
         context.session = session
         context.credentials = read_worker_creds()
+        context.queue = Queue(session=session)
         context.task = event_loop.run_until_complete(context.queue.task(opts.task_id))
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.config.update({
