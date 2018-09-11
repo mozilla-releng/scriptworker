@@ -1,16 +1,15 @@
 import arrow
 import gzip
 import json
-import operator
-import os
 import mimetypes
 import mock
+import os
 import pytest
 import tempfile
 
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
     create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
-    _force_mimetypes_to_plain_text, _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
+    _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
