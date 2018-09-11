@@ -1,5 +1,7 @@
 import arrow
+import asyncio
 import gzip
+import itertools
 import json
 import mimetypes
 import mock
@@ -210,6 +212,30 @@ async def test_download_artifacts(context):
     assert sorted(result) == sorted(expected_paths)
     assert sorted(paths) == sorted(expected_paths)
     assert sorted(urls) == sorted(expected_urls)
+
+
+@pytest.mark.asyncio
+async def test_download_artifacts_timeout(context):
+    """
+    If the download function encounters a timeout, then
+    :py:func:`download_artifacts` will retry the download.
+    """
+    count = itertools.count()
+
+    urls = [
+        "https://queue.taskcluster.net/v1/task/dependency1/artifacts/foo/bar",
+    ]
+    expected_paths = [
+        os.path.join(context.config['work_dir'], "foo", "bar"),
+    ]
+
+    async def foo(_, url, path, **kwargs):
+        if next(count) < 1:
+            raise asyncio.TimeoutError()
+
+    result = await download_artifacts(context, urls, download_func=foo)
+
+    assert sorted(result) == sorted(expected_paths)
 
 
 def test_get_upstream_artifacts_full_paths_per_task_id(context):
