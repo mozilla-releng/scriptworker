@@ -240,10 +240,8 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:releng:snapcraft:firefox:beta': 'beta',
                 'project:releng:snapcraft:firefox:candidate': 'release',
-                'project:releng:snapcraft:firefox:mock': 'all-staging-branches',
 
                 'project:releng:ship-it:production': 'all-production-branches',
-                'project:releng:ship-it:staging': 'all-staging-branches',
 
                 'project:releng:treescript:action:push': 'all-release-branches',
             }),
