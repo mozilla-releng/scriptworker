@@ -310,7 +310,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             asyncio.ensure_future(
                 retry_async(
                     download_func, args=(context, file_url, abs_file_path),
-                    retry_exceptions=(DownloadError, aiohttp.ClientError),
+                    retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
                     kwargs={'session': session},
                 )
             )

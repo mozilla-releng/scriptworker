@@ -1,16 +1,17 @@
 import arrow
+import asyncio
 import gzip
+import itertools
 import json
-import operator
-import os
 import mimetypes
 import mock
+import os
 import pytest
 import tempfile
 
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
     create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
-    _force_mimetypes_to_plain_text, _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
+    _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
@@ -211,6 +212,30 @@ async def test_download_artifacts(context):
     assert sorted(result) == sorted(expected_paths)
     assert sorted(paths) == sorted(expected_paths)
     assert sorted(urls) == sorted(expected_urls)
+
+
+@pytest.mark.asyncio
+async def test_download_artifacts_timeout(context):
+    """
+    If the download function encounters a timeout, then
+    :py:func:`download_artifacts` will retry the download.
+    """
+    count = itertools.count()
+
+    urls = [
+        "https://queue.taskcluster.net/v1/task/dependency1/artifacts/foo/bar",
+    ]
+    expected_paths = [
+        os.path.join(context.config['work_dir'], "foo", "bar"),
+    ]
+
+    async def foo(_, url, path, **kwargs):
+        if next(count) < 1:
+            raise asyncio.TimeoutError()
+
+    result = await download_artifacts(context, urls, download_func=foo)
+
+    assert sorted(result) == sorted(expected_paths)
 
 
 def test_get_upstream_artifacts_full_paths_per_task_id(context):
