@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [15.0.4] - 2018-09-11
+### Added
+- Allow staging branches access to staging ship-it and mock snap workers.
+
+### Fixed
+- Retry download artifacts on timeouts.
+
 ## [15.0.3] - 2018-09-05
 ### Added
 - Allow mozilla-central to update bouncer locations.
