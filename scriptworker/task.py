@@ -78,8 +78,8 @@ def get_run_id(claim_task):
     return claim_task['runId']
 
 
-# get_action_name {{{1
-def get_action_name(task):
+# get_action_callback_name {{{1
+def get_action_callback_name(task):
     """Get the callback name of an action task.
 
     Args:
@@ -87,6 +87,7 @@ def get_action_name(task):
 
     Returns:
         str: the name.
+        None: if not found.
 
     """
     name = task['payload'].get('env', {}).get('ACTION_CALLBACK')

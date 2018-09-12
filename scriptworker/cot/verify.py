@@ -32,7 +32,7 @@ from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGExce
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
-    get_action_name,
+    get_action_callback_name,
     get_and_check_project,
     get_and_check_tasks_for,
     get_commit_message,
@@ -1143,7 +1143,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     """
     actions_path = decision_link.get_artifact_full_path('public/actions.json')
     all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
-    action_name = get_action_name(parent_link.task)
+    action_name = get_action_callback_name(parent_link.task)
     action_defn = _get_action_from_actions_json(all_actions, action_name)
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
     if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
