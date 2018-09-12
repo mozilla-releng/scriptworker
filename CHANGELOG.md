@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [16.0.0] - 2018-09-12
+### Added
+- add `get_action_callback_name`
+
+### Fixed
+- verify actions properly, even if they share the same name with another action (`cb_name` is unique; `name` is not).
+
+### Removed
+- remove `get_action_name`
+
 ## [15.0.4] - 2018-09-11
 ### Added
 - Allow staging branches access to staging ship-it and mock snap workers.
