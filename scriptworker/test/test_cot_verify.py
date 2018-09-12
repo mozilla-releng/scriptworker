@@ -1176,6 +1176,15 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
     )
 
 
+def test_no_match_in_actions_json():
+    """Searching for nonexistent action callback name in actions.json returns None.
+
+    Adding this test for 100% coverage.
+    """
+    all_actions = load_json_or_yaml(os.path.join(COTV2_DIR, "actions.json"), is_path=True)['actions']
+    assert cotverify._get_action_from_actions_json(all_actions, "nonexistent-action-cbname") is None
+
+
 @pytest.mark.asyncio
 async def test_skip_verify_parent_task_definition(chain, caplog):
     chain.context.config['cot_product'] = 'mobile'
