@@ -80,7 +80,7 @@ def get_run_id(claim_task):
 
 # get_action_name {{{1
 def get_action_name(task):
-    """Get the name of an action task.
+    """Get the callback name of an action task.
 
     Args:
         obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
@@ -89,7 +89,7 @@ def get_action_name(task):
         str: the name.
 
     """
-    name = task['extra'].get('action', {}).get('name')
+    name = task['payload'].get('env', {}).get('ACTION_CALLBACK')
     return name
 
 

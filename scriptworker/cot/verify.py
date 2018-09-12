@@ -1121,6 +1121,12 @@ async def get_in_tree_template(link):
     return tmpl
 
 
+def _get_action_from_actions_json(all_actions, action_name):
+    for defn in all_actions:
+        if defn.get('hookPayload', {}).get('decision', {}).get('action', {}).get('cb_name') == action_name:
+            return defn
+
+
 async def get_action_context_and_template(chain, parent_link, decision_link):
     """Get the appropriate json-e context and template for an action task.
 
@@ -1138,7 +1144,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     actions_path = decision_link.get_artifact_full_path('public/actions.json')
     all_actions = load_json_or_yaml(actions_path, is_path=True)['actions']
     action_name = get_action_name(parent_link.task)
-    action_defn = [d for d in all_actions if d['name'] == action_name][0]
+    action_defn = _get_action_from_actions_json(all_actions, action_name)
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
     if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
         tmpl = {'tasks': [action_defn['task']]}
