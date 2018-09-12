@@ -50,9 +50,9 @@ def test_worst_level(one, two, expected):
 @pytest.mark.parametrize("name", ("foo", "bar"))
 def test_get_action_name(name):
     assert swtask.get_action_name({
-        "extra": {
-            "action": {
-                "name": name
+        "payload": {
+            "env": {
+                "ACTION_CALLBACK": name
             }
         }
     }) == name
