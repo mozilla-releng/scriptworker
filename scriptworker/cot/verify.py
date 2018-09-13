@@ -1150,8 +1150,9 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
         tmpl = {'tasks': [action_defn['task']]}
     else:
         tmpl = await get_in_tree_template(decision_link)
+        rendered_hook_payload = jsone.render(action_defn['hookPayload'], jsone_context)
         for k in ('action', 'push', 'repository'):
-            jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'][k])
+            jsone_context[k] = deepcopy(rendered_hook_payload['decision'][k])
         jsone_context['action']['repo_scope'] = get_repo_scope(parent_link.task, parent_link.name)
 
     return jsone_context, tmpl
