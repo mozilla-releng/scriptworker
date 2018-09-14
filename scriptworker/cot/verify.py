@@ -1121,10 +1121,20 @@ async def get_in_tree_template(link):
     return tmpl
 
 
-def _get_action_from_actions_json(all_actions, action_name):
+def _get_action_from_actions_json(all_actions, callback_name):
     for defn in all_actions:
-        if defn.get('hookPayload', {}).get('decision', {}).get('action', {}).get('cb_name') == action_name:
-            return defn
+        if defn.get('kind') == 'hook':
+            if defn.get('hookPayload', {}).get('decision', {}).get('action', {}).get('cb_name') == callback_name:
+                return defn
+        elif defn.get('kind') == 'task':
+            if defn.get('task', {}).get('$let', {}).get('action', {}).get('cb_name') == callback_name:
+                return defn
+        else:
+            raise CoTError('Unknown action kind `{kind}` for action `{name}`.'.format(
+                kind=defn.get('kind', '<MISSING>'),
+                name=defn.get('name', '<MISSING>'),
+            ))
+    raise CoTError('No action with {} callback found.'.format(callback_name))
 
 
 async def get_action_context_and_template(chain, parent_link, decision_link):

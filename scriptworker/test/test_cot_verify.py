@@ -18,6 +18,9 @@ from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, Download
 import scriptworker.context as swcontext
 from scriptworker.utils import makedirs, load_json_or_yaml
 from . import noop_async, noop_sync, rw_context, tmpdir, touch
+from scriptworker.artifacts import (
+    get_single_upstream_artifact_full_path,
+)
 
 assert rw_context, tmpdir  # silence pyflakes
 
@@ -34,6 +37,13 @@ VALID_WORKER_IMPLS = (
 
 COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
 COTV3_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv3")
+
+
+def write_artifact(context, task_id, path, contents):
+    path = get_single_upstream_artifact_full_path(context, task_id, path)
+    os.makedirs(os.path.dirname(path))
+    with open(path, 'w') as f:
+        f.write(contents)
 
 
 async def die_async(*args, **kwargs):
@@ -1176,13 +1186,113 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
     )
 
 
-def test_no_match_in_actions_json():
-    """Searching for nonexistent action callback name in actions.json returns None.
-
-    Adding this test for 100% coverage.
+@pytest.mark.asyncio
+async def test_no_match_in_actions_json(chain):
     """
-    all_actions = load_json_or_yaml(os.path.join(COTV2_DIR, "actions.json"), is_path=True)['actions']
-    assert cotverify._get_action_from_actions_json(all_actions, "nonexistent-action-cbname") is None
+    Searching for nonexistent action callback name in actions.json causes a
+    chain-of-trust failure.
+    """
+    task_id = 'NdzxKw8bS5Sw5DRhoiM14w'
+    decision_task_id = 'c5nn2xbNS9mJxeVC0uNElg'
+
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, "action", task_id)
+    link.task = {
+        'taskGroupId': decision_task_id,
+        'provisionerId': 'test-provisioner',
+        'schedulerId': 'tutorial-scheduler',
+        'workerType': 'docker-worker',
+        'scopes': [],
+        'payload': {
+            'image': 'test-image',
+            'env': {
+                'ACTION_CALLBACK': 'non-existent',
+            },
+        },
+        'metadata': {},
+    }
+
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
+    write_artifact(chain.context, decision_task_id, 'public/actions.json', json.dumps(
+        {
+            'actions': [
+                {
+                    'name': 'act',
+                    'kind': 'hook',
+                    'hookPayload': {
+                        'decision': {
+                            'action': {'cb_name': 'act-callback'},
+                        },
+                    },
+                },
+                {
+                    'name': 'act2',
+                    'kind': 'task',
+                    'task': {
+                        '$let': {
+                            'action': {'cb_name': 'act2-callback'},
+                        },
+                        'in': {},
+                    },
+                },
+            ],
+        },
+    ))
+
+    chain.links = list(set([decision_link, link]))
+    with pytest.raises(CoTError, match='No action with .* callback found.'):
+        await cotverify.get_action_context_and_template(chain, link, decision_link)
+
+
+@pytest.mark.asyncio
+async def test_unknown_action_kind(chain):
+    """
+    Unknown action kinds cause chain-of-trust failure.
+    """
+    task_id = 'NdzxKw8bS5Sw5DRhoiM14w'
+    decision_task_id = 'c5nn2xbNS9mJxeVC0uNElg'
+
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, "action", task_id)
+    link.task = {
+        'taskGroupId': decision_task_id,
+        'provisionerId': 'test-provisioner',
+        'schedulerId': 'tutorial-scheduler',
+        'workerType': 'docker-worker',
+        'scopes': [],
+        'payload': {
+            'image': 'test-image',
+            'env': {
+                'ACTION_CALLBACK': 'act-callback',
+            },
+        },
+        'metadata': {},
+    }
+
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
+    write_artifact(chain.context, decision_task_id, 'public/actions.json', json.dumps(
+        {
+            'actions': [
+                {
+                    'name': 'magic',
+                    'kind': 'magic',
+                },
+                {
+                    'name': 'act',
+                    'kind': 'hook',
+                    'hookPayload': {
+                        'decision': {
+                            'action': {'cb_name': 'act-callback'},
+                        },
+                    },
+                },
+            ],
+        },
+    ))
+
+    chain.links = list(set([decision_link, link]))
+    with pytest.raises(CoTError, match="Unknown action kind"):
+        await cotverify.get_action_context_and_template(chain, link, decision_link)
 
 
 @pytest.mark.asyncio

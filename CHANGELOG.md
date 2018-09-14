@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [16.0.1] - 2018-09-14
+### Fixed
+- Look for the `cb_name` of actions with kind `task`.
+
 ## [16.0.0] - 2018-09-12
 ### Added
 - add `get_action_callback_name`
