@@ -26,6 +26,7 @@ reqs = [
     "jsonschema",
     "json-e>=2.5.0",
     "pexpect",
+    "PyNaCl",
     "python-gnupg",
     "PyYAML",
     "taskcluster>=4.0.0",

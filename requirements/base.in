@@ -7,6 +7,7 @@ jsonschema
 json-e>=2.5.0
 pexpect
 python-gnupg
+PyNaCl
 PyYAML
 taskcluster>=4
 wheel
