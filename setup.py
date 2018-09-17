@@ -21,6 +21,7 @@ reqs = [
     "arrow",
     "defusedxml",
     "dictdiffer",
+    "ecdsa",
     "frozendict",
     "jsonschema",
     "json-e>=2.5.0",
