@@ -297,8 +297,8 @@ async def test_temp_creds(context_function):
 }))
 @pytest.mark.asyncio
 async def test_verify_production_cot(branch_context):
-    index = Index()
-    queue = Queue()
+    index = Index(options={'rootUrl': DEFAULT_CONFIG['taskcluster_root_url']})
+    queue = Queue(options={'rootUrl': DEFAULT_CONFIG['taskcluster_root_url']})
 
     async def get_task_id_from_index(index_path):
         res = await index.findTask(index_path)
