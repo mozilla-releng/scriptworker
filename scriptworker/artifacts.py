@@ -355,7 +355,7 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
                 )
             except ScriptWorkerTaskException:
                 if path in optional_artifacts_per_task_id.get(task_id, []):
-                    log.warn('Optional artifact "{}" of task "{}" not found'.format(path, task_id))
+                    log.warning('Optional artifact "{}" of task "{}" not found'.format(path, task_id))
                     add_enumerable_item_to_dict(
                         dict_=failed_paths_per_task_id,
                         key=task_id, item=path
