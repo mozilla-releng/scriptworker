@@ -1,0 +1,37 @@
+FROM python:3.7
+
+# gnupg 2.0.x
+RUN echo "deb http://http.us.debian.org/debian/ oldstable non-free contrib main" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get install -y --allow-downgrades \
+    git \
+    gnupg2=2.0.26-6+deb8u2 \
+    gnupg-agent=2.0.26-6+deb8u2 \
+&& rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /builds/scriptworker
+
+RUN ln -s /usr/bin/gpg2 /usr/bin/gpg
+COPY ./requirements* /builds/scriptworker/
+COPY setup.py /builds/scriptworker/
+COPY setup.cfg /builds/scriptworker/
+COPY scriptworker/ /builds/scriptworker/scriptworker
+COPY .git /builds/scriptworker/.git
+COPY .coveragerc /builds/scriptworker/
+COPY tox.ini /builds/scriptworker/
+COPY MANIFEST.in /builds/scriptworker/
+COPY version.json /builds/scriptworker/
+COPY secrets.json /builds/scriptworker/
+
+# allow for rebuild_gpg_homedirs testing
+COPY docker/gnupg.yaml /builds/scriptworker/gnupg.yaml
+COPY scriptworker/test/data/gpg/keys/scriptworker@example.com.pub /builds/my_pubkey.asc
+COPY scriptworker/test/data/gpg/keys/scriptworker@example.com.sec /builds/my_privkey.asc
+# get trusted gpg pubkeys
+RUN git clone https://github.com/mozilla-releng/cot-gpg-keys.git /builds/key_repo
+RUN git clone https://github.com/mozilla-releng/build-puppet.git /builds/puppet
+
+# test-specific installs
+WORKDIR /builds/scriptworker/
+RUN pip3 install -r requirements-test-dev.txt
+RUN python3 setup.py develop
