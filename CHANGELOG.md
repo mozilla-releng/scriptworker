@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [16.1.0] - 2018-10-10
+### Added
+- add `taskcluster_root_url` to support taskcluster>=5.0.0
+
+### Fixed
+- fixed some pytest warnings
+
 ## [16.0.1] - 2018-09-14
 ### Fixed
 - Look for the `cb_name` of actions with kind `task`.
