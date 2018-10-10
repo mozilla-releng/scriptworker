@@ -116,9 +116,13 @@ class Context(object):
         """
         if credentials:
             session = self.session or aiohttp.ClientSession(loop=self.event_loop)
-            return Queue({
-                'credentials': credentials,
-            }, session=session)
+            return Queue(
+                options={
+                    'credentials': credentials,
+                    'rootUrl': self.config['taskcluster_root_url'],
+                },
+                session=session
+            )
 
     @property
     def reclaim_task(self):

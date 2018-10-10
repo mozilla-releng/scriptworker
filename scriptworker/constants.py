@@ -31,6 +31,7 @@ STATUSES = {
 # When adding new complex config, make sure all `list`s are `tuple`s, and all
 # `dict`s are `frozendict`s!  (This should get caught by config tests.)
 DEFAULT_CONFIG = frozendict({
+    "taskcluster_root_url": "https://taskcluster.net",
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
     "worker_group": "test-dummy-workers",
@@ -119,7 +120,7 @@ DEFAULT_CONFIG = frozendict({
     'valid_artifact_rules': (frozendict({
         "schemes": ("https", ),
         "netlocs": ("queue.taskcluster.net", ),
-        "path_regexes": ("^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
+        "path_regexes": (r"^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
     }), ),
 
     # git gpg homedir layout
@@ -183,11 +184,11 @@ DEFAULT_CONFIG = frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("hg.mozilla.org", ),
                 "path_regexes": (
-                    "^(?P<path>/mozilla-(central|unified))(/|$)",
-                    "^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
-                    "^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                    "^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
-                    "^(?P<path>/(try))(/|$)",
+                    r"^(?P<path>/mozilla-(central|unified))(/|$)",
+                    r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
+                    r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
+                    r"^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
+                    r"^(?P<path>/(try))(/|$)",
                 ),
             }),),
             # XXX We should also check the mozilla-central tree that is being used.
@@ -195,16 +196,16 @@ DEFAULT_CONFIG = frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("hg.mozilla.org", ),
                 "path_regexes": (
-                    "^(?P<path>/comm-central)(/|$)",
-                    "^(?P<path>/releases/comm-(beta|esr\d+))(/|$)",
-                    "^(?P<path>/(try-comm-central))(/|$)",
+                    r"^(?P<path>/comm-central)(/|$)",
+                    r"^(?P<path>/releases/comm-(beta|esr\d+))(/|$)",
+                    r"^(?P<path>/(try-comm-central))(/|$)",
                 ),
             }),),
             'mobile': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
                 "path_regexes": (
-                    "^(?P<path>/mozilla-mobile/focus-android)(/|.git|$)",
+                    r"^(?P<path>/mozilla-mobile/focus-android)(/|.git|$)",
                 ),
             }),),
         }),

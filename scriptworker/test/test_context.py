@@ -94,9 +94,13 @@ def test_temp_queue(context, mocker):
     mocker.patch('taskcluster.aio.Queue')
     context.session = {'c': 'd'}
     context.temp_credentials = {'a': 'b'}
-    assert taskcluster.aio.Queue.called_once_with({
-        'credentials': context.temp_credentials,
-    }, session=context.session)
+    assert taskcluster.aio.Queue.called_once_with(
+        options={
+            'rootUrl': context.config['taskcluster_root_url'],
+            'credentials': context.temp_credentials,
+        },
+        session=context.session
+    )
 
 
 @pytest.mark.asyncio
