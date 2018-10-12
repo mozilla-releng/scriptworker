@@ -130,6 +130,26 @@ def test_get_revision(rev):
     assert swtask.get_revision(task, 'GECKO') == rev
 
 
+@pytest.mark.parametrize("branch", (None, "some-git-branch"))
+def test_get_branch(branch):
+    task = {
+        'payload': {'env': {}}
+    }
+    if branch:
+        task['payload']['env']['MOBILE_HEAD_BRANCH'] = branch
+    assert swtask.get_branch(task, 'MOBILE') == branch
+
+
+@pytest.mark.parametrize("user", (None, "some-user"))
+def test_get_triggered_by(user):
+    task = {
+        'payload': {'env': {}}
+    }
+    if user:
+        task['payload']['env']['MOBILE_TRIGGERED_BY'] = user
+    assert swtask.get_triggered_by(task, 'MOBILE') == user
+
+
 # get_worker_type {{{1
 @pytest.mark.parametrize("task,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
 def test_get_worker_type(task, result):
