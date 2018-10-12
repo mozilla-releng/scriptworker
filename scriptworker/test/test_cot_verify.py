@@ -138,6 +138,7 @@ def decision_link(chain):
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
         'taskId': 'decision_task_id',
+        'created': '2018-01-01T12:00:00.000Z',
         'workerType': 'workerType',
         'dependencies': [],
         'scopes': [],
@@ -167,6 +168,7 @@ def action_link(chain):
         'taskGroupId': 'decision_task_id',
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
+        'created': '2018-01-01T12:00:00.000Z',
         'workerType': 'workerType',
         'dependencies': [],
         'scopes': [
@@ -180,7 +182,9 @@ def action_link(chain):
             'image': "blah",
         },
         'extra': {
-            'action': {},
+            'action': {
+                'context': {}
+            },
             'parent': 'decision_task_id',
             'tasks_for': 'action',
         },
@@ -201,6 +205,7 @@ def cron_link(chain):
         'taskGroupId': 'decision_task_id',
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
+        'created': '2018-01-01T12:00:00.000Z',
         'workerType': 'workerType',
         'dependencies': [],
         'scopes': [],
@@ -211,7 +216,7 @@ def cron_link(chain):
             'image': "blah",
         },
         'extra': {
-            'cron': {},
+            'cron': '{}',
             'tasks_for': 'cron',
         },
     }
@@ -1065,6 +1070,119 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
 
 
+@pytest.mark.asyncio
+async def test_populate_jsone_context(mocker, chain, decision_link, action_link, cron_link):
+    async def get_scm_level(*args, **kwargs):
+        return '1'
+
+    mocker.patch.object(cotverify, 'get_scm_level', get_scm_level)
+
+    github_release_context = await cotverify.populate_jsone_context(
+        chain, decision_link, decision_link, tasks_for='github-release'
+    )
+    del github_release_context['as_slugid']
+    assert github_release_context == {
+        'event': {
+            'repository': {
+                'clone_url': None,
+            },
+            'release': {
+                'tag_name': None,
+                'target_commitish': None,
+            },
+            'sender': {
+                'login': None,
+            },
+        },
+        'now': '2018-01-01T12:00:00.000Z',
+        'repository': {
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'taskId': None,
+        'tasks_for': 'github-release',
+    }
+
+    async def get_pushlog_info(*args, **kwargs):
+        return {
+            'pushes': {
+                1: {
+                    'user': 'some-user',
+                    'date': 1500000000,
+                    'changesets': [{
+                        'desc': ' ',
+                    }],
+                },
+            },
+        }
+
+    mocker.patch.object(cotverify, 'get_pushlog_info', get_pushlog_info)
+
+    hg_push_context = await cotverify.populate_jsone_context(
+        chain, decision_link, decision_link, tasks_for='hg-push'
+    )
+    del hg_push_context['as_slugid']
+    assert hg_push_context == {
+        'now': '2018-01-01T12:00:00.000Z',
+        'push': {
+            'comment': ' ',
+            'owner': 'some-user',
+            'pushdate': 1500000000,
+            'pushlog_id': 1,
+            'revision': None,
+        },
+        'repository': {
+            'level': '1',
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'taskId': None,
+        'tasks_for': 'hg-push',
+    }
+
+    cron_context = await cotverify.populate_jsone_context(
+        chain, cron_link, cron_link, tasks_for='cron'
+    )
+    del cron_context['as_slugid']
+    assert cron_context == {
+        'cron': {},
+        'now': '2018-01-01T12:00:00.000Z',
+        'push': {
+            'comment': '',
+            'owner': 'cron',
+            'pushdate': '0',
+            'pushlog_id': '-1',
+            'revision': None,
+        },
+        'repository': {
+            'level': '1',
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'taskId': None,
+        'tasks_for': 'cron',
+    }
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml', return_value={})
+    action_context = await cotverify.populate_jsone_context(
+        chain, action_link, action_link, tasks_for='action'
+    )
+    del action_context['as_slugid']
+    assert action_context == {
+        'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'action_task_id',
+        'parameters': {},
+        'repository': {
+            'level': '1',
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'task': None,
+        'taskId': None,
+        'tasks_for': 'action',
+    }
+
+
 # get_action_context_and_template {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
@@ -1296,20 +1414,6 @@ async def test_unknown_action_kind(chain):
 
 
 @pytest.mark.asyncio
-async def test_skip_verify_parent_task_definition(chain, caplog):
-    chain.context.config['cot_product'] = 'mobile'
-    link = cotverify.LinkOfTrust(chain.context, 'decision', 'some-task-id',)
-
-    await cotverify.verify_parent_task_definition(chain, link)
-
-    assert caplog.record_tuples == [(
-        'scriptworker.cot.verify',
-        logging.WARN,
-        '"cot_product: mobile" does not support JSON-e yet. Skipping parent task verifications'
-    )]
-
-
-@pytest.mark.asyncio
 async def test_verify_parent_task_definition_bad_project(chain, mocker):
     link = cotverify.LinkOfTrust(chain.context, 'decision', "VQU9QMO4Teq7zr91FhBusg")
     link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
@@ -1458,6 +1562,29 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
         assert expected == await cotverify._get_additional_hgpush_jsone_context(
             chain, chain
         )
+
+
+def test_get_additional_github_releases_jsone_context(chain, mocker):
+
+    mocker.patch.object(cotverify, 'get_repo', return_value='https://github.com/some-user/some-repo')
+    mocker.patch.object(cotverify, 'get_revision', return_value='v99.0')
+    mocker.patch.object(cotverify, 'get_branch', return_value='master')
+    mocker.patch.object(cotverify, 'get_triggered_by', return_value='another-user')
+
+    assert cotverify._get_additional_github_releases_jsone_context(chain, chain) == {
+        'event': {
+            'repository': {
+                'clone_url': 'https://github.com/some-user/some-repo'
+            },
+            'release': {
+                'tag_name': 'v99.0',
+                'target_commitish': 'master',
+            },
+            'sender': {
+                'login': 'another-user',
+            },
+        },
+    }
 
 
 # check_and_update_action_task_group_id {{{1

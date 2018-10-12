@@ -41,6 +41,8 @@ from scriptworker.task import (
     get_repo,
     get_repo_scope,
     get_revision,
+    get_branch,
+    get_triggered_by,
     get_task_id,
     get_worker_type,
     is_try,
@@ -1019,6 +1021,25 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
     }
 
 
+def _get_additional_github_releases_jsone_context(parent_link, decision_link):
+    source_env_prefix = decision_link.context.config['source_env_prefix']
+    task = decision_link.task
+    return {
+        'event': {
+            'repository': {
+                'clone_url': get_repo(task, source_env_prefix),
+            },
+            'release': {
+                'tag_name': get_revision(task, source_env_prefix),
+                'target_commitish': get_branch(task, source_env_prefix),
+            },
+            'sender': {
+                'login': get_triggered_by(task, source_env_prefix),
+            },
+        },
+    }
+
+
 async def _get_additional_cron_jsone_context(parent_link, decision_link):
     jsone_context = {}
     source_env_prefix = decision_link.context.config['source_env_prefix']
@@ -1056,22 +1077,28 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
          "default": parent_link.task_id,
          "decision": decision_link.task_id,
     }
-    repo = get_repo(decision_link.task, source_env_prefix=decision_link.context.config['source_env_prefix'])
     source_url = get_source_url(decision_link)
     project = get_and_check_project(chain.context.config['valid_vcs_rules'], source_url)
-    level = await get_scm_level(chain.context, project)
     log.debug("task_ids: {}".format(task_ids))
     jsone_context = {
         'now': parent_link.task['created'],
         'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
         'tasks_for': tasks_for,
         'repository': {
-            'level': level,
-            'url': repo,
+            'url': get_repo(decision_link.task, decision_link.context.config['source_env_prefix']),
             'project': project,
         },
         'taskId': None
     }
+
+    if tasks_for == 'github-release' or chain.context.config['cot_product'] == 'mobile':
+        # cron tasks of "mobile" fills the same variables as a regular github-release
+        jsone_context.update(
+            _get_additional_github_releases_jsone_context(parent_link, decision_link)
+        )
+    else:
+        jsone_context['repository']['level'] = await get_scm_level(chain.context, project)
+
     if tasks_for == 'action':
         jsone_context.update(
             await _get_additional_action_jsone_context(parent_link, decision_link)
@@ -1080,7 +1107,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         jsone_context.update(
             await _get_additional_hgpush_jsone_context(parent_link, decision_link)
         )
-    else:
+    elif tasks_for == 'cron':
         jsone_context.update(
             await _get_additional_cron_jsone_context(parent_link, decision_link)
         )
@@ -1215,12 +1242,6 @@ async def verify_parent_task_definition(chain, parent_link):
         CoTError: on failure.
 
     """
-    if chain.context.config['cot_product'] == 'mobile':
-        log.warning(
-            '"cot_product: mobile" does not support JSON-e yet. Skipping parent task verifications'
-        )
-        return
-
     log.info("Verifying {} {} definition...".format(parent_link.name, parent_link.task_id))
     decision_link = chain.get_link(parent_link.decision_task_id)
     try:

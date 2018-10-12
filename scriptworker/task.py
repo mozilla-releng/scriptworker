@@ -31,7 +31,7 @@ from scriptworker.utils import (
 
 log = logging.getLogger(__name__)
 
-KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action')
+KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action', 'github-release')
 REPO_SCOPE_REGEX = re.compile("^assume:repo:[^:]+:action:[^:]+$")
 
 
@@ -179,6 +179,40 @@ def get_revision(task, source_env_prefix):
     """
     revision = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_REV')
     return revision
+
+
+def get_branch(task, source_env_prefix):
+    """Get the branch on top of which the graph was made.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
+
+    Returns:
+        str: the username of the entity who triggered the graph.
+        None: if not defined for this task.
+
+    """
+    branch = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_BRANCH')
+    return branch
+
+
+def get_triggered_by(task, source_env_prefix):
+    """Get who triggered the graph.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
+
+    Returns:
+        str: the username of the entity who triggered the graph.
+        None: if not defined for this task.
+
+    """
+    triggered_by = task['payload'].get('env', {}).get(source_env_prefix + '_TRIGGERED_BY')
+    return triggered_by
 
 
 # get_worker_type {{{1

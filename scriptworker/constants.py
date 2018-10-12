@@ -369,7 +369,7 @@ DEFAULT_CONFIG = frozendict({
         'by-cot-product': frozendict({
             'firefox': 'GECKO',
             'thunderbird': 'COMM',
-            'mobile': '',   # mozilla-mobile projects are built on GitHub instead of hg.m.o
+            'mobile': 'MOBILE',
         })
     },
     'extra_run_task_arguments': {
