@@ -71,7 +71,7 @@ It's also possible to create a ``./secrets.json`` as above, then::
 
     PY_VERSION=37  # or 36
     cp docker/Dockerfile.test-py$PY_VERSION Dockerfile
-    docker build -t scriptworker-test . && docker run scriptworker-test tox-py$PY_VERSION
+    docker build -t scriptworker-test . && docker run scriptworker-test tox -e py$PY_VERSION
 
 GPG Homedir testing
 ^^^^^^^^^^^^^^^^^^^
