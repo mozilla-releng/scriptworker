@@ -69,15 +69,17 @@ then
 
 It's also possible to create a ``./secrets.json`` as above, then::
 
-    cp docker/Dockerfile.test Dockerfile
-    docker build -t scriptworker-test . && docker run scriptworker-test tox
+    PY_VERSION=37  # or 36
+    cp docker/Dockerfile.test-py$PY_VERSION Dockerfile
+    docker build -t scriptworker-test . && docker run scriptworker-test tox -e py$PY_VERSION
 
 GPG Homedir testing
 ^^^^^^^^^^^^^^^^^^^
 
 Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so::
 
-    cp docker/Dockerfile.gnupg Dockerfile
-    docker build -t scriptworker-gpg . && docker run -i scriptworker-gpg bash -il
+    PY_VERSION=37  # or 36
+    cp docker/Dockerfile.test-py$PY_VERSION Dockerfile
+    docker build -t scriptworker-test . && docker run -i scriptworker-test bash -il
     # in the docker shell,
-    rebuild_gpg_homedirs scriptworker.yaml
+    rebuild_gpg_homedirs gnupg.yaml

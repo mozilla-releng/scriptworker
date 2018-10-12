@@ -11,3 +11,5 @@ dist
 htmlcov
 *egg*
 venv
+**/__pycache__
+**/*.pyc
