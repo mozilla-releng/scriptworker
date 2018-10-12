@@ -1882,9 +1882,9 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
         session = aiohttp.ClientSession(connector=conn)
         context = Context()
         context.session = session
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.task = event_loop.run_until_complete(context.queue.task(opts.task_id))
-        context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.config.update({
             'cot_product': opts.cot_product,
             'work_dir': os.path.join(tmp, 'work'),
