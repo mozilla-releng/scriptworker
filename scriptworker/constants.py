@@ -206,6 +206,8 @@ DEFAULT_CONFIG = frozendict({
                 "netlocs": ("github.com", ),
                 "path_regexes": (
                     r"^(?P<path>/mozilla-mobile/focus-android)(/|.git|$)",
+                    r"^(?P<path>/mozilla-mobile/android-components)(/|.git|$)",
+                    r"^(?P<path>/mozilla-mobile/reference-browser)(/|.git|$)",
                 ),
             }),),
         }),
