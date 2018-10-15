@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [16.2.1] - 2018-10-15
+### Added
+- whitelisted `mozilla-mobile/android-components` and `mozilla-mobile/reference-browser` repos
+
 ## [16.2.0] - 2018-10-15
 ### Added
 - `rootUrl` support for `taskcluster>=5.0.0`
