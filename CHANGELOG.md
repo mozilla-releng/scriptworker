@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [16.2.0] - 2018-10-15
+### Added
+- `rootUrl` support for `taskcluster>=5.0.0`
+- Python 3.7 dockerfile
+- support for `github-release`
+- support cron task scheduled as `github-release` in the case `cot_product == "mobile"`
+
+### Removed
+- when `cot_product == "mobile"`, json-e verification is no longer skipped
+
+### Changed
+- `test` and `gnupg` dockerfiles are now one.
+
+### Fixed
+- `verify_cot` for `taskcluster>=5.0.0`
+
 ## [16.1.0] - 2018-10-10
 ### Added
 - add `taskcluster_root_url` to support taskcluster>=5.0.0
