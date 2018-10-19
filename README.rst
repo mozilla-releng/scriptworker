@@ -35,6 +35,17 @@ Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.script
 * Launch: ``scriptworker [config_path]``
 
 -------
+Building a docker image
+-------
+
+First, create a `secrets.json`. For integration testing, you'll need to define the `integration_credentials`; to do any other authenticated work, you'll need to define `credentials`.
+
+Then::
+
+    PY_DOT_VERSION=3.7  # or 3.6
+    docker build -t scriptworker-test-$PY_DOT_VERSION --build-arg PY_DOT_VERSION=$PY_DOT_VERSION  --file docker/Dockerfile.test .
+
+-------
 Testing
 -------
 
@@ -67,19 +78,20 @@ then
 
 ``tox``
 
-It's also possible to create a ``./secrets.json`` as above, then::
+It's also possible to test in docker. First, `build the docker image`_, making sure to add integration credentials to `secrets.json`. Then::
 
-    PY_VERSION=37  # or 36
-    cp docker/Dockerfile.test-py$PY_VERSION Dockerfile
-    docker build -t scriptworker-test . && docker run scriptworker-test tox -e py$PY_VERSION
+    # For some reason, tox runs faster in an interactive shell and hangs without
+    docker run -i scriptworker-test-$PY_DOT_VERSION bash -il  # interactive shell
+    # in the docker shell,
+    tox -e py37  # or py36
 
 GPG Homedir testing
 ^^^^^^^^^^^^^^^^^^^
 
-Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so::
+Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so, `build the docker image`_, then::
 
-    PY_VERSION=37  # or 36
-    cp docker/Dockerfile.test-py$PY_VERSION Dockerfile
-    docker build -t scriptworker-test . && docker run -i scriptworker-test bash -il
+    docker run -i scriptworker-test-$PY_DOT_VERSION bash -il
     # in the docker shell,
     rebuild_gpg_homedirs gnupg.yaml
+
+.. _build the docker image: #building-a-docker-image
