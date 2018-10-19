@@ -43,8 +43,7 @@ First, create a `secrets.json`. For integration testing, you'll need to define t
 Then::
 
     PY_DOT_VERSION=3.7  # or 3.6
-    cp docker/Dockerfile.test Dockerfile
-    docker build -t scriptworker-test-$PY_DOT_VERSION --build-arg PY_DOT_VERSION=$PY_DOT_VERSION .
+    docker build -t scriptworker-test-$PY_DOT_VERSION --build-arg PY_DOT_VERSION=$PY_DOT_VERSION  --file docker/Dockerfile.test .
 
 -------
 Testing
@@ -79,7 +78,7 @@ then
 
 ``tox``
 
-It's also possible to create a ``./secrets.json`` as above, and `build the docker image`_. Then::
+It's also possible to test in docker. First, `build the docker image`_, making sure to add integration credentials to `secrets.json`. Then::
 
     # For some reason, tox runs faster in an interactive shell and hangs without
     docker run -i scriptworker-test-$PY_DOT_VERSION bash -il  # interactive shell
@@ -91,7 +90,7 @@ GPG Homedir testing
 
 Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so, `build the docker image`_, then::
 
-    docker run -i scriptworker-test bash -il
+    docker run -i scriptworker-test-$PY_DOT_VERSION bash -il
     # in the docker shell,
     rebuild_gpg_homedirs gnupg.yaml
 
