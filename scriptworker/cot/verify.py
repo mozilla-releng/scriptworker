@@ -990,13 +990,23 @@ async def _get_additional_action_jsone_context(parent_link, decision_link):
     return jsone_context
 
 
+async def _get_additional_hgpush_info(decision_link):
+    pushlog_info = await get_pushlog_info(decision_link)
+    pushlog_id = list(pushlog_info['pushes'].keys())[0]
+    push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
+    return {'id': pushlog_id,
+            'comment': push_comment,
+            'date': pushlog_info['pushes'][pushlog_id]['date'],
+            'user': pushlog_info['pushes'][pushlog_id]['user'],
+            }
+
+
 async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     rev = get_revision(decision_link.task, source_env_prefix)
-    pushlog_info = await get_pushlog_info(decision_link)
-    pushlog_id = list(pushlog_info['pushes'].keys())[0]
+    pushinfo = await _get_additional_hgpush_info(decision_link)
+    push_comment = pushinfo['comment']
     decision_comment = get_commit_message(decision_link.task)
-    push_comment = pushlog_info['pushes'][pushlog_id]['changesets'][0]['desc']
     allowed_comments = [' ']
     # try logic from
     # https://searchfox.org/mozilla-central/rev/795575287259a370d00518098472eaa5b362bfa7/taskcluster/taskgraph/try_option_syntax.py#184-188  # noqa
@@ -1014,9 +1024,9 @@ async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
         "push": {
             "revision": rev,
             "comment": decision_comment,
-            "owner": pushlog_info['pushes'][pushlog_id]['user'],
-            "pushlog_id": pushlog_id,
-            "pushdate": pushlog_info['pushes'][pushlog_id]['date'],
+            "owner": pushinfo['user'],
+            "pushlog_id": pushinfo['id'],
+            "pushdate": pushinfo['date'],
         }
     }
 
@@ -1045,13 +1055,17 @@ async def _get_additional_cron_jsone_context(parent_link, decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     rev = get_revision(decision_link.task, source_env_prefix)
     jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
-    # I don't love these hardcodes.
+
+    pushinfo = await _get_additional_hgpush_info(decision_link)
+
+    # On trees without pushlog support for cron some push values are
+    # hardcoded in the .taskcluster.yml
     jsone_context["push"] = {
         "revision": rev,
         "comment": '',
         "owner": 'cron',
-        "pushlog_id": '-1',
-        "pushdate": '0',
+        "pushlog_id": pushinfo['id'],
+        "pushdate": pushinfo['date'],
     }
     return jsone_context
 

@@ -6,7 +6,7 @@
   "dependencies": [],
   "requires": "all-completed",
   "routes": [
-    "tc-treeherder.v2.maple.054fe08d229f064a71bae9bb793e7ab8d95eff61.-1",
+    "tc-treeherder.v2.maple.054fe08d229f064a71bae9bb793e7ab8d95eff61.343",
     "index.gecko.v2.maple.latest.firefox.decision-nightly-android"
   ],
   "priority": "lowest",
@@ -41,7 +41,7 @@
       "--",
       "bash",
       "-cx",
-      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph decision --pushlog-id='-1' --pushdate='0' --project='maple' --message=\"$GECKO_COMMIT_MSG\" --owner='cron@noreply.mozilla.org' --level='3' --base-repository=\"$GECKO_BASE_REPOSITORY\" --head-repository=\"$GECKO_HEAD_REPOSITORY\" --head-ref=\"$GECKO_HEAD_REF\" --head-rev=\"$GECKO_HEAD_REV\" --target-tasks-method=nightly_fennec\n"
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph decision --pushlog-id='343' --pushdate='1515524845' --project='maple' --message=\"$GECKO_COMMIT_MSG\" --owner='cron@noreply.mozilla.org' --level='3' --base-repository=\"$GECKO_BASE_REPOSITORY\" --head-repository=\"$GECKO_HEAD_REPOSITORY\" --head-ref=\"$GECKO_HEAD_REF\" --head-rev=\"$GECKO_HEAD_REV\" --target-tasks-method=nightly_fennec\n"
     ],
     "env": {
       "TASKCLUSTER_CACHES": "/builds/worker/checkouts",
