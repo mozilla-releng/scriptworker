@@ -9,6 +9,7 @@ Attributes:
 """
 from frozendict import frozendict
 import os
+import re
 
 # STATUSES {{{1
 STATUSES = {
@@ -21,6 +22,14 @@ STATUSES = {
     'superseded': 6,
     'intermittent-task': 7,
 }
+
+_ALLOWED_MOBILE_GITHUB_OWNERS = (
+    'mozilla-mobile',
+    # Owners below are allowed to run staging releases
+    'JohanLorenzo',
+    'MihaiTabara',
+    'mitchhentges',
+)
 
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
@@ -162,9 +171,13 @@ DEFAULT_CONFIG = frozendict({
         "gecko-1-decision",
         "gecko-2-decision",
         "gecko-3-decision",
-        # gecko-focus is for mozilla-mobile releases. It's named this way because it's a worker type
-        # but using the gecko ChainOfTrust keys. See bug 1455290 for more details.
+        # gecko-focus was for mozilla-mobile releases (bug 1455290) for more details.
+        # TODO: Remove it once not used anymore
         "gecko-focus",
+        "mobile-1-decision",
+        # We haven't had the need for mobile-2-decision yet
+        # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
+        "mobile-3-decision",
     ),
 
     # docker-image cot
@@ -204,11 +217,16 @@ DEFAULT_CONFIG = frozendict({
             'mobile': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
-                "path_regexes": (
-                    r"^(?P<path>/mozilla-mobile/focus-android)(/|.git|$)",
-                    r"^(?P<path>/mozilla-mobile/android-components)(/|.git|$)",
-                    r"^(?P<path>/mozilla-mobile/reference-browser)(/|.git|$)",
-                ),
+                "path_regexes": tuple([
+                    # XXX We allow Github forks to run staging releases. Please make sure to
+                    # restrict production scopes to the origin repo (with cot_restricted_scopes)!
+                    r"^(?P<path>/{repo_owner}/{repo_name})(/|.git|$)".format(
+                        repo_owner=re.escape(username),
+                        repo_name=re.escape(repo_name)
+                    )
+                    for username in _ALLOWED_MOBILE_GITHUB_OWNERS
+                    for repo_name in ('android-components', 'focus-android', 'reference-browser')
+                ]),
             }),),
         }),
     },
@@ -262,8 +280,13 @@ DEFAULT_CONFIG = frozendict({
                 'project:comm:thunderbird:releng:signing:cert:release-signing': 'all-release-branches',
             }),
             'mobile': frozendict({
+                'project:mobile:android-components:releng:beetmover:bucket:maven-production': 'android-components-repo',
+
                 'project:mobile:focus:googleplay:product:focus': 'focus-repo',
                 'project:mobile:focus:releng:signing:cert:release-signing': 'focus-repo',
+
+                'project:mobile:reference-browser:releng:signing:cert:release-signing': 'reference-browser-repo',
+                'project:mobile:reference-browser:releng:googleplay:product:reference-browser': 'reference-browser-repo',
             }),
         }),
     },
@@ -356,6 +379,12 @@ DEFAULT_CONFIG = frozendict({
             'mobile': frozendict({
                 'focus-repo': (
                     '/mozilla-mobile/focus-android',
+                ),
+                'android-components-repo': (
+                    '/mozilla-mobile/android-components',
+                ),
+                'reference-browser-repo': (
+                    '/mozilla-mobile/reference-browser',
                 ),
             }),
         }),
