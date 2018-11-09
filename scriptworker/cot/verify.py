@@ -1034,10 +1034,15 @@ async def _get_additional_hg_push_jsone_context(parent_link, decision_link):
 def _get_additional_github_releases_jsone_context(parent_link, decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     task = decision_link.task
+    repo = get_repo(task, source_env_prefix)
     return {
         'event': {
             'repository': {
-                'clone_url': get_repo(task, source_env_prefix),
+                # TODO: Append ".git" to clone_url in order to match what GitHub actually provide.
+                # This can't be done at the moment because some mobile projects still rely on the
+                # bad value
+                'clone_url': repo,
+                'html_url': repo,
             },
             'release': {
                 'tag_name': get_revision(task, source_env_prefix),

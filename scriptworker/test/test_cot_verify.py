@@ -52,22 +52,23 @@ async def die_async(*args, **kwargs):
 
 @pytest.yield_fixture(scope='function')
 def chain(rw_context):
-    yield _craft_chain(rw_context)
+    yield _craft_chain(rw_context, scopes=['project:releng:signing:cert:nightly-signing', 'ignoreme'])
 
 
 @pytest.yield_fixture(scope='function')
 def mobile_chain(mobile_rw_context):
     yield _craft_chain(
         mobile_rw_context,
+        scopes=['project:mobile:focus:releng:signing:cert:release-signing', 'ignoreme'],
         source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
     )
 
 
-def _craft_chain(context, source_url='https://hg.mozilla.org/mozilla-central'):
+def _craft_chain(context, scopes, source_url='https://hg.mozilla.org/mozilla-central'):
     context.config['scriptworker_provisioners'] = [context.config['provisioner_id']]
     context.config['scriptworker_worker_types'] = [context.config['worker_type']]
     context.task = {
-        'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
+        'scopes': scopes,
         'dependencies': ['decision_task_id'],
         'provisionerId': context.config['provisioner_id'],
         'schedulerId': 'schedulerId',
@@ -86,6 +87,18 @@ def _craft_chain(context, source_url='https://hg.mozilla.org/mozilla-central'):
 
 @pytest.yield_fixture(scope='function')
 def build_link(chain):
+    yield _craft_build_link(chain)
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_build_link(chain):
+    yield _craft_build_link(
+        chain,
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+
+
+def _craft_build_link(chain, source_url='https://hg.mozilla.org/mozilla-central'):
     link = cotverify.LinkOfTrust(chain.context, 'build', 'build_task_id')
     link.cot = {
         'taskId': 'build_task_id',
@@ -101,7 +114,7 @@ def build_link(chain):
         'scopes': [],
         'dependencies': ['some_task_id'],
         'metadata': {
-            'source': 'https://hg.mozilla.org/mozilla-central',
+            'source': source_url,
         },
         'payload': {
             'artifacts': {
@@ -130,7 +143,7 @@ def build_link(chain):
             'parent': 'decision_task_id',
         },
     }
-    yield link
+    return link
 
 
 @pytest.yield_fixture(scope='function')
@@ -1176,6 +1189,7 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
         'event': {
             'repository': {
                 'clone_url': None,
+                'html_url': None,
             },
             'release': {
                 'tag_name': None,
@@ -1200,6 +1214,7 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
         'event': {
             'repository': {
                 'clone_url': None,
+                'html_url': None,
             },
             'release': {
                 'tag_name': None,
@@ -1633,7 +1648,8 @@ def test_get_additional_github_releases_jsone_context(chain, mocker):
     assert cotverify._get_additional_github_releases_jsone_context(chain, chain) == {
         'event': {
             'repository': {
-                'clone_url': 'https://github.com/some-user/some-repo'
+                'clone_url': 'https://github.com/some-user/some-repo',
+                'html_url': 'https://github.com/some-user/some-repo',
             },
             'release': {
                 'tag_name': 'v99.0',
@@ -2028,6 +2044,26 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link,
     docker_image_link.task['metadata']['source'] = "https://hg.mozilla.org/releases/mozilla-beta"
     chain.links = [decision_link, build_link, docker_image_link]
     await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.parametrize('source_url, raises', (
+    ('https://github.com/mozilla-mobile/focus-android', False),
+    ('https://github.com/JohanLorenzo/focus-android', True),
+    ('https://github.com/mitchhentges/focus-android', True),
+    ('https://github.com/MihaiTabara/focus-android', True),
+))
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
+    mobile_chain, mobile_decision_link, mobile_build_link, source_url, raises
+):
+    mobile_decision_link.task['metadata']['source'] = source_url
+    mobile_chain.links = [mobile_decision_link, mobile_build_link]
+    if raises:
+        with pytest.raises(CoTError):
+            await cotverify.trace_back_to_tree(mobile_chain)
+    else:
+        await cotverify.trace_back_to_tree(mobile_chain)
+
 
 
 # AuditLogFormatter {{{1
