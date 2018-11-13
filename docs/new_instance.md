@@ -80,7 +80,7 @@ Go to the EC2 console, go to the appropriate region (usw2, use1).
 - Select an existing group; e.g. choose the `beetmover-worker` group; review and launch
 - make sure to choose a keypair you have access to, e.g. aws-releng or generate your own keypair.  Puppet will overwrite this.
 
-Alternatively, you can create a template based on an existing instance and then launch another instance based on that template, after you ammend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
+Alternatively, you can create a template based on an existing instance and then launch another instance based on that template, after you amend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
 
 
 ## puppet
@@ -120,3 +120,27 @@ Wipe of the secrets from your local machine
 rm secrets.json
 rm aws-releng
 ```
+
+## monitoring
+
+The new instance(s) should be added to the nagios configuration in IT's puppet repo so that we're
+notified of any problems. There's more information about what is monitored in the [new instance
+doc](new_instance.html#monitoring).
+
+With the VPN running, clone the puppet repo
+([see point 10 for the location](https://mana.mozilla.org/wiki/display/MOC/NEW+New+Hire+Onboarding)).
+Then modify `modules/nagios4/manifests/prod/releng/mdc1.pp` by copying over the config of one of
+the existing instances and updating the hostname. For example a new balrogworker would look like:
+```
+    'balrogworker-42.srv.releng.use1.mozilla.com' => {
+        contact_groups => 'build',
+        hostgroups => [
+            'balrog-scriptworkers'
+        ]
+    },
+```
+The checks are added by membership to that hostgroup.
+
+Create a patch, attach it to Bugzilla, and ask someone from RelOps for review, before
+landing. After a 15-30 minute delay the checks should be live and you can look for them on the
+[mdc1 nagios server](https://nagios1.private.releng.mdc1.mozilla.com/releng-mdc1/).
