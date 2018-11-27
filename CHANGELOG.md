@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [17.0.0] - 2018-11-27
+### Changed
+- Cron tasks are now expected to use correct push information
+- Documentation for deploying new instances in AWS has been updated.
+- Requirements are now generated using pip-compile-multi.
+- Docker images have been updated in preperation for moving to docker deployements.
+
 ## [16.2.1] - 2018-10-15
 ### Added
 - whitelisted `mozilla-mobile/android-components` and `mozilla-mobile/reference-browser` repos
