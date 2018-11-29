@@ -39,6 +39,10 @@ like [bug 1503550](https://bugzilla.mozilla.org/show_bug.cgi?id=1503550) to ask 
 
 Once the bug is fixed, you should be able to see the DNS entries correspond to your IP address by using any of the command line tools like `dig` or `host`.
 
+```
+dig -x <ip_address>
+```
+
 ## 2. creating an AWS instance
 
 Furthermore, you need to spin up an AWS instance and for that there are *two* options.
