@@ -3,7 +3,7 @@
 We don't yet have a scriptworker provisioner, so spinning up new instances of a specific type is still a manual process that can definitely use improvement.  Here are docs on how to spin a new instance up. These instructions apply to any type of scriptworker that
 already has an instance running, hence configurations already exists.
 
-## initial setup
+## 1. initial setup
 
 To begin with, you need to figure out the network basics, IP and DNS entries. With these at hand, you'll be ready to spin out a new instance. To ease some of these operations, you need to use the `build-cloud-tools` repository.
 
@@ -37,11 +37,17 @@ You can now run your script to find out available IPs. For example, if one wante
 With the IP returned above, [file a bug](https://bugzilla.mozilla.org/enter_bug.cgi?product=Infrastructure%20%26%20Operations&component=DNS%20and%20Domain%20Registration)
 like [bug 1503550](https://bugzilla.mozilla.org/show_bug.cgi?id=1503550) to ask for DNS records to be assigned for your IP.
 
-Once the bug is fixed, you should be able to see the DNS entries correspond to your IP address by using any of the command line tools like `dig` or `host`.
+Once the bug is fixed, you should be able to see the DNS entries correspond to your IP address by using the following:
+
+```
+dig -x <ip_address>
+```
+
+## 2. creating an AWS instance
 
 Furthermore, you need to spin up an AWS instance and for that there are *two* options.
 
-## option 1 - using automation script
+## 2a - using automation script
 
 In order to use the `build-cloud-tools` scripts, you'll first need access to some of the secrets.
 Grab the `deploypass` from private repo and dump it in a JSON file.
@@ -68,7 +74,7 @@ $ python cloudtools/scripts/aws_create_instance.py -c configs/beetmoverworker -r
 
 This spins a new AWS instance, but puppetization may fail, hence you'll have to run in manually. See instructions [below](#puppet).
 
-## option 2 - using AWS console
+## 2b - using AWS console
 
 Go to the EC2 console, go to the appropriate region (usw2, use1).
 
@@ -83,7 +89,7 @@ Go to the EC2 console, go to the appropriate region (usw2, use1).
 Alternatively, you can create a template based on an existing instance and then launch another instance based on that template, after you ammend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
 
 
-## puppet
+## 3. Puppetize the instance
 
 Once the machine is up and running (can check its state in the AWS console), ssh into the instance as root, using the ssh keypair you specified above.
 ```
