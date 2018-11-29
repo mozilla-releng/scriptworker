@@ -1070,59 +1070,9 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
 
 
-@pytest.mark.asyncio
-async def test_populate_jsone_context(mocker, chain, decision_link, action_link, cron_link):
-    async def get_scm_level(*args, **kwargs):
-        return '1'
-
-    mocker.patch.object(cotverify, 'get_scm_level', get_scm_level)
-
-    github_release_context = await cotverify.populate_jsone_context(
-        chain, decision_link, decision_link, tasks_for='github-release'
-    )
-    del github_release_context['as_slugid']
-    assert github_release_context == {
-        'event': {
-            'repository': {
-                'clone_url': None,
-            },
-            'release': {
-                'tag_name': None,
-                'target_commitish': None,
-            },
-            'sender': {
-                'login': None,
-            },
-        },
-        'now': '2018-01-01T12:00:00.000Z',
-        'repository': {
-            'project': 'mozilla-central',
-            'url': None,
-        },
-        'taskId': None,
-        'tasks_for': 'github-release',
-    }
-
-    async def get_pushlog_info(*args, **kwargs):
-        return {
-            'pushes': {
-                1: {
-                    'user': 'some-user',
-                    'date': 1500000000,
-                    'changesets': [{
-                        'desc': ' ',
-                    }],
-                },
-            },
-        }
-
-    mocker.patch.object(cotverify, 'get_pushlog_info', get_pushlog_info)
-
-    hg_push_context = await cotverify.populate_jsone_context(
-        chain, decision_link, decision_link, tasks_for='hg-push'
-    )
-    del hg_push_context['as_slugid']
-    assert hg_push_context == {
+@pytest.mark.parametrize('tasks_for, expected', ((
+    'hg-push',
+    {
         'now': '2018-01-01T12:00:00.000Z',
         'push': {
             'comment': ' ',
@@ -1138,13 +1088,10 @@ async def test_populate_jsone_context(mocker, chain, decision_link, action_link,
         },
         'taskId': None,
         'tasks_for': 'hg-push',
-    }
-
-    cron_context = await cotverify.populate_jsone_context(
-        chain, cron_link, cron_link, tasks_for='cron'
-    )
-    del cron_context['as_slugid']
-    assert cron_context == {
+    },
+), (
+    'cron',
+    {
         'cron': {},
         'now': '2018-01-01T12:00:00.000Z',
         'push': {
@@ -1161,14 +1108,10 @@ async def test_populate_jsone_context(mocker, chain, decision_link, action_link,
         },
         'taskId': None,
         'tasks_for': 'cron',
-    }
-
-    mocker.patch.object(cotverify, 'load_json_or_yaml', return_value={})
-    action_context = await cotverify.populate_jsone_context(
-        chain, action_link, action_link, tasks_for='action'
-    )
-    del action_context['as_slugid']
-    assert action_context == {
+    },
+), (
+    'action',
+    {
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'action_task_id',
         'parameters': {},
@@ -1180,7 +1123,101 @@ async def test_populate_jsone_context(mocker, chain, decision_link, action_link,
         'task': None,
         'taskId': None,
         'tasks_for': 'action',
-    }
+    },
+)))
+@pytest.mark.asyncio
+async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected):
+    async def get_scm_level(*args, **kwargs):
+        return '1'
+
+    async def get_pushlog_info(*args, **kwargs):
+        return {
+            'pushes': {
+                1: {
+                    'user': 'some-user',
+                    'date': 1500000000,
+                    'changesets': [{
+                        'desc': ' ',
+                    }],
+                },
+            },
+        }
+
+    mocker.patch.object(cotverify, 'get_scm_level', get_scm_level)
+    mocker.patch.object(cotverify, 'get_pushlog_info', get_pushlog_info)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', return_value={})
+
+    if tasks_for == 'action':
+        link = action_link
+    elif tasks_for == 'cron':
+        link = cron_link
+    else:
+        link = decision_link
+
+    context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+    del context['as_slugid']
+    assert context == expected
+
+
+@pytest.mark.parametrize('tasks_for, expected', ((
+    'github-release',
+    {
+        'event': {
+            'repository': {
+                'clone_url': None,
+            },
+            'release': {
+                'tag_name': None,
+                'target_commitish': None,
+            },
+            'sender': {
+                'login': None,
+            },
+        },
+        'now': '2018-01-01T12:00:00.000Z',
+        # TODO: create dedicate mobile context to provide the correct repository values
+        'repository': {
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'taskId': None,
+        'tasks_for': 'github-release',
+    },
+), (
+    'cron',
+    {
+        'cron': {},
+        'event': {
+            'repository': {
+                'clone_url': None,
+            },
+            'release': {
+                'tag_name': None,
+                'target_commitish': None,
+            },
+            'sender': {
+                'login': None,
+            },
+        },
+        'now': '2018-01-01T12:00:00.000Z',
+        # TODO: create dedicate mobile context to provide the correct repository values
+        'repository': {
+            'project': 'mozilla-central',
+            'url': None,
+        },
+        'taskId': None,
+        'tasks_for': 'cron',
+    },
+)))
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github(chain, decision_link, cron_link, tasks_for, expected):
+    link = cron_link if tasks_for == 'cron' else decision_link
+
+    chain.context.config['cot_product'] = 'mobile'
+
+    context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+    del context['as_slugid']
+    assert context == expected
 
 
 # get_action_context_and_template {{{1
