@@ -1110,21 +1110,26 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         jsone_context.update(
             _get_additional_github_releases_jsone_context(parent_link, decision_link)
         )
+
+        # cron tasks of "mobile" don't need the "push" context
+        if tasks_for == 'cron':
+            jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
     else:
         jsone_context['repository']['level'] = await get_scm_level(chain.context, project)
 
-    if tasks_for == 'action':
-        jsone_context.update(
-            await _get_additional_action_jsone_context(parent_link, decision_link)
-        )
-    elif tasks_for == 'hg-push':
-        jsone_context.update(
-            await _get_additional_hgpush_jsone_context(parent_link, decision_link)
-        )
-    elif tasks_for == 'cron':
-        jsone_context.update(
-            await _get_additional_cron_jsone_context(parent_link, decision_link)
-        )
+        if tasks_for == 'action':
+            jsone_context.update(
+                await _get_additional_action_jsone_context(parent_link, decision_link)
+            )
+        elif tasks_for == 'hg-push':
+            jsone_context.update(
+                await _get_additional_hgpush_jsone_context(parent_link, decision_link)
+            )
+        elif tasks_for == 'cron':
+            jsone_context.update(
+                await _get_additional_cron_jsone_context(parent_link, decision_link)
+            )
+
     log.debug("{} json-e context:".format(parent_link.name))
     # format_json() breaks on lambda values; use pprint.pformat here.
     log.debug(pprint.pformat(jsone_context))
