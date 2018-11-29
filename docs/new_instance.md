@@ -37,7 +37,7 @@ You can now run your script to find out available IPs. For example, if one wante
 With the IP returned above, [file a bug](https://bugzilla.mozilla.org/enter_bug.cgi?product=Infrastructure%20%26%20Operations&component=DNS%20and%20Domain%20Registration)
 like [bug 1503550](https://bugzilla.mozilla.org/show_bug.cgi?id=1503550) to ask for DNS records to be assigned for your IP.
 
-Once the bug is fixed, you should be able to see the DNS entries correspond to your IP address by using any of the command line tools like `dig` or `host`.
+Once the bug is fixed, you should be able to see the DNS entries correspond to your IP address by using the following:
 
 ```
 dig -x <ip_address>
