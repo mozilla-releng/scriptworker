@@ -87,7 +87,7 @@ Alternatively, you can create a template based on an existing instance and then 
 
 Once the machine is up and running (can check its state in the AWS console), ssh into the instance as root, using the ssh keypair you specified above.
 ```
-$ ssh -i aws-relengroot@<fqdn>
+$ ssh -i aws-releng root@<fqdn>
 ```
 
 To begin with, Install puppet:
