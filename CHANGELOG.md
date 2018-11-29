@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [17.0.1] - 2018-11-29
+### Fixed
+- Regression around json-e context for mozilla-mobile projects
+
 ## [17.0.0] - 2018-11-27
 ### Changed
 - Cron tasks are now expected to use correct push information
