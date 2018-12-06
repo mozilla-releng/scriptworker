@@ -99,7 +99,7 @@ $ ssh -i aws-releng root@<fqdn>
 To begin with, Install puppet:
 
 ```bash
-    # first, edit /etc/yum-local.cfg to replace `puppetagain.*/data/` with `releng-puppet2.srv.releng.mdc1.mozilla.com`
+    sed -i -e 's/puppetagain.*\/data/releng-puppet2.srv.releng.mdc1.mozilla.com/g' /etc/yum-local.cfg
     yum -c /etc/yum-local.cfg install puppet
 ```
 
