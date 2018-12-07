@@ -34,5 +34,5 @@ RUN git clone https://github.com/mozilla-releng/build-puppet.git /builds/puppet
 
 # test-specific installs
 WORKDIR /builds/scriptworker/
-RUN pip3 install -r requirements-test-dev.txt
+RUN pip3 install -r requirements/test.in
 RUN python3 setup.py develop
