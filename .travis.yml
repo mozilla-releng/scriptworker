@@ -15,6 +15,7 @@ matrix:
 
 install:
   - python -mpip install tox
+  - sudo rm /dev/random && sudo ln -s /dev/urandom /dev/random  # speed up gpg testing
 script:
   - tox
 after_success:
