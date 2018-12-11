@@ -80,17 +80,14 @@ then
 
 It's also possible to test in docker. First, `build the docker image`_, making sure to add integration credentials to `secrets.json`. Then::
 
-    # For some reason, tox runs faster in an interactive shell and hangs without
-    docker run -i scriptworker-test-$PY_DOT_VERSION bash -il  # interactive shell
-    # in the docker shell,
-    tox -e py37  # or py36
+    docker run -i scriptworker-test-$PY_DOT_VERSION
 
 GPG Homedir testing
 ^^^^^^^^^^^^^^^^^^^
 
 Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so, `build the docker image`_, then::
 
-    docker run -i scriptworker-test-$PY_DOT_VERSION bash -il
+    docker run -i scriptworker-test-$PY_DOT_VERSION gpg
     # in the docker shell,
     rebuild_gpg_homedirs gnupg.yaml
 
