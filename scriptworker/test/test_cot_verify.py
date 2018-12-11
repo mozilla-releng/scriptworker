@@ -1558,7 +1558,7 @@ async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
 ), (
     'asdfsadfsad', '', True
 )))
-async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
+async def test_get_additional_hg_push_jsone_context(chain, mocker, push_comment,
                                                    task_comment, raises):
 
     async def fake_pushlog(*args):
@@ -1583,7 +1583,7 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
 
     if raises:
         with pytest.raises(CoTError):
-            await cotverify._get_additional_hgpush_jsone_context(
+            await cotverify._get_additional_hg_push_jsone_context(
                 chain, chain
             )
     else:
@@ -1596,7 +1596,7 @@ async def test_get_additional_hgpush_jsone_context(chain, mocker, push_comment,
                 "pushdate": "mydate",
             }
         }
-        assert expected == await cotverify._get_additional_hgpush_jsone_context(
+        assert expected == await cotverify._get_additional_hg_push_jsone_context(
             chain, chain
         )
 
@@ -1631,7 +1631,7 @@ def test_get_additional_github_releases_jsone_context(chain, mocker):
     'blah blah blah blah try: a b c',
     'blah blah blah blah\nlbah blha try: [a] b c\nblah blah',
 ))
-async def test_get_additional_cron_jsone_context(cron_link, mocker, push_comment):
+async def test_get_additional_hg_cron_jsone_context(cron_link, mocker, push_comment):
 
     chain = cron_link
     async def fake_pushlog(*args):
@@ -1664,7 +1664,7 @@ async def test_get_additional_cron_jsone_context(cron_link, mocker, push_comment
             "pushdate": "mydate",
         }
     }
-    assert expected == await cotverify._get_additional_cron_jsone_context(
+    assert expected == await cotverify._get_additional_hg_cron_jsone_context(
         chain, chain
     )
 
