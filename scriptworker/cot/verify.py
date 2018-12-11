@@ -980,7 +980,7 @@ async def get_scm_level(context, project):
 
 
 # populate_jsone_context {{{1
-async def _get_additional_action_jsone_context(parent_link, decision_link):
+async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
     jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
@@ -1001,7 +1001,7 @@ async def _get_additional_hgpush_info(decision_link):
             }
 
 
-async def _get_additional_hgpush_jsone_context(parent_link, decision_link):
+async def _get_additional_hg_push_jsone_context(parent_link, decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     rev = get_revision(decision_link.task, source_env_prefix)
     pushinfo = await _get_additional_hgpush_info(decision_link)
@@ -1050,7 +1050,7 @@ def _get_additional_github_releases_jsone_context(parent_link, decision_link):
     }
 
 
-async def _get_additional_cron_jsone_context(parent_link, decision_link):
+async def _get_additional_hg_cron_jsone_context(parent_link, decision_link):
     jsone_context = {}
     source_env_prefix = decision_link.context.config['source_env_prefix']
     rev = get_revision(decision_link.task, source_env_prefix)
@@ -1119,15 +1119,15 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
 
         if tasks_for == 'action':
             jsone_context.update(
-                await _get_additional_action_jsone_context(parent_link, decision_link)
+                await _get_additional_hg_action_jsone_context(parent_link, decision_link)
             )
         elif tasks_for == 'hg-push':
             jsone_context.update(
-                await _get_additional_hgpush_jsone_context(parent_link, decision_link)
+                await _get_additional_hg_push_jsone_context(parent_link, decision_link)
             )
         elif tasks_for == 'cron':
             jsone_context.update(
-                await _get_additional_cron_jsone_context(parent_link, decision_link)
+                await _get_additional_hg_cron_jsone_context(parent_link, decision_link)
             )
 
     log.debug("{} json-e context:".format(parent_link.name))
