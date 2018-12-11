@@ -105,3 +105,26 @@ For other products, we can either support them within MoCo Releng, or we can spi
 #### Hiera
 
 For new puppet instances, we need to add new gpg keypairs in hiera, similar to when [adding a new instance of an existing scriptworker type](new_instance.html#puppet).
+
+### Monitoring
+
+We use nagios to ensure the health of instances running a scriptworker type. For each instance we
+typically monitor the host (ping, disk usage, load, time, and puppet freshness) and the scriptworker
+service (process running, log freshness, gpg homedir rebuild lock & log freshness unless CoT is
+disabled). There is also a check for the queue length of each type.
+
+Setting up a new type is more work than adding a new instance of an existing type. Once you've
+cloned the IT puppet repo
+([see point 10 for the location](https://mana.mozilla.org/wiki/display/MOC/NEW+New+Hire+Onboarding),
+VPN required), a good approach is to look in the `modules/nagios4/manifests/prod/releng/`
+directory to see how balrog-scriptworkers work. Some of the components are
+ * `mdc1.pp` - adding the instance host names, and assigning them to a new hostgroup
+ * `hostgroups.pp` - adding an alias for the new hostgroup
+ * `services/mdc1.pp` - adding the hostgroup to all the checks needed. Note that dep style types
+ don't check the gpg homedir because CoT is typically disabled
+ * `clusterchecks/mdc1.pp` - adding a queue check for the new type
+ * `servicegroups/mdc1.pp` - adding an alias for the queue check
+
+ Create a patch, attach it to Bugzilla, and ask someone from RelOps for review, before
+ landing. After a 15-30 minute delay the checks should be live and you can look for them on the
+ [mdc1 nagios server](https://nagios1.private.releng.mdc1.mozilla.com/releng-mdc1/).
