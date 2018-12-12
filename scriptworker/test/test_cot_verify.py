@@ -17,7 +17,7 @@ import scriptworker.cot.verify as cotverify
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
 import scriptworker.context as swcontext
 from scriptworker.utils import makedirs, load_json_or_yaml
-from . import noop_async, noop_sync, rw_context, tmpdir, touch
+from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
 from scriptworker.artifacts import (
     get_single_upstream_artifact_full_path,
 )
@@ -52,27 +52,36 @@ async def die_async(*args, **kwargs):
 
 @pytest.yield_fixture(scope='function')
 def chain(rw_context):
-    rw_context.config['scriptworker_provisioners'] = [rw_context.config['provisioner_id']]
-    rw_context.config['scriptworker_worker_types'] = [rw_context.config['worker_type']]
-    rw_context.task = {
+    yield _craft_chain(rw_context)
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_chain(mobile_rw_context):
+    yield _craft_chain(
+        mobile_rw_context,
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+
+
+def _craft_chain(context, source_url='https://hg.mozilla.org/mozilla-central'):
+    context.config['scriptworker_provisioners'] = [context.config['provisioner_id']]
+    context.config['scriptworker_worker_types'] = [context.config['worker_type']]
+    context.task = {
         'scopes': ['project:releng:signing:cert:nightly-signing', 'ignoreme'],
         'dependencies': ['decision_task_id'],
-        'provisionerId': rw_context.config['provisioner_id'],
+        'provisionerId': context.config['provisioner_id'],
         'schedulerId': 'schedulerId',
-        'workerType': rw_context.config['worker_type'],
+        'workerType': context.config['worker_type'],
         'taskGroupId': 'decision_task_id',
         'payload': {
             'image': None,
         },
         'metadata': {
-            'source': 'https://hg.mozilla.org/mozilla-central/foo'
+            'source': source_url,
         },
     }
     # decision_task_id
-    chain_ = cotverify.ChainOfTrust(
-        rw_context, 'signing', task_id='my_task_id'
-    )
-    yield chain_
+    return cotverify.ChainOfTrust(context, 'signing', task_id='my_task_id')
 
 
 @pytest.yield_fixture(scope='function')
@@ -126,6 +135,33 @@ def build_link(chain):
 
 @pytest.yield_fixture(scope='function')
 def decision_link(chain):
+    yield _craft_decision_link(chain, tasks_for='hg-push')
+
+
+@pytest.yield_fixture(scope='function')
+def cron_link(chain):
+    yield _craft_decision_link(chain, tasks_for='cron')
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_decision_link(mobile_chain):
+    yield _craft_decision_link(
+        mobile_chain,
+        tasks_for='github-releases',
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_cron_link(mobile_chain):
+    yield _craft_decision_link(
+        mobile_chain,
+        tasks_for='cron',
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+
+
+def _craft_decision_link(chain, tasks_for, source_url='https://hg.mozilla.org/mozilla-central'):
     link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
     link.cot = {
         'taskId': 'decision_task_id',
@@ -137,22 +173,22 @@ def decision_link(chain):
         'taskGroupId': 'decision_task_id',
         'schedulerId': 'scheduler_id',
         'provisionerId': 'provisioner_id',
-        'taskId': 'decision_task_id',
         'created': '2018-01-01T12:00:00.000Z',
         'workerType': 'workerType',
         'dependencies': [],
         'scopes': [],
         'metadata': {
-            'source': 'https://hg.mozilla.org/mozilla-central',
+            'source': source_url,
         },
         'payload': {
             'image': "blah",
         },
         'extra': {
-            'tasks_for': 'hg-push',
+            'cron': '{}',
+            'tasks_for': tasks_for,
         },
     }
-    yield link
+    return link
 
 
 @pytest.yield_fixture(scope='function')
@@ -187,37 +223,6 @@ def action_link(chain):
             },
             'parent': 'decision_task_id',
             'tasks_for': 'action',
-        },
-    }
-    yield link
-
-
-@pytest.yield_fixture(scope='function')
-def cron_link(chain):
-    link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
-    link.cot = {
-        'taskId': 'decision_task_id',
-        'environment': {
-            'imageHash': "sha256:decision_image_sha",
-        },
-    }
-    link.task = {
-        'taskGroupId': 'decision_task_id',
-        'schedulerId': 'scheduler_id',
-        'provisionerId': 'provisioner_id',
-        'created': '2018-01-01T12:00:00.000Z',
-        'workerType': 'workerType',
-        'dependencies': [],
-        'scopes': [],
-        'metadata': {
-            'source': 'https://hg.mozilla.org/mozilla-central',
-        },
-        'payload': {
-            'image': "blah",
-        },
-        'extra': {
-            'cron': '{}',
-            'tasks_for': 'cron',
         },
     }
     yield link
@@ -1175,9 +1180,8 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
-        # TODO: create dedicate mobile context to provide the correct repository values
         'repository': {
-            'project': 'mozilla-central',
+            'project': 'focus-android',
             'url': None,
         },
         'taskId': None,
@@ -1200,9 +1204,8 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
-        # TODO: create dedicate mobile context to provide the correct repository values
         'repository': {
-            'project': 'mozilla-central',
+            'project': 'focus-android',
             'url': None,
         },
         'taskId': None,
@@ -1210,12 +1213,10 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
     },
 )))
 @pytest.mark.asyncio
-async def test_populate_jsone_context_github(chain, decision_link, cron_link, tasks_for, expected):
-    link = cron_link if tasks_for == 'cron' else decision_link
+async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link, mobile_cron_link, tasks_for, expected):
+    link = mobile_cron_link if tasks_for == 'cron' else mobile_decision_link
 
-    chain.context.config['cot_product'] = 'mobile'
-
-    context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+    context = await cotverify.populate_jsone_context(mobile_chain, link, link, tasks_for=tasks_for)
     del context['as_slugid']
     assert context == expected
 
