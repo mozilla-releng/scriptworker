@@ -1222,6 +1222,24 @@ async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link,
 
 
 # get_action_context_and_template {{{1
+@pytest.mark.parametrize("defn,expected", ((
+    {'actionPerm': 'generic'}, 'generic'
+), (
+    {'actionPerm': 'foobar'}, 'foobar'
+), (
+    {'hookId': 'blah/generic/'}, 'generic'
+), (
+    {}, 'generic'
+), (
+    {
+        'hookId': 'blah/foobar/',
+        'hookPayload': {'decision': {'action': {'cb_name': 'action!'}}},
+    }, 'action!'
+)))
+def test_get_action_perm(defn, expected):
+    assert cotverify._get_action_perm(defn) == expected
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path,parent_path,"
                          "expected_template_path,expected_context_path", ((
