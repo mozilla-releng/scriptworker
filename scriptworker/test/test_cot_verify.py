@@ -1223,16 +1223,23 @@ async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link,
 
 # get_action_context_and_template {{{1
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path,expected_template_path,expected_context_path", ((
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path,parent_path,"
+                         "expected_template_path,expected_context_path", ((
     "action", "NdzxKw8bS5Sw5DRhoiM14w", os.path.join(COTV4_DIR, "action_retrigger.json"),
     "c5nn2xbNS9mJxeVC0uNElg", os.path.join(COTV4_DIR, "decision_try.json"),
+    COTV4_DIR,
     os.path.join(COTV4_DIR, "retrigger_template.json"),
     os.path.join(COTV4_DIR, "retrigger_context.json"),
-),
-))
+), (
+    "action", "MP8uhRdMTjm__Q_sA0GTnA", os.path.join(COTV2_DIR, "action_relpro.json"),
+    "VQU9QMO4Teq7zr91FhBusg", os.path.join(COTV2_DIR, "decision_hg-push.json"),
+    COTV2_DIR,
+    os.path.join(COTV2_DIR, "cotv4_relpro_template.json"),
+    os.path.join(COTV2_DIR, "cotv4_relpro_context.json"),
+)))
 async def test_get_action_context_and_template(chain, name, task_id, path,
                                                decision_task_id, decision_path,
+                                               parent_path,
                                                expected_template_path, expected_context_path,
                                                mocker):
     chain.context.config['min_cot_version'] = 3
@@ -1240,20 +1247,32 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
     link.task = load_json_or_yaml(path, is_path=True)
     decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
     decision_link.task = load_json_or_yaml(decision_path, is_path=True)
-    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
-    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
-    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
-    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    if parent_path == COTV4_DIR:
+        mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+        mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+        mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+        mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    elif parent_path == COTV2_DIR:
+        mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+        mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+        mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+        mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+    else:
+        assert False, "Unknown parent path {}!".format(parent_path)
     chain.links = list(set([decision_link, link]))
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
     log.info("result:\n{}".format(result))
+    with open(expected_template_path, "w") as fh:
+        fh.write(json.dumps(result[1], indent=2, sort_keys=True))
     with open(expected_template_path) as fh:
         fake_template = json.load(fh)
     assert result[1] == fake_template
     # can't easily compare a lambda
     if 'as_slugid' in result[0]:
         del(result[0]['as_slugid'])
+    with open(expected_context_path, "w") as fh:
+        fh.write(json.dumps(result[0], indent=2, sort_keys=True))
     with open(expected_context_path) as fh:
         fake_context = json.load(fh)
     assert result[0] == fake_context

@@ -2352,7 +2352,6 @@
       "hookPayload": {
         "decision": {
           "action": {
-            "_": "hack this in to fix unit tests even though this wasn't part of the original file",
             "cb_name": "release_promotion_action"
           }
         }
