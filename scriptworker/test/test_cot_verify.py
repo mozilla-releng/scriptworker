@@ -1263,16 +1263,12 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
     log.info("result:\n{}".format(result))
-    with open(expected_template_path, "w") as fh:
-        fh.write(json.dumps(result[1], indent=2, sort_keys=True))
     with open(expected_template_path) as fh:
         fake_template = json.load(fh)
     assert result[1] == fake_template
     # can't easily compare a lambda
     if 'as_slugid' in result[0]:
         del(result[0]['as_slugid'])
-    with open(expected_context_path, "w") as fh:
-        fh.write(json.dumps(result[0], indent=2, sort_keys=True))
     with open(expected_context_path) as fh:
         fake_context = json.load(fh)
     assert result[0] == fake_context
