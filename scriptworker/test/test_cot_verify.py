@@ -1274,6 +1274,27 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
     assert result[0] == fake_context
 
 
+@pytest.mark.asyncio
+async def test_broken_action_context_and_template(chain, mocker):
+
+    def fake_artifact_full_path(*args):
+        return os.path.join(COTV4_DIR, "broken_actions.json")
+
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, "action", "action_taskid")
+    link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "action_retrigger.json"), is_path=True)
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', "decision_taskid")
+    decision_link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "decision_try.json"), is_path=True)
+    decision_link.get_artifact_full_path = fake_artifact_full_path
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    chain.links = list(set([decision_link, link]))
+
+    with pytest.raises(CoTError, match='Unknown action kind .BROKEN BROKEN BROKEN'):
+        await cotverify.get_action_context_and_template(chain, link, decision_link)
+
+
 # verify_parent_task_definition {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
