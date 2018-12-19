@@ -1075,7 +1075,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
 
 
-@pytest.mark.parametrize('tasks_for, expected', ((
+@pytest.mark.parametrize('tasks_for, expected, raises', ((
     'hg-push',
     {
         'now': '2018-01-01T12:00:00.000Z',
@@ -1093,7 +1093,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         },
         'taskId': None,
         'tasks_for': 'hg-push',
-    },
+    }, False
 ), (
     'cron',
     {
@@ -1113,7 +1113,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         },
         'taskId': None,
         'tasks_for': 'cron',
-    },
+    }, False
 ), (
     'action',
     {
@@ -1128,10 +1128,12 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         'task': None,
         'taskId': None,
         'tasks_for': 'action',
-    },
+    }, False
+), (
+    'unknown', False, True
 )))
 @pytest.mark.asyncio
-async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected):
+async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected, raises):
     async def get_scm_level(*args, **kwargs):
         return '1'
 
@@ -1159,9 +1161,13 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
     else:
         link = decision_link
 
-    context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
-    del context['as_slugid']
-    assert context == expected
+    if raises:
+        with pytest.raises(CoTError, match='Unknown tasks_for'):
+            await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+    else:
+        context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+        del context['as_slugid']
+        assert context == expected
 
 
 @pytest.mark.parametrize('tasks_for, expected', ((
@@ -1233,7 +1239,9 @@ async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link,
 ), (
     {
         'hookId': 'blah/foobar/',
-        'hookPayload': {'decision': {'action': {'cb_name': 'action!'}}},
+        'hookPayload': {
+            'decision': {'action': {'cb_name': 'action!'}}
+        },
     }, 'action!'
 )))
 def test_get_action_perm(defn, expected):

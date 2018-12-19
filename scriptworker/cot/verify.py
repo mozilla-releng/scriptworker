@@ -1129,6 +1129,8 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(
                 await _get_additional_hg_cron_jsone_context(parent_link, decision_link)
             )
+        else:
+            raise CoTError("Unknown tasks_for {}!".format(tasks_for))
 
     log.debug("{} json-e context:".format(parent_link.name))
     # format_json() breaks on lambda values; use pprint.pformat here.
