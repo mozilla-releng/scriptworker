@@ -1,0 +1,39 @@
+app_version: '65.0'
+base_repository: https://hg.mozilla.org/mozilla-unified
+build_date: 1545243227
+build_number: 1
+do_not_optimize: []
+existing_tasks: {}
+filters:
+- target_tasks_method
+head_ref: c5429a8112e41dfabe22da0d7d0876fe05a17e67
+head_repository: https://hg.mozilla.org/try
+head_rev: c5429a8112e41dfabe22da0d7d0876fe05a17e67
+hg_branch: 'default
+
+  '
+level: '1'
+message: ' '
+moz_build_date: '20181219181347'
+next_version: null
+optimize_target_tasks: true
+owner: asasaki@mozilla.com
+project: try
+pushdate: 1545243227
+pushlog_id: '323126'
+release_enable_emefree: false
+release_enable_partners: false
+release_eta: ''
+release_history: {}
+release_partner_build_number: 1
+release_partner_config: {}
+release_partners: []
+release_product: null
+release_type: beta
+required_signoffs: []
+signoff_urls: {}
+target_tasks_method: staging_release_builds
+try_mode: null
+try_options: null
+try_task_config: null
+version: 65.0b9

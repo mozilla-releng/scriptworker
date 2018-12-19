@@ -1,0 +1,135 @@
+{
+  "provisionerId": "aws-provisioner-v1",
+  "workerType": "gecko-1-decision",
+  "schedulerId": "gecko-level-1",
+  "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+  "dependencies": [],
+  "requires": "all-completed",
+  "routes": [
+    "tc-treeherder.v2.try.c5429a8112e41dfabe22da0d7d0876fe05a17e67.323126",
+    "notify.email.taskcluster-notifications+action-task@mozilla.com.on-failed",
+    "notify.email.taskcluster-notifications+action-task@mozilla.com.on-exception",
+    "index.gecko.v2.try.pushlog-id.323126.actions.E93EolXNSRuV2gOy7yMZEA"
+  ],
+  "priority": "very-low",
+  "retries": 5,
+  "created": "2018-12-19T19:26:57.706Z",
+  "deadline": "2018-12-20T19:26:57.706Z",
+  "expires": "2019-12-19T19:26:58.706Z",
+  "scopes": [
+    "assume:repo:hg.mozilla.org/try:action:generic"
+  ],
+  "payload": {
+    "env": {
+      "GECKO_BASE_REPOSITORY": "https://hg.mozilla.org/mozilla-unified",
+      "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/try",
+      "GECKO_HEAD_REF": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+      "GECKO_HEAD_REV": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+      "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
+      "TASKCLUSTER_CACHES": "/builds/worker/checkouts",
+      "ACTION_TASK_GROUP_ID": "LpCJV9wUQHSAm5SHyW4Olw",
+      "ACTION_TASK_ID": "\"KkDeSaLFSq-OFo1QGc-hGQ\"",
+      "ACTION_INPUT": "{\"downstream\":false,\"times\":1}",
+      "ACTION_CALLBACK": "retrigger",
+      "ACTION_PARAMETERS": "{\"app_version\":\"65.0\",\"base_repository\":\"https://hg.mozilla.org/mozilla-unified\",\"build_date\":1545243227,\"build_number\":1,\"do_not_optimize\":[],\"existing_tasks\":{},\"filters\":[\"target_tasks_method\"],\"head_ref\":\"c5429a8112e41dfabe22da0d7d0876fe05a17e67\",\"head_repository\":\"https://hg.mozilla.org/try\",\"head_rev\":\"c5429a8112e41dfabe22da0d7d0876fe05a17e67\",\"hg_branch\":\"default\\n\",\"level\":\"1\",\"message\":\" \",\"moz_build_date\":\"20181219181347\",\"next_version\":null,\"optimize_target_tasks\":true,\"owner\":\"asasaki@mozilla.com\",\"project\":\"try\",\"pushdate\":1545243227,\"pushlog_id\":\"323126\",\"release_enable_emefree\":false,\"release_enable_partners\":false,\"release_eta\":\"\",\"release_history\":{},\"release_partner_build_number\":1,\"release_partner_config\":{},\"release_partners\":[],\"release_product\":null,\"release_type\":\"beta\",\"required_signoffs\":[],\"signoff_urls\":{},\"target_tasks_method\":\"staging_release_builds\",\"try_mode\":null,\"try_options\":null,\"try_task_config\":null,\"version\":\"65.0b9\"}"
+    },
+    "cache": {
+      "level-1-checkouts-sparse-v2": "/builds/worker/checkouts"
+    },
+    "features": {
+      "taskclusterProxy": true,
+      "chainOfTrust": true
+    },
+    "image": "taskcluster/decision:2.1.0@sha256:6db3b697d7a3c7aba440d72f04199331b872111cefff57206b8b8b1d53230360",
+    "maxRunTime": 1800,
+    "command": [
+      "/builds/worker/bin/run-task",
+      "--vcs-checkout=/builds/worker/checkouts/gecko",
+      "--sparse-profile=build/sparse-profiles/taskgraph",
+      "--",
+      "bash",
+      "-cx",
+      "cd /builds/worker/checkouts/gecko && ln -s /builds/worker/artifacts artifacts && ./mach --log-no-times taskgraph action-callback\n"
+    ],
+    "artifacts": {
+      "public": {
+        "type": "directory",
+        "path": "/builds/worker/artifacts",
+        "expires": "2019-12-19T19:26:57.706Z"
+      }
+    }
+  },
+  "metadata": {
+    "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+    "source": "https://hg.mozilla.org/try/raw-file/c5429a8112e41dfabe22da0d7d0876fe05a17e67/.taskcluster.yml",
+    "name": "Action: Retrigger",
+    "description": "Create a clone of the task."
+  },
+  "tags": {
+    "createdForUser": "mozilla-taskcluster-maintenance@mozilla.com",
+    "kind": "action-callback"
+  },
+  "extra": {
+    "treeherder": {
+      "machine": {
+        "platform": "gecko-decision"
+      },
+      "groupName": "action-callback",
+      "groupSymbol": "AC",
+      "symbol": "rt"
+    },
+    "parent": "LpCJV9wUQHSAm5SHyW4Olw",
+    "action": {
+      "name": "retrigger",
+      "context": {
+        "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+        "taskId": "KkDeSaLFSq-OFo1QGc-hGQ",
+        "input": {
+          "downstream": false,
+          "times": 1
+        },
+        "parameters": {
+          "app_version": "65.0",
+          "base_repository": "https://hg.mozilla.org/mozilla-unified",
+          "build_date": 1545243227,
+          "build_number": 1,
+          "do_not_optimize": [],
+          "existing_tasks": {},
+          "filters": [
+            "target_tasks_method"
+          ],
+          "head_ref": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+          "head_repository": "https://hg.mozilla.org/try",
+          "head_rev": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+          "hg_branch": "default\n",
+          "level": "1",
+          "message": " ",
+          "moz_build_date": "20181219181347",
+          "next_version": null,
+          "optimize_target_tasks": true,
+          "owner": "asasaki@mozilla.com",
+          "project": "try",
+          "pushdate": 1545243227,
+          "pushlog_id": "323126",
+          "release_enable_emefree": false,
+          "release_enable_partners": false,
+          "release_eta": "",
+          "release_history": {},
+          "release_partner_build_number": 1,
+          "release_partner_config": {},
+          "release_partners": [],
+          "release_product": null,
+          "release_type": "beta",
+          "required_signoffs": [],
+          "signoff_urls": {},
+          "target_tasks_method": "staging_release_builds",
+          "try_mode": null,
+          "try_options": null,
+          "try_task_config": null,
+          "version": "65.0b9"
+        }
+      }
+    },
+    "tasks_for": "action"
+  }
+}

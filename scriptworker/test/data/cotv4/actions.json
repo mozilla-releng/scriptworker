@@ -1,0 +1,1034 @@
+{
+  "actions": [
+    {
+      "actionPerm": "generic",
+      "context": [
+        {
+          "test-type": "mochitest"
+        },
+        {
+          "test-type": "reftest"
+        }
+      ],
+      "description": "Retriggers the specified mochitest/reftest job with additional options",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "retrigger-mochitest",
+            "description": "Retriggers the specified mochitest/reftest job with additional options",
+            "name": "retrigger-mochitest",
+            "symbol": "rt",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Retrigger Mochitest/Reftest with Debugging"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "retrigger-mochitest",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "environment": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {
+              "MOZ_LOG": ""
+            },
+            "description": "Extra environment variables to use for this run",
+            "title": "Extra environment variables",
+            "type": "object"
+          },
+          "logLevel": {
+            "default": "debug",
+            "description": "Log level for output (default is DEBUG, which is highest)",
+            "enum": [
+              "debug",
+              "info",
+              "warning",
+              "error",
+              "critical"
+            ],
+            "title": "Log level",
+            "type": "string"
+          },
+          "path": {
+            "default": "",
+            "description": "Path of test to retrigger",
+            "maxLength": 255,
+            "title": "Path name",
+            "type": "string"
+          },
+          "preferences": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "default": {
+              "mygeckopreferences.pref": "myvalue2"
+            },
+            "description": "Extra gecko (about:config) preferences to use for this run",
+            "title": "Extra gecko (about:config) preferences",
+            "type": "object"
+          },
+          "repeat": {
+            "default": 30,
+            "description": "Run tests repeatedly (usually used in conjunction with runUntilFail)",
+            "minimum": 1,
+            "title": "Run tests N times",
+            "type": "integer"
+          },
+          "runUntilFail": {
+            "default": true,
+            "description": "Runs the specified set of tests repeatedly until failure (or 30 times)",
+            "title": "Run until failure",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "title": "Retrigger Mochitest/Reftest with Debugging"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {
+          "kind": "decision-task"
+        },
+        {
+          "kind": "action-callback"
+        },
+        {
+          "kind": "cron-task"
+        }
+      ],
+      "description": "Create a clone of the task (retriggering decision, action, and cron tasks requires\nspecial scopes).",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "retrigger-decision",
+            "description": "Create a clone of the task (retriggering decision, action, and cron tasks requires\nspecial scopes).",
+            "name": "retrigger",
+            "symbol": "rt",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Retrigger"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "retrigger",
+      "title": "Retrigger"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {}
+      ],
+      "description": "Create a clone of the task.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "retrigger",
+            "description": "Create a clone of the task.",
+            "name": "retrigger",
+            "symbol": "rt",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Retrigger"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "retrigger",
+      "schema": {
+        "properties": {
+          "downstream": {
+            "default": false,
+            "description": "If true, downstream tasks from this one will be cloned as well. The dependencies will be updated to work with the new task at the root.",
+            "type": "boolean"
+          },
+          "times": {
+            "default": 1,
+            "description": "How many times to run each task.",
+            "maximum": 6,
+            "minimum": 1,
+            "title": "Times",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Retrigger"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {
+          "worker-implementation": "docker-worker"
+        }
+      ],
+      "description": "Create a a copy of the task that you can interact with",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "create-interactive",
+            "description": "Create a a copy of the task that you can interact with",
+            "name": "create-interactive",
+            "symbol": "create-inter",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Create Interactive Task"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "create-interactive",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "notify": {
+            "default": "noreply@noreply.mozilla.org",
+            "description": "Enter your email here to get an email containing a link to interact with the task",
+            "format": "email",
+            "title": "Who to notify of the pending interactive task",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Create Interactive Task"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [],
+      "description": "Add new jobs using task labels.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "add-new-jobs",
+            "description": "Add new jobs using task labels.",
+            "name": "add-new-jobs",
+            "symbol": "add-new",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Add new jobs"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "add-new-jobs",
+      "schema": {
+        "properties": {
+          "tasks": {
+            "description": "An array of task labels",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Add new jobs"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [],
+      "description": "Add all Talos tasks to a push.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "run-all-talos",
+            "description": "Add all Talos tasks to a push.",
+            "name": "run-all-talos",
+            "symbol": "raT",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Run All Talos Tests"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "run-all-talos",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "times": {
+            "default": 1,
+            "description": "How many times to run each task.",
+            "maximum": 6,
+            "minimum": 1,
+            "title": "Times",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Run All Talos Tests"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {}
+      ],
+      "description": "Take the label of the current task, and trigger the task with that label on previous pushes in the same project.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "backfill",
+            "description": "Take the label of the current task, and trigger the task with that label on previous pushes in the same project.",
+            "name": "backfill",
+            "symbol": "Bk",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Backfill"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "backfill",
+      "schema": {
+        "additionalProperties": false,
+        "properties": {
+          "depth": {
+            "default": 5,
+            "description": "The number of previous pushes before the current push to attempt to trigger this task on.",
+            "maximum": 10,
+            "minimum": 1,
+            "title": "Depth",
+            "type": "integer"
+          },
+          "inclusive": {
+            "default": false,
+            "description": "If true, the backfill will also retrigger the task on the selected push.",
+            "title": "Inclusive Range",
+            "type": "boolean"
+          },
+          "testPath": {
+            "title": "Test Path",
+            "type": "string"
+          },
+          "times": {
+            "default": 1,
+            "description": "The number of times to execute each job you are backfilling.",
+            "maximum": 10,
+            "minimum": 1,
+            "title": "Times",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "title": "Backfill"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {
+          "test-type": "talos"
+        },
+        {
+          "test-type": "raptor"
+        }
+      ],
+      "description": "Take the label of the current task, and trigger the task with that label on previous pushes in the same project while adding the --geckoProfile cmd arg.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "geckoprofile",
+            "description": "Take the label of the current task, and trigger the task with that label on previous pushes in the same project while adding the --geckoProfile cmd arg.",
+            "name": "geckoprofile",
+            "symbol": "Gp",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "GeckoProfile"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "geckoprofile",
+      "title": "GeckoProfile"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [],
+      "description": "Run tests in the selected push that were optimized away, usually by SETA.\nThis action is for use on pushes that will be merged into another branch,to check that optimization hasn't hidden any failures.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "run-missing-tests",
+            "description": "Run tests in the selected push that were optimized away, usually by SETA.\nThis action is for use on pushes that will be merged into another branch,to check that optimization hasn't hidden any failures.",
+            "name": "run-missing-tests",
+            "symbol": "rmt",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Run Missing Tests"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "run-missing-tests",
+      "title": "Run Missing Tests"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {}
+      ],
+      "description": "Rerun a task.\n\nThis only works on failed or exception tasks in the original taskgraph, and is CoT friendly.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "rerun",
+            "description": "Rerun a task.\n\nThis only works on failed or exception tasks in the original taskgraph, and is CoT friendly.",
+            "name": "rerun",
+            "symbol": "rr",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Rerun"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "rerun",
+      "schema": {
+        "properties": {},
+        "type": "object"
+      },
+      "title": "Rerun"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {}
+      ],
+      "description": "Cancel the given task",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "cancel",
+            "description": "Cancel the given task",
+            "name": "cancel",
+            "symbol": "cx",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Cancel Task"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "cancel",
+      "title": "Cancel Task"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [],
+      "description": "Cancel all running and pending tasks created by the decision task this action task is associated with.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "cancel-all",
+            "description": "Cancel all running and pending tasks created by the decision task this action task is associated with.",
+            "name": "cancel-all",
+            "symbol": "cAll",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Cancel All"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "cancel-all",
+      "title": "Cancel All"
+    },
+    {
+      "actionPerm": "generic",
+      "context": [
+        {
+          "worker-implementation": "docker-worker"
+        }
+      ],
+      "description": "Purge any caches associated with this task across all workers of the same workertype as the task.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-generic/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "purge-cache",
+            "description": "Purge any caches associated with this task across all workers of the same workertype as the task.",
+            "name": "purge-cache",
+            "symbol": "purge-cache",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Purge Worker Caches"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "purge-cache",
+      "title": "Purge Worker Caches"
+    },
+    {
+      "actionPerm": "release-promotion",
+      "context": [],
+      "description": "Promote a release.",
+      "hookGroupId": "project-gecko",
+      "hookId": "in-tree-action-1-release-promotion/bb2dee27f9",
+      "hookPayload": {
+        "decision": {
+          "action": {
+            "cb_name": "release-promotion",
+            "description": "Promote a release.",
+            "name": "release-promotion",
+            "symbol": "${input.release_promotion_flavor}",
+            "taskGroupId": "LpCJV9wUQHSAm5SHyW4Olw",
+            "title": "Release Promotion"
+          },
+          "parameters": {
+            "$eval": "parameters"
+          },
+          "push": {
+            "owner": "mozilla-taskcluster-maintenance@mozilla.com",
+            "pushlog_id": "323126",
+            "revision": "c5429a8112e41dfabe22da0d7d0876fe05a17e67"
+          },
+          "repository": {
+            "level": "1",
+            "project": "try",
+            "url": "https://hg.mozilla.org/try"
+          }
+        },
+        "user": {
+          "input": {
+            "$eval": "input"
+          },
+          "taskGroupId": {
+            "$eval": "taskGroupId"
+          },
+          "taskId": {
+            "$eval": "taskId"
+          }
+        }
+      },
+      "kind": "hook",
+      "name": "release-promotion",
+      "schema": {
+        "properties": {
+          "build_number": {
+            "default": 1,
+            "description": "The release build number. Starts at 1 per release version, and increments on rebuild.",
+            "minimum": 1,
+            "title": "The release build number",
+            "type": "integer"
+          },
+          "do_not_optimize": {
+            "description": "Optional: a list of labels to avoid optimizing out of the graph (to force a rerun of, say, funsize docker-image tasks).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "next_version": {
+            "default": "",
+            "description": "Next version. Required in the following flavors: ['ship_devedition', 'ship_fennec', 'ship_firefox']",
+            "type": "string"
+          },
+          "partial_updates": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "buildNumber": {
+                  "type": "number"
+                },
+                "locales": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "buildNumber",
+                "locales"
+              ],
+              "type": "object"
+            },
+            "default": {},
+            "description": "Partial updates. Required in the following flavors: ['promote_devedition', 'promote_firefox', 'promote_firefox_rc', 'push_devedition', 'push_firefox', 'ship_devedition', 'ship_firefox', 'ship_firefox_rc']",
+            "type": "object"
+          },
+          "previous_graph_ids": {
+            "description": "Optional: an array of taskIds of decision or action tasks from the previous graph(s) to use to populate our `previous_graph_kinds`.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "rebuild_kinds": {
+            "description": "Optional: an array of kinds to ignore from the previous graph(s).",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "release_enable_emefree": {
+            "default": false,
+            "description": "Toggle for creating EME-free repacks",
+            "type": "boolean"
+          },
+          "release_enable_partners": {
+            "default": false,
+            "description": "Toggle for creating partner repacks",
+            "type": "boolean"
+          },
+          "release_eta": {
+            "default": "",
+            "type": "string"
+          },
+          "release_partner_build_number": {
+            "default": 1,
+            "description": "The partner build number. This translates to, e.g. `v1` in the path. We generally only have to bump this on off-cycle partner rebuilds.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "release_partner_config": {
+            "additionalProperties": true,
+            "description": "Partner configuration to use for partner repacks.",
+            "properties": {},
+            "type": "object"
+          },
+          "release_partners": {
+            "description": "A list of partners to repack, or if null or empty then use the current full set",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "release_promotion_flavor": {
+            "description": "The flavor of release promotion to perform.",
+            "enum": [
+              "promote_devedition",
+              "promote_fennec",
+              "promote_firefox",
+              "promote_firefox_partners",
+              "promote_firefox_rc",
+              "push_devedition",
+              "push_firefox",
+              "ship_devedition",
+              "ship_fennec",
+              "ship_fennec_rc",
+              "ship_firefox",
+              "ship_firefox_rc"
+            ],
+            "type": "string"
+          },
+          "required_signoffs": {
+            "description": "The flavor of release promotion to perform.",
+            "items": {
+              "enum": [
+                "mar-signing"
+              ]
+            },
+            "type": "array"
+          },
+          "revision": {
+            "description": "Optional: the revision to promote. If specified, and if neither `pushlog_id` nor `previous_graph_kinds` is specified, find the `pushlog_id using the revision.",
+            "title": "Optional: revision to promote",
+            "type": "string"
+          },
+          "signoff_urls": {
+            "additionalProperties": false,
+            "default": {},
+            "properties": {
+              "mar-signing": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "version": {
+            "default": "",
+            "description": "Optional: override the version for release promotion. Occasionally we'll land a taskgraph fix in a later commit, but want to act on a build from a previous commit. If a version bump has landed in the meantime, relying on the in-tree version will break things.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "release_promotion_flavor",
+          "build_number"
+        ],
+        "type": "object"
+      },
+      "title": "Release Promotion"
+    }
+  ],
+  "variables": {
+    "parameters": {
+      "app_version": "65.0",
+      "base_repository": "https://hg.mozilla.org/mozilla-unified",
+      "build_date": 1545243227,
+      "build_number": 1,
+      "do_not_optimize": [],
+      "existing_tasks": {},
+      "filters": [
+        "target_tasks_method"
+      ],
+      "head_ref": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+      "head_repository": "https://hg.mozilla.org/try",
+      "head_rev": "c5429a8112e41dfabe22da0d7d0876fe05a17e67",
+      "hg_branch": "default\n",
+      "level": "1",
+      "message": " ",
+      "moz_build_date": "20181219181347",
+      "next_version": null,
+      "optimize_target_tasks": true,
+      "owner": "asasaki@mozilla.com",
+      "project": "try",
+      "pushdate": 1545243227,
+      "pushlog_id": "323126",
+      "release_enable_emefree": false,
+      "release_enable_partners": false,
+      "release_eta": "",
+      "release_history": {},
+      "release_partner_build_number": 1,
+      "release_partner_config": {},
+      "release_partners": [],
+      "release_product": null,
+      "release_type": "beta",
+      "required_signoffs": [],
+      "signoff_urls": {},
+      "target_tasks_method": "staging_release_builds",
+      "try_mode": null,
+      "try_options": null,
+      "try_task_config": null,
+      "version": "65.0b9"
+    }
+  },
+  "version": 1
+}

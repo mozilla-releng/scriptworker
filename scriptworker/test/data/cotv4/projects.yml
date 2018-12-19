@@ -1,5 +1,4 @@
-# This file contains configuration for each of the repositories containing the
-# Gecko source tree.
+# This file contains configuration for each of the repositories related to Firefox CI.
 #
 # Repositories are also known as projects (mostly within the
 # taskgraph-generation code) and as branches (although they are not Mercurial
@@ -16,13 +15,21 @@
 # - `repo_type` -- always `hg` (for later expansion)
 # - `access` -- the name of the group with access to this repository; typically `scm_level_{1,2,3}`.
 # - `trust_domain` -- separation within an access level of projects with different organizations
+# - `parent_repo` -- for projects like comm where the repo is checked out within a "parent" repo
+# - 'is_try' -- if present and true, this is a "try" repo, meaning that users typically push new heads
+#               and expect customized task graphs; other repos follow a more typical model of each new
+#               push adding more commits to the previous head.
 # - `features` -- features that should be enabled for this project, as an object with boolean
 #                 values, defaulting to false
 #   - `buildbot` -- Buildbot builders configured for the branch
+#   - 'is-trunk' -- Branches containing 'landed' code destined for nightly builds. These branches have a shared index
+#       that can be referenced by the tip revision on any push.
 #   - `taskcluster-docker-routes-v1` -- index namespaces of the form `docker.images.v1.<project>.*`
 #   - `taskcluster-docker-routes-v2` -- index namespaces of the form `docker.images.v2.level-<level>.*`
-#   - `taskcluster-cron` -- tasks defined in `.cron.yml` can run for this project
+#   - `taskcluster-cron` -- tasks defined in `.cron.yml` can run for this project (gecko/comm repos only)
 #   - `taskcluster-push` -- decision tasks run for pushes to this project's repository
+#   - `gecko-roles` -- this repository should have gecko-related roles assigned (for users, actions, cron, etc.)
+#   - `gecko-actions` -- this repository should have gecko-related action hooks defined
 ---
 ash:
   repo: https://hg.mozilla.org/projects/ash
@@ -30,10 +37,12 @@ ash:
   access: scm_level_2
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
+    taskcluster-cron: false
     taskcluster-push: true
 mozilla-release:
   repo: https://hg.mozilla.org/releases/mozilla-release
@@ -41,6 +50,8 @@ mozilla-release:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -52,8 +63,21 @@ mozilla-esr52:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
+    taskcluster-docker-routes-v2: true
+    taskcluster-cron: false
+    taskcluster-push: true
+mozilla-esr60:
+  repo: https://hg.mozilla.org/releases/mozilla-esr60
+  repo_type: hg
+  access: scm_level_3
+  trust_domain: gecko
+  features:
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-docker-routes-v2: true
     taskcluster-cron: true
     taskcluster-push: true
@@ -63,14 +87,28 @@ comm-esr52:
   access: scm_level_3
   trust_domain: comm
   features:
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-cron: false
     taskcluster-push: false
+comm-esr60:
+  repo: https://hg.mozilla.org/releases/comm-esr60
+  repo_type: hg
+  access: scm_level_3
+  trust_domain: comm
+  features:
+    gecko-roles: true
+    gecko-actions: true
+    taskcluster-cron: false
+    taskcluster-push: true
 oak:
   repo: https://hg.mozilla.org/projects/oak
   repo_type: hg
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -82,6 +120,8 @@ pine:
   access: scm_level_2
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -93,6 +133,8 @@ mozilla-beta:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -103,15 +145,20 @@ comm-beta:
   repo_type: hg
   access: scm_level_3
   trust_domain: comm
+  parent_repo: https://hg.mozilla.org/releases/mozilla-beta
   features:
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-cron: false
-    taskcluster-push: false
+    taskcluster-push: true
 mozilla-inbound:
   repo: https://hg.mozilla.org/integration/mozilla-inbound
   repo_type: hg
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -124,6 +171,8 @@ mozilla-central:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -135,48 +184,31 @@ comm-central:
   repo_type: hg
   access: scm_level_3
   trust_domain: comm
+  parent_repo: https://hg.mozilla.org/mozilla-central
   features:
-    taskcluster-cron: false
-    taskcluster-push: true
-alder:
-  repo: https://hg.mozilla.org/projects/alder
-  repo_type: hg
-  access: scm_level_2
-  trust_domain: gecko
-  features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-cron: true
     taskcluster-push: true
+    is-trunk: true
 cedar:
   repo: https://hg.mozilla.org/projects/cedar
   repo_type: hg
   access: scm_level_2
   trust_domain: gecko
   features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
-    taskcluster-push: true
-holly:
-  repo: https://hg.mozilla.org/projects/holly
-  repo_type: hg
-  access: scm_level_2
-  trust_domain: gecko
-  features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
-    taskcluster-push: true
+    gecko-roles: true
+    gecko-actions: true
+    taskcluster-cron: false
+    taskcluster-push: false
 birch:
   repo: https://hg.mozilla.org/projects/birch
   repo_type: hg
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -188,17 +220,18 @@ cypress:
   access: scm_level_2
   trust_domain: comm
   features:
-    taskcluster-cron: true
-    taskcluster-push: true
+    gecko-roles: true
+    gecko-actions: true
+    taskcluster-cron: false
+    taskcluster-push: false
 ux:
   repo: https://hg.mozilla.org/projects/ux
   repo_type: hg
   access: scm_level_3
   trust_domain: gecko
   features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-cron: false
     taskcluster-push: false
 elm:
@@ -207,6 +240,8 @@ elm:
   access: scm_level_2
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -218,17 +253,19 @@ graphics:
   access: scm_level_2
   trust_domain: gecko
   features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
-    taskcluster-push: true
+    gecko-roles: true
+    gecko-actions: true
+    taskcluster-cron: false
+    taskcluster-push: false
 try:
   repo: https://hg.mozilla.org/try
   repo_type: hg
   access: scm_level_1
   trust_domain: gecko
+  is_try: true
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -239,7 +276,10 @@ stylo-try:
   repo_type: hg
   access: scm_level_1
   trust_domain: gecko
+  is_try: true
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -250,7 +290,10 @@ try-comm-central:
   repo_type: hg
   access: scm_level_1
   trust_domain: comm
+  is_try: true
   features:
+    gecko-roles: true
+    gecko-actions: true
     taskcluster-cron: false
     taskcluster-push: true
 larch:
@@ -259,10 +302,9 @@ larch:
   access: scm_level_2
   trust_domain: gecko
   features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
+    gecko-roles: true
+    gecko-actions: true
+    taskcluster-cron: false
     taskcluster-push: true
 maple:
   repo: https://hg.mozilla.org/projects/maple
@@ -270,28 +312,8 @@ maple:
   access: scm_level_3
   trust_domain: gecko
   features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
-    taskcluster-push: true
-fig:
-  repo: https://hg.mozilla.org/projects/fig
-  repo_type: hg
-  access: scm_level_2
-  trust_domain: gecko
-  features:
-    buildbot: true
-    taskcluster-docker-routes-v1: true
-    taskcluster-docker-routes-v2: true
-    taskcluster-cron: true
-    taskcluster-push: true
-gum:
-  repo: https://hg.mozilla.org/projects/gum
-  repo_type: hg
-  access: scm_level_2
-  trust_domain: gecko
-  features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -303,6 +325,8 @@ jamun:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -314,6 +338,8 @@ autoland:
   access: scm_level_3
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
@@ -326,9 +352,49 @@ stylo:
   access: scm_level_2
   trust_domain: gecko
   features:
+    gecko-roles: true
+    gecko-actions: true
     buildbot: true
     taskcluster-docker-routes-v1: true
     taskcluster-docker-routes-v2: true
     taskcluster-cron: false
     taskcluster-push: true
 
+# non-gecko repositories
+
+nss:
+  repo: https://hg.mozilla.org/projects/nss
+  repo_type: hg
+  access: scm_nss
+  trust_domain: nss
+  features:
+    taskcluster-push: true
+
+nss-try:
+  repo: https://hg.mozilla.org/projects/nss-try
+  repo_type: hg
+  access: scm_level_1
+  trust_domain: nss
+  features:
+    taskcluster-push: true
+
+ci-configuration:
+  repo: https://hg.mozilla.org/build/ci-configuration
+  repo_type: hg
+  access: scm_level_3
+  features:
+    taskcluster-push: true
+
+ci-admin:
+  repo: https://hg.mozilla.org/build/ci-admin
+  repo_type: hg
+  access: scm_level_3
+  features:
+    taskcluster-push: true
+
+version-control-tools:
+  repo: https://hg.mozilla.org/hgcustom/version-control-tools
+  repo_type: hg
+  access: scm_versioncontrol
+  features:
+    taskcluster-push: true
