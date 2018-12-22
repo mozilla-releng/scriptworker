@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Upcoming]
+### Changed
+- Deprecates `context` and `schema_key` in `validate_task_schema`, instead recommending task and schema directly
+
 ## [17.0.1] - 2018-11-29
 ### Fixed
 - Regression around json-e context for mozilla-mobile projects

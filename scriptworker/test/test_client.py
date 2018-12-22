@@ -163,7 +163,7 @@ _TASK_SCHEMA = {
     (True, {}),
     (False, {'scopes': ['one:scope']}),
 ))
-def test_validate_task_schema(raises, task):
+def test_validate_task_schema_from_context(raises, task):
     context = MagicMock()
     context.task = task
 
@@ -177,6 +177,28 @@ def test_validate_task_schema(raises, task):
                 client.validate_task_schema(context)
         else:
             client.validate_task_schema(context)
+
+
+@pytest.mark.parametrize('raises, task', (
+    (True, {}),
+    (False, {'scopes': ['one:scope']}),
+))
+def test_validate_task_schema(raises, task):
+    if raises:
+        with pytest.raises(TaskVerificationError):
+            client.validate_task_schema(task=task, schema=_TASK_SCHEMA)
+    else:
+        client.validate_task_schema(task=task, schema=_TASK_SCHEMA)
+
+
+@pytest.mark.parametrize('context, task, schema', (
+    (None, None, None),
+    (None, {}, None),
+    (None, None, {}),
+))
+def test_validate_task_schema_parameter_validation(context, task, schema):
+    with pytest.raises(ValueError):
+        client.validate_task_schema(context=context, task=task, schema=schema)
 
 
 def test_validate_task_schema_with_deep_key():

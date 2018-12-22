@@ -68,31 +68,44 @@ def validate_json_schema(data, schema, name="task"):
         )
 
 
-def validate_task_schema(context, schema_key='schema_file'):
+def validate_task_schema(context=None, schema_key='schema_file', task=None, schema=None):
     """Validate the task definition.
 
+    Either needs both ``task`` and ``schema`` set, otherwise can provide the deprecated pair of ``context``
+    and ``schema_key``
+
     Args:
-        context (scriptworker.context.Context): the scriptworker context. It must contain a task and
-            the config pointing to the schema file
-        schema_key: the key in `context.config` where the path to the schema file is. Key can contain
-            dots (e.g.: 'schema_files.file_a'), in which case
+        context (scriptworker.context.Context, optional): (deprecated, use ``task`` and ``schema``) the scriptworker
+            context. It must contain a task and the config pointing to the schema file. Ignored if ``task`` and
+            ``schema`` are provided
+        schema_key: (deprecated, use ``schema``) the key in `context.config` where the path to the schema file is. Key can contain
+            dots (e.g.: 'schema_files.file_a'), in which each word between '.' is assumed to be a dictionary, and is
+            traversed. Ignored if ``task`` and ``schema`` are provided
+        task (dict, optional): JSON that defines the task
+        schema (dict, optional): JSON schema that defines the structure of the task.
 
     Raises:
+        ValueError: if the function isn't called correctly
         TaskVerificationError: if the task doesn't match the schema
 
     """
-    schema_path = context.config
-    schema_keys = schema_key.split('.')
-    for key in schema_keys:
-        schema_path = schema_path[key]
+    if not ((context is not None) or (task is not None and schema is not None)):
+        raise ValueError('Either context must be provided, or task and schema must be provided directly')
 
-    task_schema = load_json_or_yaml(schema_path, is_path=True)
-    log.debug('Task is validated against this schema: {}'.format(task_schema))
+    if task is None or schema is None:
+        schema_path = context.config
+        schema_keys = schema_key.split('.')
+        for key in schema_keys:
+            schema_path = schema_path[key]
 
+        task = context.task
+        schema = load_json_or_yaml(schema_path, is_path=True)
+
+    log.debug('Task is validated against this schema: {}'.format(schema))
     try:
-        validate_json_schema(context.task, task_schema)
+        validate_json_schema(task, schema)
     except ScriptWorkerTaskException as e:
-        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(context.task)) from e
+        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(task)) from e
 
 
 def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
@@ -159,7 +172,8 @@ def sync_main(async_main, config_path=None, default_config=None,
     context = _init_context(config_path, default_config)
     _init_logging(context)
     if should_validate_task:
-        validate_task_schema(context)
+        schema = load_json_or_yaml(context.config['schema_file'], is_path=True)
+        validate_task_schema(task=context.task, schema=schema)
     loop = loop_function()
     loop.run_until_complete(_handle_asyncio_loop(async_main, context))
 
