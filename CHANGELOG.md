@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [17.1.0] - 2018-12-28
+### Added
+- added an entrypoint to the test docker image and updated docs.
+- added relpro action hook support.
+- added some filterwarnings to tox.ini to suppress warnings for dependencies.
+
+### Changed
+- pointed `/dev/random` at `/dev/urandom` in test docker image to speed up gpg tests.
+- changed filesystem layout of docker image for more test file separation.
+- renamed some of the private `jsone_context` functions in `scriptworker.cot.verify`.
+
+### Fixed
+- clarified new instance docs.
+- fixed common intermittent test failures on travis by removing pytest-xdist.
+
+### Removed
+
 ## [17.0.1] - 2018-11-29
 ### Fixed
 - Regression around json-e context for mozilla-mobile projects
