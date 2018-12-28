@@ -1303,18 +1303,27 @@ async def test_get_action_context_and_template(chain, name, task_id, path,
 @pytest.mark.asyncio
 async def test_broken_action_context_and_template(chain, mocker):
 
-    def fake_artifact_full_path(*args):
-        return os.path.join(COTV4_DIR, "broken_actions.json")
+    def fake_get_action_from_actions_json(all_actions, callback_name):
+        # We need to avoid raising CoTError in _get_action_from_actions_json,
+        # so we can raise CoTError inside get_action_context_and_template.
+        # History here:
+        #   https://github.com/mozilla-releng/scriptworker/pull/286#discussion_r243445069
+        for defn in all_actions:
+            if defn.get('hookPayload', {}).get('decision', {}).get('action', {}).get('cb_name') == callback_name:
+                hacked_defn = deepcopy(defn)
+                hacked_defn['kind'] = 'BROKEN BROKEN BROKEN'
+                return hacked_defn
 
     chain.context.config['min_cot_version'] = 3
     link = cotverify.LinkOfTrust(chain.context, "action", "action_taskid")
     link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "action_retrigger.json"), is_path=True)
     decision_link = cotverify.LinkOfTrust(chain.context, 'decision', "decision_taskid")
     decision_link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "decision_try.json"), is_path=True)
-    decision_link.get_artifact_full_path = fake_artifact_full_path
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
     mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
     mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+    mocker.patch.object(cotverify, '_get_action_from_actions_json', new=fake_get_action_from_actions_json)
     chain.links = list(set([decision_link, link]))
 
     with pytest.raises(CoTError, match='Unknown action kind .BROKEN BROKEN BROKEN'):

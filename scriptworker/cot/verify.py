@@ -1272,14 +1272,17 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
             'now': jsone_context['now'],
             'as_slugid': jsone_context['as_slugid'],
         }
-    else:
-        # We know this block is `task` because we've already tested for action kind in
-        # `_get_action_from_actions_json`.
+    elif action_defn.get('kind') == 'task':
         # XXX Get rid of this block when all actions are hooks
         tmpl = await get_in_tree_template(decision_link)
         for k in ('action', 'push', 'repository'):
             jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'].get(k, {}))
         jsone_context['action']['repo_scope'] = get_repo_scope(parent_link.task, parent_link.name)
+    else:
+        raise CoTError('Unknown action kind `{kind}` for action `{name}`.'.format(
+            kind=action_defn.get('kind', '<MISSING>'),
+            name=action_defn.get('name', '<MISSING>'),
+        ))
 
     return jsone_context, tmpl
 
