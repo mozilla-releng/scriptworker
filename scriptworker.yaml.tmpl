@@ -94,6 +94,16 @@ my_email: "scriptworker@example.com"
 
 
 #-----------------------------------------------------------------------------------------------
+# ECDSA settings.
+#-----------------------------------------------------------------------------------------------
+ecdsa_private_key_path: /tmp/ecdsa_privkey.pem
+ecdsa_public_key_paths:
+     docker-worker: /tmp/docker-worker_ecdsa_pubkey.pem
+     generic-worker: /tmp/generic-worker_ecdsa_pubkey.pem
+     scriptworker: /tmp/scriptworker_ecdsa_pubkey.pem
+
+
+#-----------------------------------------------------------------------------------------------
 # Valid artifact rules.
 # This is a list of dictionaries.  Each dictionary specifies schemes, netlocs, and path_regexes.
 # All valid artifact downloads should match these.  `filepath` must be specified in the

@@ -110,6 +110,28 @@ DEFAULT_CONFIG = frozendict({
     "privkey_path": "...",
     "my_email": "scriptworker@example.com",
 
+    # ecdsa settings
+    "ecdsa_private_key_path": "...",
+    "ecdsa_public_key_paths": frozendict({
+        'by-cot-product': frozendict({
+            'firefox': frozendict({
+                "docker-worker": "...",
+                "generic-worker": "...",
+                "scriptworker": "...",
+            }),
+            'thunderbird': frozendict({
+                "docker-worker": "...",
+                "generic-worker": "...",
+                "scriptworker": "...",
+            }),
+            'mobile': frozendict({
+                "docker-worker": "...",
+                "generic-worker": "...",
+                "scriptworker": "...",
+            }),
+        }),
+    }),
+
     "project_configuration_url": "https://hg.mozilla.org/build/ci-configuration/raw-file/default/projects.yml",
     "pushlog_url": "{repo}/json-pushes?changeset={revision}&tipsonly=1&version=2&full=1",
 
