@@ -36,7 +36,7 @@ VALID_WORKER_IMPLS = (
 
 
 COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
-COTV3_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv3")
+COTV4_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv4")
 
 
 def write_artifact(context, task_id, path, contents):
@@ -291,8 +291,8 @@ async def cotv2_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
         )
 
 
-async def cotv3_load_url(context, url, path, **kwargs):
-    return await cotv2_load_url(context, url, path, parent_path=COTV3_DIR, **kwargs)
+async def cotv4_load_url(context, url, path, **kwargs):
+    return await cotv2_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs)
 
 
 def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
@@ -307,15 +307,15 @@ def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
         return load_json_or_yaml(string)
 
 
-def cotv3_load(string, **kwargs):
-    return cotv2_load(string, parent_dir=COTV3_DIR, **kwargs)
+def cotv4_load(string, **kwargs):
+    return cotv2_load(string, parent_dir=COTV4_DIR, **kwargs)
 
 
 async def cotv2_pushlog(_, parent_dir=COTV2_DIR):
     return load_json_or_yaml(os.path.join(parent_dir, "pushlog.json"), is_path=True)
 
-async def cotv3_pushlog(_):
-    return await cotv2_pushlog(parent_dir=COTV3_DIR)
+async def cotv4_pushlog(_):
+    return await cotv2_pushlog(parent_dir=COTV4_DIR)
 
 
 # dependent_task_ids {{{1
@@ -1075,7 +1075,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     assert await cotverify.get_pushlog_info(decision_link) == {"pushes": pushes}
 
 
-@pytest.mark.parametrize('tasks_for, expected', ((
+@pytest.mark.parametrize('tasks_for, expected, raises', ((
     'hg-push',
     {
         'now': '2018-01-01T12:00:00.000Z',
@@ -1093,7 +1093,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         },
         'taskId': None,
         'tasks_for': 'hg-push',
-    },
+    }, False
 ), (
     'cron',
     {
@@ -1113,7 +1113,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         },
         'taskId': None,
         'tasks_for': 'cron',
-    },
+    }, False
 ), (
     'action',
     {
@@ -1128,10 +1128,12 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
         'task': None,
         'taskId': None,
         'tasks_for': 'action',
-    },
+    }, False
+), (
+    'unknown', False, True
 )))
 @pytest.mark.asyncio
-async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected):
+async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected, raises):
     async def get_scm_level(*args, **kwargs):
         return '1'
 
@@ -1159,9 +1161,13 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
     else:
         link = decision_link
 
-    context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
-    del context['as_slugid']
-    assert context == expected
+    if raises:
+        with pytest.raises(CoTError, match='Unknown tasks_for'):
+            await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+    else:
+        context = await cotverify.populate_jsone_context(chain, link, link, tasks_for=tasks_for)
+        del context['as_slugid']
+        assert context == expected
 
 
 @pytest.mark.parametrize('tasks_for, expected', ((
@@ -1222,91 +1228,106 @@ async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link,
 
 
 # get_action_context_and_template {{{1
+@pytest.mark.parametrize("defn,expected", ((
+    {'actionPerm': 'generic'}, 'generic'
+), (
+    {'actionPerm': 'foobar'}, 'foobar'
+), (
+    {'hookId': 'blah/generic/'}, 'generic'
+), (
+    {}, 'generic'
+), (
+    {
+        'hookId': 'blah/foobar/',
+        'hookPayload': {
+            'decision': {'action': {'cb_name': 'action!'}}
+        },
+    }, 'action!'
+)))
+def test_get_action_perm(defn, expected):
+    assert cotverify._get_action_perm(defn) == expected
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
-    "action", "NdzxKw8bS5Sw5DRhoiM14w", os.path.join(COTV3_DIR, "action_retrigger.json"),
-    "c5nn2xbNS9mJxeVC0uNElg", os.path.join(COTV3_DIR, "decision_try.json"),
-),
-))
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path,parent_path,"
+                         "expected_template_path,expected_context_path", ((
+    "action", "NdzxKw8bS5Sw5DRhoiM14w", os.path.join(COTV4_DIR, "action_retrigger.json"),
+    "c5nn2xbNS9mJxeVC0uNElg", os.path.join(COTV4_DIR, "decision_try.json"),
+    COTV4_DIR,
+    os.path.join(COTV4_DIR, "retrigger_template.json"),
+    os.path.join(COTV4_DIR, "retrigger_context.json"),
+), (
+    "action", "MP8uhRdMTjm__Q_sA0GTnA", os.path.join(COTV2_DIR, "action_relpro.json"),
+    "VQU9QMO4Teq7zr91FhBusg", os.path.join(COTV2_DIR, "decision_hg-push.json"),
+    COTV2_DIR,
+    os.path.join(COTV2_DIR, "cotv4_relpro_template.json"),
+    os.path.join(COTV2_DIR, "cotv4_relpro_context.json"),
+)))
 async def test_get_action_context_and_template(chain, name, task_id, path,
-                                               decision_task_id, decision_path, mocker):
+                                               decision_task_id, decision_path,
+                                               parent_path,
+                                               expected_template_path, expected_context_path,
+                                               mocker):
     chain.context.config['min_cot_version'] = 3
     link = cotverify.LinkOfTrust(chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
     decision_link.task = load_json_or_yaml(decision_path, is_path=True)
-    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv3_load_url)
-    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv3_load_url)
-    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv3_load)
-    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv3_pushlog)
+    if parent_path == COTV4_DIR:
+        mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+        mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+        mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+        mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    elif parent_path == COTV2_DIR:
+        mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+        mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
+        mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
+        mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+    else:
+        assert False, "Unknown parent path {}!".format(parent_path)
     chain.links = list(set([decision_link, link]))
-
-    fake_template = dict(
-        await cotv3_load_url(chain.context, None, 'taskcluster.yml')
-    )
-    fake_context = {
-        'action': {
-            'cb_name': 'retrigger_action',
-            'description': 'Create a clone of the task.',
-            'name': 'retrigger',
-            'repo_scope': 'assume:repo:hg.mozilla.org/try:action:generic',
-            'symbol': 'rt',
-            'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
-            'title': 'Retrigger'
-        },
-        'input': {'downstream': False, 'times': 1},
-        'now': '2018-05-18T22:37:56.796Z',
-        'ownTaskId': 'NdzxKw8bS5Sw5DRhoiM14w',
-        'parameters': {
-            'base_repository': 'https://hg.mozilla.org/mozilla-unified',
-            'build_date': 1515524845,
-            'build_number': 1,
-            'desktop_release_type': '',
-            'do_not_optimize': [],
-            'existing_tasks': {},
-            'filters': ['check_servo', 'target_tasks_method'],
-            'head_ref': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
-            'head_repository': 'https://hg.mozilla.org/projects/maple',
-            'head_rev': '054fe08d229f064a71bae9bb793e7ab8d95eff61',
-            'include_nightly': True,
-            'level': '3',
-            'message': ' ',
-            'moz_build_date': '20180109190725',
-            'next_version': None,
-            'optimize_target_tasks': True,
-            'owner': 'asasaki@mozilla.com',
-            'project': 'maple',
-            'pushdate': 1515524845,
-            'pushlog_id': '343',
-            'release_history': {},
-            'target_tasks_method': 'mozilla_beta_tasks',
-            'try_mode': None,
-            'try_options': None,
-            'try_task_config': None
-        },
-        'push': {
-            'owner': 'mozilla-taskcluster-maintenance@mozilla.com',
-            'pushlog_id': '272718',
-            'revision': 'f41b2f50ff48ef4265e7be391a6e5e4b212f96a0'
-        },
-        'repository': {
-            'level': '1',
-            'project': 'try',
-            'url': 'https://hg.mozilla.org/try'
-        },
-        'task': None,
-        'taskGroupId': 'c5nn2xbNS9mJxeVC0uNElg',
-        'taskId': 'H1mVqFQbS3Sqwo5tWMLtYw',
-        'tasks_for': 'action',
-    }
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
     log.info("result:\n{}".format(result))
+    with open(expected_template_path) as fh:
+        fake_template = json.load(fh)
     assert result[1] == fake_template
-    log.info("fake_template:\n{}".format(fake_template))
     # can't easily compare a lambda
-    del(result[0]['as_slugid'])
+    if 'as_slugid' in result[0]:
+        del(result[0]['as_slugid'])
+    with open(expected_context_path) as fh:
+        fake_context = json.load(fh)
     assert result[0] == fake_context
+
+
+@pytest.mark.asyncio
+async def test_broken_action_context_and_template(chain, mocker):
+
+    def fake_get_action_from_actions_json(all_actions, callback_name):
+        # We need to avoid raising CoTError in _get_action_from_actions_json,
+        # so we can raise CoTError inside get_action_context_and_template.
+        # History here:
+        #   https://github.com/mozilla-releng/scriptworker/pull/286#discussion_r243445069
+        for defn in all_actions:
+            if defn.get('hookPayload', {}).get('decision', {}).get('action', {}).get('cb_name') == callback_name:
+                hacked_defn = deepcopy(defn)
+                hacked_defn['kind'] = 'BROKEN BROKEN BROKEN'
+                return hacked_defn
+
+    chain.context.config['min_cot_version'] = 3
+    link = cotverify.LinkOfTrust(chain.context, "action", "action_taskid")
+    link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "action_retrigger.json"), is_path=True)
+    decision_link = cotverify.LinkOfTrust(chain.context, 'decision', "decision_taskid")
+    decision_link.task = load_json_or_yaml(os.path.join(COTV4_DIR, "decision_try.json"), is_path=True)
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+    mocker.patch.object(cotverify, '_get_action_from_actions_json', new=fake_get_action_from_actions_json)
+    chain.links = list(set([decision_link, link]))
+
+    with pytest.raises(CoTError, match='Unknown action kind .BROKEN BROKEN BROKEN'):
+        await cotverify.get_action_context_and_template(chain, link, decision_link)
 
 
 # verify_parent_task_definition {{{1

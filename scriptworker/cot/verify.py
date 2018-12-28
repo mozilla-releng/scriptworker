@@ -1129,6 +1129,8 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(
                 await _get_additional_hg_cron_jsone_context(parent_link, decision_link)
             )
+        else:
+            raise CoTError("Unknown tasks_for {}!".format(tasks_for))
 
     log.debug("{} json-e context:".format(parent_link.name))
     # format_json() breaks on lambda values; use pprint.pformat here.
@@ -1183,6 +1185,58 @@ def _get_action_from_actions_json(all_actions, callback_name):
     raise CoTError('No action with {} callback found.'.format(callback_name))
 
 
+def _wrap_action_hook_with_let(tmpl, action_perm):
+    # action-hook. an attempt to duplicate the logic here:
+    # https://hg.mozilla.org/build/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
+    return {
+        '$let': {
+            'tasks_for': 'action',
+            'action': {
+                'name': '${payload.decision.action.name}',
+                'title': '${payload.decision.action.title}',
+                'description': '${payload.decision.action.description}',
+                'taskGroupId': '${payload.decision.action.taskGroupId}',
+                'symbol': '${payload.decision.action.symbol}',
+
+                'repo_scope': 'assume:repo:${payload.decision.repository.url[8:]}:action:' + action_perm,
+
+                'cb_name': '${payload.decision.action.cb_name}',
+            },
+
+            'push': {'$eval': 'payload.decision.push'},
+            'repository': {'$eval': 'payload.decision.repository'},
+            'input': {'$eval': 'payload.user.input'},
+            'parameters': {'$eval': 'payload.decision.parameters'},
+
+            'taskId': {'$eval': 'payload.user.taskId'},
+            'taskGroupId': {'$eval': 'payload.user.taskGroupId'},
+            'ownTaskId': {'$eval': 'taskId'},
+        },
+        'in': tmpl,
+    }
+
+
+def _render_action_hook_payload(action_defn, action_context, action_task):
+    hook_payload = action_defn['hookPayload']
+    context = {
+        'input': action_context['input'],
+        'parameters': action_context['parameters'],
+        'taskGroupId': action_task.decision_task_id,
+        'taskId': action_context['taskId'],
+    }
+    return jsone.render(hook_payload, context)
+
+
+def _get_action_perm(action_defn):
+    action_perm = action_defn.get('actionPerm')
+    if action_perm is None:
+        if 'generic/' in action_defn.get('hookId', 'generic/'):
+            action_perm = 'generic'
+        else:
+            action_perm = action_defn['hookPayload']['decision']['action']['cb_name']
+    return action_perm
+
+
 async def get_action_context_and_template(chain, parent_link, decision_link):
     """Get the appropriate json-e context and template for an action task.
 
@@ -1204,11 +1258,31 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
     if 'task' in action_defn and chain.context.config['min_cot_version'] <= 2:
         tmpl = {'tasks': [action_defn['task']]}
-    else:
+    elif action_defn.get('kind') == 'hook':
+        # action-hook.
+        in_tree_tmpl = await get_in_tree_template(decision_link)
+        action_perm = _get_action_perm(action_defn)
+        tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm)
+
+        jsone_context = {
+            'payload': _render_action_hook_payload(
+                action_defn, jsone_context, parent_link
+            ),
+            'taskId': parent_link.task_id,
+            'now': jsone_context['now'],
+            'as_slugid': jsone_context['as_slugid'],
+        }
+    elif action_defn.get('kind') == 'task':
+        # XXX Get rid of this block when all actions are hooks
         tmpl = await get_in_tree_template(decision_link)
         for k in ('action', 'push', 'repository'):
-            jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'][k])
+            jsone_context[k] = deepcopy(action_defn['hookPayload']['decision'].get(k, {}))
         jsone_context['action']['repo_scope'] = get_repo_scope(parent_link.task, parent_link.name)
+    else:
+        raise CoTError('Unknown action kind `{kind}` for action `{name}`.'.format(
+            kind=action_defn.get('kind', '<MISSING>'),
+            name=action_defn.get('name', '<MISSING>'),
+        ))
 
     return jsone_context, tmpl
 
