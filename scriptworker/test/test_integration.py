@@ -66,7 +66,8 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
 def build_config(override, basedir):
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = get_unfrozen_copy(DEFAULT_CONFIG)
-    GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
+    GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
+    ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
     config.update({
         'log_dir': os.path.join(basedir, "log"),
         'artifact_dir': os.path.join(basedir, "artifact"),
@@ -86,7 +87,13 @@ def build_config(override, basedir):
         'reclaim_interval': 5,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
-        'cot_product': 'firefox'
+        'cot_product': 'firefox',
+        'ed25519_private_key_path': os.path.join(ED25519_DIR, 'scriptworker_private_key'),
+        'ed25519_public_keys': {
+            'docker-worker': ['8dBv4bbnZ3RsDzQiPKTJ18uo3hq5Rjm94JG6HXzAcBM='],
+            'generic-worker': ['PkI5NslA78wSsYaKNzKq7iD7MLQy7W6wYO/0WFd4tWM='],
+            'scriptworker': ['KxYrV3XAJ3uOyAUX0Wcl1Oeu6GSMrI/5hOn39q8Lf0I='],
+        },
     })
     creds = read_integration_creds()
     del(config['credentials'])

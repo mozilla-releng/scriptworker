@@ -749,6 +749,7 @@ def remove_empty_keys(values, remove=({}, None, [], 'null')):
     return values
 
 
+# get_single_item_from_sequence {{{1
 def get_single_item_from_sequence(
     sequence, condition,
     ErrorClass=ValueError,
