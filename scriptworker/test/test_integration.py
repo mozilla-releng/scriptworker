@@ -65,7 +65,8 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
 def build_config(override, basedir):
     randstring = slugid.nice()[0:6].decode('utf-8')
     config = get_unfrozen_copy(DEFAULT_CONFIG)
-    GPG_HOME = os.path.join(os.path.basename(__file__), "data", "gpg")
+    GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
+    ECDSA_DIR = os.path.join(os.path.dirname(__file__), "data", "ecdsa")
     config.update({
         'log_dir': os.path.join(basedir, "log"),
         'artifact_dir': os.path.join(basedir, "artifact"),
@@ -85,7 +86,13 @@ def build_config(override, basedir):
         'reclaim_interval': 5,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 9 && exit 1'),
         'task_max_timeout': 60,
-        'cot_product': 'firefox'
+        'cot_product': 'firefox',
+        'ecdsa_private_key_path': os.path.join(ECDSA_DIR, 'scriptworker_private.pem'),
+        'ecdsa_public_key_paths': {
+            'docker-worker': os.path.join(ECDSA_DIR, 'docker-worker_public.pem'),
+            'generic-worker': os.path.join(ECDSA_DIR, 'generic-worker_public.pem'),
+            'scriptworker': os.path.join(ECDSA_DIR, 'scriptworker_public.pem'),
+        },
     })
     creds = read_integration_creds()
     del(config['credentials'])

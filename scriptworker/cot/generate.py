@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for this module.
 
 """
+from ecdsa import SigningKey
 import logging
 import os
 from scriptworker.client import validate_json_schema
@@ -113,6 +114,11 @@ def generate_cot(context, path=None):
     body = format_json(body)
     path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
     if context.config['sign_chain_of_trust']:
+        ecdsa_signature_path = "{}.sig".format(path)
+        ecdsa_signing_key = SigningKey.from_pem(open(context.config['ecdsa_private_key_path']).read())
+        ecdsa_signature = ecdsa_signing_key.sign(body.encode('utf-8'))
+        with open(ecdsa_signature_path, "wb") as fh:
+            fh.write(ecdsa_signature)
         body = sign(GPG(context), body)
     with open(path, "w") as fh:
         print(body, file=fh, end="")

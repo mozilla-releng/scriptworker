@@ -22,9 +22,17 @@ ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "data", "artifacts")
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
     GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
+    ECDSA_DIR = os.path.join(os.path.dirname(__file__), "data", "ecdsa")
     rw_context.config['artifact_dir'] = ARTIFACT_DIR
     rw_context.config['gpg_home'] = GPG_HOME
     rw_context.config['sign_chain_of_trust'] = True
+    rw_context.config['ecdsa_private_key_path'] = os.path.join(ECDSA_DIR, 'scriptworker_private.pem')
+    rw_context.config['ecdsa_public_key_paths'] = {
+        'docker-worker': os.path.join(ECDSA_DIR, 'docker-worker_public.pem'),
+        'generic-worker': os.path.join(ECDSA_DIR, 'generic-worker_public.pem'),
+        'scriptworker': os.path.join(ECDSA_DIR, 'scriptworker_public.pem'),
+    }
+
     rw_context.claim_task = {
         "runId": 2,
         "status": {
