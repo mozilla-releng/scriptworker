@@ -584,6 +584,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
 
 # download_cot {{{1
+
 async def download_cot(chain):
     """Download the signed chain of trust artifacts.
 
@@ -601,19 +602,37 @@ async def download_cot(chain):
     # task, and will not have a signed chain of trust artifact yet.
     for link in chain.links:
         task_id = link.task_id
-        url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
-        coroutine = asyncio.ensure_future(
-            download_artifacts(
-                chain.context, [url], parent_dir=parent_dir,
-                valid_artifact_task_ids=[task_id]
+        mandatory_urls = []
+        optional_urls = []
+
+        # This logic will shift as we roll out ecdsa support to the other
+        # worker implementations.
+        gpg_url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
+        mandatory_urls.append(gpg_url)
+        unsigned_url = get_artifact_url(chain.context, task_id, 'public/chain-of-trust.json')
+        optional_urls.append(unsigned_url)
+        if chain.context.config['verify_cot_signature']:
+            optional_urls.append(
+                get_artifact_url(chain.context, task_id, 'public/chain-of-trust.json.sig')
+            )
+
+        mandatory_artifact_tasks.append(
+            asyncio.ensure_future(
+                download_artifacts(
+                    chain.context, mandatory_urls, parent_dir=parent_dir,
+                    valid_artifact_task_ids=[task_id]
+                )
             )
         )
-
-        if is_task_required_by_any_mandatory_artifact(chain, task_id):
-            mandatory_artifact_tasks.append(coroutine)
-        else:
-            optional_artifact_tasks.append(coroutine)
+        optional_artifact_tasks.append(
+            asyncio.ensure_future(
+                download_artifacts(
+                    chain.context, optional_urls, parent_dir=parent_dir,
+                    valid_artifact_task_ids=[task_id]
+                )
+            )
+        )
 
     mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
     succeeded_optional_artifacts_paths, failed_optional_artifacts = \
@@ -621,8 +640,7 @@ async def download_cot(chain):
 
     if failed_optional_artifacts:
         error_messages = '\n'.join([' * {}'.format(failure) for failure in failed_optional_artifacts])
-        log.warning('Could not download {} "chainOfTrust.json.asc". Although, they were not needed by \
-any mandatory artifact. Continuing CoT verifications. Errors gotten: {}'.format(len(failed_optional_artifacts), error_messages))
+        log.warning('Could not download {} optional chain of trust artifact(s):\n{}'.format(len(failed_optional_artifacts), error_messages))
 
     paths = mandatory_artifacts_paths + succeeded_optional_artifacts_paths
     for path in paths:

@@ -668,32 +668,49 @@ async def test_build_task_dependencies(chain, mocker):
 
 
 # download_cot {{{1
-@pytest.mark.parametrize('upstream_artifacts, raises, download_artifacts_mock', ((
+@pytest.mark.parametrize('upstream_artifacts, raises, download_artifacts_mock, verify_sig, fails_optional', ((
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']}],
     True,
     die_async,
-), (
-    [{'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
     False,
-    die_async,
+    False,
 ), (
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
     {'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
     True,
     die_async,
+    False,
+    False
 ), (
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']},],
     False,
     None,
+    True,
+    False,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},],
+    False,
+    None,
+    False,
+    True,
 ), (
     [],
     False,
     None,
+    False,
+    False
 )))
 @pytest.mark.asyncio
-async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_artifacts_mock):
-    async def down(*args, **kwargs):
+async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_artifacts_mock,
+                            verify_sig, fails_optional):
+    async def down(_, urls, **kwargs):
+        for url in urls:
+            if fails_optional and url.endswith('chain-of-trust.json'):
+                raise DownloadError("foo")
         return ['x']
+
+    def fake_artifact_url(_x, _y, path):
+        return path
 
     if download_artifacts_mock is None:
         download_artifacts_mock = down
@@ -705,8 +722,8 @@ async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_
     m.task_id = "task_id"
     m.cot_dir = "y"
     chain.links = [m]
-    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
-    mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
+    chain.context.config['verify_cot_signature'] = verify_sig
+    mocker.patch.object(cotverify, 'get_artifact_url', new=fake_artifact_url)
     if raises:
         mocker.patch.object(cotverify, 'download_artifacts', new=download_artifacts_mock)
         with pytest.raises(CoTError):

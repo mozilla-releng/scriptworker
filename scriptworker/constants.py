@@ -22,6 +22,17 @@ STATUSES = {
     'intermittent-task': 7,
 }
 
+# _COT_VERSION_DESCRIPTIONS {{{1
+_COT_VERSION_DESCRIPTIONS = frozendict({
+    1: 'Initial Chain of Trust implementation with GPG signatures',
+    2: 'Json-e verification support',
+    3: 'Action hook support',
+    4: 'Release promotion action hook support',
+    5: 'Initial ECDSA support; GPG deprecated',
+    6: 'Drop support for non-hook actions',
+    7: 'Drop support for GPG',
+})
+
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
 # instance maintainers, also make changes to ``scriptworker.yaml.tmpl``.
