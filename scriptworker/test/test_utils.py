@@ -312,6 +312,53 @@ def test_rm_dir():
     assert not os.path.exists(tmp)
 
 
+# write_to_file {{{1
+@pytest.mark.parametrize('file_type,contents,expected', ((
+    'json', {'a': 'b'}, """{
+  "a": "b"
+}"""
+), (
+    'binary', b'asdfasdf', b'asdfasdf'
+), (
+    'text', 'asdfasdf', 'asdfasdf'
+)))
+def test_write_to_file(tmpdir, file_type, contents, expected):
+    path = os.path.join(tmpdir, 'foo')
+    utils.write_to_file(path, contents, file_type=file_type)
+    mode = 'rb' if file_type == 'binary' else 'r'
+    with open(path, mode) as fh:
+        assert fh.read() == expected
+
+
+def test_write_to_file_bad_file_type(tmpdir):
+    path = os.path.join(tmpdir, 'foo')
+    with pytest.raises(ScriptWorkerException):
+        utils.write_to_file(path, 'foo', file_type='illegal file type')
+
+
+# read_from_file {{{1
+@pytest.mark.parametrize('file_type, contents, expected, exception, raises', ((
+    'binary', b'asdfasdf', b'asdfasdf', None, False
+), (
+    'text', 'asdfasdf', 'asdfasdf', ScriptWorkerException, False
+), (
+    'text', None, None, Exception, True
+), (
+    'bad_file_type', 'asdfasdf', 'asdfasdf', Exception, True
+)))
+def test_read_from_file(tmpdir, file_type, contents, expected, exception, raises):
+    path = os.path.join(tmpdir, 'foo')
+    if contents is not None:
+        mode = 'wb' if file_type == 'binary' else 'w'
+        with open(path, mode) as fh:
+            fh.write(contents)
+    if raises:
+        with pytest.raises(exception):
+            utils.read_from_file(path, file_type=file_type, exception=exception)
+    else:
+        assert utils.read_from_file(path, file_type=file_type, exception=exception) == expected
+
+
 # download_file {{{1
 @pytest.mark.asyncio
 async def test_download_file(context, fake_session, tmpdir):
