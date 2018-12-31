@@ -465,6 +465,73 @@ def load_json_or_yaml(string, is_path=False, file_type='json',
             raise exception(message % repl_dict)
 
 
+# write_to_file {{{1
+def write_to_file(path, contents, file_type='text'):
+    """Write ``contents`` to ``path`` with optional formatting.
+
+    Small helper function to write ``contents`` to ``file`` with optional formatting.
+
+    Args:
+        path (str): the path to write to
+        contents (str, object, or bytes): the contents to write to the file
+        file_type (str, optional): the type of file. Currently accepts
+            ``text`` or ``binary`` (contents are unchanged) or ``json`` (contents
+            are formatted). Defaults to ``text``.
+
+    Raises:
+        ScriptWorkerException: with an unknown ``file_type``
+        TypeError: if ``file_type`` is ``json`` and ``contents`` isn't JSON serializable
+
+    """
+    FILE_TYPES = ('json', 'text', 'binary')
+    if file_type not in FILE_TYPES:
+        raise ScriptWorkerException("Unknown file_type {} not in {}!".format(file_type, FILE_TYPES))
+    if file_type == 'json':
+        contents = format_json(contents)
+    if file_type == 'binary':
+        with open(path, 'wb') as fh:
+            fh.write(contents)
+    else:
+        with open(path, 'w') as fh:
+            print(contents, file=fh, end="")
+
+
+# read_from_file {{{1
+def read_from_file(path, file_type='text', exception=None):
+    """Read from ``path``.
+
+    Small helper function to read from ``file``.
+
+    Args:
+        path (str): the path to read from.
+        file_type (str, optional): the type of file. Currently accepts
+            ``text`` or ``binary``. Defaults to ``text``.
+        exception (None or Exception, optional): the exception to raise
+            if unable to read from the file. If None, don't raise.
+            Defaults to None.
+
+    Returns:
+        None: if unable to read from ``path`` and ``exception`` is ``None``
+        str or bytes: the contents of ``path``
+
+    Raises:
+        Exception: if ``exception`` is set.
+
+    """
+    FILE_TYPE_MAP = {'text': 'r', 'binary': 'rb'}
+    if file_type not in FILE_TYPE_MAP:
+        raise ScriptWorkerException("Unknown file_type {} not in {}!".format(file_type, FILE_TYPE_MAP))
+    try:
+        with open(path, FILE_TYPE_MAP[file_type]) as fh:
+            return fh.read()
+    except (OSError, FileNotFoundError) as exc:
+        message = "Can't read_from_file {}: {}".format(path, str(exc))
+        if exception is not None:
+            raise exception(message)
+        else:
+            log.warning(message)
+
+
 # download_file {{{1
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):
     """Download a file, async.

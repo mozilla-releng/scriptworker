@@ -11,7 +11,9 @@ import os
 from scriptworker.client import validate_json_schema
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import GPG, sign
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json_or_yaml
+from scriptworker.utils import (
+    filepaths_in_dir, format_json, get_hash, load_json_or_yaml, write_to_file,
+)
 
 log = logging.getLogger(__name__)
 
@@ -112,14 +114,14 @@ def generate_cot(context, path=None):
     )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
-    path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
+    asc_path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
+    unsigned_path = os.path.join(os.path.dirname(asc_path), "chain-of-trust.json")
+    write_to_file(unsigned_path, body)
     if context.config['sign_chain_of_trust']:
         ecdsa_signature_path = "{}.sig".format(path)
         ecdsa_signing_key = SigningKey.from_pem(open(context.config['ecdsa_private_key_path']).read())
         ecdsa_signature = ecdsa_signing_key.sign(body.encode('utf-8'))
-        with open(ecdsa_signature_path, "wb") as fh:
-            fh.write(ecdsa_signature)
+        write_to_file(ecdsa_signature_path, ecdsa_signature, file_type='binary')
         body = sign(GPG(context), body)
-    with open(path, "w") as fh:
-        print(body, file=fh, end="")
+    write_to_file(asc_path, body)
     return body
