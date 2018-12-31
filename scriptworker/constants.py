@@ -30,16 +30,6 @@ _ALLOWED_MOBILE_GITHUB_OWNERS = (
     'mitchhentges',
 )
 
-_COT_VERSION_DESCRIPTIONS = frozendict({
-    1: 'Initial Chain of Trust implementation with GPG signatures',
-    2: 'Json-e verification support',
-    3: 'Action hook support',
-    4: 'Release promotion action hook support',
-    5: 'Initial ed25519 support; GPG deprecated',
-    6: 'Drop support for non-hook actions',
-    7: 'Drop support for GPG',
-})
-
 _SW_LIB_DIR = os.path.dirname(__file__)
 
 # DEFAULT_CONFIG {{{1
