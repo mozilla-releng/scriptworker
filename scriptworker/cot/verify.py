@@ -11,6 +11,7 @@ import argparse
 import asyncio
 from copy import deepcopy
 import dictdiffer
+import ecdsa
 from frozendict import frozendict
 import jsone
 import logging
@@ -60,8 +61,10 @@ from scriptworker.utils import (
     match_url_path_callback,
     match_url_regex,
     raise_future_exceptions,
+    read_from_file,
     remove_empty_keys,
     rm,
+    write_to_file,
 )
 from taskcluster.exceptions import TaskclusterFailure
 
@@ -808,8 +811,58 @@ def get_all_artifacts_per_task_id(chain, upstream_artifacts):
 
 
 # verify_cot_signatures {{{1
-def verify_cot_signatures(chain):
-    """Verify the signatures of the chain of trust artifacts populated in ``download_cot``.
+def verify_link_gpg_cot_signature(chain, link, unsigned_path):
+    """Verify the gpg signatures of the chain of trust artifacts populated in ``download_cot``.
+
+    Populate each link.cot with the chain of trust json body.
+    Write an unsigned chain-of-trust.json if it doesn't exist; raise CoTError if
+    it exists but doesn't match the unsigned body.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust to add to.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    gpg_path = link.get_artifact_full_path('public/chainOfTrust.json.asc')
+    gpg_home = os.path.join(chain.context.config['base_gpg_home_dir'], link.worker_impl)
+    gpg = GPG(chain.context, gpg_home=gpg_home)
+    log.debug("Verifying the {} {} chain of trust signature against {}".format(
+        link.name, link.task_id, gpg_home
+    ))
+    contents = read_from_file(gpg_path, exception=CoTError)
+    try:
+        body = get_body(
+            gpg, contents,
+            verify_sig=chain.context.config['verify_cot_signature']
+        )
+    except ScriptWorkerGPGException as exc:
+        raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(gpg_path, str(exc)))
+    link.cot = load_json_or_yaml(
+        body, exception=CoTError,
+        message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
+    )
+    log.debug("Good.")
+    if not os.path.exists(unsigned_path):
+        log.debug("Writing json contents to {}".format(unsigned_path))
+        write_to_file(unsigned_path, link.cot, file_type='json')
+    else:
+        unsigned_contents = load_json_or_yaml(
+            unsigned_path, is_path=True, exception=CoTError,
+            message="{} {}: Invalid unsigned cot json body! %(exc)s".format(link.name, link.task_id)
+        )
+        diff = list(dictdiffer.diff(link.cot, unsigned_contents))
+        if diff:
+            raise CoTError(
+                "{} {}: unsigned chain-of-trust.json contents differ from chainOfTrust.json.asc! {}".format(
+                    link.name, link.task_id, pprint.pformat(diff)
+                )
+            )
+
+
+def verify_link_ecdsa_cot_signature(chain, link, unsigned_path, signature_path):
+    """Verify the ecdsa signatures of the chain of trust artifacts populated in ``download_cot``.
 
     Populate each link.cot with the chain of trust json body.
 
@@ -820,37 +873,49 @@ def verify_cot_signatures(chain):
         CoTError: on failure.
 
     """
-    for link in chain.links:
-        path = link.get_artifact_full_path('public/chainOfTrust.json.asc')
-        gpg_home = os.path.join(chain.context.config['base_gpg_home_dir'], link.worker_impl)
-        gpg = GPG(chain.context, gpg_home=gpg_home)
-        log.debug("Verifying the {} {} chain of trust signature against {}".format(
-            link.name, link.task_id, gpg_home
+    signature = read_from_file(signature_path, file_type='binary', exception=CoTError)
+    binary_contents = read_from_file(unsigned_path, file_type='binary', exception=CoTError)
+    verifying_key_path = chain.context.config['ecdsa_public_key_paths'][link.worker_impl]
+    verifying_key = ecdsa.VerifyingKey.from_pem(
+        read_from_file(verifying_key_path, file_type='binary', exception=CoTError)
+    )
+    try:
+        verifying_key.verify(signature, binary_contents)
+    except ecdsa.keys.BadSignatureError as exc:
+        raise CoTError("{} {}: {} cot signature doesn't verify: {}".format(
+            link.name, link.task_id, link.worker_impl, str(exc)
         ))
+    link.cot = load_json_or_yaml(
+        unsigned_path, is_path=True, exception=CoTError,
+        message="{} {}: Invalid unsigned cot json body! %(exc)s".format(link.name, link.task_id)
+    )
+
+
+def verify_cot_signatures(chain):
+    """Verify the signatures of the chain of trust artifacts populated in ``download_cot``.
+
+    Populate each link.cot with the chain of trust json body.
+    Currently handles both ecdsa signatures and gpg (deprecated).
+
+    Args:
+        chain (ChainOfTrust): the chain of trust to add to.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    for link in chain.links:
+        unsigned_path = link.get_artifact_full_path('chain-of-trust.json')
+        ecdsa_signature_path = link.get_artifact_full_path('chain-of-trust.json.sig')
         try:
-            with open(path, "r") as fh:
-                contents = fh.read()
-        except OSError as exc:
-            if is_task_required_by_any_mandatory_artifact(chain, link.task_id):
-                raise CoTError("Can't read mandatory {}: {}!".format(path, str(exc)))
-            else:
-                log.warning("Could not read optional {}. Continuing. Error gotten: {}!".format(path, str(exc)))
-                continue
-        try:
-            body = get_body(
-                gpg, contents,
-                verify_sig=chain.context.config['verify_cot_signature']
+            verify_link_ecdsa_cot_signature(chain, link, unsigned_path, ecdsa_signature_path)
+        except Exception as exc:
+            log.info(
+                "{} {}: ECDSA signature verification failed; falling back to GPG: {}".format(
+                    link.name, link.task_id, str(exc)
+                )
             )
-        except ScriptWorkerGPGException as exc:
-            raise CoTError("GPG Error verifying chain of trust for {}: {}!".format(path, str(exc)))
-        link.cot = load_json_or_yaml(
-            body, exception=CoTError,
-            message="{} {}: Invalid cot json body! %(exc)s".format(link.name, link.task_id)
-        )
-        unsigned_path = link.get_artifact_full_path('chainOfTrust.json')
-        log.debug("Good.  Writing json contents to {}".format(unsigned_path))
-        with open(unsigned_path, "w") as fh:
-            fh.write(format_json(link.cot))
+            verify_link_gpg_cot_signature(chain, link, unsigned_path)
 
 
 # verify_task_in_task_graph {{{1
