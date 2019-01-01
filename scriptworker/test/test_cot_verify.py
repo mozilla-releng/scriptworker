@@ -905,48 +905,6 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
         assert sorted(result) == ['path1', 'path2', 'path3']
 
 
-# is_task_required_by_any_mandatory_artifact {{{1
-@pytest.mark.parametrize('upstream_artifacts, task_id, expected', ((
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1', 'id1_path2'],
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }],
-    'id1',
-    True
-), (
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1', 'id1_path2'],
-        'optional': True,
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }],
-    'id1',
-    False
-), (
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1'],
-        'optional': True,
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }, {
-        'taskId': 'id1',
-        'paths': ['id1_path2'],
-    }],
-    'id1',
-    True,
-)))
-def test_is_task_required_by_any_mandatory_artifact(chain, upstream_artifacts, task_id, expected):
-    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
-    assert cotverify.is_task_required_by_any_mandatory_artifact(chain, task_id) == expected
-
-
 # is_artifact_optional {{{1
 @pytest.mark.parametrize('upstream_artifacts, task_id, path, expected', ((
     [{
