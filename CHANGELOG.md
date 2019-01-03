@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [17.1.1] - 2019-01-02
+### Changed
+- get `actionPerm` from `action_defn['extra']['actionPerm']` before `action_defn['actionPerm']`.
+
 ## [17.1.0] - 2018-12-28
 ### Added
 - added an entrypoint to the test docker image and updated docs.
