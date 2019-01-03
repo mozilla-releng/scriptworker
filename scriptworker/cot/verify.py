@@ -1228,7 +1228,8 @@ def _render_action_hook_payload(action_defn, action_context, action_task):
 
 
 def _get_action_perm(action_defn):
-    action_perm = action_defn.get('actionPerm')
+    # handle either the preferred action.extra.actionPerm or the older action.actionPerm
+    action_perm = action_defn.get('extra', {}).get('actionPerm', action_defn.get('actionPerm'))
     if action_perm is None:
         if 'generic/' in action_defn.get('hookId', 'generic/'):
             action_perm = 'generic'
