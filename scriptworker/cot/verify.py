@@ -1965,6 +1965,30 @@ async def verify_chain_of_trust(chain):
 
 
 # verify_cot_cmdln {{{1
+async def _async_verify_cot_cmdln(opts, tmp):
+    async with aiohttp.ClientSession() as session:
+        context = Context()
+        context.session = session
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.credentials = read_worker_creds()
+        context.task = await context.queue.task(opts.task_id)
+        context.config.update({
+            'cot_product': opts.cot_product,
+            'work_dir': os.path.join(tmp, 'work'),
+            'artifact_dir': os.path.join(tmp, 'artifacts'),
+            'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
+            'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
+            'verify_cot_signature': False,
+        })
+        context.config = apply_product_config(context.config)
+        cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
+        await verify_chain_of_trust(cot)
+        log.info(format_json(cot.dependent_task_ids()))
+        log.info("{} : {}".format(cot.name, cot.task_id))
+        for link in cot.links:
+            log.info("{} : {}".format(link.name, link.task_id))
+
+
 def verify_cot_cmdln(args=None, event_loop=None):
     """Test the chain of trust from the commandline, for debugging purposes.
 
@@ -1997,31 +2021,8 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
     log.setLevel(logging.DEBUG)
     logging.basicConfig()
     event_loop = event_loop or asyncio.get_event_loop()
-    conn = aiohttp.TCPConnector()
     try:
-        session = aiohttp.ClientSession(connector=conn)
-        context = Context()
-        context.session = session
-        context.config = dict(deepcopy(DEFAULT_CONFIG))
-        context.credentials = read_worker_creds()
-        context.task = event_loop.run_until_complete(context.queue.task(opts.task_id))
-        context.config.update({
-            'cot_product': opts.cot_product,
-            'work_dir': os.path.join(tmp, 'work'),
-            'artifact_dir': os.path.join(tmp, 'artifacts'),
-            'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
-            'base_gpg_home_dir': os.path.join(tmp, 'gpg'),
-            'verify_cot_signature': False,
-        })
-        context.config = apply_product_config(context.config)
-        cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-        event_loop.run_until_complete(verify_chain_of_trust(cot))
-        event_loop.run_until_complete(context.session.close())
-        conn.close()
-        log.info(format_json(cot.dependent_task_ids()))
-        log.info("{} : {}".format(cot.name, cot.task_id))
-        for link in cot.links:
-            log.info("{} : {}".format(link.name, link.task_id))
+        event_loop.run_until_complete(_async_verify_cot_cmdln(opts, tmp))
     finally:
         if opts.cleanup:
             rm(tmp)
