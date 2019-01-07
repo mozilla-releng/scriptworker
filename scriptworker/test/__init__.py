@@ -271,25 +271,26 @@ async def _close_session(obj):
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function')
 async def rw_context(event_loop):
-    with tempfile.TemporaryDirectory() as tmp:
-        context = _craft_rw_context(tmp, event_loop, cot_product='firefox')
-        yield context
-        await _close_context(context)
+    async with aiohttp.ClientSession() as session:
+        with tempfile.TemporaryDirectory() as tmp:
+            context = _craft_rw_context(tmp, event_loop, cot_product='firefox', session=session)
+            yield context
 
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function')
 async def mobile_rw_context(event_loop):
-    with tempfile.TemporaryDirectory() as tmp:
-        context = _craft_rw_context(tmp, event_loop, cot_product='mobile')
-        yield context
-        await _close_context(context)
+    async with aiohttp.ClientSession() as session:
+        with tempfile.TemporaryDirectory() as tmp:
+            context = _craft_rw_context(tmp, event_loop, cot_product='mobile', session=session)
+            yield context
 
 
-def _craft_rw_context(tmp, event_loop, cot_product):
+def _craft_rw_context(tmp, event_loop, cot_product, session):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config['cot_product'] = cot_product
     context = Context()
+    context.session = session
     context.config = apply_product_config(config)
     context.config['gpg_lockfile'] = os.path.join(tmp, 'gpg_lockfile')
     context.config['cot_job_type'] = "signing"
@@ -302,12 +303,6 @@ def _craft_rw_context(tmp, event_loop, cot_product):
     context.config['verbose'] = VERBOSE
     context.event_loop = event_loop
     return context
-
-
-async def _close_context(context):
-    await _close_session(context)
-    await _close_session(context.queue)
-    await _close_session(context.temp_queue)
 
 
 async def noop_async(*args, **kwargs):
