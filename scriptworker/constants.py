@@ -225,7 +225,7 @@ DEFAULT_CONFIG = frozendict({
                         repo_name=re.escape(repo_name)
                     )
                     for username in _ALLOWED_MOBILE_GITHUB_OWNERS
-                    for repo_name in ('android-components', 'focus-android', 'reference-browser')
+                    for repo_name in ('android-components', 'focus-android', 'reference-browser', 'fenix')
                 ]),
             }),),
         }),
