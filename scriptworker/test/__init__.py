@@ -6,6 +6,7 @@ import aiohttp
 import arrow
 import asyncio
 from copy import deepcopy
+import functools
 import json
 import mock
 import os
@@ -168,17 +169,18 @@ def unsuccessful_queue():
     return UnsuccessfulQueue()
 
 
+@asyncio.coroutine
+def _fake_request(resp_status, method, url, *args, **kwargs):
+    resp = FakeResponse(method, url, status=resp_status)
+    resp._history = (FakeResponse(method, url, status=302),)
+    return resp
+
+
 @pytest.mark.asyncio
 @pytest.fixture(scope='function')
 async def fake_session():
-    @asyncio.coroutine
-    def _fake_request(method, url, *args, **kwargs):
-        resp = FakeResponse(method, url)
-        resp._history = (FakeResponse(method, url, status=302),)
-        return resp
-
     session = aiohttp.ClientSession()
-    session._request = _fake_request
+    session._request = functools.partial(_fake_request, 200)
     yield session
     await session.close()
 
@@ -186,14 +188,17 @@ async def fake_session():
 @pytest.mark.asyncio
 @pytest.fixture(scope='function')
 async def fake_session_500():
-    @asyncio.coroutine
-    def _fake_request(method, url, *args, **kwargs):
-        resp = FakeResponse(method, url, status=500)
-        resp._history = (FakeResponse(method, url, status=302),)
-        return resp
-
     session = aiohttp.ClientSession()
-    session._request = _fake_request
+    session._request = functools.partial(_fake_request, 500)
+    yield session
+    await session.close()
+
+
+@pytest.mark.asyncio
+@pytest.fixture(scope='function')
+async def fake_session_404():
+    session = aiohttp.ClientSession()
+    session._request = functools.partial(_fake_request, 404)
     yield session
     await session.close()
 

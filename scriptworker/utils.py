@@ -23,6 +23,7 @@ import yaml
 from taskcluster.client import createTemporaryCredentials
 from scriptworker.exceptions import (
     DownloadError,
+    Download404,
     ScriptWorkerException,
     ScriptWorkerRetryException,
     ScriptWorkerTaskException,
@@ -466,6 +467,12 @@ def load_json_or_yaml(string, is_path=False, file_type='json',
 
 
 # download_file {{{1
+async def _log_download_error(resp, msg):
+    log.debug(msg, {'url': get_loggable_url(str(resp.url)), 'status': resp.status, 'body': (await resp.text())[:1000]})
+    for i, h in enumerate(resp.history):
+        log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
+
+
 async def download_file(context, url, abs_filename, session=None, chunk_size=128):
     """Download a file, async.
 
@@ -484,10 +491,11 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
     log.info("Downloading %s", loggable_url)
     parent_dir = os.path.dirname(abs_filename)
     async with session.get(url) as resp:
-        if resp.status != 200:
-            log.debug("Failed to download %s: %s; body=%s", get_loggable_url(str(resp.url)), resp.status, (await resp.text())[:1000])
-            for i, h in enumerate(resp.history):
-                log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
+        if resp.status == 404:
+            await _log_download_error(resp, "404 downloading %(url)s: %(status)s; body=%(body)s")
+            raise Download404("{} status {}!".format(loggable_url, resp.status))
+        elif resp.status != 200:
+            await _log_download_error(resp, "Failed to download %(url)s: %(status)s; body=%(body)s")
             raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
         makedirs(parent_dir)
         with open(abs_filename, "wb") as fd:
