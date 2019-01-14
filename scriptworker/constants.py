@@ -11,7 +11,6 @@ from frozendict import frozendict
 import os
 import re
 
-# STATUSES {{{1
 STATUSES = {
     'success': 0,
     'failure': 1,
@@ -30,6 +29,18 @@ _ALLOWED_MOBILE_GITHUB_OWNERS = (
     'MihaiTabara',
     'mitchhentges',
 )
+
+_COT_VERSION_DESCRIPTIONS = frozendict({
+    1: 'Initial Chain of Trust implementation with GPG signatures',
+    2: 'Json-e verification support',
+    3: 'Action hook support',
+    4: 'Release promotion action hook support',
+    5: 'Initial ed25519 support; GPG deprecated',
+    6: 'Drop support for non-hook actions',
+    7: 'Drop support for GPG',
+})
+
+_SW_LIB_DIR = os.path.dirname(__file__)
 
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
@@ -123,6 +134,20 @@ DEFAULT_CONFIG = frozendict({
     "pubkey_path": "...",
     "privkey_path": "...",
     "my_email": "scriptworker@example.com",
+
+    # ed25519 settings
+    "ed25519_private_key_path": "...",
+    "ed25519_public_keys": frozendict({
+        "docker-worker": tuple([
+            'TBD',
+        ]),
+        "generic-worker": tuple([
+            'TBD',
+        ]),
+        "scriptworker": tuple([
+            'DaEKQ79ZC/X+7O8zwm8iyhwTlgyjRSi/TDd63fh2JG0=',
+        ]),
+    }),
 
     "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
     "pushlog_url": "{repo}/json-pushes?changeset={revision}&tipsonly=1&version=2&full=1",

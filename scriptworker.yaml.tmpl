@@ -100,6 +100,20 @@ my_email: "scriptworker@example.com"
 
 
 #-----------------------------------------------------------------------------------------------
+# ed25519 settings.
+#-----------------------------------------------------------------------------------------------
+ed25519_private_key_path: /tmp/ed25519_privkey
+# Override this if we need to add/remove keys without requiring a new scriptworker release.
+# ed25519_public_keys:
+#     docker-worker:
+#         - BASE64_ED25519_KEY_STRING
+#     generic-worker:
+#         - BASE64_ED25519_KEY_STRING
+#     scriptworker:
+#         - BASE64_ED25519_KEY_STRING
+
+
+#-----------------------------------------------------------------------------------------------
 # Valid artifact rules.
 # This is a list of dictionaries.  Each dictionary specifies schemes, netlocs, and path_regexes.
 # All valid artifact downloads should match these.  `filepath` must be specified in the
