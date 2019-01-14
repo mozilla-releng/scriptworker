@@ -25,3 +25,17 @@ Each chain-of-trust-enabled taskcluster worker generates and signs chain of trus
 The scriptworker nodes are the verification points.  Scriptworkers run the release sensitive tasks, like signing and publishing releases.  They verify their task definitions, as well as all upstream tasks that generate inputs into their task.  Any broken link in the chain results in a task exception.
 
 In conjunction with other best practices, like `separation of roles <https://en.wikipedia.org/wiki/Separation_of_duties>`__, we can reduce attack vectors and make penetration attempts more visible, with task exceptions on release branches.
+
+Chain of Trust Versions
+=======================
+
+1. Initial Chain of Trust implementation with GPG signatures: Initial `1.0.0b1 on 2016-11-14 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#100b1---2016-11-14>`_
+2. CoT v2: rebuild task definitions via json-e. `7.0.0 on 2018-01-18 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#700---2018-01-18>`_
+3. Generic action hook support. `12.0.0 on 2018-05-29 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1200---2018-05-29>`_
+4. Release promotion action hook support. `17.1.0 on 2018-12-28 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1710---2018-12-28>`_
+
+Planned future versions:
+
+* ed25519 support; deprecate GPG support.
+* drop support for non-hook actions
+* drop support for gpg
