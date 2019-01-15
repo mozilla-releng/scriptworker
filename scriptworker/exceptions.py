@@ -88,8 +88,8 @@ class TaskVerificationError(ScriptWorkerTaskException):
         super().__init__(msg, exit_code=STATUSES['malformed-payload'])
 
 
-class DownloadError(ScriptWorkerTaskException):
-    """Failure in ``scriptworker.utils.download_file``.
+class BaseDownloadError(ScriptWorkerTaskException):
+    """Base class for DownloadError and Download404.
 
     Attributes:
         exit_code (int): this is set to 4 (resource-unavailable).
@@ -97,15 +97,33 @@ class DownloadError(ScriptWorkerTaskException):
     """
 
     def __init__(self, msg):
-        """Initialize DownloadError.
+        """Initialize Download404.
 
         Args:
             msg (string): the error message
 
         """
-        super(DownloadError, self).__init__(
+        super(BaseDownloadError, self).__init__(
             msg, exit_code=STATUSES['resource-unavailable']
         )
+
+
+class Download404(BaseDownloadError):
+    """404 in ``scriptworker.utils.download_file``.
+
+    Attributes:
+        exit_code (int): this is set to 4 (resource-unavailable).
+
+    """
+
+
+class DownloadError(BaseDownloadError):
+    """Failure in ``scriptworker.utils.download_file``.
+
+    Attributes:
+        exit_code (int): this is set to 4 (resource-unavailable).
+
+    """
 
 
 class CoTError(ScriptWorkerTaskException, KeyError):

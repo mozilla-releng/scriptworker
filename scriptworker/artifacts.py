@@ -290,8 +290,8 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
         list: the full paths to the files downloaded
 
     Raises:
-        scriptworker.exceptions.DownloadError: on download failure after
-            max retries.
+        scriptworker.exceptions.BaseDownloadError: on download failure after
+            any applicable retries.
 
     """
     parent_dir = parent_dir or context.config['work_dir']
