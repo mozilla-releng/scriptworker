@@ -9,11 +9,12 @@ import pytest
 import re
 import shutil
 import tempfile
-from scriptworker.exceptions import DownloadError, ScriptWorkerException, ScriptWorkerRetryException
+from scriptworker.exceptions import DownloadError, Download404, ScriptWorkerException, ScriptWorkerRetryException
 import scriptworker.utils as utils
 from . import (
     FakeResponse,
     fake_session,
+    fake_session_404,
     fake_session_500,
     noop_async,
     tmpdir,
@@ -23,6 +24,7 @@ from . import rw_context as context
 
 assert tmpdir, context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
+assert fake_session_404  # silence flake8
 
 # constants helpers and fixtures {{{1
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
@@ -325,6 +327,13 @@ async def test_download_file_exception(context, fake_session_500, tmpdir):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(DownloadError):
         await utils.download_file(context, "url", path, session=fake_session_500)
+
+
+@pytest.mark.asyncio
+async def test_download_file_404(context, fake_session_404, tmpdir):
+    path = os.path.join(tmpdir, "foo")
+    with pytest.raises(Download404):
+        await utils.download_file(context, "url", path, session=fake_session_404)
 
 
 # format_json {{{1

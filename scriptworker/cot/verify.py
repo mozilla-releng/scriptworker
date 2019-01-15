@@ -28,7 +28,7 @@ from scriptworker.artifacts import (
 from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerGPGException
+from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerGPGException
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
@@ -591,7 +591,7 @@ async def download_cot(chain):
         chain (ChainOfTrust): the chain of trust to add to.
 
     Raises:
-        DownloadError: on failure.
+        BaseDownloadError: on failure.
 
     """
     mandatory_artifact_tasks = []
@@ -689,7 +689,7 @@ async def download_cot_artifacts(chain):
 
     Raises:
         CoTError: on chain of trust sha validation error, on a mandatory artifact
-        DownloadError: on download error on a mandatory artifact
+        BaseDownloadError: on download error on a mandatory artifact
 
     """
     upstream_artifacts = chain.task['payload'].get('upstreamArtifacts', [])
@@ -1489,7 +1489,7 @@ async def verify_parent_task(chain, link):
                 verify_link_in_task_graph(chain, link, target_link)
     try:
         await verify_parent_task_definition(chain, link)
-    except (DownloadError, KeyError) as e:
+    except (BaseDownloadError, KeyError) as e:
         raise CoTError(e)
 
 
@@ -1955,7 +1955,7 @@ async def verify_chain_of_trust(chain):
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
             await trace_back_to_tree(chain)
-        except (DownloadError, KeyError, AttributeError) as exc:
+        except (BaseDownloadError, KeyError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
                 raise
