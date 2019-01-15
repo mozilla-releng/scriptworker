@@ -89,7 +89,7 @@ Go to the EC2 console, go to the appropriate region (usw2, use1).
 Alternatively, you can create a template based on an existing instance and then launch another instance based on that template, after you amend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
 
 
-## 3. Puppetize the instance
+## 3. puppetize the instance
 
 Once the machine is up and running (can check its state in the AWS console), ssh into the instance as root, using the ssh keypair you specified above.
 ```
@@ -127,7 +127,7 @@ rm secrets.json
 rm aws-releng
 ```
 
-## monitoring
+## 4. monitoring
 
 The new instance(s) should be added to the nagios configuration in IT's puppet repo so that we're
 notified of any problems. There's more information about what is monitored in the [new instance
