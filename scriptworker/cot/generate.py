@@ -7,7 +7,6 @@ Attributes:
 """
 import logging
 import os
-from pathlib import Path
 from scriptworker.client import validate_json_schema
 from scriptworker.ed25519 import ed25519_sign, ed25519_signing_key_from_file
 from scriptworker.exceptions import ScriptWorkerException
@@ -121,10 +120,10 @@ def generate_cot(context, parent_path=None):
     body = format_json(body)
     parent_path = parent_path or os.path.join(context.config['artifact_dir'], 'public')
     asc_path = os.path.join(parent_path, "chainOfTrust.json.asc")
-    unsigned_path = Path(os.path.join(parent_path, 'chain-of-trust.json'))
+    unsigned_path = os.path.join(parent_path, 'chain-of-trust.json')
     write_to_file(unsigned_path, body)
     if context.config['sign_chain_of_trust']:
-        ed25519_signature_path = unsigned_path.with_suffix(".sig")
+        ed25519_signature_path = '{}.sig'.format(unsigned_path)
         ed25519_signing_key = ed25519_signing_key_from_file(context.config['ed25519_private_key_path'])
         ed25519_signature = ed25519_sign(ed25519_signing_key, body.encode('utf-8'))
         write_to_file(ed25519_signature_path, ed25519_signature, file_type='binary')
