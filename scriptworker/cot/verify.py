@@ -268,7 +268,7 @@ class LinkOfTrust(object):
 
     def get_artifact_full_path(self, path):
         """str: the full path where an artifact should be located."""
-        return get_single_upstream_artifact_full_path(self.context, self.task_id, path)
+        return get_single_upstream_artifact_full_path(self.context.config['work_dir'], self.task_id, path)
 
 
 # raise_on_errors {{{1
@@ -601,7 +601,7 @@ async def download_cot(chain):
     # task, and will not have a signed chain of trust artifact yet.
     for link in chain.links:
         task_id = link.task_id
-        url = get_artifact_url(chain.context, task_id, 'public/chainOfTrust.json.asc')
+        url = get_artifact_url(chain.context.queue, task_id, 'public/chainOfTrust.json.asc')
         parent_dir = link.cot_dir
         coroutine = asyncio.ensure_future(
             download_artifacts(
@@ -655,7 +655,7 @@ Skipping download of this artifact'.format(path, task_id))
 
     if path not in link.cot['artifacts']:
         raise CoTError("path {} not in {} {} chain of trust artifacts!".format(path, link.name, link.task_id))
-    url = get_artifact_url(chain.context, task_id, path)
+    url = get_artifact_url(chain.context.queue, task_id, path)
     loggable_url = get_loggable_url(url)
     log.info("Downloading Chain of Trust artifact:\n{}".format(loggable_url))
     await download_artifacts(
@@ -947,7 +947,7 @@ async def get_pushlog_info(decision_link):
     log.info("Pushlog url {}".format(pushlog_url))
     file_path = os.path.join(context.config["work_dir"], "{}_push_log.json".format(decision_link.name))
     pushlog_info = await load_json_or_yaml_from_url(
-        context, pushlog_url, file_path, overwrite=False
+        context.session, pushlog_url, file_path, overwrite=False
     )
     if len(pushlog_info['pushes']) != 1:
         log.warning("Pushlog error: expected a single push at {} but got {}!".format(
@@ -1167,7 +1167,7 @@ async def get_in_tree_template(link):
             link.name, source_url
         ))
     tmpl = await load_json_or_yaml_from_url(
-        context, source_url, os.path.join(
+        context.session, source_url, os.path.join(
             context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
         )
     )

@@ -473,11 +473,11 @@ async def _log_download_error(resp, msg):
         log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
 
 
-async def download_file(context, url, abs_filename, session=None, chunk_size=128):
+async def download_file(session, url, abs_filename, chunk_size=128):
     """Download a file, async.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        session (aiohttp.ClientSession):
         url (str): the url to download
         abs_filename (str): the path to download to
         session (aiohttp.ClientSession, optional): the session to use.  If
@@ -486,7 +486,6 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
             at a time.  Default is 128.
 
     """
-    session = session or context.session
     loggable_url = get_loggable_url(url)
     log.info("Downloading %s", loggable_url)
     parent_dir = os.path.dirname(abs_filename)
@@ -528,11 +527,11 @@ def get_loggable_url(url):
 
 
 # load_json_or_yaml_from_url {{{1
-async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
+async def load_json_or_yaml_from_url(session, url, path, overwrite=True):
     """Retry a json/yaml file download, load it, then return its data.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        session (aiohttp.ClientSession):
         url (str): the url to download
         path (str): the path to download to
         overwrite (bool, optional): if False and path exists, don't download.
@@ -551,7 +550,7 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
         file_type = 'yaml'
     if not overwrite or not os.path.exists(path):
         await retry_async(
-            download_file, args=(context, url, path),
+            download_file, args=(session, url, path),
             retry_exceptions=(DownloadError, aiohttp.ClientError),
         )
     return load_json_or_yaml(path, is_path=True, file_type=file_type)

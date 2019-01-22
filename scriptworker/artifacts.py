@@ -224,11 +224,11 @@ def _craft_artifact_put_headers(content_type, encoding=None):
 
 
 # get_artifact_url {{{1
-def get_artifact_url(context, task_id, path):
+def get_artifact_url(queue, task_id, path):
     """Get a TaskCluster artifact url.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context
+        queue (taskcluster.aio.Queue): taskcluster queue
         task_id (str): the task id of the task that published the artifact
         path (str): the relative path of the artifact
 
@@ -240,9 +240,9 @@ def get_artifact_url(context, task_id, path):
 
     """
     if path.startswith("public/"):
-        url = context.queue.buildUrl('getLatestArtifact', task_id, path)
+        url = queue.buildUrl('getLatestArtifact', task_id, path)
     else:
-        url = context.queue.buildSignedUrl(
+        url = queue.buildSignedUrl(
             'getLatestArtifact', task_id, path,
             # XXX Can set expiration kwarg in (int) seconds from now;
             # defaults to 15min.
@@ -266,7 +266,7 @@ def get_expiration_arrow(context):
 
 
 # download_artifacts {{{1
-async def download_artifacts(context, file_urls, parent_dir=None, session=None,
+async def download_artifacts(context, file_urls, parent_dir=None,
                              download_func=download_file, valid_artifact_task_ids=None):
     """Download artifacts in parallel after validating their URLs.
 
@@ -295,7 +295,6 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
 
     """
     parent_dir = parent_dir or context.config['work_dir']
-    session = session or context.session
 
     tasks = []
     files = []
@@ -309,9 +308,8 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
         tasks.append(
             asyncio.ensure_future(
                 retry_async(
-                    download_func, args=(context, file_url, abs_file_path),
+                    download_func, args=(context.session, file_url, abs_file_path),
                     retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
-                    kwargs={'session': session},
                 )
             )
         )
@@ -348,7 +346,7 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
     for task_id, paths in task_ids_and_relative_paths:
         for path in paths:
             try:
-                path_to_add = get_and_check_single_upstream_artifact_full_path(context, task_id, path)
+                path_to_add = get_and_check_single_upstream_artifact_full_path(context.config['work_dir'], task_id, path)
                 add_enumerable_item_to_dict(
                     dict_=upstream_artifacts_full_paths_per_task_id,
                     key=task_id, item=path_to_add
@@ -366,11 +364,11 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
     return upstream_artifacts_full_paths_per_task_id, failed_paths_per_task_id
 
 
-def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
+def get_and_check_single_upstream_artifact_full_path(work_dir, task_id, path):
     """Return the full path where an upstream artifact is located on disk.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        work_dir (str): the scriptworker work directory.
         task_id (str): the task id of the task that published the artifact
         path (str): the relative path of the artifact
 
@@ -381,7 +379,7 @@ def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
 
     """
-    abs_path = get_single_upstream_artifact_full_path(context, task_id, path)
+    abs_path = get_single_upstream_artifact_full_path(work_dir, task_id, path)
     if not os.path.exists(abs_path):
         raise ScriptWorkerTaskException(
             'upstream artifact with path: {}, does not exist'.format(abs_path)
@@ -390,7 +388,7 @@ def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
     return abs_path
 
 
-def get_single_upstream_artifact_full_path(context, task_id, path):
+def get_single_upstream_artifact_full_path(work_dir, task_id, path):
     """Return the full path where an upstream artifact should be located.
 
     Artifact may not exist. If you want to be sure if does, use
@@ -399,7 +397,7 @@ def get_single_upstream_artifact_full_path(context, task_id, path):
     This function is mainly used to move artifacts to the expected location.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        work_dir (str): the scriptworker work directory
         task_id (str): the task id of the task that published the artifact
         path (str): the relative path of the artifact
 
@@ -407,7 +405,7 @@ def get_single_upstream_artifact_full_path(context, task_id, path):
         str: absolute path to the artifact should be.
 
     """
-    return os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
+    return os.path.abspath(os.path.join(work_dir, 'cot', task_id, path))
 
 
 def get_optional_artifacts_per_task_id(upstream_artifacts):

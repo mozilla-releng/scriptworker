@@ -67,7 +67,7 @@ async def test_pipe_to_log(context):
 
 def test_update_logging_config_verbose(context):
     context.config['verbose'] = True
-    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    swlog.update_logging_config(context.config, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 3
@@ -79,7 +79,7 @@ def test_update_logging_config_verbose_existing_handler(context):
     log.addHandler(logging.NullHandler())
     log.addHandler(logging.NullHandler())
     context.config['verbose'] = True
-    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    swlog.update_logging_config(context.config, log_name=context.config['log_dir'])
     assert log.level == logging.DEBUG
     assert len(log.handlers) == 4
     close_handlers(log_name=context.config['log_dir'])
@@ -87,14 +87,14 @@ def test_update_logging_config_verbose_existing_handler(context):
 
 def test_update_logging_config_not_verbose(context):
     context.config['verbose'] = False
-    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    swlog.update_logging_config(context.config, log_name=context.config['log_dir'])
     log = logging.getLogger(context.config['log_dir'])
     assert log.level == logging.INFO
     assert len(log.handlers) == 2
     close_handlers(log_name=context.config['log_dir'])
 
 
-def test_contextual_log_handler(context, mocker):
+def test_contextual_log_handler(context):
     contextual_path = os.path.join(context.config['artifact_dir'], "test.log")
     swlog.log.setLevel(logging.DEBUG)
     with swlog.contextual_log_handler(context, path=contextual_path):
@@ -109,7 +109,7 @@ def test_contextual_log_handler(context, mocker):
 def test_watched_log_file(context):
     context.config['watch_log_file'] = True
     context.config["log_fmt"] = "%(levelname)s - %(message)s"
-    swlog.update_logging_config(context, log_name=context.config['log_dir'])
+    swlog.update_logging_config(context.config, log_name=context.config['log_dir'])
     path = os.path.join(context.config['log_dir'], 'worker.log')
     log = logging.getLogger(context.config['log_dir'])
     log.info("foo")

@@ -39,8 +39,8 @@ COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
 COTV4_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv4")
 
 
-def write_artifact(context, task_id, path, contents):
-    path = get_single_upstream_artifact_full_path(context, task_id, path)
+def write_artifact(work_dir, task_id, path, contents):
+    path = get_single_upstream_artifact_full_path(work_dir, task_id, path)
     os.makedirs(os.path.dirname(path))
     with open(path, 'w') as f:
         f.write(contents)
@@ -1405,7 +1405,7 @@ async def test_no_match_in_actions_json(chain):
     }
 
     decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
-    write_artifact(chain.context, decision_task_id, 'public/actions.json', json.dumps(
+    write_artifact(chain.context.config['work_dir'], decision_task_id, 'public/actions.json', json.dumps(
         {
             'actions': [
                 {
@@ -1462,7 +1462,7 @@ async def test_unknown_action_kind(chain):
     }
 
     decision_link = cotverify.LinkOfTrust(chain.context, 'decision', decision_task_id)
-    write_artifact(chain.context, decision_task_id, 'public/actions.json', json.dumps(
+    write_artifact(chain.context.config['work_dir'], decision_task_id, 'public/actions.json', json.dumps(
         {
             'actions': [
                 {

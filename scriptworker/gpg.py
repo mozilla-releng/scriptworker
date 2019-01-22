@@ -1496,7 +1496,7 @@ def rebuild_gpg_homedirs(event_loop=None):
     """
     context, _ = get_context_from_cmdln(sys.argv[1:])
     context.event_loop = event_loop or context.event_loop
-    update_logging_config(context, file_name='rebuild_gpg_homedirs.log')
+    update_logging_config(context.config, file_name='rebuild_gpg_homedirs.log')
     log.info("rebuild_gpg_homedirs()...")
     basedir = get_tmp_base_gpg_home_dir(context)
     if is_lockfile_present(context, "rebuild_gpg_homedirs"):

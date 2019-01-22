@@ -16,7 +16,7 @@ from scriptworker.utils import makedirs, to_unicode
 log = logging.getLogger(__name__)
 
 
-def update_logging_config(context, log_name=None, file_name='worker.log'):
+def update_logging_config(config, log_name=None, file_name='worker.log'):
     """Update python logging settings from config.
 
     By default, this sets the ``scriptworker`` log settings, but this will
@@ -27,7 +27,7 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
     * Add a rotating logfile from config settings.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        config (dict): the running config.
         log_name (str, optional): the name of the Logger to modify.
             If None, use the top level module ('scriptworker').
             Defaults to None.
@@ -36,11 +36,11 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
     log_name = log_name or __name__.split('.')[0]
     top_level_logger = logging.getLogger(log_name)
 
-    datefmt = context.config['log_datefmt']
-    fmt = context.config['log_fmt']
+    datefmt = config['log_datefmt']
+    fmt = config['log_fmt']
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
 
-    if context.config.get("verbose"):
+    if config.get("verbose"):
         top_level_logger.setLevel(logging.DEBUG)
         if len(top_level_logger.handlers) == 0:
             handler = logging.StreamHandler()
@@ -50,9 +50,9 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
         top_level_logger.setLevel(logging.INFO)
 
     # Rotating log file
-    makedirs(context.config['log_dir'])
-    path = os.path.join(context.config['log_dir'], file_name)
-    if context.config["watch_log_file"]:
+    makedirs(config['log_dir'])
+    path = os.path.join(config['log_dir'], file_name)
+    if config["watch_log_file"]:
         # If we rotate the log file via logrotate.d, let's watch the file
         # so we can automatically close/reopen on move.
         handler = logging.handlers.WatchedFileHandler(path)

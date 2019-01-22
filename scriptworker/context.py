@@ -217,6 +217,6 @@ class Context(object):
         if force or not self.projects:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.projects = await load_json_or_yaml_from_url(
-                    self, self.config['project_configuration_url'],
+                    self.session, self.config['project_configuration_url'],
                     os.path.join(tmpdirname, 'projects.yml')
                 )

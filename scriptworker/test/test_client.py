@@ -314,13 +314,10 @@ def test_usage(capsys, monkeypatch):
     (False, logging.INFO),
 ))
 def test_init_logging(monkeypatch, is_verbose, log_level):
-    context = MagicMock()
-    context.config = {'verbose': is_verbose}
-
     basic_config_mock = MagicMock()
 
     monkeypatch.setattr(logging, 'basicConfig', basic_config_mock)
-    client._init_logging(context)
+    client._init_logging(is_verbose)
 
     basic_config_mock.assert_called_once_with(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

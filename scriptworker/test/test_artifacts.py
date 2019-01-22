@@ -180,12 +180,11 @@ def test_get_artifact_url(path):
         if not path.startswith('public/'):
             return expected
 
-    context = mock.MagicMock()
-    context.queue = mock.MagicMock()
-    context.queue.options = {'baseUrl': 'https://netloc/'}
-    context.queue.buildUrl = buildUrl
-    context.queue.buildSignedUrl = buildSignedUrl
-    assert get_artifact_url(context, "x", path) == expected
+    queue = mock.MagicMock()
+    queue.options = {'baseUrl': 'https://netloc/'}
+    queue.buildUrl = buildUrl
+    queue.buildSignedUrl = buildSignedUrl
+    assert get_artifact_url(queue, "x", path) == expected
 
 
 # download_artifacts {{{1
@@ -318,32 +317,32 @@ def test_fail_get_upstream_artifacts_full_paths_per_task_id(context):
         get_upstream_artifacts_full_paths_per_task_id(context)
 
 
-def test_get_and_check_single_upstream_artifact_full_path(context):
-    folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
-    os.makedirs(os.path.join(folder, 'public'))
-    touch(os.path.join(folder, 'public/file_a'))
+def test_get_and_check_single_upstream_artifact_full_path():
+    with tempfile.TemporaryDirectory() as work_dir:
+        folder = os.path.join(work_dir, 'cot', 'dependency1')
+        os.makedirs(os.path.join(folder, 'public'))
+        touch(os.path.join(folder, 'public/file_a'))
 
-    assert get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
+        assert get_and_check_single_upstream_artifact_full_path(work_dir, 'dependency1', 'public/file_a') == \
+            os.path.join(work_dir, 'cot', 'dependency1', 'public', 'file_a')
 
-    with pytest.raises(ScriptWorkerTaskException):
-        get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file')
+        with pytest.raises(ScriptWorkerTaskException):
+            get_and_check_single_upstream_artifact_full_path(work_dir, 'dependency1', 'public/non_existing_file')
 
-    with pytest.raises(ScriptWorkerTaskException):
-        get_and_check_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a')
+        with pytest.raises(ScriptWorkerTaskException):
+            get_and_check_single_upstream_artifact_full_path(work_dir, 'non-existing-dep', 'public/file_a')
 
 
-def test_get_single_upstream_artifact_full_path(context):
-    folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
+def test_get_single_upstream_artifact_full_path():
+    work_dir = '/work_dir'
+    assert get_single_upstream_artifact_full_path(work_dir, 'dependency1', 'public/file_a') == \
+        os.path.join(work_dir, 'cot', 'dependency1', 'public', 'file_a')
 
-    assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
+    assert get_single_upstream_artifact_full_path(work_dir, 'dependency1', 'public/non_existing_file') == \
+        os.path.join(work_dir, 'cot', 'dependency1', 'public', 'non_existing_file')
 
-    assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'non_existing_file')
-
-    assert get_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'non-existing-dep', 'public', 'file_a')
+    assert get_single_upstream_artifact_full_path(work_dir, 'non-existing-dep', 'public/file_a') == \
+        os.path.join(work_dir, 'cot', 'non-existing-dep', 'public', 'file_a')
 
 
 @pytest.mark.parametrize('upstream_artifacts, expected', ((

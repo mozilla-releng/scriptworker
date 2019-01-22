@@ -102,7 +102,7 @@ async def get_context(config_override=None):
     context = Context()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
-        swlog.update_logging_config(context)
+        swlog.update_logging_config(context.config)
         utils.cleanup(context)
         async with aiohttp.ClientSession() as session:
             context.session = session
@@ -233,7 +233,7 @@ async def test_cancel_task():
             'getLatestArtifact', task_id, 'public/logs/live_backing.log'
         )
         log_path = os.path.join(context.config['work_dir'], 'log')
-        await utils.download_file(context, log_url, log_path)
+        await utils.download_file(context.session, log_url, log_path)
         with open(log_path) as fh:
             contents = fh.read()
         assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
@@ -373,9 +373,9 @@ async def test_private_artifacts(context_function):
         assert status == 0
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'completed'
-        url = artifacts.get_artifact_url(context, task_id, 'SampleArtifacts/_/X.txt')
+        url = artifacts.get_artifact_url(context.queue, task_id, 'SampleArtifacts/_/X.txt')
         path2 = os.path.join(context.config['work_dir'], 'downloaded_file')
-        await utils.download_file(context, url, path2)
+        await utils.download_file(context.session, url, path2)
         with open(path2, "r") as fh:
             contents = fh.read().strip()
         assert contents == 'bar'

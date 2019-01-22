@@ -314,26 +314,26 @@ def test_rm_dir():
 
 # download_file {{{1
 @pytest.mark.asyncio
-async def test_download_file(context, fake_session, tmpdir):
+async def test_download_file(fake_session, tmpdir):
     path = os.path.join(tmpdir, "foo")
-    await utils.download_file(context, "url", path, session=fake_session)
+    await utils.download_file(fake_session, "url", path)
     with open(path, "r") as fh:
         contents = fh.read()
     assert contents == "asdfasdf"
 
 
 @pytest.mark.asyncio
-async def test_download_file_exception(context, fake_session_500, tmpdir):
+async def test_download_file_exception(fake_session_500, tmpdir):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(DownloadError):
-        await utils.download_file(context, "url", path, session=fake_session_500)
+        await utils.download_file(fake_session_500, "url", path)
 
 
 @pytest.mark.asyncio
-async def test_download_file_404(context, fake_session_404, tmpdir):
+async def test_download_file_404(fake_session_404, tmpdir):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(Download404):
-        await utils.download_file(context, "url", path, session=fake_session_404)
+        await utils.download_file(fake_session_404, "url", path)
 
 
 # format_json {{{1
@@ -395,7 +395,7 @@ async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type,
         path
     )
     assert await utils.load_json_or_yaml_from_url(
-        context, "", path, overwrite=overwrite
+        context.session, "", path, overwrite=overwrite
     ) == {"credentials": ["blah"]}
 
 

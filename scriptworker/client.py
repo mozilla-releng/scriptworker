@@ -157,7 +157,7 @@ def sync_main(async_main, config_path=None, default_config=None,
 
     """
     context = _init_context(config_path, default_config)
-    _init_logging(context)
+    _init_logging(context.config.get('verbose'))
     if should_validate_task:
         validate_task_schema(context)
     loop = loop_function()
@@ -188,10 +188,10 @@ def _usage():
     sys.exit(1)
 
 
-def _init_logging(context):
+def _init_logging(is_verbose):
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.DEBUG if context.config.get('verbose') else logging.INFO
+        level=logging.DEBUG if is_verbose else logging.INFO
     )
     logging.getLogger('taskcluster').setLevel(logging.WARNING)
 

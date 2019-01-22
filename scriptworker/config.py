@@ -240,5 +240,5 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
     )
     parsed_args = parser.parse_args(args)
     context.config, credentials = create_config(config_path=parsed_args.config_path)
-    update_logging_config(context)
+    update_logging_config(context.config)
     return context, credentials
