@@ -9,5 +9,4 @@ pexpect
 python-gnupg
 PyYAML
 taskcluster>=4
-virtualenv
 wheel

@@ -28,7 +28,6 @@ reqs = [
     "python-gnupg",
     "PyYAML",
     "taskcluster>=4.0.0",
-    "virtualenv",
 ]
 
 tests_require = [
