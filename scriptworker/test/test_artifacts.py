@@ -15,6 +15,7 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
+from unittest.mock import patch
 
 
 from . import touch, rw_context, fake_session, fake_session_500, successful_queue
@@ -46,21 +47,12 @@ def test_force_mimetypes_to_plain_text(extension):
     assert mimetypes.guess_type(extension)[0] == 'text/plain'
 
 
-MIME_TYPES = {
-    '/foo/bar/test.txt': ('text/plain', None),
-    '/tmp/blah.tgz': ('application/x-tar', 'gzip'),
-    '~/Firefox.dmg': ('application/x-apple-diskimage', None),
-    '/foo/bar/blah.log': ('text/plain', None),
-    '/foo/bar/chainOfTrust.asc': ('text/plain', None),
-    '/totally/unknown': ('application/binary', None),
-}
-
-
-# guess_content_type {{{1
-@pytest.mark.parametrize("mime_types", [(k, v) for k, v in sorted(MIME_TYPES.items())])
-def test_guess_content_type(mime_types):
-    path, (mimetype, encoding) = mime_types
-    assert guess_content_type_and_encoding(path) == (mimetype, encoding)
+@pytest.mark.parametrize("mimetypes_response, expected_content_type",
+                         (('text/plain', 'text/plain'), (None, 'application/binary')))
+def test_guess_content_type(mimetypes_response, expected_content_type):
+    with patch.object(mimetypes, 'guess_type', return_value=(mimetypes_response, None)):
+        guessed_content_type, _ = guess_content_type_and_encoding('path')
+        assert guessed_content_type == expected_content_type
 
 
 # get_expiration_arrow {{{1
@@ -97,7 +89,7 @@ async def test_upload_artifacts(context):
     ('file.log',  '12:00:00 Foo bar', 'text/plain', 'gzip'),
     ('file.json', json.dumps({'foo': 'bar'}), 'application/json', 'gzip'),
     ('file.html', '<html><h1>foo</h1>bar</html>', 'text/html', 'gzip'),
-    ('file.xml',  '<foo>bar</foo>', 'text/xml', 'gzip'),
+    ('file.xml',  '<foo>bar</foo>', 'application/xml', 'gzip'),
     ('file.unknown',  'Unknown foo bar', 'application/binary', None),
 ))
 def test_compress_artifact_if_supported(filename, original_content, expected_content_type, expected_encoding):
@@ -108,8 +100,9 @@ def test_compress_artifact_if_supported(filename, original_content, expected_con
 
         old_number_of_files = _get_number_of_children_in_directory(temp_dir)
 
-        content_type, encoding = compress_artifact_if_supported(absolute_path)
-        assert content_type, encoding == (expected_content_type, expected_encoding)
+        with patch.object(mimetypes, 'guess_type', return_value=(expected_content_type, None)):
+            content_type, encoding = compress_artifact_if_supported(absolute_path)
+            assert (content_type, encoding) == (expected_content_type, expected_encoding)
         # compress_artifact_if_supported() should replace the existing file
         assert _get_number_of_children_in_directory(temp_dir) == old_number_of_files
 
