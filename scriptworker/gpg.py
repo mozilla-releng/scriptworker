@@ -1168,19 +1168,6 @@ def rebuild_gpg_home_signed(context, real_gpg_home, my_pub_key_path,
 
 
 # git {{{1
-def guess_git_path(context):
-    """Guess git_path.
-
-    Args:
-        context (scriptworker.context.Context): the scriptworker context.
-
-    Returns:
-        str: either ``context.config['git_path']`` or 'git' if that's not defined.
-
-    """
-    return context.config['git_path'] or 'git'
-
-
 async def get_git_revision(context, path, ref="HEAD",
                            exec_function=asyncio.create_subprocess_exec):
     """Get the git revision of path.
@@ -1197,7 +1184,7 @@ async def get_git_revision(context, path, ref="HEAD",
 
     """
     proc = await exec_function(
-        guess_git_path(context), "log", "-n1", "--format=format:%H", ref, cwd=path,
+        context['git_path'], "log", "-n1", "--format=format:%H", ref, cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     revision, err = await proc.communicate()
@@ -1224,7 +1211,7 @@ async def get_latest_tag(context, path,
 
     """
     proc = await exec_function(
-        guess_git_path(context), "describe", "--abbrev=0", cwd=path,
+        context['git_path'], "describe", "--abbrev=0", cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     tag, err = await proc.communicate()
@@ -1272,13 +1259,13 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
             )
 
     for cmd in (
-        [guess_git_path(context), "checkout", ref],
-        [guess_git_path(context), "pull", "--ff-only", "--tags", repo],
+        [context['git_path'], "checkout", ref],
+        [context['git_path'], "pull", "--ff-only", "--tags", repo],
     ):
         await _run_git_cmd(cmd)
 
     tag = await get_latest_tag(context, path)
-    await _run_git_cmd([guess_git_path(context), "checkout", tag])
+    await _run_git_cmd([context['git_path'], "checkout", tag])
     await verify_signed_tag(context, tag)
     revision = await get_git_revision(context, path, tag)
     return revision, tag
@@ -1297,7 +1284,7 @@ async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
     """
     path = context.config['git_key_repo_dir']
     try:
-        exec_function([guess_git_path(context), "tag", "-v", tag], cwd=path)
+        exec_function([context['git_path'], "tag", "-v", tag], cwd=path)
     except subprocess.CalledProcessError as exc:
         raise ScriptWorkerGPGException(
             "Can't verify tag {} signature at {}: {}".format(tag, path, str(exc))

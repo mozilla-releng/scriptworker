@@ -826,9 +826,3 @@ def test_write_last_good_git_revision_exception(context, mocker):
     mocker.patch.object(sgpg, "open", new=boom)
     with pytest.raises(OSError):
         sgpg.write_last_good_git_revision(context, "foo")
-
-
-@pytest.mark.parametrize("git_path, expected", (("path/to/git", "path/to/git"), (None, "git")))
-def test_guess_git_path(base_context, git_path, expected):
-    base_context.config['git_path'] = git_path
-    assert sgpg.guess_git_path(base_context) == expected
