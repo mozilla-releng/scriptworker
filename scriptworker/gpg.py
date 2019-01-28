@@ -1184,7 +1184,7 @@ async def get_git_revision(context, path, ref="HEAD",
 
     """
     proc = await exec_function(
-        context['git_path'], "log", "-n1", "--format=format:%H", ref, cwd=path,
+        context.config['git_path'], "log", "-n1", "--format=format:%H", ref, cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     revision, err = await proc.communicate()
@@ -1211,7 +1211,7 @@ async def get_latest_tag(context, path,
 
     """
     proc = await exec_function(
-        context['git_path'], "describe", "--abbrev=0", cwd=path,
+        context.config['git_path'], "describe", "--abbrev=0", cwd=path,
         stdout=PIPE, stderr=DEVNULL, stdin=DEVNULL, close_fds=True,
     )
     tag, err = await proc.communicate()
@@ -1259,13 +1259,13 @@ async def update_signed_git_repo(context, repo="origin", ref="master",
             )
 
     for cmd in (
-        [context['git_path'], "checkout", ref],
-        [context['git_path'], "pull", "--ff-only", "--tags", repo],
+        [context.config['git_path'], "checkout", ref],
+        [context.config['git_path'], "pull", "--ff-only", "--tags", repo],
     ):
         await _run_git_cmd(cmd)
 
     tag = await get_latest_tag(context, path)
-    await _run_git_cmd([context['git_path'], "checkout", tag])
+    await _run_git_cmd([context.config['git_path'], "checkout", tag])
     await verify_signed_tag(context, tag)
     revision = await get_git_revision(context, path, tag)
     return revision, tag
@@ -1284,7 +1284,7 @@ async def verify_signed_tag(context, tag, exec_function=subprocess.check_call):
     """
     path = context.config['git_key_repo_dir']
     try:
-        exec_function([context['git_path'], "tag", "-v", tag], cwd=path)
+        exec_function([context.config['git_path'], "tag", "-v", tag], cwd=path)
     except subprocess.CalledProcessError as exc:
         raise ScriptWorkerGPGException(
             "Can't verify tag {} signature at {}: {}".format(tag, path, str(exc))
