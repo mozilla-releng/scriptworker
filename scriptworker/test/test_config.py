@@ -14,6 +14,8 @@ from scriptworker.exceptions import ConfigError
 
 
 # constants helpers and fixtures {{{1
+from scriptworker.test import working_directory
+
 ENV_CREDS_PARAMS = ((
     {
         'TASKCLUSTER_ACCESS_TOKEN': 'x',
@@ -230,9 +232,10 @@ def test_get_context_from_cmdln(t_config):
 ], [
     "x", os.path.join(os.path.dirname(__file__), "data", "bad.json")
 ], []))
-def test_get_context_from_cmdln_exception(args):
-    with pytest.raises(SystemExit):
-        config.get_context_from_cmdln(args)
+def test_get_context_from_cmdln_exception(tmp_path, args):
+    with working_directory(tmp_path):
+        with pytest.raises(SystemExit):
+            config.get_context_from_cmdln(args)
 
 
 def test_apply_product_config():
