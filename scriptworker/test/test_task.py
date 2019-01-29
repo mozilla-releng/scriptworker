@@ -165,6 +165,50 @@ def test_get_triggered_by(user):
     assert swtask.get_triggered_by(task, 'MOBILE') == user
 
 
+@pytest.mark.parametrize("pull_request_number", (None, 1))
+def test_get_pull_request_number(pull_request_number):
+    task = {
+        'payload': {'env': {}}
+    }
+    if pull_request_number:
+        task['payload']['env']['MOBILE_PULL_REQUEST_NUMBER'] = str(pull_request_number)
+    assert swtask.get_pull_request_number(task, 'MOBILE') == pull_request_number
+
+
+@pytest.mark.parametrize("push_date_time", (None, '2019-02-01T12:00:00.000Z'))
+def test_get_push_date_time(push_date_time):
+    task = {
+        'payload': {'env': {}}
+    }
+    if push_date_time:
+        task['payload']['env']['MOBILE_PUSH_DATE_TIME'] = push_date_time
+    assert swtask.get_push_date_time(task, 'MOBILE') == push_date_time
+
+
+@pytest.mark.parametrize('repo_url, expected_user, expected_repo_name, raises', ((
+    'https://github.com/mozilla-mobile/android-components',
+    'mozilla-mobile', 'android-components', False
+), (
+    'https://github.com/mozilla-mobile/android-components.git',
+    'mozilla-mobile', 'android-components', False
+), (
+    'https://github.com/JohanLorenzo/android-components',
+    'JohanLorenzo', 'android-components', False
+), (
+    'https://github.com/JohanLorenzo/android-components/raw/0e8222165d3ec11e932d5f900e8851dc98f62e98/.taskcluster.yml',
+    'JohanLorenzo', 'android-components', False
+), (
+    'https://hg.mozilla.org/mozilla-central',
+    None, None, True
+)))
+def test_extract_github_repo_owner_and_name(repo_url, expected_user, expected_repo_name, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            swtask.extract_github_repo_owner_and_name(repo_url)
+    else:
+        assert swtask.extract_github_repo_owner_and_name(repo_url) == (expected_user, expected_repo_name)
+
+
 # get_worker_type {{{1
 @pytest.mark.parametrize("task,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
 def test_get_worker_type(task, result):
@@ -219,16 +263,37 @@ def test_get_and_check_project(context, mobile_context, source_url, expected, ra
 
 
 # get_and_check_tasks_for {{{1
-@pytest.mark.parametrize("tasks_for,raises", ((
-    "hg-push", False,
+@pytest.mark.parametrize('context_type, tasks_for, raises', ((
+    'firefox', 'hg-push', False,
 ), (
-    "cron", False,
+    'firefox', 'cron', False,
 ), (
-    "action", False,
+    'firefox', 'action', False,
 ), (
-    "foobar", True,
+    'mobile', 'hg-push', True,
+), (
+    'mobile', 'cron', False,    # Mobile does accept cron tasks
+), (
+    'mobile', 'action', True,
+), (
+    'firefox', 'github-pull-request', True,
+), (
+    'firefox', 'github-push', True,
+), (
+    'firefox', 'github-release', True,
+), (
+    'mobile', 'github-pull-request', False,
+), (
+    'mobile', 'github-push', False,
+), (
+    'mobile', 'github-release', False,
+), (
+    'firefox', 'foobar', True,
+), (
+    'mobile', 'foobar', True,
 )))
-def test_get_and_check_tasks_for(tasks_for, raises):
+def test_get_and_check_tasks_for(context, mobile_context, context_type, tasks_for, raises):
+    context_ = mobile_context if context_type == 'mobile' else context
     task = {
         "extra": {
             "tasks_for": tasks_for
@@ -236,9 +301,9 @@ def test_get_and_check_tasks_for(tasks_for, raises):
     }
     if raises:
         with pytest.raises(ValueError):
-            swtask.get_and_check_tasks_for(task)
+            swtask.get_and_check_tasks_for(context_, task)
     else:
-        assert swtask.get_and_check_tasks_for(task) == tasks_for
+        assert swtask.get_and_check_tasks_for(context_, task) == tasks_for
 
 
 # get_repo_scope {{{1
@@ -273,6 +338,83 @@ def test_get_repo_scope(scopes, expected, raises):
 ))
 def test_is_try(task,source_env_prefix):
     assert swtask.is_try(task, source_env_prefix=source_env_prefix)
+
+
+@pytest.mark.parametrize('task, expected', ((
+    {'payload': {}, 'extra': {'env': {'tasks_for': 'github-pull-request'}}, 'metadata': {}, },
+    True,
+), (
+    {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo'}}, 'extra': {'env': {'tasks_for': 'github-push'}}, 'metadata': {}},
+    True,
+), (
+    {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo.git'}}, 'extra': {'env': {'tasks_for': 'github-release'}}, 'metadata': {}},
+    True,
+), (
+    {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo.git'}}, 'metadata': {}},
+    True,
+), (
+    {'payload': {}, 'metadata': {'source': 'https://github.com/some-user/some-repo'}},
+    True,
+), (
+    {'payload': {}, 'metadata': {'source': 'https://github.com/some-user/some-repo/raw/somerevision/.taskcluster.yml'}},
+    True,
+), (
+    {
+        'extra': {
+            'env': {
+                'tasks_for': 'cron',
+            },
+        },
+        'metadata': {
+            'source': 'https://github.com/mozilla-mobile/some-repo/raw/some-revision/.taskcluster.yml',
+        },
+        'payload': {
+            'env': {
+                'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/some-repo',
+            },
+        },
+    },
+    False
+)))
+def test_is_pull_request(mobile_context, task, expected):
+    assert swtask.is_pull_request(mobile_context, task) == expected
+
+
+@pytest.mark.parametrize('context_type, task, expected', ((
+#     'firefox',
+#     {'payload': {'env': {'GECKO_HEAD_REPOSITORY': 'https://hg.mozilla.org/try/blahblah'}}, 'metadata': {}, 'schedulerId': 'x'},
+#     True,
+# ), (
+#     'mobile',
+#     {'payload': {}, 'extra': {'env': {'tasks_for': 'github-pull-request'}}, 'metadata': {}, 'schedulerId': 'taskcluster-github'},
+#     True,
+# ), (
+    'firefox',
+    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': 'https://hg.mozilla.org/mozilla-central'}}, 'metadata': {}, 'schedulerId': 'x'},
+    False,
+), (
+    'mobile',
+    {
+        'extra': {
+            'env': {
+                'tasks_for': 'cron',
+            },
+        },
+        'metadata': {
+            'source': 'https://github.com/mozilla-mobile/some-repo/raw/some-revision/.taskcluster.yml',
+        },
+        'payload': {
+            'env': {
+                'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/some-repo',
+            },
+        },
+        'schedulerId': 'taskcluster-github',
+    },
+    False
+)))
+def test_is_try_or_pull_request(context, mobile_context, context_type, task, expected):
+    context_ = mobile_context if context_type == 'mobile' else context
+    assert swtask.is_try_or_pull_request(context_, task) == expected
 
 
 # is_action {{{1

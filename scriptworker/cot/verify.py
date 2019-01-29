@@ -29,15 +29,19 @@ from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerGPGException
+from scriptworker.github import GitHubRepository
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
+    extract_github_repo_owner_and_name,
     get_action_callback_name,
     get_and_check_project,
     get_and_check_tasks_for,
     get_commit_message,
     get_decision_task_id,
     get_parent_task_id,
+    get_pull_request_number,
+    get_push_date_time,
     get_repo,
     get_repo_scope,
     get_revision,
@@ -45,7 +49,7 @@ from scriptworker.task import (
     get_triggered_by,
     get_task_id,
     get_worker_type,
-    is_try,
+    is_try_or_pull_request,
     is_action,
 )
 from scriptworker.utils import (
@@ -117,16 +121,16 @@ class ChainOfTrust(object):
         """
         return [x.task_id for x in self.links]
 
-    def is_try(self):
+    def is_try_or_pull_request(self):
         """Determine if any task in the chain is a try task.
 
         Returns:
             bool: True if a task is a try task.
 
         """
-        result = is_try(self.task, source_env_prefix=self.context.config['source_env_prefix'])
+        result = is_try_or_pull_request(self.context, self.task)
         for link in self.links:
-            if link.is_try:
+            if link.is_try_or_pull_request:
                 result = True
                 break
         return result
@@ -184,7 +188,7 @@ class LinkOfTrust(object):
         context (scriptworker.context.Context): the scriptworker context
         decision_task_id (str): the task_id of self.task's decision task
         parent_task_id (str): the task_id of self.task's parent task
-        is_try (bool): whether the task is a try task
+        is_try_or_pull_request (bool): whether the task is a try or a pull request task
         name (str): the name of the task (e.g., signing.decision)
         task_id (str): the taskId of the task
         task_graph (dict): the task graph of the task, if this is a decision task
@@ -226,7 +230,7 @@ class LinkOfTrust(object):
         """dict: the task definition.
 
         When set, we also set ``self.decision_task_id``, ``self.parent_task_id``,
-        ``self.worker_impl``, and ``self.is_try`` based on the task definition.
+        and ``self.worker_impl`` based on the task definition.
 
         """
         return self._task
@@ -238,7 +242,11 @@ class LinkOfTrust(object):
         self.decision_task_id = get_decision_task_id(self.task)
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
-        self.is_try = is_try(self.task, source_env_prefix=self.context.config['source_env_prefix'])
+
+    @property
+    def is_try_or_pull_request(self):
+        """bool: the task is either a try or a pull request one."""
+        return is_try_or_pull_request(self.context, self.task)
 
     @property
     def cot(self):
@@ -1030,11 +1038,61 @@ async def _get_additional_hg_push_jsone_context(parent_link, decision_link):
     }
 
 
-def _get_additional_github_releases_jsone_context(parent_link, decision_link):
+async def _get_additional_github_releases_jsone_context(decision_link):
+    context = decision_link.context
+    source_env_prefix = context.config['source_env_prefix']
+    task = decision_link.task
+    repo_url = get_repo(task, source_env_prefix)
+    repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+    tag_name = get_revision(task, source_env_prefix)
+
+    release_data = GitHubRepository(
+        repo_owner, repo_name, context.config['github_oauth_token']
+    ).get_release(tag_name)
+
+    # The release data expose by the API[1] is not the same as the original event[2]. That's why
+    # we have to rebuild the object manually
+    #
+    # [1] https://developer.github.com/v3/repos/releases/#get-a-single-release
+    # [2] https://developer.github.com/v3/activity/events/types/#releaseevent
+    return {
+        'event': {
+            'repository': {
+                # TODO: Append ".git" to clone_url in order to match what GitHub actually provide.
+                # This can't be done at the moment because some mobile projects still rely on the
+                # bad value
+                'clone_url': repo_url,
+                'html_url': repo_url,
+            },
+            'release': {
+                'tag_name': tag_name,
+                'target_commitish': release_data['target_commitish'],
+                # Releases are supposed to be unique. Therefore, we're able to use the latest
+                # timestamp exposed by the API (unlike PRs, for instance)
+                'published_at': release_data['published_at'],
+            },
+            'sender': {
+                'login': release_data['author']['login'],
+            },
+        },
+    }
+
+
+def _get_additional_git_cron_jsone_context(decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     task = decision_link.task
     repo = get_repo(task, source_env_prefix)
+
+    # TODO remove the call to get_triggered_by() once Github repos don't define it anymore.
+    user = get_triggered_by(task, source_env_prefix)
+    if user is None:
+        # We can't default to 'cron' (like in hg) because https://github.com/cron is already taken
+        user = 'TaskclusterHook'
+
+    # Cron context mocks a GitHub release one. However, there is no GitHub API to call since this
+    # is built on Taskcluster.
     return {
+        'cron': load_json_or_yaml(decision_link.task['extra']['cron']),
         'event': {
             'repository': {
                 # TODO: Append ".git" to clone_url in order to match what GitHub actually provide.
@@ -1046,9 +1104,94 @@ def _get_additional_github_releases_jsone_context(parent_link, decision_link):
             'release': {
                 'tag_name': get_revision(task, source_env_prefix),
                 'target_commitish': get_branch(task, source_env_prefix),
+                'published_at': get_push_date_time(task, source_env_prefix),
             },
             'sender': {
-                'login': get_triggered_by(task, source_env_prefix),
+                'login': user,
+            },
+        },
+    }
+
+
+async def _get_additional_github_pull_request_jsone_context(decision_link):
+    context = decision_link.context
+    source_env_prefix = context.config['source_env_prefix']
+    task = decision_link.task
+    repo_url = get_repo(task, source_env_prefix)
+    repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+    pull_request_number = get_pull_request_number(task, source_env_prefix)
+    token = context.config['github_oauth_token']
+
+    github_repo = GitHubRepository(repo_owner, repo_name, token)
+    repo_definition = github_repo.definition
+
+    if repo_definition['fork']:
+        github_repo = GitHubRepository(
+            owner=repo_definition['parent']['owner']['login'],
+            repo_name=repo_definition['parent']['name'],
+            token=token,
+        )
+
+    pull_request_data = github_repo.get_pull_request(pull_request_number)
+
+    return {
+        'event': {
+            # TODO: Expose the action that triggered the graph in payload.env
+            'action': 'synchronize',
+            'repository': {
+                'html_url': pull_request_data['head']['repo']['html_url'],
+            },
+            'pull_request': {
+                'head': {
+                    'ref': pull_request_data['head']['ref'],
+                    'sha': pull_request_data['head']['sha'],
+                    'repo': {
+                        'html_url': pull_request_data['head']['repo']['html_url'],
+                        # Even though pull_request_data['head']['repo']['pushed_at'] does exist,
+                        # we can't reliably use it because a new commit would update the HEAD data.
+                        # This becomes a problem if a staging release was kicked off and the PR got
+                        # updated in the meantime.
+                        'pushed_at': get_push_date_time(task, source_env_prefix),
+                    }
+                },
+                'title': pull_request_data['title'],
+                'number': pull_request_number,
+                'html_url': pull_request_data['html_url'],
+            },
+            'sender': {
+                'login': pull_request_data['head']['user']['login'],
+            },
+        },
+    }
+
+
+async def _get_additional_github_push_jsone_context(decision_link):
+    context = decision_link.context
+    source_env_prefix = context.config['source_env_prefix']
+    task = decision_link.task
+    repo_url = get_repo(task, source_env_prefix)
+    repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+    commit_hash = get_revision(task, source_env_prefix)
+
+    commit_data = GitHubRepository(
+        repo_owner, repo_name, context.config['github_oauth_token']
+    ).get_commit(commit_hash)
+
+    # The commit data expose by the API[1] is not the same as the original event[2]. That's why
+    # we have to rebuild the object manually
+    #
+    # [1] https://developer.github.com/v3/repos/commits/#get-a-single-commit
+    # [2] https://developer.github.com/v3/activity/events/types/#pushevent
+    return {
+        'event': {
+            'repository': {
+                'html_url': repo_url,
+                'pushed_at': get_push_date_time(task, source_env_prefix),
+            },
+            'ref': get_branch(task, source_env_prefix),
+            'after': commit_hash,
+            'sender': {
+                'login': commit_data['author']['login'],
             },
         },
     }
@@ -1113,15 +1256,23 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         'taskId': None
     }
 
-    if tasks_for == 'github-release' or chain.context.config['cot_product'] == 'mobile':
-        # cron tasks of "mobile" fills the same variables as a regular github-release
-        jsone_context.update(
-            _get_additional_github_releases_jsone_context(parent_link, decision_link)
-        )
-
-        # cron tasks of "mobile" don't need the "push" context
-        if tasks_for == 'cron':
-            jsone_context['cron'] = load_json_or_yaml(parent_link.task['extra']['cron'])
+    if chain.context.config['cot_product'] == 'mobile':
+        if tasks_for == 'github-release':
+            jsone_context.update(
+                await _get_additional_github_releases_jsone_context(decision_link)
+            )
+        elif tasks_for == 'cron':
+            jsone_context.update(_get_additional_git_cron_jsone_context(decision_link))
+        elif tasks_for == 'github-pull-request':
+            jsone_context.update(
+                await _get_additional_github_pull_request_jsone_context(decision_link)
+            )
+        elif tasks_for == 'github-push':
+            jsone_context.update(
+                await _get_additional_github_push_jsone_context(decision_link)
+            )
+        else:
+            raise CoTError('Unknown tasks_for "{}" for cot_product "mobile"!'.format(tasks_for))
     else:
         jsone_context['repository']['level'] = await get_scm_level(chain.context, project)
 
@@ -1360,7 +1511,9 @@ async def verify_parent_task_definition(chain, parent_link):
     decision_link = chain.get_link(parent_link.decision_task_id)
     try:
         tasks_for = get_and_check_tasks_for(
-            parent_link.task, '{} {}: '.format(parent_link.name, parent_link.task_id)
+            chain.context,
+            parent_link.task,
+            '{} {}: '.format(parent_link.name, parent_link.task_id)
         )
         jsone_context, tmpl = await get_jsone_context_and_template(
             chain, parent_link, decision_link, tasks_for
@@ -1918,9 +2071,13 @@ async def trace_back_to_tree(chain):
                 errors.append("{} {} has no privileged repo on an restricted privilege scope!".format(
                     obj.name, obj.task_id
                 ))
-    # Disallow restricted privs on is_try.  This may be a redundant check.
-    if restricted_privs and chain.is_try():
-        errors.append("{} {} has restricted privilege scope, and is_try()!".format(chain.name, chain.task_id))
+    # Disallow restricted privs on is_try_or_pull_request.  This may be a redundant check.
+    if restricted_privs and chain.is_try_or_pull_request():
+        errors.append(
+            "{} {} has restricted privilege scope, and is_try_or_pull_request()!".format(
+                chain.name, chain.task_id
+            )
+        )
     raise_on_errors(errors)
 
 

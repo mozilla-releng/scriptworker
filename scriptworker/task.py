@@ -2,7 +2,6 @@
 """Scriptworker task execution.
 
 Attributes:
-    KNOWN_TASKS_FOR (tuple): the known reasons for creating decision/action tasks.
     REPO_SCOPE_REGEX (regex): the regex for the ``repo_scope`` of a task
     log (logging.Logger): the log object for the module
 
@@ -32,7 +31,6 @@ from scriptworker.utils import (
 
 log = logging.getLogger(__name__)
 
-KNOWN_TASKS_FOR = ('hg-push', 'cron', 'action', 'github-release')
 REPO_SCOPE_REGEX = re.compile("^assume:repo:[^:]+:action:[^:]+$")
 
 
@@ -91,8 +89,7 @@ def get_action_callback_name(task):
         None: if not found.
 
     """
-    name = task['payload'].get('env', {}).get('ACTION_CALLBACK')
-    return name
+    return _extract_from_env_in_payload(task, 'ACTION_CALLBACK')
 
 
 # get_commit_message {{{1
@@ -106,8 +103,7 @@ def get_commit_message(task):
         str: the commit message.
 
     """
-    msg = task['payload'].get('env', {}).get('GECKO_COMMIT_MSG', ' ')
-    return msg
+    return _extract_from_env_in_payload(task, 'GECKO_COMMIT_MSG', default=' ')
 
 
 # get_decision_task_id {{{1
@@ -158,7 +154,7 @@ def get_repo(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    repo = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_REPOSITORY')
+    repo = _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REPOSITORY')
     if repo is not None:
         repo = repo.rstrip('/')
     return repo
@@ -178,8 +174,7 @@ def get_revision(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    revision = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_REV')
-    return revision
+    return _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REV')
 
 
 def get_branch(task, source_env_prefix):
@@ -195,8 +190,7 @@ def get_branch(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    branch = task['payload'].get('env', {}).get(source_env_prefix + '_HEAD_BRANCH')
-    return branch
+    return _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_BRANCH')
 
 
 def get_triggered_by(task, source_env_prefix):
@@ -212,8 +206,51 @@ def get_triggered_by(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    triggered_by = task['payload'].get('env', {}).get(source_env_prefix + '_TRIGGERED_BY')
-    return triggered_by
+    return _extract_from_env_in_payload(task, source_env_prefix + '_TRIGGERED_BY')
+
+
+def get_pull_request_number(task, source_env_prefix):
+    """Get what Github pull request created the graph.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
+
+    Returns:
+        int: the pull request number.
+        None: if not defined for this task.
+
+    """
+    pull_request = _extract_from_env_in_payload(task, source_env_prefix + '_PULL_REQUEST_NUMBER')
+    if pull_request is not None:
+        pull_request = int(pull_request)
+    return pull_request
+
+
+def get_push_date_time(task, source_env_prefix):
+    """Get when a Github commit was pushed.
+
+    We usually need to extract this piece of data from the task itself because Github doesn't
+    expose reliable push data in the 3rd version of their API. This may happen in their future
+    v4 API: https://developer.github.com/v4/object/push/.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
+
+    Returns:
+        str: the string when the event was pushed. It's usually formated as ISO 8601. However, it
+            may be an epoch timestamp, (known case: github-push events).
+        None: if not defined for this task.
+
+    """
+    return _extract_from_env_in_payload(task, source_env_prefix + '_PUSH_DATE_TIME')
+
+
+def _extract_from_env_in_payload(task, key, default=None):
+    return task['payload'].get('env', {}).get(key, default)
 
 
 # get_worker_type {{{1
@@ -257,12 +294,11 @@ def get_and_check_project(valid_vcs_rules, source_url):
 
 
 # get_and_check_tasks_for {{{1
-def get_and_check_tasks_for(task, msg_prefix=''):
+def get_and_check_tasks_for(context, task, msg_prefix=''):
     """Given a parent task, return the reason the parent task was spawned.
 
     ``.taskcluster.yml`` uses this to know whether to spawn an action,
-    cron, or decision task definition.  The current known ``tasks_for`` are in
-    ``KNOWN_TASKS_FOR``.
+    cron, or decision task definition.  ``tasks_for`` must be a valid one defined in the context.
 
     Args:
         task (dict): the task definition.
@@ -276,7 +312,7 @@ def get_and_check_tasks_for(task, msg_prefix=''):
 
     """
     tasks_for = task['extra']['tasks_for']
-    if tasks_for not in KNOWN_TASKS_FOR:
+    if tasks_for not in context.config['valid_tasks_for']:
         raise ValueError(
             '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
         )
@@ -312,14 +348,46 @@ def get_repo_scope(task, name):
         return repo_scopes[0]
 
 
-# is_try {{{1
-def _is_try_url(url):
+def extract_github_repo_owner_and_name(repo_url):
+    """Given an URL, return the repo name and who owns it.
+
+    Args:
+        repo_url (str): The URL to the GitHub repository
+
+    Raises:
+        ValueError: on repo_url that aren't from github
+
+    Returns:
+        str, str: the owner of the repository, the repository name
+
+    """
+    if not repo_url.startswith('https://github.com/'):
+        raise ValueError('{} is not a supported GitHub URL!'.format(repo_url))
+
+    parts = _get_parts_of_url_path(repo_url)
+    repo_owner = parts[0]
+    repo_name = parts[1]
+
+    if repo_name.endswith(".git"):
+        repo_name = repo_name[:-len(".git")]
+
+    return repo_owner, repo_name
+
+
+def _get_parts_of_url_path(url):
     parsed = urlparse(url)
     path = unquote(parsed.path).lstrip('/')
     parts = path.split('/')
-    if "try" in parts[0]:
-        return True
-    return False
+    return parts
+
+
+def _is_try_url(url):
+    return 'try' in _get_parts_of_url_path(url)[0]
+
+
+def _does_url_come_from_official_repo(context, url):
+    official_repo_owner = context.config['official_github_repos_owner']
+    return not official_repo_owner or official_repo_owner == _get_parts_of_url_path(url)[0]
 
 
 def is_try(task, source_env_prefix):
@@ -344,17 +412,61 @@ def is_try(task, source_env_prefix):
         bool: True if it's try
 
     """
-    result = False
-    env = task['payload'].get('env', {})
-    repo = get_repo(task, source_env_prefix)
-    if repo:
-        result = result or _is_try_url(repo)
-    if env.get("MH_BRANCH"):
-        result = result or 'try' in task['payload']['env']['MH_BRANCH']
-    if task['metadata'].get('source'):
-        result = result or _is_try_url(task['metadata']['source'])
-    result = result or task['schedulerId'] in ("gecko-level-1", )
-    return result
+    # If get_repo() returns None, then _is_try_url() doesn't manage to process the URL
+    repo = get_repo(task, source_env_prefix) or ''
+    return any((
+        task['schedulerId'] in ('gecko-level-1', ),
+        'try' in _extract_from_env_in_payload(task, 'MH_BRANCH', default=''),
+        _is_try_url(repo),
+        _is_try_url(task['metadata'].get('source', '')),
+    ))
+
+
+def is_pull_request(context, task):
+    """Determine if a task is a pull-request-like task (restricted privs).
+
+    This goes further than checking ``tasks_for``.  We may or may not want
+    to keep this.
+
+    This checks for the following things::
+
+        * ``task.extra.env.tasks_for`` == "github-pull-request"
+        * ``task.payload.env.MOBILE_HEAD_REPOSITORY`` doesn't come from an official repo
+        * ``task.metadata.source`` doesn't come from an official repo, either
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task (dict): the task definition to check.
+
+    Returns:
+        bool: True if it's a pull-request
+
+    """
+    repo = get_repo(task, context.config['source_env_prefix']) or ''
+    return any((
+        task.get('extra', {}).get('tasks_for') == 'github-pull-request',
+        not _does_url_come_from_official_repo(context, repo),
+        not _does_url_come_from_official_repo(context, task['metadata'].get('source', '')),
+    ))
+
+
+def is_try_or_pull_request(context, task):
+    """Determine if a task is a try or a pull-request-like task (restricted privs).
+
+    Checks are the ones done in ``is_try`` and ``is_pull_request``
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task (dict): the task definition to check.
+
+    Returns:
+        bool: True if it's a pull-request or a try task
+
+    """
+    return any((
+        is_try(task, context.config['source_env_prefix']),
+        is_pull_request(context, task),
+    ))
 
 
 # is_action {{{1
@@ -378,8 +490,7 @@ def is_action(task):
 
     """
     result = False
-    env = task['payload'].get('env', {})
-    if env.get("ACTION_CALLBACK"):
+    if _extract_from_env_in_payload(task, 'ACTION_CALLBACK'):
         result = True
     if task.get('extra', {}).get('action') is not None:
         result = True
