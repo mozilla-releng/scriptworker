@@ -22,6 +22,7 @@ reqs = [
     "defusedxml",
     "dictdiffer",
     "frozendict",
+    "github3.py",
     "jsonschema",
     "json-e>=2.5.0",
     "pexpect",

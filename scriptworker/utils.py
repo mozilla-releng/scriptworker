@@ -455,7 +455,7 @@ def load_json_or_yaml(string, is_path=False, file_type='json',
 
     try:
         if is_path:
-            with open(string, "r") as fh:
+            with open(string, 'r') as fh:
                 contents = _load_fh(fh)
         else:
             contents = _load_str(string)
@@ -519,7 +519,7 @@ def get_loggable_url(url):
 
     """
     loggable_url = url or ""
-    for secret_string in ("bewit=", "AWSAccessKeyId="):
+    for secret_string in ("bewit=", "AWSAccessKeyId=", "access_token="):
         parts = loggable_url.split(secret_string)
         loggable_url = parts[0]
     if loggable_url != url:

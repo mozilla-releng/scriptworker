@@ -13,14 +13,14 @@ import os
 import pytest
 import tempfile
 from taskcluster.exceptions import TaskclusterFailure
-import scriptworker.cot.verify as cotverify
-from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
 import scriptworker.context as swcontext
+import scriptworker.cot.verify as cotverify
+from scriptworker.artifacts import get_single_upstream_artifact_full_path
+from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
 from scriptworker.utils import makedirs, load_json_or_yaml
+from unittest.mock import MagicMock
 from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
-from scriptworker.artifacts import (
-    get_single_upstream_artifact_full_path,
-)
+
 
 assert rw_context, tmpdir  # silence pyflakes
 
@@ -57,11 +57,30 @@ def chain(rw_context):
 
 @pytest.yield_fixture(scope='function')
 def mobile_chain(mobile_rw_context):
-    yield _craft_chain(
+    chain = _craft_chain(
         mobile_rw_context,
         scopes=['project:mobile:focus:releng:signing:cert:release-signing', 'ignoreme'],
         source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
     )
+    chain.context.config['github_oauth_token'] = 'fakegithubtoken'
+    chain.context.task['payload']['env'] = {
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/focus-android',
+    }
+    yield chain
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_chain_pull_request(mobile_rw_context):
+    chain = _craft_chain(
+        mobile_rw_context,
+        scopes=['project:mobile:focus:releng:signing:cert:dep-signing', 'ignoreme'],
+        source_url='https://github.com/JohanLorenzo/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+    chain.context.config['github_oauth_token'] = 'fakegithubtoken'
+    chain.context.task['payload']['env'] = {
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/JohanLorenzo/focus-android',
+    }
+    yield chain
 
 
 def _craft_chain(context, scopes, source_url='https://hg.mozilla.org/mozilla-central'):
@@ -92,10 +111,13 @@ def build_link(chain):
 
 @pytest.yield_fixture(scope='function')
 def mobile_build_link(chain):
-    yield _craft_build_link(
+    link = _craft_build_link(
         chain,
         source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
     )
+    link.task['payload']['env']['MOBILE_HEAD_REPOSITORY'] = 'https://github.com/mozilla-mobile/focus-android'
+
+    yield link
 
 
 def _craft_build_link(chain, source_url='https://hg.mozilla.org/mozilla-central'):
@@ -157,21 +179,70 @@ def cron_link(chain):
 
 
 @pytest.yield_fixture(scope='function')
-def mobile_decision_link(mobile_chain):
-    yield _craft_decision_link(
+def mobile_github_release_link(mobile_chain):
+    decision_link = _craft_decision_link(
         mobile_chain,
         tasks_for='github-releases',
-        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/v9000.0.1/.taskcluster.yml'
     )
+    decision_link.task['payload']['env'] = {
+        'MOBILE_HEAD_BRANCH': 'releases/v9000.0',
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/focus-android',
+        'MOBILE_HEAD_REV': 'v9000.0.1',
+    }
+    yield decision_link
 
 
 @pytest.yield_fixture(scope='function')
 def mobile_cron_link(mobile_chain):
-    yield _craft_decision_link(
+    decision_link = _craft_decision_link(
         mobile_chain,
         tasks_for='cron',
         source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
     )
+    decision_link.task['payload']['env'] = {
+        'MOBILE_HEAD_BRANCH': 'master',
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/focus-android',
+        'MOBILE_HEAD_REV': 'somerevision',
+        'MOBILE_PUSH_DATE_TIME': '2019-02-01T12:00:00.000Z',
+    }
+    decision_link.task['extra'] = {
+        'cron': "{\"task_id\":\"cron-task-id\"}",
+    }
+    yield decision_link
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_github_pull_request_link(mobile_chain):
+    decision_link = _craft_decision_link(
+        mobile_chain,
+        tasks_for='github-pull-request',
+        source_url='https://github.com/JohanLorenzo/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+    decision_link.task['payload']['env'] = {
+        'MOBILE_HEAD_BRANCH': 'some-branch',
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/JohanLorenzo/focus-android',
+        'MOBILE_HEAD_REV': 'somerevision',
+        'MOBILE_PULL_REQUEST_NUMBER': '1234',
+        'MOBILE_PUSH_DATE_TIME': '2019-02-01T12:00:00Z',
+    }
+    yield decision_link
+
+
+@pytest.yield_fixture(scope='function')
+def mobile_github_push_link(mobile_chain):
+    decision_link = _craft_decision_link(
+        mobile_chain,
+        tasks_for='github-push',
+        source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
+    )
+    decision_link.task['payload']['env'] = {
+        'MOBILE_HEAD_BRANCH': 'refs/heads/some-branch',
+        'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/focus-android',
+        'MOBILE_HEAD_REV': 'somerevision',
+        'MOBILE_PUSH_DATE_TIME': '1549022400',
+    }
+    yield decision_link
 
 
 def _craft_decision_link(chain, tasks_for, source_url='https://hg.mozilla.org/mozilla-central'):
@@ -356,12 +427,12 @@ async def test_get_all_links_in_chain(chain, decision_link, build_link):
 
 # is_try {{{1
 @pytest.mark.parametrize("bools,expected", (([False, False], False), ([False, True], True)))
-def test_chain_is_try(chain, bools, expected):
+def test_chain_is_try_or_pull_request(chain, bools, expected):
     for b in bools:
         m = mock.MagicMock()
-        m.is_try = b
+        m.is_try_or_pull_request = b
         chain.links.append(m)
-    assert chain.is_try() == expected
+    assert chain.is_try_or_pull_request() == expected
 
 
 # get_link {{{1
@@ -387,7 +458,7 @@ def test_get_link(chain, ids, req, raises):
 def test_link_task(chain):
     link = cotverify.LinkOfTrust(chain.context, 'build', "one")
     link.task = chain.task
-    assert not link.is_try
+    assert not link.is_try_or_pull_request
     assert link.worker_impl == 'scriptworker'
     with pytest.raises(CoTError):
         link.task = {}
@@ -1185,65 +1256,216 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
         assert context == expected
 
 
-@pytest.mark.parametrize('tasks_for, expected', ((
-    'github-release',
-    {
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobile_github_release_link):
+    github_repo_mock = MagicMock()
+    github_repo_mock.get_release.return_value = {
+        'author': {
+            'login': 'some-user',
+        },
+        'published_at': '2019-02-01T12:00:00Z',
+        'target_commitish': 'releases/v9000',
+    }
+    github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
+
+    context = await cotverify.populate_jsone_context(
+        mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for='github-release'
+    )
+
+    github_repo_class_mock.assert_called_once_with('mozilla-mobile', 'focus-android', 'fakegithubtoken')
+    github_repo_mock.get_release.assert_called_once_with('v9000.0.1')
+    del context['as_slugid']
+    assert context == {
         'event': {
             'repository': {
-                'clone_url': None,
-                'html_url': None,
+                'clone_url': 'https://github.com/mozilla-mobile/focus-android',
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
             },
             'release': {
-                'tag_name': None,
-                'target_commitish': None,
+                'tag_name': 'v9000.0.1',
+                'target_commitish': 'releases/v9000',
+                'published_at': '2019-02-01T12:00:00Z',
             },
             'sender': {
-                'login': None,
+                'login': 'some-user',
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
         'repository': {
             'project': 'focus-android',
-            'url': None,
+            'url': 'https://github.com/mozilla-mobile/focus-android',
         },
         'taskId': None,
         'tasks_for': 'github-release',
-    },
-), (
-    'cron',
-    {
-        'cron': {},
+    }
+
+
+@pytest.mark.parametrize('has_triggered_by', (True, False))
+@pytest.mark.asyncio
+async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, has_triggered_by):
+    if has_triggered_by:
+        mobile_cron_link.task['payload']['env']['MOBILE_TRIGGERED_BY'] = 'TaskclusterHook'
+
+    context = await cotverify.populate_jsone_context(mobile_chain, mobile_cron_link, mobile_cron_link, tasks_for='cron')
+    del context['as_slugid']
+    assert context == {
+        'cron': {
+            'task_id': 'cron-task-id'
+        },
         'event': {
             'repository': {
-                'clone_url': None,
-                'html_url': None,
+                'clone_url': 'https://github.com/mozilla-mobile/focus-android',
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
             },
             'release': {
-                'tag_name': None,
-                'target_commitish': None,
+                'published_at': '2019-02-01T12:00:00.000Z',
+                'tag_name': 'somerevision',
+                'target_commitish': 'master',
             },
             'sender': {
-                'login': None,
+                'login': 'TaskclusterHook',
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
         'repository': {
             'project': 'focus-android',
-            'url': None,
+            'url': 'https://github.com/mozilla-mobile/focus-android',
         },
         'taskId': None,
         'tasks_for': 'cron',
-    },
-)))
-@pytest.mark.asyncio
-async def test_populate_jsone_context_github(mobile_chain, mobile_decision_link, mobile_cron_link, tasks_for, expected):
-    link = mobile_cron_link if tasks_for == 'cron' else mobile_decision_link
+    }
 
-    context = await cotverify.populate_jsone_context(mobile_chain, link, link, tasks_for=tasks_for)
+
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link):
+    github_repo_mock = MagicMock()
+    github_repo_mock.get_commit.return_value = {
+        'author': {
+            'login': 'some-user',
+        },
+    }
+    github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
+
+    context = await cotverify.populate_jsone_context(
+        mobile_chain, mobile_github_push_link, mobile_github_push_link, tasks_for='github-push'
+    )
+
+    github_repo_class_mock.assert_called_once_with('mozilla-mobile', 'focus-android', 'fakegithubtoken')
+    github_repo_mock.get_commit.assert_called_once_with('somerevision')
     del context['as_slugid']
-    assert context == expected
+    assert context == {
+        'event': {
+            'repository': {
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'pushed_at': '1549022400',
+            },
+            'ref': 'refs/heads/some-branch',
+            'after': 'somerevision',
+            'sender': {
+                'login': 'some-user',
+            },
+        },
+        'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
+        'repository': {
+            'project': 'focus-android',
+            'url': 'https://github.com/mozilla-mobile/focus-android',
+        },
+        'taskId': None,
+        'tasks_for': 'github-push',
+    }
+
+
+@pytest.mark.parametrize('is_fork', (True, False))
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_pull_request, mobile_github_pull_request_link, is_fork):
+    github_repo_mock = MagicMock()
+    github_repo_mock.definition = {
+        'fork': True,
+        'parent': {
+            'name': 'focus-android',
+            'owner': {
+                'login': 'mozilla-mobile',
+            },
+        },
+    } if is_fork else {
+        'fork': False,
+    }
+
+    github_repo_mock.get_pull_request.return_value = {
+        'head': {
+            'ref': 'some-branch',
+            'repo': {
+                'html_url': 'https://github.com/JohanLorenzo/focus-android',
+            },
+            'sha': 'somerevision',
+            'user': {
+                'login': 'some-user',
+            },
+        },
+        'html_url': 'https://github.com/mozilla-mobile/focus-android/pulls/1234',
+        'title': 'Some PR title',
+    }
+    github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
+
+    context = await cotverify.populate_jsone_context(
+        mobile_chain_pull_request, mobile_github_pull_request_link, mobile_github_pull_request_link, tasks_for='github-pull-request'
+    )
+
+    github_repo_class_mock.assert_any_call('JohanLorenzo', 'focus-android', 'fakegithubtoken')
+
+    if is_fork:
+        github_repo_class_mock.assert_any_call(
+            owner='mozilla-mobile', repo_name='focus-android', token='fakegithubtoken'
+        )
+        assert len(github_repo_class_mock.call_args_list) == 2
+    else:
+        assert len(github_repo_class_mock.call_args_list) == 1
+
+    github_repo_mock.get_pull_request.assert_called_once_with(1234)
+
+    del context['as_slugid']
+    assert context == {
+        'event': {
+            'action': 'synchronize',
+            'repository': {
+                'html_url': 'https://github.com/JohanLorenzo/focus-android',
+            },
+            'pull_request': {
+                'head': {
+                    'ref': 'some-branch',
+                    'sha': 'somerevision',
+                    'repo': {
+                        'html_url': 'https://github.com/JohanLorenzo/focus-android',
+                        'pushed_at': '2019-02-01T12:00:00Z',
+                    },
+                },
+                'title': 'Some PR title',
+                'number': 1234,
+                'html_url': 'https://github.com/mozilla-mobile/focus-android/pulls/1234',
+            },
+            'sender': {
+                'login': 'some-user',
+            },
+        },
+        'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
+        'repository': {
+            'project': 'focus-android',
+            'url': 'https://github.com/JohanLorenzo/focus-android',
+        },
+        'taskId': None,
+        'tasks_for': 'github-pull-request',
+    }
+
+@pytest.mark.asyncio
+async def test_populate_jsone_context_fail(mobile_chain, mobile_github_release_link):
+    with pytest.raises(CoTError):
+        await cotverify.populate_jsone_context(
+            mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for='bad-tasks-for'
+        )
 
 
 # get_action_context_and_template {{{1
@@ -1642,30 +1864,6 @@ async def test_get_additional_hg_push_jsone_context(chain, mocker, push_comment,
         )
 
 
-def test_get_additional_github_releases_jsone_context(chain, mocker):
-
-    mocker.patch.object(cotverify, 'get_repo', return_value='https://github.com/some-user/some-repo')
-    mocker.patch.object(cotverify, 'get_revision', return_value='v99.0')
-    mocker.patch.object(cotverify, 'get_branch', return_value='master')
-    mocker.patch.object(cotverify, 'get_triggered_by', return_value='another-user')
-
-    assert cotverify._get_additional_github_releases_jsone_context(chain, chain) == {
-        'event': {
-            'repository': {
-                'clone_url': 'https://github.com/some-user/some-repo',
-                'html_url': 'https://github.com/some-user/some-repo',
-            },
-            'release': {
-                'tag_name': 'v99.0',
-                'target_commitish': 'master',
-            },
-            'sender': {
-                'login': 'another-user',
-            },
-        },
-    }
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("push_comment", (
     'foo bar baz',
@@ -2058,10 +2256,10 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link,
 ))
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
-    mobile_chain, mobile_decision_link, mobile_build_link, source_url, raises
+    mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises
 ):
-    mobile_decision_link.task['metadata']['source'] = source_url
-    mobile_chain.links = [mobile_decision_link, mobile_build_link]
+    mobile_github_release_link.task['metadata']['source'] = source_url
+    mobile_chain.links = [mobile_github_release_link, mobile_build_link]
     if raises:
         with pytest.raises(CoTError):
             await cotverify.trace_back_to_tree(mobile_chain)

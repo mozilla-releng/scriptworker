@@ -96,6 +96,9 @@ DEFAULT_CONFIG = frozendict({
     "cot_version": 3,
     "min_cot_version": 2,
     "max_chain_length": 20,
+    # Calls to Github API are limited to 60 an hour. Using an API token allows to raise the limit to
+    # 5000 per hour. https://developer.github.com/v3/#rate-limiting
+    "github_oauth_token": "",
 
     # Specify a default gpg home other than ~/.gnupg
     "gpg_home": None,
@@ -189,6 +192,9 @@ DEFAULT_CONFIG = frozendict({
         "gecko-1-images",
         "gecko-2-images",
         "gecko-3-images",
+
+        "mobile-1-images",  # there is no mobile level 2.
+        "mobile-3-images",
     ),
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
@@ -230,6 +236,30 @@ DEFAULT_CONFIG = frozendict({
                     for repo_name in ('android-components', 'focus-android', 'reference-browser', 'fenix')
                 ]),
             }),),
+        }),
+    },
+
+    'valid_tasks_for': {
+        'by-cot-product': frozendict({
+            'firefox': ('hg-push', 'cron', 'action',),
+            'thunderbird': ('hg-push', 'cron', 'action',),
+            'mobile': (
+                'cron',
+                # On staging releases, level 1 docker images may be built in the pull-request graph
+                'github-pull-request',
+                # Similarly, docker images can be built on regular push. This is usually the case
+                # for level 3 images
+                'github-push',
+                'github-release',
+            ),
+        }),
+    },
+
+    'official_github_repos_owner': {
+        'by-cot-product': frozendict({
+            'firefox': '',
+            'thunderbird': '',
+            'mobile': 'mozilla-mobile',
         }),
     },
 
