@@ -13,7 +13,6 @@ import os
 import pytest
 import tempfile
 import taskcluster.exceptions
-from contextlib import contextmanager
 from scriptworker.config import get_unfrozen_copy, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -240,14 +239,6 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
         'tags': {},
         'extra': task_extra,
     }
-
-
-@contextmanager
-def working_directory(path):
-    original_cwd = os.getcwd()
-    os.chdir(str(path))
-    yield
-    os.chdir(original_cwd)
 
 
 @pytest.yield_fixture(scope='function')

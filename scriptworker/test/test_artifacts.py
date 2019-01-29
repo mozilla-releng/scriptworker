@@ -15,7 +15,6 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
-from unittest.mock import patch
 
 
 from . import touch, rw_context, fake_session, fake_session_500, successful_queue
@@ -49,8 +48,8 @@ def test_force_mimetypes_to_plain_text(extension):
 
 @pytest.mark.parametrize("mimetypes_response, expected_content_type",
                          (('text/plain', 'text/plain'), (None, 'application/binary')))
-def test_guess_content_type(mimetypes_response, expected_content_type):
-    with patch.object(mimetypes, 'guess_type', return_value=(mimetypes_response, None)):
+def test_guess_content_type(mocker, mimetypes_response, expected_content_type):
+    with mocker.patch.object(mimetypes, 'guess_type', return_value=(mimetypes_response, None)):
         guessed_content_type, _ = guess_content_type_and_encoding('path')
         assert guessed_content_type == expected_content_type
 
@@ -92,7 +91,7 @@ async def test_upload_artifacts(context):
     ('file.xml',  '<foo>bar</foo>', 'application/xml', 'gzip'),
     ('file.unknown',  'Unknown foo bar', 'application/binary', None),
 ))
-def test_compress_artifact_if_supported(filename, original_content, expected_content_type, expected_encoding):
+def test_compress_artifact_if_supported(mocker, filename, original_content, expected_content_type, expected_encoding):
     with tempfile.TemporaryDirectory() as temp_dir:
         absolute_path = os.path.join(temp_dir, filename)
         with open(absolute_path, 'w') as f:
@@ -100,7 +99,7 @@ def test_compress_artifact_if_supported(filename, original_content, expected_con
 
         old_number_of_files = _get_number_of_children_in_directory(temp_dir)
 
-        with patch.object(mimetypes, 'guess_type', return_value=(expected_content_type, None)):
+        with mocker.patch.object(mimetypes, 'guess_type', return_value=(expected_content_type, None)):
             content_type, encoding = compress_artifact_if_supported(absolute_path)
             assert (content_type, encoding) == (expected_content_type, expected_encoding)
         # compress_artifact_if_supported() should replace the existing file
