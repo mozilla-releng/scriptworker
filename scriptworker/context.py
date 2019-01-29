@@ -35,7 +35,7 @@ class Context(object):
             FrozenDict.
         credentials_timestamp (int): the unix timestamp when we last updated
             our credentials.
-        proc (asyncio.subprocess.Process): when launching the script, this is
+        proc (task_process.TaskProcess): when launching the script, this is
             the process object.
         queue (taskcluster.aio.Queue): the taskcluster Queue object
             containing the scriptworker credentials.

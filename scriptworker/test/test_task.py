@@ -496,23 +496,6 @@ async def test_reclaim_task_mock(context, mocker, proc):
         assert len(kill_count) == 0
 
 
-# kill_proc {{{1
-@pytest.mark.asyncio
-async def test_kill_proc_no_pid(mocker):
-    """If the pid doesn't exist, `kill_proc` returns."""
-
-    async def die_async(*args):
-        assert -1, "We haven't returned due to ProcessLookupError!"
-
-    def fake_terminate():
-        raise ProcessLookupError("Fake pid doesn't exist")
-
-    mocker.patch.object(swtask, 'kill_pid', new=die_async)
-    proc = mock.MagicMock()
-    proc.terminate = fake_terminate
-    await swtask.kill_proc(proc, "testing", -1)
-
-
 # claim_work {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("raises", (True, False))

@@ -13,6 +13,7 @@ import os
 import sys
 import signal
 
+from scriptworker import task
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
@@ -172,9 +173,10 @@ def main(event_loop=None):
 
     done = False
 
-    def _handle_sigterm(signum, frame):
+    def _handle_sigterm(_, __):
         nonlocal done
         log.info("SIGTERM received; shutting down after next task")
+        asyncio.ensure_future(task.worker_shutdown_kill_task(context), loop=context.event_loop)
         done = True
 
     signal.signal(signal.SIGTERM, _handle_sigterm)
