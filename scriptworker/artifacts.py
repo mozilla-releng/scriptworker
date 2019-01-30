@@ -4,6 +4,8 @@ Importing this script updates the mimetypes database. This maps some known exten
 in S3.
 
 """
+import posixpath
+
 import aiohttp
 import arrow
 import asyncio
@@ -30,22 +32,17 @@ log = logging.getLogger(__name__)
 
 
 _GZIP_SUPPORTED_CONTENT_TYPE = ('text/plain', 'application/json', 'text/html', 'application/xml')
-_EXTENSIONS_TO_FORCE_TO_PLAIN_TEXT = ('.asc', '.diff', '.log')
 
 
-def _force_mimetypes_to_plain_text():
-    """Populate/Update the mime types database with supported extensions that we want to map to 'text/plain'.
-
-    These extensions can then be open natively read by browsers once they're uploaded on S3. It doesn't affect artifacts
-    once they're downloaded from S3.
-
-    """
-    for extension in _EXTENSIONS_TO_FORCE_TO_PLAIN_TEXT:
-        mimetypes.add_type('text/plain', extension)
-        log.debug('Extension "{}" forced to text/plain'.format(extension))
-
-
-_force_mimetypes_to_plain_text()
+_EXTENSION_TO_MIME_TYPE = {
+    'txt': ('text/plain', None),
+    'tgz': ('application/x-tar', 'gzip'),
+    'dmg': ('application/x-apple-diskimage', None),
+    'log': ('text/plain', None),
+    'asc': ('text/plain', None),
+    'diff': ('text/plain', None),
+    'xml': ('application/xml', None),
+}
 
 
 # upload_artifacts {{{1
@@ -135,6 +132,11 @@ def guess_content_type_and_encoding(path):
         str: the content type of the file
 
     """
+    #  TODO: is mimetypes needed? Maybe we can depend purely on our own _EXTENSION_TO_MIME_TYPE mapping
+    _, extension = posixpath.splitext(path)
+    if _EXTENSION_TO_MIME_TYPE.get(extension[1:]):
+        return _EXTENSION_TO_MIME_TYPE.get(extension[1:])
+
     content_type, encoding = mimetypes.guess_type(path)
     content_type = content_type or "application/binary"
     return content_type, encoding

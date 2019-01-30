@@ -40,18 +40,21 @@ def context(rw_context):
     yield rw_context
 
 
-@pytest.mark.parametrize("extension", ('foo.log', 'bar.asc'))
-def test_force_mimetypes_to_plain_text(extension):
-    # Function is not called explicitly here, because it should have occured at import time
-    assert mimetypes.guess_type(extension)[0] == 'text/plain'
+MIME_TYPES = {
+    '/foo/bar/test.txt': ('text/plain', None),
+    '/tmp/blah.tgz': ('application/x-tar', 'gzip'),
+    '~/Firefox.dmg': ('application/x-apple-diskimage', None),
+    '/foo/bar/blah.log': ('text/plain', None),
+    '/foo/bar/chainOfTrust.asc': ('text/plain', None),
+    '/totally/unknown': ('application/binary', None),
+}
 
 
-@pytest.mark.parametrize("mimetypes_response, expected_content_type",
-                         (('text/plain', 'text/plain'), (None, 'application/binary')))
-def test_guess_content_type(mocker, mimetypes_response, expected_content_type):
-    with mocker.patch.object(mimetypes, 'guess_type', return_value=(mimetypes_response, None)):
-        guessed_content_type, _ = guess_content_type_and_encoding('path')
-        assert guessed_content_type == expected_content_type
+# guess_content_type {{{1
+@pytest.mark.parametrize("mime_types", [(k, v) for k, v in sorted(MIME_TYPES.items())])
+def test_guess_content_type(mime_types):
+    path, (mimetype, encoding) = mime_types
+    assert guess_content_type_and_encoding(path) == (mimetype, encoding)
 
 
 # get_expiration_arrow {{{1
@@ -91,7 +94,7 @@ async def test_upload_artifacts(context):
     ('file.xml',  '<foo>bar</foo>', 'application/xml', 'gzip'),
     ('file.unknown',  'Unknown foo bar', 'application/binary', None),
 ))
-def test_compress_artifact_if_supported(mocker, filename, original_content, expected_content_type, expected_encoding):
+def test_compress_artifact_if_supported(filename, original_content, expected_content_type, expected_encoding):
     with tempfile.TemporaryDirectory() as temp_dir:
         absolute_path = os.path.join(temp_dir, filename)
         with open(absolute_path, 'w') as f:
@@ -99,9 +102,8 @@ def test_compress_artifact_if_supported(mocker, filename, original_content, expe
 
         old_number_of_files = _get_number_of_children_in_directory(temp_dir)
 
-        with mocker.patch.object(mimetypes, 'guess_type', return_value=(expected_content_type, None)):
-            content_type, encoding = compress_artifact_if_supported(absolute_path)
-            assert (content_type, encoding) == (expected_content_type, expected_encoding)
+        content_type, encoding = compress_artifact_if_supported(absolute_path)
+        assert (content_type, encoding) == (expected_content_type, expected_encoding)
         # compress_artifact_if_supported() should replace the existing file
         assert _get_number_of_children_in_directory(temp_dir) == old_number_of_files
 
