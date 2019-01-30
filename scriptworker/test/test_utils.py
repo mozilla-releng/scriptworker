@@ -316,7 +316,7 @@ def test_rm_dir():
 
 # write_to_file {{{1
 @pytest.mark.parametrize('file_type,contents_or_path,expected,is_path', ((
-    'json', {'a': 'b'}, """{
+    'json', {'a': 'b'}, b"""{
   "a": "b"
 }""", False
 ), (
@@ -324,22 +324,21 @@ def test_rm_dir():
 ), (
     'binary', os.path.join(TEST_DATA_DIR, "binary.zip"), None, True
 ), (
-    'text', '💩', '💩', False
+    'text', '💩', b'\xf0\x9f\x92\xa9', False
 ), (
     'binary', u'грызть гранит науки'.encode('iso8859_5'),
     b'\xd3\xe0\xeb\xd7\xe2\xec \xd3\xe0\xd0\xdd\xd8\xe2 \xdd\xd0\xe3\xda\xd8', False
 ), (
-    'text', 'asdfasdf', 'asdfasdf', False
+    'text', 'asdfasdf', b'asdfasdf', False
 )))
 def test_write_to_file(tmpdir, file_type, contents_or_path, expected, is_path):
     path = os.path.join(tmpdir, 'foo')
-    mode = 'rb' if file_type == 'binary' else 'r'
     if is_path:
-        with open(contents_or_path, mode) as fh:
+        with open(contents_or_path, 'rb') as fh:
             contents_or_path = fh.read()
         expected = contents_or_path
     utils.write_to_file(path, contents_or_path, file_type=file_type)
-    with open(path, mode) as fh:
+    with open(path, 'rb') as fh:
         assert fh.read() == expected
 
 
@@ -354,28 +353,26 @@ def test_write_to_file_bad_file_type(tmpdir):
     'binary', b'asdfasdf', b'asdfasdf', None, False, False
 ), (
     'binary', u'грызть гранит науки'.encode('iso8859_5'),
-    b'\xd3\xe0\xeb\xd7\xe2\xec \xd3\xe0\xd0\xdd\xd8\xe2 \xdd\xd0\xe3\xda\xd8', None, False, False
+    u'грызть гранит науки'.encode('iso8859_5'), None, False, False
 ), (
     'binary', os.path.join(TEST_DATA_DIR, "binary.zip"), None, None, False, True
 ), (
-    'text', 'asdfasdf', 'asdfasdf', ScriptWorkerException, False, False
+    'text', b'asdfasdf', 'asdfasdf', ScriptWorkerException, False, False
 ), (
-    'text', '💩', '💩', None, False, False
+    'text', b'\xf0\x9f\x92\xa9', '💩', None, False, False
 ), (
     'text', None, None, Exception, True, False
 ), (
-    'bad_file_type', 'asdfasdf', 'asdfasdf', Exception, True, False
+    'bad_file_type', b'asdfasdf', 'asdfasdf', Exception, True, False
 )))
 def test_read_from_file(tmpdir, file_type, contents_or_path, expected, exception, raises, is_path):
     path = os.path.join(tmpdir, 'foo')
-    read_mode = 'rb' if file_type == 'binary' else 'r'
-    write_mode = 'wb' if file_type == 'binary' else 'w'
     if is_path:
-        with open(contents_or_path, read_mode) as fh:
+        with open(contents_or_path, 'rb') as fh:
             contents_or_path = fh.read()
         expected = contents_or_path
     if contents_or_path is not None:
-        with open(path, write_mode) as fh:
+        with open(path, 'wb') as fh:
             fh.write(contents_or_path)
     if raises:
         with pytest.raises(exception):
