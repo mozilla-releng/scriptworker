@@ -30,8 +30,6 @@ _ALLOWED_MOBILE_GITHUB_OWNERS = (
     'mitchhentges',
 )
 
-_SW_LIB_DIR = os.path.dirname(__file__)
-
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
 # instance maintainers, also make changes to ``scriptworker.yaml.tmpl``.

@@ -16,7 +16,7 @@ from scriptworker.utils import read_from_file
 log = logging.getLogger(__name__)
 
 
-def ed25519_key_from_string(obj, string):
+def _ed25519_key_from_string(obj, string):
     """Create an ed25519 key from ``string``, which is a seed.
 
     Args:
@@ -33,7 +33,7 @@ def ed25519_key_from_string(obj, string):
         raise ScriptWorkerEd25519Error("Can't create {}: {}!".format(obj, str(exc)))
 
 
-def ed25519_key_from_file(obj, path):
+def _ed25519_key_from_file(obj, path):
     """Create an ed25519 key from the contents of ``path``.
 
     ``path`` is a filepath containing a base64-encoded ed25519 key seed.
@@ -50,7 +50,7 @@ def ed25519_key_from_file(obj, path):
 
     """
     try:
-        return ed25519_key_from_string(obj, read_from_file(path, exception=ScriptWorkerEd25519Error))
+        return _ed25519_key_from_string(obj, read_from_file(path, exception=ScriptWorkerEd25519Error))
     except ScriptWorkerException as exc:
         raise ScriptWorkerEd25519Error("Can't create {} from {}: {}!".format(obj, path, str(exc)))
 
@@ -68,10 +68,10 @@ def ed25519_key_to_string(key):
     return key.encode(encoder=Base64Encoder).decode('utf-8')
 
 
-ed25519_signing_key_from_string = functools.partial(ed25519_key_from_string, SigningKey)
-ed25519_verify_key_from_string = functools.partial(ed25519_key_from_string, VerifyKey)
-ed25519_signing_key_from_file = functools.partial(ed25519_key_from_file, SigningKey)
-ed25519_verify_key_from_file = functools.partial(ed25519_key_from_file, VerifyKey)
+ed25519_signing_key_from_string = functools.partial(_ed25519_key_from_string, SigningKey)
+ed25519_verify_key_from_string = functools.partial(_ed25519_key_from_string, VerifyKey)
+ed25519_signing_key_from_file = functools.partial(_ed25519_key_from_file, SigningKey)
+ed25519_verify_key_from_file = functools.partial(_ed25519_key_from_file, VerifyKey)
 
 
 def verify_ed25519_signature(verify_key, contents, signature, message):
