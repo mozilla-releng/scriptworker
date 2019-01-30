@@ -40,12 +40,6 @@ def context(rw_context):
     yield rw_context
 
 
-@pytest.mark.parametrize("extension", ('foo.log', 'bar.asc'))
-def test_force_mimetypes_to_plain_text(extension):
-    # Function is not called explicitly here, because it should have occured at import time
-    assert mimetypes.guess_type(extension)[0] == 'text/plain'
-
-
 MIME_TYPES = {
     '/foo/bar/test.txt': ('text/plain', None),
     '/tmp/blah.tgz': ('application/x-tar', 'gzip'),
@@ -97,7 +91,7 @@ async def test_upload_artifacts(context):
     ('file.log',  '12:00:00 Foo bar', 'text/plain', 'gzip'),
     ('file.json', json.dumps({'foo': 'bar'}), 'application/json', 'gzip'),
     ('file.html', '<html><h1>foo</h1>bar</html>', 'text/html', 'gzip'),
-    ('file.xml',  '<foo>bar</foo>', 'text/xml', 'gzip'),
+    ('file.xml',  '<foo>bar</foo>', 'application/xml', 'gzip'),
     ('file.unknown',  'Unknown foo bar', 'application/binary', None),
 ))
 def test_compress_artifact_if_supported(filename, original_content, expected_content_type, expected_encoding):
@@ -109,7 +103,7 @@ def test_compress_artifact_if_supported(filename, original_content, expected_con
         old_number_of_files = _get_number_of_children_in_directory(temp_dir)
 
         content_type, encoding = compress_artifact_if_supported(absolute_path)
-        assert content_type, encoding == (expected_content_type, expected_encoding)
+        assert (content_type, encoding) == (expected_content_type, expected_encoding)
         # compress_artifact_if_supported() should replace the existing file
         assert _get_number_of_children_in_directory(temp_dir) == old_number_of_files
 

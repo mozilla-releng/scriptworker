@@ -230,7 +230,8 @@ def test_get_context_from_cmdln(t_config):
 ], [
     "x", os.path.join(os.path.dirname(__file__), "data", "bad.json")
 ], []))
-def test_get_context_from_cmdln_exception(args):
+def test_get_context_from_cmdln_exception(monkeypatch, tmp_path, args):
+    monkeypatch.chdir(tmp_path)
     with pytest.raises(SystemExit):
         config.get_context_from_cmdln(args)
 
