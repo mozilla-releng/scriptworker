@@ -1277,6 +1277,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
             'taskId': parent_link.task_id,
             'now': jsone_context['now'],
             'as_slugid': jsone_context['as_slugid'],
+            'clientId': jsone_context.get('clientId'),
         }
     elif action_defn.get('kind') == 'task':
         # XXX Get rid of this block when all actions are hooks

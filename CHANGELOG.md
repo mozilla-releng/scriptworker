@@ -2,7 +2,33 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [17.2.1]
+## [18.0.1] - 2019-01-29
+### Fixed
+- added `clientId` to action hooks' `json_context`
+
+## [18.0.0] - 2019-01-28
+### Added
+- Added `git_path` in config to specify an explicit git binary
+
+### Changed
+- Added a `context` argument to `get_git_revision`, `get_latest_tag`
+
+### Fixed
+- Fixed some markdown syntax
+
+## [17.2.2] - 2019-01-25
+### Added
+- Added slowest 10 tests measurement
+- Added `BaseDownloadError` and `Download404` exceptions
+
+### Changed
+- No longer retry downloads on a 404.
+
+### Fixed
+- Fixed pytest-random-order behavior
+- Addressed a number of aiohttp + deprecation warnings
+
+## [17.2.1] - 2019-01-11
 ### Changed
 - added `fenix` to the list of approved repositories
 

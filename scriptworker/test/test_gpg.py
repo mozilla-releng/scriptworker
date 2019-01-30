@@ -619,26 +619,26 @@ def test_rebuild_gpg_home_signed(context, trusted_email, tmpdir):
 
 # get_git_revision, get_latest_tag {{{1
 @pytest.mark.asyncio
-async def test_get_git_revision(tmpdir):
+async def test_get_git_revision(context, tmpdir):
     tar = tarfile.open(os.path.join(os.path.dirname(__file__), "data", "test_git_repo.tgz"))
     tar.extractall(tmpdir)
     parent_dir = os.path.join(tmpdir, "testrepo")
     expected = "3e9ed77c7a6de4f8103a742e1d03ce292cf65a13"
-    assert await sgpg.get_git_revision(parent_dir) == expected
+    assert await sgpg.get_git_revision(context, parent_dir) == expected
 
 
 @pytest.mark.asyncio
-async def test_get_latest_tag(tmpdir):
+async def test_get_latest_tag(context, tmpdir):
     tar = tarfile.open(os.path.join(os.path.dirname(__file__), "data", "test_git_repo.tgz"))
     tar.extractall(tmpdir)
     parent_dir = os.path.join(tmpdir, "testrepo")
     expected = "v2"
-    assert await sgpg.get_latest_tag(parent_dir) == expected
+    assert await sgpg.get_latest_tag(context, parent_dir) == expected
 
 
 @pytest.mark.parametrize("func", (sgpg.get_git_revision, sgpg.get_latest_tag))
 @pytest.mark.asyncio
-async def test_get_git_revision_exception(mocker, func):
+async def test_get_git_revision_exception(context, mocker, func):
     x = mock.MagicMock()
 
     async def fake(*args, **kwargs):
@@ -655,7 +655,7 @@ async def test_get_git_revision_exception(mocker, func):
 
     parent_dir = os.path.dirname(__file__)
     with pytest.raises(ScriptWorkerRetryException):
-        await func(parent_dir, exec_function=fake)
+        await func(context, parent_dir, exec_function=fake)
 
 
 # update_signed_git_repo {{{1
@@ -704,7 +704,7 @@ async def test_update_signed_git_repo(context, mocker, result1, result2, expecte
 @pytest.mark.asyncio
 async def test_verify_signed_tag(context, mocker, valid_signed, head_rev, tag_rev, raises):
 
-    async def fake_revision(path, ref):
+    async def fake_revision(context, path, ref):
         if ref == "HEAD":
             return head_rev
         return tag_rev

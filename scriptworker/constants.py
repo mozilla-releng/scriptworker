@@ -112,6 +112,8 @@ DEFAULT_CONFIG = frozendict({
 
     "base_gpg_home_dir": "...",
     "gpg_lockfile": os.path.join(os.getcwd(), "gpg_homedir.lock"),
+    # The path to the git executable.
+    "git_path": 'git',
     "git_key_repo_dir": "...",
     "git_key_repo_url": "https://github.com/mozilla-releng/cot-gpg-keys.git",
     "last_good_git_revision_file": os.path.join(os.getcwd(), "git_revision"),
