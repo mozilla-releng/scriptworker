@@ -413,13 +413,14 @@ def prepare_to_run_task(context, claim_task):
 
 
 # run_task {{{1
-async def run_task(context):
+async def run_task(context, to_cancellable_process):
     """Run the task, sending stdout+stderr to files.
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+        to_cancellable_process (types.Callable): tracks the process so that it can be stopped if the worker is shut down
 
     Returns:
         int: exit code
@@ -432,7 +433,9 @@ async def run_task(context):
         'close_fds': True,
         'preexec_fn': lambda: os.setsid(),
     }
-    context.proc = TaskProcess(await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs))
+
+    subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    context.proc = await to_cancellable_process(TaskProcess(subprocess))
     timeout = context.config['task_max_timeout']
 
     with get_log_filehandle(context) as log_filehandle:
@@ -448,7 +451,7 @@ async def run_task(context):
             )
             if pending:
                 log.warning("Exceeded task_max_timeout of {} seconds".format(timeout))
-                await context.proc.stop()
+                await context.proc.exceeded_timeout_stop()
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
@@ -462,9 +465,9 @@ async def run_task(context):
                 status_line = "Automation Error: python exited with signal {}".format(exitcode)
             log.info(status_line)
             print(status_line, file=log_filehandle)
-            killed_due_to_worker_shutdown = context.proc.killed_due_to_worker_shutdown
+            stopped_due_to_worker_shutdown = context.proc.stopped_due_to_worker_shutdown
             context.proc = None
-    return STATUSES['worker-shutdown'] if killed_due_to_worker_shutdown else exitcode
+    return STATUSES['worker-shutdown'] if stopped_due_to_worker_shutdown else exitcode
 
 
 # reclaim_task {{{1
@@ -574,12 +577,3 @@ async def claim_work(context):
         )
     except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:
         log.warning("{} {}".format(exc.__class__, exc))
-
-
-async def worker_shutdown_kill_task(context):
-    if not context.proc:
-        return
-
-    log.warning("Worker is shutting down, but a task is running. Terminating task")
-    await context.proc.worker_shutdown()
-

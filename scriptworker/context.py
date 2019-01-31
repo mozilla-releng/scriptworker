@@ -53,6 +53,7 @@ class Context(object):
     session = None
     task = None
     temp_queue = None
+    running_tasks = None
     _credentials = None
     _claim_task = None  # This assumes a single task per worker.
     _event_loop = None

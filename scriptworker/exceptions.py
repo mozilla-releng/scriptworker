@@ -134,15 +134,16 @@ class CoTError(ScriptWorkerTaskException, KeyError):
 
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg, exit_code=STATUSES['malformed-payload']):
         """Initialize CoTError.
 
         Args:
             msg (string): the error message
+            exit_code (int): the error code to report to Taskcluster. Defaults to "malformed payload"
 
         """
         super(CoTError, self).__init__(
-            msg, exit_code=STATUSES['malformed-payload']
+            msg, exit_code=exit_code
         )
 
 
