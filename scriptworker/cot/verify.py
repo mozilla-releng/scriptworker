@@ -984,7 +984,6 @@ async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
     jsone_context = deepcopy(parent_link.task['extra']['action']['context'])
-    jsone_context['ownTaskId'] = parent_link.task_id
     jsone_context['parameters'] = parameters
     jsone_context['task'] = None
     return jsone_context
@@ -1078,6 +1077,9 @@ async def _get_additional_hg_cron_jsone_context(parent_link, decision_link):
 async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
     """Populate the json-e context to rebuild ``parent_link``'s task definition.
 
+    This defines the context that `.taskcluster.yml` expects to be rendered
+    with.  See comments at the top of that file for details.
+
     Args:
         chain (ChainOfTrust): the chain of trust to add to.
         parent_link (LinkOfTrust): the parent link to test.
@@ -1107,6 +1109,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             'url': get_repo(decision_link.task, decision_link.context.config['source_env_prefix']),
             'project': project,
         },
+        'ownTaskId': parent_link.task_id,
         'taskId': None
     }
 
@@ -1191,8 +1194,14 @@ def _get_action_from_actions_json(all_actions, callback_name):
 
 
 def _wrap_action_hook_with_let(tmpl, action_perm):
-    # action-hook. an attempt to duplicate the logic here:
-    # https://hg.mozilla.org/build/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
+    """Construct the hook task template body.
+
+    Given the content of .taskcluster.yml, construct the task template that
+    would appear in the corresponding hook definition.  This is an attempt to
+    duplicate the logic here:
+    https://hg.mozilla.org/build/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
+
+    """
     return {
         '$let': {
             'tasks_for': 'action',
@@ -1270,6 +1279,11 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
         action_perm = _get_action_perm(action_defn)
         tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm)
 
+        # define the JSON-e context with which the hook's task template was
+        # rendered, defined at
+        # https://docs.taskcluster.net/docs/reference/core/taskcluster-hooks/docs/firing-hooks#triggerhook
+        # This is created by working backward from the json-e context the
+        # .taskcluster.yml expects
         jsone_context = {
             'payload': _render_action_hook_payload(
                 action_defn, jsone_context, parent_link
