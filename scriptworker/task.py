@@ -21,6 +21,7 @@ import aiohttp
 import taskcluster
 import taskcluster.exceptions
 from scriptworker.constants import get_reversed_statuses, STATUSES
+from scriptworker.exceptions import ScriptWorkerTaskException
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
@@ -450,8 +451,10 @@ async def run_task(context, to_cancellable_process):
                 [stderr_future, stdout_future], timeout=timeout
             )
             if pending:
-                log.warning("Exceeded task_max_timeout of {} seconds".format(timeout))
-                await context.proc.exceeded_timeout_stop()
+                message = "Exceeded task_max_timeout of {} seconds".format(timeout)
+                log.warning(message)
+                await context.proc.stop()
+                raise ScriptWorkerTaskException(message, exit_code=context.config['task_max_timeout_status'])
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
@@ -505,8 +508,10 @@ async def reclaim_task(context, task):
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
                 if context.proc and task == context.task:
-                    log.warning("Killing task after receiving 409 status in reclaim_task")
+                    message = "Killing task after receiving 409 status in reclaim_task"
+                    log.warning(message)
                     await context.proc.stop()
+                    raise ScriptWorkerTaskException(message, exit_code=context.config['invalid_reclaim_status'])
                 break
             else:
                 raise

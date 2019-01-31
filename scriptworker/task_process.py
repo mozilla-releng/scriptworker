@@ -1,5 +1,7 @@
 import asyncio
 import logging
+import os
+import signal
 from asyncio.subprocess import Process
 
 log = logging.getLogger(__name__)
@@ -12,18 +14,18 @@ class TaskProcess:
 
     async def worker_shutdown_stop(self):
         self.stopped_due_to_worker_shutdown = True
-        await self._stop()
+        await self.stop()
 
-    async def exceeded_timeout_stop(self):
-        await self._stop()
-
-    async def _stop(self):
+    async def stop(self):
         """Stops the current task process. Starts with SIGTERM, gives the process 1 second to terminate, then kills it
 
         """
+        # negate pid so that signals apply to process group
+        pgid = -self.process.pid
         try:
+            os.kill(pgid, signal.SIGTERM)
             self.process.terminate()
             await asyncio.sleep(1)
-            self.process.kill()
-        except ProcessLookupError:
+            os.kill(pgid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
             return
