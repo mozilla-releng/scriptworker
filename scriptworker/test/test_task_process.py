@@ -1,4 +1,5 @@
 import os
+import signal
 
 import pytest
 from mock import MagicMock, call
@@ -6,13 +7,13 @@ from scriptworker.task_process import TaskProcess
 
 
 @pytest.mark.asyncio
-async def test_stop_increasing_severity(mocker):
-    process = MagicMock()
+async def test_stop_pid_group_increasing_severity(mocker):
+    process = MagicMock(pid=1)
     task_process = TaskProcess(process)
 
-    with mocker.patch.object(os, 'kill') as mock_kill:
-        await task_process.stop()
-        assert mock_kill == [call.terminate(), call.kill()]
+    mock_kill = mocker.patch.object(os, 'kill')
+    await task_process.stop()
+    assert mock_kill.mock_calls == [call(-1, signal.SIGTERM), call(-1, signal.SIGKILL)]
 
 
 @pytest.mark.asyncio

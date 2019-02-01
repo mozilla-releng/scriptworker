@@ -25,6 +25,10 @@ assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
 
+async def noop_to_cancellable_process(process):
+    return process
+
+
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
@@ -334,7 +338,7 @@ def test_prepare_to_run_task(context):
 # run_task {{{1
 @pytest.mark.asyncio
 async def test_run_task(context):
-    status = await swtask.run_task(context)
+    status = await swtask.run_task(context, noop_to_cancellable_process)
     log_file = log.get_log_filename(context)
     assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
     assert status == 1
@@ -353,7 +357,7 @@ async def test_run_task_negative_11(context, mocker):
 
     mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
 
-    status = await swtask.run_task(context)
+    status = await swtask.run_task(context, noop_to_cancellable_process)
     log_file = log.get_log_filename(context)
     contents = read(log_file)
     assert contents == "Automation Error: python exited with signal -11\n"
@@ -374,7 +378,7 @@ async def test_run_task_timeout(context):
 
     pre = arrow.utcnow().timestamp
     with pytest.raises(ScriptWorkerTaskException):
-        await swtask.run_task(context)
+        await swtask.run_task(context, noop_to_cancellable_process)
     post = arrow.utcnow().timestamp
     # I don't love these checks, because timing issues may cause this test
     # to be flaky. However, I don't want a non- or long- running test to pass.
@@ -455,9 +459,9 @@ async def test_reclaim_task_non_409(context, successful_queue):
         await swtask.reclaim_task(context, context.task)
 
 
-@pytest.mark.parametrize("proc", (None, 1))
+@pytest.mark.parametrize("no_proc", (True, False))
 @pytest.mark.asyncio
-async def test_reclaim_task_mock(context, mocker, proc):
+async def test_reclaim_task_mock(context, mocker, no_proc):
     """When `queue.reclaim_task` raises an error with status 409, `reclaim_task`
     returns. If there is a running process, `reclaim_task` tries to kill it
     before returning.
@@ -465,7 +469,8 @@ async def test_reclaim_task_mock(context, mocker, proc):
     Run a good queue.reclaim_task first, so we get full test coverage.
 
     """
-    kill_count = []
+
+    kill_count = 0
     reclaim_count = []
     temp_queue = mock.MagicMock()
 
@@ -478,22 +483,26 @@ async def test_reclaim_task_mock(context, mocker, proc):
         reclaim_count.append([args, kwargs])
         return {'credentials': {'foo': 'bar'}}
 
-    async def fake_kill_proc(*args):
-        kill_count.append(args)
+    class MockTaskProcess:
+        async def stop(self):
+            nonlocal kill_count
+            kill_count += 1
 
     def fake_create_queue(*args):
         return temp_queue
 
-    context.proc = proc
+    context.proc = None if no_proc else MockTaskProcess()
     context.create_queue = fake_create_queue
     temp_queue.reclaimTask = fake_reclaim
     context.temp_queue = temp_queue
-    mocker.patch.object(swtask, 'kill_proc', new=fake_kill_proc)
-    await swtask.reclaim_task(context, context.task)
-    if proc:
-        assert len(kill_count) == 1
+    try:
+        await swtask.reclaim_task(context, context.task)
+    except ScriptWorkerTaskException:
+        pass
+    if no_proc:
+        assert kill_count == 0
     else:
-        assert len(kill_count) == 0
+        assert kill_count == 1
 
 
 # claim_work {{{1
