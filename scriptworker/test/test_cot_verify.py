@@ -1092,6 +1092,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     'hg-push',
     {
         'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
         'push': {
             'comment': ' ',
             'owner': 'some-user',
@@ -1112,6 +1113,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
     {
         'cron': {},
         'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
         'push': {
             'comment': '',
             'owner': 'cron',
@@ -1200,6 +1202,7 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
         'repository': {
             'project': 'focus-android',
             'url': None,
@@ -1225,6 +1228,7 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
             },
         },
         'now': '2018-01-01T12:00:00.000Z',
+        'ownTaskId': 'decision_task_id',
         'repository': {
             'project': 'focus-android',
             'url': None,

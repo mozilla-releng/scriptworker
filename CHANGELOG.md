@@ -2,9 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [18.1.0] - 2019-02-01
+### Added
+- added `ownTaskId` to `jsone_context`.
+- added an `_EXTENSION_TO_MIME_TYPE` list to allow for differences in system mimetypes
+
 ## [18.0.1] - 2019-01-29
 ### Fixed
-- added `clientId` to action hooks' `json_context`
+- added `clientId` to action hooks' `jsone_context`
 
 ## [18.0.0] - 2019-01-28
 ### Added
