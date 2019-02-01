@@ -24,7 +24,6 @@ class TaskProcess:
         pgid = -self.process.pid
         try:
             os.kill(pgid, signal.SIGTERM)
-            self.process.terminate()
             await asyncio.sleep(1)
             os.kill(pgid, signal.SIGKILL)
         except (OSError, ProcessLookupError):
