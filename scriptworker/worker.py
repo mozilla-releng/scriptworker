@@ -16,7 +16,6 @@ from asyncio import CancelledError
 import aiohttp
 import arrow
 
-from scriptworker import task
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
@@ -95,7 +94,7 @@ async def do_upload(context):
     return status
 
 
-class CancellableRunTasks:
+class RunTasks:
     def __init__(self):
         self.future = None
         self.task_process = None
@@ -128,6 +127,9 @@ class CancellableRunTasks:
             return None
 
     async def _run_cancellable(self, coroutine: types.coroutine):
+        if self.is_cancelled:
+            raise CancelledError()
+
         self.future = asyncio.ensure_future(coroutine)
         result = await self.future
         self.future = None
@@ -182,7 +184,7 @@ async def run_tasks(context, creds_key="credentials"):
         None: if no task run.
 
     """
-    running_tasks = CancellableRunTasks()
+    running_tasks = RunTasks()
     context.running_tasks = running_tasks
     status = await running_tasks.invoke(context)
     context.running_tasks = None
