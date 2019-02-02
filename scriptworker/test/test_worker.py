@@ -349,7 +349,7 @@ async def test_run_tasks_cancel_claim_work(context, mocker):
     mock_complete_task.return_value = create_finished_promise()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_running_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -373,7 +373,7 @@ async def test_run_tasks_cancel_sleep(context, mocker):
     mock_complete_task.return_value = create_finished_promise()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_running_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -404,7 +404,7 @@ async def test_run_tasks_cancel_cot(context, mocker):
     mock_complete_task.return_value = create_finished_promise()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_running_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -439,7 +439,7 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     mocker.patch('scriptworker.worker.run_task', mock_run_task)
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_running_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
     await run_task_called
     await run_tasks.cancel()
     await run_tasks_future
