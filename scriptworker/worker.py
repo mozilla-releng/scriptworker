@@ -95,12 +95,23 @@ async def do_upload(context):
 
 
 class RunTasks:
+    """Manages processing of Taskcluster tasks."""
+
     def __init__(self):
+        """Constructor."""
         self.future = None
         self.task_process = None
         self.is_cancelled = False
 
     async def invoke(self, context):
+        """Claims and processes Taskcluster work.
+
+        Args:
+            context (scriptworker.context.Context): context of worker
+
+        Returns: status code of build
+
+        """
         try:
             # Note: claim_work(...) might not be safely interruptible! See
             # https://bugzilla.mozilla.org/show_bug.cgi?id=1524069
@@ -116,7 +127,7 @@ class RunTasks:
             for task_defn in tasks.get('tasks', []):
                 prepare_to_run_task(context, task_defn)
                 reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
-                status = await do_run_task(context, self.cancellable_verify_chain_of_trust, self.to_cancellable_process)
+                status = await do_run_task(context, self._cancellable_verify_chain_of_trust, self._to_cancellable_process)
                 status = worst_level(status, await do_upload(context))
                 await complete_task(context, status)
                 reclaim_fut.cancel()
@@ -135,7 +146,7 @@ class RunTasks:
         self.future = None
         return result
 
-    async def cancellable_verify_chain_of_trust(self, chain):
+    async def _cancellable_verify_chain_of_trust(self, chain):
         exception = CoTError('Chain of Trust verification was aborted', STATUSES['worker-shutdown'])
 
         if self.is_cancelled:
@@ -146,7 +157,7 @@ class RunTasks:
         except CancelledError:
             raise exception
 
-    async def to_cancellable_process(self, task_process: TaskProcess):
+    async def _to_cancellable_process(self, task_process: TaskProcess):
         self.task_process = task_process
 
         if self.is_cancelled:
@@ -155,6 +166,7 @@ class RunTasks:
         return task_process
 
     async def cancel(self):
+        """Cancel current work."""
         self.is_cancelled = True
         if self.future is not None:
             self.future.cancel()
