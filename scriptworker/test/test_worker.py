@@ -61,26 +61,31 @@ def test_main(mocker, context, event_loop):
 def test_main_sigterm(mocker, context, event_loop):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
-    config = dict(context.config)
-    config['poll_interval'] = 1
-    creds = {'fake_creds': True}
-    config['credentials'] = deepcopy(creds)
+    run_tasks_cancelled = event_loop.create_future()
 
-    async def async_main(*args):
+    class MockRunTasks:
+        @staticmethod
+        def cancel():
+            nonlocal run_tasks_cancelled
+            run_tasks_cancelled.set_result(True)
+
+    async def async_main(main_context, _):
+        main_context.running_tasks = MockRunTasks()
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
-        return True
 
     try:
         _, tmp = tempfile.mkstemp()
         with open(tmp, "w") as fh:
-            json.dump(config, fh)
-        del(config['credentials'])
+            json.dump(context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         worker.main(event_loop=event_loop)
     finally:
         os.remove(tmp)
+
+    event_loop.run_until_complete(run_tasks_cancelled)
+    assert run_tasks_cancelled.result()
 
 
 # async_main {{{1
