@@ -2,6 +2,30 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [20.0.0] - 2019-02-21
+### Added
+- mobile can create in-tree docker images
+- Chain of Trust is now able to validate the following `tasks_for`:
+  - github-pull-request (even though pull requests seem risky at first, this enables smoother
+    staging releases - à la gecko's try)
+  - github-push
+- github.py is a new module to deal with the GitHub API URLs.
+
+### Changed
+- Config must know provide a GitHub OAuth token to request the GitHub API more than 60 times an
+    hour
+- load_json_or_yaml() load file handles as if they were always encoded
+    in utf-8. The GitHub API includes emojis in its reponses.
+- The mobile decision tasks must define "MOBILE_PUSH_DATE_TIME". github-release
+    is the only `tasks_for` to not use this variable (because the piece of
+    data is exposed by the GitHub API)
+- `is_try` in `scriptworker.cot.verify` was changed by `is_try_or_pull_request`
+- `tasks_for` are now allowed per cot-product in constants.py
+
+### Removed
+- `scriptworker.task.KNOWN_TASKS_FOR` in favor of `context.config['valid_tasks_for']` which depends
+    on the `cot_product`
+
 ## [19.0.0] - 2019-02-13
 ### Added
 - added `running_tasks` property to `Context`
