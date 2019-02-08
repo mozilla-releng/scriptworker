@@ -8,22 +8,22 @@ Attributes:
 
 """
 
+import aiohttp
 import asyncio
+from asyncio.subprocess import PIPE
+from copy import deepcopy
 import logging
 import os
 import pprint
 import re
-from asyncio.subprocess import PIPE
-from copy import deepcopy
 from urllib.parse import unquote, urlparse
 
-import aiohttp
 import taskcluster
 import taskcluster.exceptions
-from scriptworker.constants import get_reversed_statuses, STATUSES
+
+from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException
 from scriptworker.log import get_log_filehandle, pipe_to_log
-from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     match_url_path_callback,
     match_url_regex,
@@ -468,9 +468,11 @@ async def run_task(context, to_cancellable_process):
                 status_line = "Automation Error: python exited with signal {}".format(exitcode)
             log.info(status_line)
             print(status_line, file=log_filehandle)
-            stopped_due_to_worker_shutdown = context.proc.stopped_due_to_worker_shutdown
-            context.proc = None
-    return STATUSES['worker-shutdown'] if stopped_due_to_worker_shutdown else exitcode
+
+    context.proc = None
+    if context.proc.stopped_due_to_worker_shutdown:
+        raise WorkerShutdownDuringTask
+    return exitcode
 
 
 # reclaim_task {{{1

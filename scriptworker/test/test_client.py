@@ -23,9 +23,8 @@ import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-from scriptworker.utils import noop_sync
 
-from . import tmpdir
+from . import tmpdir, noop_sync
 
 assert tmpdir  # silence pyflakes
 

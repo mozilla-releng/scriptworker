@@ -5,34 +5,32 @@ Attributes:
     log (logging.Logger): the log object for the module.
 
 """
+import aiohttp
+import arrow
 import asyncio
 import logging
 import os
-import signal
 import sys
+import signal
 import types
-from asyncio import CancelledError
-
-import aiohttp
-import arrow
 
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
-from scriptworker.exceptions import ScriptWorkerException, CoTError
 from scriptworker.gpg import get_tmp_base_gpg_home_dir, is_lockfile_present, rm_lockfile
+from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
     reclaim_task, run_task, worst_level
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import cleanup, rm
+from scriptworker.utils import cleanup, rm, filepaths_in_dir
 
 log = logging.getLogger(__name__)
 
 
 # do_run_task {{{1
-async def do_run_task(context, cancellable_verify_chain_of_trust, to_cancellable_process):
+async def do_run_task(context, run_cancellable, to_cancellable_process):
     """Run the task logic.
 
     Returns the integer status of the task.
@@ -51,9 +49,12 @@ async def do_run_task(context, cancellable_verify_chain_of_trust, to_cancellable
     try:
         if context.config['verify_chain_of_trust']:
             chain = ChainOfTrust(context, context.config['cot_job_type'])
-            await cancellable_verify_chain_of_trust(chain)
+            await run_cancellable(verify_chain_of_trust(chain))
         status = await run_task(context, to_cancellable_process)
         generate_cot(context)
+    except asyncio.CancelledError:
+        log.info("CoT cancelled asynchronously")
+        raise WorkerShutdownDuringTask
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
@@ -64,13 +65,14 @@ async def do_run_task(context, cancellable_verify_chain_of_trust, to_cancellable
 
 
 # do_upload {{{1
-async def do_upload(context):
+async def do_upload(context, files):
     """Upload artifacts and return status.
 
     Returns the integer status of the upload.
 
     args:
         context (scriptworker.context.Context): the scriptworker context.
+        files (list of str): list of files to be uploaded as artifacts
 
     Raises:
         Exception: on unexpected exception.
@@ -81,7 +83,7 @@ async def do_upload(context):
     """
     status = 0
     try:
-        await upload_artifacts(context)
+        await upload_artifacts(context, files)
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
@@ -127,35 +129,31 @@ class RunTasks:
             for task_defn in tasks.get('tasks', []):
                 prepare_to_run_task(context, task_defn)
                 reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
-                status = await do_run_task(context, self._cancellable_verify_chain_of_trust, self._to_cancellable_process)
-                status = worst_level(status, await do_upload(context))
+                try:
+                    status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
+                    artifacts_paths = filepaths_in_dir(context.config['artifact_dir'])
+                except WorkerShutdownDuringTask:
+                    artifacts_paths = [os.path.join('public', 'logs', log_file)
+                                       for log_file in ['chain_of_trust.log', 'live_backing.log']]
+                    status = STATUSES['worker-shutdown']
+                status = worst_level(status, await do_upload(context, artifacts_paths))
                 await complete_task(context, status)
                 reclaim_fut.cancel()
                 cleanup(context)
+
             return status
 
-        except CancelledError:
+        except asyncio.CancelledError:
             return None
 
     async def _run_cancellable(self, coroutine: types.coroutine):
         if self.is_cancelled:
-            raise CancelledError()
+            raise asyncio.CancelledError
 
         self.future = asyncio.ensure_future(coroutine)
         result = await self.future
         self.future = None
         return result
-
-    async def _cancellable_verify_chain_of_trust(self, chain):
-        exception = CoTError('Chain of Trust verification was aborted', STATUSES['worker-shutdown'])
-
-        if self.is_cancelled:
-            raise exception
-
-        try:
-            return await self._run_cancellable(verify_chain_of_trust(chain))
-        except CancelledError:
-            raise exception
 
     async def _to_cancellable_process(self, task_process: TaskProcess):
         self.task_process = task_process

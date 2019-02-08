@@ -134,16 +134,15 @@ class CoTError(ScriptWorkerTaskException, KeyError):
 
     """
 
-    def __init__(self, msg, exit_code=STATUSES['malformed-payload']):
+    def __init__(self, msg):
         """Initialize CoTError.
 
         Args:
             msg (string): the error message
-            exit_code (int): the error code to report to Taskcluster. Defaults to "malformed payload"
 
         """
         super(CoTError, self).__init__(
-            msg, exit_code=exit_code
+            msg, exit_code=STATUSES['malformed-payload']
         )
 
 
@@ -154,3 +153,12 @@ class ConfigError(ScriptWorkerException):
         exit_code (int): this is set to 5 (internal-error).
 
     """
+
+
+class WorkerShutdownDuringTask(ScriptWorkerTaskException):
+    """Task cancelled because worker is shutting down."""
+
+    def __init__(self):
+        super(WorkerShutdownDuringTask, self).__init__(
+            'Worker is shutting down', exit_code=STATUSES['worker-shutdown']
+        )

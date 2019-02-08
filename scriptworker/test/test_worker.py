@@ -20,7 +20,7 @@ from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.worker as worker
 from scriptworker.worker import RunTasks, do_run_task
 from . import noop_async, noop_sync, rw_context, successful_queue, \
-    tmpdir, TIMEOUT_SCRIPT
+    tmpdir, TIMEOUT_SCRIPT, create_async, create_slow_async, create_finished_promise
 
 assert rw_context, tmpdir  # silence flake8
 assert successful_queue  # silence flake8
@@ -66,16 +66,17 @@ def test_main_sigterm(mocker, context, event_loop):
     class MockRunTasks:
         @staticmethod
         def cancel():
-            nonlocal run_tasks_cancelled
             run_tasks_cancelled.set_result(True)
 
-    async def async_main(main_context, _):
-        main_context.running_tasks = MockRunTasks()
+    async def async_main(internal_context, _):
+        # scriptworker reads context from a file, so we have to modify the context given here instead of the variable
+        # from the fixture
+        internal_context.running_tasks = MockRunTasks()
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
 
+    _, tmp = tempfile.mkstemp()
     try:
-        _, tmp = tempfile.mkstemp()
         with open(tmp, "w") as fh:
             json.dump(context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
@@ -291,43 +292,15 @@ class MockTaskProcess:
         await self.worker_stop_future
 
 
-def create_finished_promise(result=None):
-    future = asyncio.Future()
-    future.set_result(result)
-    return future
-
-
-def create_slow_async():
-    future = asyncio.Future()
-
-    async def slow_function(*args, **kwargs):
-        future.set_result(None)
-        await asyncio.Future()
-
-    return future, slow_function
-
-
-def create_async(result=None):
-    async def fn(*args, **kwargs):
-        return result
-    return fn
-
-
-def create_sync(result=None):
-    def fn(*args, **kwargs):
-        return result
-    return fn
-
-
 @pytest.mark.asyncio
 async def test_run_tasks_no_cancel(context, mocker):
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
-    mocker.patch.object(asyncio, 'sleep', create_async())
-    mocker.patch('scriptworker.worker.prepare_to_run_task', create_async())
-    mocker.patch('scriptworker.worker.reclaim_task', create_async())
+    mocker.patch.object(asyncio, 'sleep', noop_async)
+    mocker.patch('scriptworker.worker.prepare_to_run_task', noop_async)
+    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
     mocker.patch('scriptworker.worker.do_run_task', create_async(0))
     mocker.patch('scriptworker.worker.do_upload', create_async(0))
-    mocker.patch('scriptworker.worker.cleanup', create_sync())
+    mocker.patch('scriptworker.worker.cleanup', noop_sync)
     mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
 
     future = asyncio.Future()
@@ -399,11 +372,11 @@ async def test_run_tasks_cancel_cot(context, mocker):
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch('scriptworker.worker.ChainOfTrust', MockChainOfTrust)
-    mocker.patch('scriptworker.worker.reclaim_task', create_async())
-    mocker.patch('scriptworker.worker.run_task', create_async())
-    mocker.patch('scriptworker.worker.generate_cot', create_sync())
+    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
+    mocker.patch('scriptworker.worker.run_task', noop_async)
+    mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.do_upload', create_async(0))
-    mocker.patch('scriptworker.worker.cleanup', create_sync())
+    mocker.patch('scriptworker.worker.cleanup', noop_sync)
 
     mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
     mock_complete_task.return_value = create_finished_promise()
@@ -424,11 +397,11 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     mock_prepare_task.return_value = create_finished_promise()
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
-    mocker.patch('scriptworker.worker.reclaim_task', create_async())
-    mocker.patch('scriptworker.worker.run_task', create_async())
-    mocker.patch('scriptworker.worker.generate_cot', create_sync())
+    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
+    mocker.patch('scriptworker.worker.run_task', noop_async)
+    mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.do_upload', create_async(0))
-    mocker.patch('scriptworker.worker.cleanup', create_sync())
+    mocker.patch('scriptworker.worker.cleanup', noop_sync)
 
     mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
     mock_complete_task.return_value = create_finished_promise()
@@ -472,10 +445,10 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch('scriptworker.worker.ChainOfTrust', MockChainOfTrust)
-    mocker.patch('scriptworker.worker.reclaim_task', create_async())
-    mocker.patch('scriptworker.worker.generate_cot', create_sync())
+    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
+    mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.do_upload', create_async(0))
-    mocker.patch('scriptworker.worker.cleanup', create_sync())
+    mocker.patch('scriptworker.worker.cleanup', noop_sync)
 
     run_tasks = RunTasks()
 
@@ -507,10 +480,10 @@ async def test_run_tasks_cancel_right_before_proc_created(context, mocker):
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch('scriptworker.worker.ChainOfTrust', MockChainOfTrust)
-    mocker.patch('scriptworker.worker.reclaim_task', create_async())
-    mocker.patch('scriptworker.worker.generate_cot', create_sync())
+    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
+    mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.do_upload', create_async(0))
-    mocker.patch('scriptworker.worker.cleanup', create_sync())
+    mocker.patch('scriptworker.worker.cleanup', noop_sync)
 
     run_tasks = RunTasks()
 

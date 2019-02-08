@@ -16,7 +16,7 @@ import taskcluster.exceptions
 from scriptworker.config import get_unfrozen_copy, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.utils import makedirs, noop_sync
+from scriptworker.utils import makedirs
 try:
     import yarl
     YARL = True
@@ -312,3 +312,30 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
 
 async def noop_async(*args, **kwargs):
     pass
+
+
+def noop_sync(*args, **kwargs):
+    pass
+
+
+def create_finished_promise(result=None):
+    future = asyncio.Future()
+    future.set_result(result)
+    return future
+
+
+def create_slow_async(result=None):
+    future = asyncio.Future()
+
+    async def slow_function(*args, **kwargs):
+        future.set_result(None)
+        await asyncio.Future()
+        return result
+
+    return future, slow_function
+
+
+def create_async(result=None):
+    async def fn(*args, **kwargs):
+        return result
+    return fn

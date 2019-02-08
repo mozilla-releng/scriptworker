@@ -45,9 +45,8 @@ _EXTENSION_TO_MIME_TYPE = {
 }
 
 
-# upload_artifacts {{{1
-async def upload_artifacts(context):
-    """Compress and upload the files in ``artifact_dir``, preserving relative paths.
+async def upload_artifacts(context, files):
+    """Compress and upload the requested files from ``artifact_dir``, preserving relative paths.
 
     Compression only occurs with files known to be supported.
 
@@ -57,35 +56,25 @@ async def upload_artifacts(context):
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+        files (list of str): files that should be uploaded as artifacts
 
     Raises:
         Exception: any exceptions the tasks raise.
 
     """
-    file_list = {}
-    for target_path in filepaths_in_dir(context.config['artifact_dir']):
+
+    def to_upload_future(target_path):
         path = os.path.join(context.config['artifact_dir'], target_path)
-
         content_type, content_encoding = compress_artifact_if_supported(path)
-        file_list[target_path] = {
-            'path': path,
-            'target_path': target_path,
-            'content_type': content_type,
-            'content_encoding': content_encoding,
-        }
+        return asyncio.ensure_future(retry_create_artifact(
+            context,
+            path,
+            target_path=target_path,
+            content_type=content_type,
+            content_encoding=content_encoding,
+        ))
 
-    tasks = []
-    for upload_config in file_list.values():
-        tasks.append(
-            asyncio.ensure_future(
-                retry_create_artifact(
-                    context, upload_config['path'],
-                    target_path=upload_config['target_path'],
-                    content_type=upload_config['content_type'],
-                    content_encoding=upload_config['content_encoding'],
-                )
-            )
-        )
+    tasks = list(map(to_upload_future, files))
     await raise_future_exceptions(tasks)
 
 
