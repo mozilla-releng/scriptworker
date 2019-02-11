@@ -12,7 +12,6 @@ import os
 import pytest
 import re
 import slugid
-import sys
 import tempfile
 from scriptworker.config import (
     CREDS_FILES,
@@ -164,7 +163,7 @@ async def test_run_successful_task(context_function):
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status == 1
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'failed'
@@ -185,7 +184,7 @@ async def test_run_maxtimeout(context_function):
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
             assert status == context.config['task_max_timeout_status']
 
 
@@ -205,7 +204,7 @@ async def do_cancel(context, task_id):
 async def run_task_to_cancel(context):
     async with remember_cwd():
         os.chdir(os.path.dirname(context.config['work_dir']))
-        status = await worker.run_tasks(context, creds_key="integration_credentials")
+        status = await worker.run_tasks(context)
         return status
 
 
@@ -247,7 +246,7 @@ async def test_empty_queue(context_function):
     async with context_function(None) as context:
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status is None
 
 
@@ -269,34 +268,39 @@ async def test_temp_creds(context_function):
 
 # verify_cot {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
-@pytest.mark.parametrize("branch_context", ({
-    "name": "mozilla-central nightly desktop",
-    "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-desktop",
-    "task_label_to_task_type": {
-        "balrog-.*-nightly/opt": "balrog",
-        "beetmover-repackage-.*-nightly/opt": "beetmover",
-    },
-}, {
-    "name": "mozilla-central nightly android",
-    "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-android",
-    "task_label_to_task_type": {
-        "push-apk/opt": "pushapk",
-    },
-}, {
-    "name": "mozilla-central win64 en-US repackage signing",
-    "index": "gecko.v2.mozilla-central.nightly.latest.firefox.win64-nightly-repackage-signing",
-    "task_type": "signing",
-}, {
-    "name": "mozilla-beta linux64 en-US repackage signing",
-    "index": "gecko.v2.mozilla-beta.nightly.latest.firefox.linux64-nightly-repackage-signing",
-    "task_type": "signing",
-}, {
-    "name": "mozilla-release linux64 en-US repackage signing",
-    "index": "gecko.v2.mozilla-release.nightly.latest.firefox.linux64-nightly-repackage-signing",
-    "task_type": "signing",
-}))
+# @pytest.mark.parametrize("branch_context", ({
+#     "name": "mozilla-central nightly desktop",
+#     "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-desktop",
+#     "task_label_to_task_type": {
+#         "balrog-.*-nightly/opt": "balrog",
+#         "beetmover-repackage-.*-nightly/opt": "beetmover",
+#     },
+# }, {
+#     "name": "mozilla-central nightly android",
+#     "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-android",
+#     "task_label_to_task_type": {
+#         "push-apk/opt": "pushapk",
+#     },
+# }, {
+#     "name": "mozilla-central win64 en-US repackage signing",
+#     "index": "gecko.v2.mozilla-central.nightly.latest.firefox.win64-nightly-repackage-signing",
+#     "task_type": "signing",
+# }, {
+#     "name": "mozilla-beta linux64 en-US repackage signing",
+#     "index": "gecko.v2.mozilla-beta.nightly.latest.firefox.linux64-nightly-repackage-signing",
+#     "task_type": "signing",
+# }, {
+#     "name": "mozilla-release linux64 en-US repackage signing",
+#     "index": "gecko.v2.mozilla-release.nightly.latest.firefox.linux64-nightly-repackage-signing",
+#     "task_type": "signing",
+# }))
 @pytest.mark.asyncio
-async def test_verify_production_cot(branch_context):
+async def test_verify_production_cot():
+    branch_context = {
+        "name": "mozilla-central win64 en-US repackage signing",
+        "index": "gecko.v2.mozilla-central.nightly.latest.firefox.win64-nightly-repackage-signing",
+        "task_type": "signing",
+    }
     index = Index(options={'rootUrl': DEFAULT_CONFIG['taskcluster_root_url']})
     queue = Queue(options={'rootUrl': DEFAULT_CONFIG['taskcluster_root_url']})
 
@@ -369,7 +373,7 @@ async def test_private_artifacts(context_function):
             fh.write("bar")
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status == 0
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'completed'

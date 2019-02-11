@@ -173,7 +173,7 @@ class RunTasks:
 
 
 # run_tasks {{{1
-async def run_tasks(context, creds_key="credentials"):
+async def run_tasks(context):
     """Run any tasks returned by claimWork.
 
     Returns the integer status of the task that was run, or None if no task was
