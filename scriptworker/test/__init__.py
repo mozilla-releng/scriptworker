@@ -318,9 +318,15 @@ def noop_sync(*args, **kwargs):
     pass
 
 
-def create_finished_promise(result=None):
+def create_finished_future(result=None):
     future = asyncio.Future()
     future.set_result(result)
+    return future
+
+
+def create_rejected_future(exception=BaseException):
+    future = asyncio.Future()
+    future.set_exception(exception)
     return future
 
 
@@ -333,6 +339,12 @@ def create_slow_async(result=None):
         return result
 
     return future, slow_function
+
+
+def create_sync(result=None):
+    def fn(*args, **kwargs):
+        return result
+    return fn
 
 
 def create_async(result=None):

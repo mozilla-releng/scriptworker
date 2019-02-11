@@ -147,10 +147,9 @@ class RunTasks:
             return None
 
     async def _run_cancellable(self, coroutine: types.coroutine):
-        if self.is_cancelled:
-            raise asyncio.CancelledError
-
         self.future = asyncio.ensure_future(coroutine)
+        if self.is_cancelled:
+            self.future.cancel()
         result = await self.future
         self.future = None
         return result

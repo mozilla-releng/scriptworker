@@ -15,7 +15,7 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
-
+from scriptworker.test import create_finished_future, create_rejected_future
 
 from . import touch, rw_context, fake_session, fake_session_500, successful_queue
 
@@ -68,22 +68,31 @@ def test_expiration_arrow(context):
 # upload_artifacts {{{1
 @pytest.mark.asyncio
 async def test_upload_artifacts(context):
-    args = []
-    os.makedirs(os.path.join(context.config['artifact_dir'], 'public'))
-    paths = [
+    create_artifact_paths = []
+
+    async def foo(_, path, **kwargs):
+        create_artifact_paths.append(path)
+
+    with mock.patch('scriptworker.artifacts.create_artifact', new=foo):
+        await upload_artifacts(context, ['one', 'public/two'])
+
+    assert create_artifact_paths == [
         os.path.join(context.config['artifact_dir'], 'one'),
         os.path.join(context.config['artifact_dir'], 'public/two'),
     ]
-    for path in paths:
-        touch(path)
 
-    async def foo(_, path, **kwargs):
-        args.append(path)
 
-    with mock.patch('scriptworker.artifacts.create_artifact', new=foo):
-        await upload_artifacts(context)
+@pytest.mark.asyncio
+async def test_upload_artifacts_throws(context):
+    def mock_create_artifact():
+        yield create_finished_future()
+        yield create_rejected_future(ArithmeticError)
 
-    assert sorted(args) == sorted(paths)
+    generator = mock_create_artifact()
+    with mock.patch('scriptworker.artifacts.create_artifact', new=lambda *args, **kwargs: next(generator)):
+        with pytest.raises(ArithmeticError):
+            await upload_artifacts(context, ['one', 'public/two'])
+
 
 
 @pytest.mark.parametrize('filename, original_content, expected_content_type, expected_encoding', (
