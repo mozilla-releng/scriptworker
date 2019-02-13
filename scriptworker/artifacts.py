@@ -21,7 +21,6 @@ from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
     download_file,
-    filepaths_in_dir,
     get_loggable_url,
     raise_future_exceptions,
     retry_async,
@@ -62,7 +61,6 @@ async def upload_artifacts(context, files):
         Exception: any exceptions the tasks raise.
 
     """
-
     def to_upload_future(target_path):
         path = os.path.join(context.config['artifact_dir'], target_path)
         content_type, content_encoding = compress_artifact_if_supported(path)
