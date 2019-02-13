@@ -11,12 +11,14 @@ import mock
 import os
 import pprint
 import pytest
-from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 import scriptworker.task as swtask
 import scriptworker.log as log
 import sys
 import taskcluster.exceptions
 import time
+
+from scriptworker.task_process import TaskProcess
 from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
@@ -342,6 +344,16 @@ async def test_run_task(context):
     log_file = log.get_log_filename(context)
     assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
     assert status == 1
+
+
+@pytest.mark.asyncio
+async def test_run_task_shutdown(context):
+    async def stop_task_process(task_process: TaskProcess):
+        await task_process.worker_shutdown_stop()
+        return task_process
+
+    with pytest.raises(WorkerShutdownDuringTask):
+        await swtask.run_task(context, stop_task_process)
 
 
 @pytest.mark.asyncio
