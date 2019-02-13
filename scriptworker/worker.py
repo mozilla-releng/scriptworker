@@ -12,7 +12,7 @@ import logging
 import os
 import sys
 import signal
-import types
+import typing
 
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
@@ -37,6 +37,9 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
 
     args:
         context (scriptworker.context.Context): the scriptworker context.
+        run_cancellable (typing.Callable): wraps future such that it'll cancel upon worker shutdown
+        to_cancellable_process (typing.Callable): wraps ``TaskProcess`` such that it will stop if the worker is shutting
+            down
 
     Raises:
         Exception: on unexpected exception.
@@ -148,7 +151,7 @@ class RunTasks:
         except asyncio.CancelledError:
             return None
 
-    async def _run_cancellable(self, coroutine: types.coroutine):
+    async def _run_cancellable(self, coroutine: typing.Awaitable):
         self.future = asyncio.ensure_future(coroutine)
         if self.is_cancelled:
             self.future.cancel()
@@ -183,9 +186,6 @@ async def run_tasks(context):
 
     args:
         context (scriptworker.context.Context): the scriptworker context.
-        creds_key (str, optional): when reading the creds file, this dict key
-            corresponds to the credentials value we want to use.  Defaults to
-            "credentials".
 
     Raises:
         Exception: on unexpected exception.

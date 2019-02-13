@@ -388,6 +388,7 @@ async def test_run_tasks_cancel_cot(context, mocker):
     mocker.patch('scriptworker.worker.run_task', noop_async)
     mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.cleanup', noop_sync)
+    mocker.patch('os.path.isfile', create_sync(True))
 
     mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
     mock_do_upload.return_value = create_finished_future(0)
@@ -416,6 +417,7 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     mocker.patch('scriptworker.worker.run_task', noop_async)
     mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.cleanup', noop_sync)
+    mocker.patch('os.path.isfile', create_sync(True))
 
     mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
     mock_do_upload.return_value = create_finished_future(0)
@@ -486,7 +488,7 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
     mock_run_task.assert_not_called()
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
-    mock_do_upload.assert_called_once_with(context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
+    mock_do_upload.assert_called_once_with(context, [])
 
 
 @pytest.mark.asyncio
@@ -508,6 +510,7 @@ async def test_run_tasks_cancel_right_before_proc_created(context, mocker):
     mocker.patch('scriptworker.worker.reclaim_task', noop_async)
     mocker.patch('scriptworker.worker.generate_cot', noop_sync)
     mocker.patch('scriptworker.worker.cleanup', noop_sync)
+    mocker.patch('os.path.isfile', create_sync(True))
 
     run_tasks = RunTasks()
 
