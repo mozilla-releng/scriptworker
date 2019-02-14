@@ -23,9 +23,8 @@ import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-from scriptworker.utils import noop_sync
 
-from . import tmpdir
+from . import tmpdir, noop_sync
 
 assert tmpdir  # silence pyflakes
 
@@ -255,7 +254,7 @@ async def test_sync_main_runs_fully(config, should_validate_task):
     (False, None),
     (True, {'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}),
 ))
-def test_init_context(config, monkeypatch, does_use_argv, default_config):
+def test_init_context(config, monkeypatch, mocker, does_use_argv, default_config):
     copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
     with tempfile.NamedTemporaryFile('w+') as f:
         json.dump(config, f)
@@ -280,7 +279,8 @@ def test_init_context(config, monkeypatch, does_use_argv, default_config):
     assert context.config == expected_config
     assert context.config['worker_type'] != 'default_value'
 
-    assert context.write_json == noop_sync
+    mock_open = mocker.patch('builtins.open')
+    mock_open.assert_not_called()
 
 
 def test_fail_init_context(capsys, monkeypatch):

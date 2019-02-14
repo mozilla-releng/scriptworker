@@ -11,8 +11,9 @@ import logging
 import os
 import pytest
 import re
+
+from scriptworker.exceptions import Download404
 import slugid
-import sys
 import tempfile
 from scriptworker.config import (
     CREDS_FILES,
@@ -164,7 +165,7 @@ async def test_run_successful_task(context_function):
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status == 1
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'failed'
@@ -185,7 +186,7 @@ async def test_run_maxtimeout(context_function):
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
             assert status == context.config['task_max_timeout_status']
 
 
@@ -202,10 +203,10 @@ async def do_cancel(context, task_id):
         break
 
 
-async def run_task_to_cancel(context):
+async def run_task_until_stopped(context):
     async with remember_cwd():
         os.chdir(os.path.dirname(context.config['work_dir']))
-        status = await worker.run_tasks(context, creds_key="integration_credentials")
+        status = await worker.run_tasks(context)
         return status
 
 
@@ -223,7 +224,7 @@ async def test_cancel_task():
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         cancel_fut = asyncio.ensure_future(do_cancel(context, task_id))
-        task_fut = asyncio.ensure_future(run_task_to_cancel(context))
+        task_fut = asyncio.ensure_future(run_task_until_stopped(context))
         await utils.raise_future_exceptions([cancel_fut, task_fut])
         status = await context.queue.status(task_id)
         assert len(status['status']['runs']) == 1
@@ -239,6 +240,71 @@ async def test_cancel_task():
         assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
 
 
+# cancel task {{{1
+async def do_shutdown(context):
+    count = 0
+    while True:
+        await asyncio.sleep(1)
+        count += 1
+        assert count < 30, "do_shutdown Timeout!"
+        if not context.running_tasks or not context.task or not context.proc:
+            continue
+        await context.running_tasks.cancel()
+        break
+
+
+@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
+@pytest.mark.asyncio
+async def test_shutdown():
+    task_id = slugid.nice().decode('utf-8')
+    partial_config = {
+        'task_script': ('bash', '-c', '>&2 echo running task script && sleep 30 && exit 1'),
+    }
+    # Don't use temporary credentials from claimTask, since they don't allow us
+    # to cancel the created task.
+    async with get_context(partial_config) as context:
+        result = await create_task(context, task_id, task_id)
+        assert result['status']['state'] == 'pending'
+        fake_cot_log = os.path.join(context.config['artifact_dir'], 'public', 'logs', 'chain_of_trust.log')
+        fake_other_artifact = os.path.join(context.config['artifact_dir'], 'public', 'artifact.apk')
+
+        with open(fake_cot_log, 'w') as file:
+            file.write('CoT logs')
+        with open(fake_other_artifact, 'w') as file:
+            file.write('unrelated artifact')
+        cancel_fut = asyncio.ensure_future(do_shutdown(context))
+        task_fut = asyncio.ensure_future(run_task_until_stopped(context))
+        await utils.raise_future_exceptions([cancel_fut, task_fut])
+        status = await context.queue.status(task_id)
+        assert len(status['status']['runs']) == 2  # Taskcluster should create a replacement task
+        assert status['status']['runs'][0]['state'] == 'exception'
+        assert status['status']['runs'][0]['reasonResolved'] == 'worker-shutdown'
+        log_url = context.queue.buildUrl(
+            'getArtifact', task_id, 0, 'public/logs/live_backing.log'
+        )
+        cot_log_url = context.queue.buildUrl(
+            'getArtifact', task_id, 0, 'public/logs/chain_of_trust.log'
+        )
+        other_artifact_url = context.queue.buildUrl(
+            'getArtifact', task_id, 0, 'public/artifact.apk'
+        )
+        log_path = os.path.join(context.config['work_dir'], 'log')
+        cot_log_path = os.path.join(context.config['work_dir'], 'cot_log')
+        other_artifact_path = os.path.join(context.config['work_dir'], 'artifact.apk')
+        await utils.download_file(context, log_url, log_path)
+        await utils.download_file(context, cot_log_url, cot_log_path)
+        with pytest.raises(Download404):
+            await utils.download_file(context, other_artifact_url, other_artifact_path)
+
+        with open(log_path) as fh:
+            contents = fh.read()
+        assert contents.rstrip() == "running task script\nAutomation Error: python exited with signal -15"
+
+        with open(cot_log_path) as fh:
+            contents = fh.read()
+        assert contents.rstrip() == "CoT logs"
+
+
 # empty_queue {{{1
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
@@ -247,7 +313,7 @@ async def test_empty_queue(context_function):
     async with context_function(None) as context:
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status is None
 
 
@@ -369,7 +435,7 @@ async def test_private_artifacts(context_function):
             fh.write("bar")
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['work_dir']))
-            status = await worker.run_tasks(context, creds_key="integration_credentials")
+            status = await worker.run_tasks(context)
         assert status == 0
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'completed'

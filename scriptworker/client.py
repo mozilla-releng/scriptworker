@@ -20,7 +20,7 @@ from urllib.parse import unquote
 from scriptworker.constants import STATUSES
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-from scriptworker.utils import load_json_or_yaml, match_url_regex, noop_sync
+from scriptworker.utils import load_json_or_yaml, match_url_regex
 
 log = logging.getLogger(__name__)
 
@@ -168,7 +168,7 @@ def _init_context(config_path=None, default_config=None):
     context = Context()
 
     # This prevents *script from pasting the whole context.
-    context.write_json = noop_sync
+    context.write_json = lambda *args: None
 
     if config_path is None:
         if len(sys.argv) != 2:

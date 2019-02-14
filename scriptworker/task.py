@@ -7,6 +7,7 @@ Attributes:
     log (logging.Logger): the log object for the module
 
 """
+
 import aiohttp
 import asyncio
 from asyncio.subprocess import PIPE
@@ -15,15 +16,15 @@ import logging
 import os
 import pprint
 import re
-import signal
 from urllib.parse import unquote, urlparse
 
 import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
-from scriptworker.exceptions import ScriptWorkerTaskException
+from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.log import get_log_filehandle, pipe_to_log
+from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     match_url_path_callback,
     match_url_regex,
@@ -414,13 +415,14 @@ def prepare_to_run_task(context, claim_task):
 
 
 # run_task {{{1
-async def run_task(context):
+async def run_task(context, to_cancellable_process):
     """Run the task, sending stdout+stderr to files.
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+        to_cancellable_process (types.Callable): tracks the process so that it can be stopped if the worker is shut down
 
     Returns:
         int: exit code
@@ -433,31 +435,32 @@ async def run_task(context):
         'close_fds': True,
         'preexec_fn': lambda: os.setsid(),
     }
-    context.proc = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+
+    subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    context.proc = await to_cancellable_process(TaskProcess(subprocess))
     timeout = context.config['task_max_timeout']
 
     with get_log_filehandle(context) as log_filehandle:
         stderr_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.stderr, filehandles=[log_filehandle])
+            pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle])
         )
         stdout_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.stdout, filehandles=[log_filehandle])
+            pipe_to_log(context.proc.process.stdout, filehandles=[log_filehandle])
         )
         try:
             _, pending = await asyncio.wait(
                 [stderr_future, stdout_future], timeout=timeout
             )
             if pending:
-                await kill_proc(
-                    context.proc,
-                    "Exceeded task_max_timeout of {} seconds".format(timeout),
-                    context.config['task_max_timeout_status']
-                )
+                message = "Exceeded task_max_timeout of {} seconds".format(timeout)
+                log.warning(message)
+                await context.proc.stop()
+                raise ScriptWorkerTaskException(message, exit_code=context.config['task_max_timeout_status'])
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
             # log lines.
-            exitcode = await context.proc.wait()
+            exitcode = await context.proc.process.wait()
             # make sure we haven't lost any of the logs
             await asyncio.wait([stdout_future, stderr_future])
             # add an exit code line at the end of the log
@@ -466,8 +469,12 @@ async def run_task(context):
                 status_line = "Automation Error: python exited with signal {}".format(exitcode)
             log.info(status_line)
             print(status_line, file=log_filehandle)
-            # reset context.proc
+            stopped_due_to_worker_shutdown = context.proc.stopped_due_to_worker_shutdown
             context.proc = None
+
+    if stopped_due_to_worker_shutdown:
+        raise WorkerShutdownDuringTask
+
     return exitcode
 
 
@@ -506,11 +513,10 @@ async def reclaim_task(context, task):
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
                 if context.proc and task == context.task:
-                    await kill_proc(
-                        context.proc,
-                        "Killing task after receiving 409 status in reclaim_task",
-                        context.config['invalid_reclaim_status']
-                    )
+                    message = "Killing task after receiving 409 status in reclaim_task"
+                    log.warning(message)
+                    await context.proc.stop()
+                    raise ScriptWorkerTaskException(message, exit_code=context.config['invalid_reclaim_status'])
                 break
             else:
                 raise
@@ -552,68 +558,6 @@ async def complete_task(context, result):
             log.info("409: not reporting complete/failed.")
         else:
             raise
-
-
-# kill_pid {{{1
-async def kill_pid(pid, sleep_time=1):
-    """Kill ``pid`` with various signals.
-
-    Args:
-        pid (int): the process id to kill.
-        sleep_time (int, optional): how long to sleep between killing the pid
-            and checking if the pid is still running.
-
-    """
-    siglist = [signal.SIGINT, signal.SIGTERM]
-    log.info("Killing process tree for pid {}".format(pid))
-    while True:
-        sig = signal.SIGKILL
-        if siglist:  # pragma: no branch
-            sig = siglist.pop(0)
-        try:
-            os.kill(pid, sig)
-            await asyncio.sleep(sleep_time)
-            os.kill(pid, 0)
-        except (OSError, ProcessLookupError):
-            break
-
-
-# kill_proc {{{1
-async def kill_proc(proc, message, exit_code):
-    """Make sure the proc pid's process and process group are killed.
-
-    First, terminate the process, then kill the process group (-pid), then
-    kill the process.
-
-    Then raise a ``ScriptWorkerTaskException`` with ``exit_code``.
-
-    Args:
-        proc (asyncio.subprocess.Process): the process to kill
-        message (str): the error message
-        exit_code (int): the exit code to specify in ``ScriptWorkerTaskException``
-            (should be part of ``STATUSES``)
-
-    Raises:
-        ScriptWorkerTaskException: after killing the task.
-
-    Returns:
-        None: if no proc to kill
-
-    """
-    pid = proc.pid
-    log.warning("{}: pid {}; killing".format(message, pid))
-    try:
-        proc.terminate()
-    except ProcessLookupError:
-        return
-    await kill_pid(-pid)
-    try:
-        # Kill context.proc if the `kill_pid` didn't work
-        proc.kill()
-    except ProcessLookupError:
-        # No process to kill; `kill_pid` must have worked
-        pass
-    raise ScriptWorkerTaskException(message, exit_code=exit_code)
 
 
 # claim_work {{{1

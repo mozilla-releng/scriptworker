@@ -153,3 +153,7 @@ class ConfigError(ScriptWorkerException):
         exit_code (int): this is set to 5 (internal-error).
 
     """
+
+
+class WorkerShutdownDuringTask(BaseException):
+    """Task cancelled because worker is shutting down."""
