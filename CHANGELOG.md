@@ -2,6 +2,26 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [19.0.0] - 2019-02-13
+### Added
+- added `running_tasks` property to `Context`
+- added `WorkerShutdownDuringTask` exception
+- added `TaskProcess` object and `task_process` submodule
+- added a `RunTasks` object
+
+### Changed
+- `upload_artifacts` now takes a `files` arg
+- `run_task` now takes a `to_cancellable_process` arg
+- `do_run_task` takes two new args
+- `do_upload` takes a `files` arg
+
+### Fixed
+- scriptworker should now handle SIGTERM more gracefully, reporting `worker-shutdown`
+
+### Removed
+- removed `kill_pid` and `kill_proc` functions
+- removed `noop_sync` from utils
+
 ## [18.1.0] - 2019-02-01
 ### Added
 - added `ownTaskId` to `jsone_context`.
