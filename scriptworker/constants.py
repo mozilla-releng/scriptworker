@@ -127,10 +127,10 @@ DEFAULT_CONFIG = frozendict({
     "ed25519_private_key_path": "...",
     "ed25519_public_keys": frozendict({
         "docker-worker": tuple([
-            'TBD',
+            's+Qtw3sPJlPeWUuhSxLupv8QEC8B4T4Xyc2TLbic+/8=',
         ]),
         "generic-worker": tuple([
-            'TBD',
+            '6UPrVTyw0EPQV7bCEMXo+5jNR4clbK55JWG74bBJHZQ=',
         ]),
         "scriptworker": tuple([
             'DaEKQ79ZC/X+7O8zwm8iyhwTlgyjRSi/TDd63fh2JG0=',
