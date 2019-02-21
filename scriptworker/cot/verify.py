@@ -1350,7 +1350,7 @@ def _wrap_action_hook_with_let(tmpl, action_perm):
     Given the content of .taskcluster.yml, construct the task template that
     would appear in the corresponding hook definition.  This is an attempt to
     duplicate the logic here:
-    https://hg.mozilla.org/build/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
+    https://hg.mozilla.org/ci/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
 
     """
     return {
