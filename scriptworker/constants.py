@@ -124,7 +124,7 @@ DEFAULT_CONFIG = frozendict({
     "privkey_path": "...",
     "my_email": "scriptworker@example.com",
 
-    "project_configuration_url": "https://hg.mozilla.org/build/ci-configuration/raw-file/default/projects.yml",
+    "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
     "pushlog_url": "{repo}/json-pushes?changeset={revision}&tipsonly=1&version=2&full=1",
 
     "chain_of_trust_hash_algorithm": "sha256",
