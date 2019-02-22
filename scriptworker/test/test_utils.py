@@ -413,6 +413,19 @@ def test_get_loggable_url(url, expected):
     assert utils.get_loggable_url(url) == expected
 
 
+@pytest.mark.parametrize('url, expected', ((
+    'https://foo/bar', ['bar']
+), (
+    'https://foo/bar/baz', ['bar', 'baz']
+), (
+    'https://foo/bar/baz?param1=value', ['bar', 'baz']
+), (
+    'https://foo/bar/baz?param1=value1&param2=value2', ['bar', 'baz']
+)))
+def test_get_parts_of_url_path(url, expected):
+    assert utils.get_parts_of_url_path(url) == expected
+
+
 # match_url_path_callback {{{1
 @pytest.mark.parametrize("path", (
     "/mozilla-central", "/mozilla-central/foo/bar", "/mozilla-central/"

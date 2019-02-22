@@ -15,16 +15,23 @@ import logging
 import os
 import pprint
 import re
-from urllib.parse import unquote, urlparse
 
 import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
+from scriptworker.github import (
+    GitHubRepository,
+    extract_github_repo_owner_and_name,
+    extract_github_repo_and_revision_from_source_url,
+    is_github_repo_owner_the_official_one,
+    is_github_url,
+)
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
+    get_parts_of_url_path,
     match_url_path_callback,
     match_url_regex,
 )
@@ -348,46 +355,8 @@ def get_repo_scope(task, name):
         return repo_scopes[0]
 
 
-def extract_github_repo_owner_and_name(repo_url):
-    """Given an URL, return the repo name and who owns it.
-
-    Args:
-        repo_url (str): The URL to the GitHub repository
-
-    Raises:
-        ValueError: on repo_url that aren't from github
-
-    Returns:
-        str, str: the owner of the repository, the repository name
-
-    """
-    if not repo_url.startswith('https://github.com/'):
-        raise ValueError('{} is not a supported GitHub URL!'.format(repo_url))
-
-    parts = _get_parts_of_url_path(repo_url)
-    repo_owner = parts[0]
-    repo_name = parts[1]
-
-    if repo_name.endswith(".git"):
-        repo_name = repo_name[:-len(".git")]
-
-    return repo_owner, repo_name
-
-
-def _get_parts_of_url_path(url):
-    parsed = urlparse(url)
-    path = unquote(parsed.path).lstrip('/')
-    parts = path.split('/')
-    return parts
-
-
 def _is_try_url(url):
-    return 'try' in _get_parts_of_url_path(url)[0]
-
-
-def _does_url_come_from_official_repo(context, url):
-    official_repo_owner = context.config['official_github_repos_owner']
-    return not official_repo_owner or official_repo_owner == _get_parts_of_url_path(url)[0]
+    return 'try' in get_parts_of_url_path(url)[0]
 
 
 def is_try(task, source_env_prefix):
@@ -422,10 +391,10 @@ def is_try(task, source_env_prefix):
     ))
 
 
-def is_pull_request(context, task):
+async def is_pull_request(context, task):
     """Determine if a task is a pull-request-like task (restricted privs).
 
-    This goes further than checking ``tasks_for``.  We may or may not want
+    This goes further than checking ``tasks_for``. We may or may not want
     to keep this.
 
     This checks for the following things::
@@ -433,24 +402,49 @@ def is_pull_request(context, task):
         * ``task.extra.env.tasks_for`` == "github-pull-request"
         * ``task.payload.env.MOBILE_HEAD_REPOSITORY`` doesn't come from an official repo
         * ``task.metadata.source`` doesn't come from an official repo, either
+        * The last 2 items are landed on the official repo
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         task (dict): the task definition to check.
 
     Returns:
-        bool: True if it's a pull-request
+        bool: True if it's a pull-request. False if it either comes from the official repos or if
+        the origin can't be determined. In fact, valid scriptworker tasks don't expose
+        ``task.extra.env.tasks_for`` or ``task.payload.env.MOBILE_HEAD_REPOSITORY``, for instance.
 
     """
-    repo = get_repo(task, context.config['source_env_prefix']) or ''
-    return any((
-        task.get('extra', {}).get('tasks_for') == 'github-pull-request',
-        not _does_url_come_from_official_repo(context, repo),
-        not _does_url_come_from_official_repo(context, task['metadata'].get('source', '')),
-    ))
+    tasks_for = task.get('extra', {}).get('tasks_for')
+    repo_url_from_payload = get_repo(task, context.config['source_env_prefix'])
+    revision_from_payload = get_revision(task, context.config['source_env_prefix'])
+
+    metadata_source_url = task['metadata'].get('source', '')
+    repo_from_source_url, revision_from_source_url = \
+        extract_github_repo_and_revision_from_source_url(metadata_source_url)
+
+    conditions = [tasks_for == 'github-pull-request']
+    urls_revisions_and_can_skip = (
+        (repo_url_from_payload, revision_from_payload, True),
+        (repo_from_source_url, revision_from_source_url, False),
+    )
+    for repo_url, revision, can_skip in urls_revisions_and_can_skip:
+        # XXX In the case of scriptworker tasks, neither the repo nor the revision is defined
+        if not repo_url and can_skip:
+            continue
+
+        repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+        conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
+
+        if not revision and can_skip:
+            continue
+
+        github_repository = GitHubRepository(repo_owner, repo_name, context.config['github_oauth_token'])
+        conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision))
+
+    return any(conditions)
 
 
-def is_try_or_pull_request(context, task):
+async def is_try_or_pull_request(context, task):
     """Determine if a task is a try or a pull-request-like task (restricted privs).
 
     Checks are the ones done in ``is_try`` and ``is_pull_request``
@@ -463,9 +457,32 @@ def is_try_or_pull_request(context, task):
         bool: True if it's a pull-request or a try task
 
     """
+    if is_github_task(task):
+        return await is_pull_request(context, task)
+    else:
+        return is_try(task, context.config['source_env_prefix'])
+
+
+def is_github_task(task):
+    """Determine if a task is related to GitHub.
+
+    This function currently looks into the ``schedulerId``, ``extra.tasks_for``, and
+    ``metadata.source``.
+
+    Args:
+        task (dict): the task definition to check.
+
+    Returns:
+        bool: True if a piece of data refers to GitHub
+
+    """
     return any((
-        is_try(task, context.config['source_env_prefix']),
-        is_pull_request(context, task),
+        # XXX Cron tasks don't usually define 'taskcluster-github' as their schedulerId as they
+        # are scheduled within another Taskcluster task.
+        task.get('schedulerId') == 'taskcluster-github',
+        # XXX Same here, cron tasks don't start with github
+        task.get('extra', {}).get('tasks_for', '').startswith('github-'),
+        is_github_url(task.get('metadata', {}).get('source', '')),
     ))
 
 

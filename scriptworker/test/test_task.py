@@ -17,6 +17,7 @@ import scriptworker.log as log
 import sys
 import taskcluster.exceptions
 import time
+from unittest.mock import MagicMock
 
 from scriptworker.task_process import TaskProcess
 from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
@@ -185,30 +186,6 @@ def test_get_push_date_time(push_date_time):
     assert swtask.get_push_date_time(task, 'MOBILE') == push_date_time
 
 
-@pytest.mark.parametrize('repo_url, expected_user, expected_repo_name, raises', ((
-    'https://github.com/mozilla-mobile/android-components',
-    'mozilla-mobile', 'android-components', False
-), (
-    'https://github.com/mozilla-mobile/android-components.git',
-    'mozilla-mobile', 'android-components', False
-), (
-    'https://github.com/JohanLorenzo/android-components',
-    'JohanLorenzo', 'android-components', False
-), (
-    'https://github.com/JohanLorenzo/android-components/raw/0e8222165d3ec11e932d5f900e8851dc98f62e98/.taskcluster.yml',
-    'JohanLorenzo', 'android-components', False
-), (
-    'https://hg.mozilla.org/mozilla-central',
-    None, None, True
-)))
-def test_extract_github_repo_owner_and_name(repo_url, expected_user, expected_repo_name, raises):
-    if raises:
-        with pytest.raises(ValueError):
-            swtask.extract_github_repo_owner_and_name(repo_url)
-    else:
-        assert swtask.extract_github_repo_owner_and_name(repo_url) == (expected_user, expected_repo_name)
-
-
 # get_worker_type {{{1
 @pytest.mark.parametrize("task,result", (({"workerType": "one"}, "one"), ({"workerType": "two"}, "two")))
 def test_get_worker_type(task, result):
@@ -340,81 +317,124 @@ def test_is_try(task,source_env_prefix):
     assert swtask.is_try(task, source_env_prefix=source_env_prefix)
 
 
-@pytest.mark.parametrize('task, expected', ((
-    {'payload': {}, 'extra': {'env': {'tasks_for': 'github-pull-request'}}, 'metadata': {}, },
-    True,
+@pytest.mark.parametrize('task, has_commit_landed, raises, expected', ((
+    {
+        'payload': {},
+        'extra': {'env': {'tasks_for': 'github-pull-request'}},
+        'metadata': {'source': 'https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml'},
+    },
+    True, False, True,
 ), (
-    {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo'}}, 'extra': {'env': {'tasks_for': 'github-push'}}, 'metadata': {}},
-    True,
+    {
+        'payload': {
+            'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo'}
+        },
+        'extra': {'env': {'tasks_for': 'github-push'}},
+        'metadata': {'source': 'https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml'},
+    },
+    True, False, True,
 ), (
-    {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo.git'}}, 'extra': {'env': {'tasks_for': 'github-release'}}, 'metadata': {}},
-    True,
+    {
+        'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo.git'}},
+        'extra': {'env': {'tasks_for': 'github-release'}},
+        'metadata': {'source': 'https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml'},
+    },
+    True, False, True,
+), (
+    {
+        'payload': {},
+        'metadata': {'source': 'https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml'},
+    },
+    True, False, True,
+), (
+    {
+        'extra': {
+            'env': {
+                'tasks_for': 'cron',
+            },
+        },
+        'metadata': {
+            'source': 'https://github.com/mozilla-mobile/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml',
+        },
+        'payload': {
+            'env': {
+                'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/some-repo',
+            },
+        },
+    },
+    True, False, False,
 ), (
     {'payload': {'env': {'MOBILE_HEAD_REPOSITORY': 'https://github.com/some-user/some-repo.git'}}, 'metadata': {}},
-    True,
+    True, True, None,
+), (
+    {'extra': {}, 'metadata': {'source': 'https://some-non-github-url.tld',}, 'payload': {},},
+    True, True, None,
 ), (
     {'payload': {}, 'metadata': {'source': 'https://github.com/some-user/some-repo'}},
-    True,
-), (
-    {'payload': {}, 'metadata': {'source': 'https://github.com/some-user/some-repo/raw/somerevision/.taskcluster.yml'}},
-    True,
-), (
-    {
-        'extra': {
-            'env': {
-                'tasks_for': 'cron',
-            },
-        },
-        'metadata': {
-            'source': 'https://github.com/mozilla-mobile/some-repo/raw/some-revision/.taskcluster.yml',
-        },
-        'payload': {
-            'env': {
-                'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/some-repo',
-            },
-        },
-    },
-    False
+    True, True, None,
 )))
-def test_is_pull_request(mobile_context, task, expected):
-    assert swtask.is_pull_request(mobile_context, task) == expected
+@pytest.mark.asyncio
+async def test_is_pull_request(mocker, mobile_context, task, has_commit_landed, raises, expected):
+    async def has_commit_landed_on_repository(*args):
+        return has_commit_landed
+
+    github_repository_instance_mock = MagicMock()
+    github_repository_instance_mock.has_commit_landed_on_repository = has_commit_landed_on_repository
+    GitHubRepositoryClassMock = MagicMock()
+    GitHubRepositoryClassMock.return_value = github_repository_instance_mock
+    mocker.patch.object(swtask, 'GitHubRepository', GitHubRepositoryClassMock)
+
+    if raises:
+        with pytest.raises(ValueError):
+            await swtask.is_pull_request(mobile_context, task)
+    else:
+        assert await swtask.is_pull_request(mobile_context, task) == expected
 
 
-@pytest.mark.parametrize('context_type, task, expected', ((
-#     'firefox',
-#     {'payload': {'env': {'GECKO_HEAD_REPOSITORY': 'https://hg.mozilla.org/try/blahblah'}}, 'metadata': {}, 'schedulerId': 'x'},
-#     True,
-# ), (
-#     'mobile',
-#     {'payload': {}, 'extra': {'env': {'tasks_for': 'github-pull-request'}}, 'metadata': {}, 'schedulerId': 'taskcluster-github'},
-#     True,
-# ), (
-    'firefox',
-    {'payload': {'env': {'GECKO_HEAD_REPOSITORY': 'https://hg.mozilla.org/mozilla-central'}}, 'metadata': {}, 'schedulerId': 'x'},
-    False,
-), (
-    'mobile',
-    {
-        'extra': {
-            'env': {
-                'tasks_for': 'cron',
-            },
-        },
-        'metadata': {
-            'source': 'https://github.com/mozilla-mobile/some-repo/raw/some-revision/.taskcluster.yml',
-        },
-        'payload': {
-            'env': {
-                'MOBILE_HEAD_REPOSITORY': 'https://github.com/mozilla-mobile/some-repo',
-            },
-        },
-        'schedulerId': 'taskcluster-github',
-    },
-    False
-)))
-def test_is_try_or_pull_request(context, mobile_context, context_type, task, expected):
+@pytest.mark.parametrize('context_type, is_github_task, is_try, is_pr, expected', (
+    ('firefox', True, True, False, False,),
+    ('firefox', True, False, False, False,),
+    ('firefox', False, False, False, False,),
+    ('firefox', False, True, False, True,),
+
+    ('mobile', True, False, True, True,),
+    ('mobile', True, False, False, False,),
+    ('mobile', False, False, False, False,),
+    ('mobile', False, False, True, False,),
+))
+@pytest.mark.asyncio
+async def test_is_try_or_pull_request(mocker, context, mobile_context, context_type, is_github_task, is_try, is_pr, expected):
     context_ = mobile_context if context_type == 'mobile' else context
-    assert swtask.is_try_or_pull_request(context_, task) == expected
+
+    async def is_pull_request(*args):
+        return is_pr
+
+    mocker.patch.object(swtask, 'is_github_task', lambda *args: is_github_task)
+    mocker.patch.object(swtask, 'is_pull_request', is_pull_request)
+    mocker.patch.object(swtask, 'is_try', lambda *args: is_try)
+
+    assert await swtask.is_try_or_pull_request(context_, {}) == expected
+
+
+@pytest.mark.parametrize('task, expected', ((
+    {'schedulerId': 'taskcluster-github'}, True,
+), (
+    {'extra': {'tasks_for': 'github-pull-request'}}, True,
+), (
+    {'extra': {'tasks_for': 'github-push'}}, True,
+), (
+    {'extra': {'tasks_for': 'github-release'}}, True,
+), (
+    {'metadata': {'source': 'https://github.com/some-owner/some-repo'}}, True,
+), (
+    {'extra': {'tasks_for': 'cron'}, 'metadata': {'source': 'https://github.com/some-owner/some-repo'}}, True,
+), (
+    {'schedulerId': 'gecko-level-1', 'extra': {'tasks_for': 'hg-push'}, 'metadata': {'source': 'https://hg.mozilla.org/try'}}, False,
+), (
+    {'schedulerId': 'gecko-level-3', 'extra': {'tasks_for': 'action'}, 'metadata': {'source': 'https://hg.mozilla.org/mozilla-central'}}, False,
+)))
+def test_is_github_task(task, expected):
+    assert swtask.is_github_task(task) == expected
 
 
 # is_action {{{1

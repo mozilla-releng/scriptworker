@@ -17,8 +17,9 @@ import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
+from scriptworker.test import create_async, create_finished_future
 from scriptworker.utils import makedirs, load_json_or_yaml
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
 
 
@@ -426,13 +427,14 @@ async def test_get_all_links_in_chain(chain, decision_link, build_link):
 
 
 # is_try {{{1
+@pytest.mark.asyncio
 @pytest.mark.parametrize("bools,expected", (([False, False], False), ([False, True], True)))
-def test_chain_is_try_or_pull_request(chain, bools, expected):
+async def test_chain_is_try_or_pull_request(chain, bools, expected):
     for b in bools:
         m = mock.MagicMock()
-        m.is_try_or_pull_request = b
+        m.is_try_or_pull_request = create_async(b)
         chain.links.append(m)
-    assert chain.is_try_or_pull_request() == expected
+    assert await chain.is_try_or_pull_request() == expected
 
 
 # get_link {{{1
@@ -455,10 +457,11 @@ def test_get_link(chain, ids, req, raises):
 
 
 # link.task {{{1
-def test_link_task(chain):
+@pytest.mark.asyncio
+async def test_link_task(chain):
     link = cotverify.LinkOfTrust(chain.context, 'build', "one")
     link.task = chain.task
-    assert not link.is_try_or_pull_request
+    assert not await link.is_try_or_pull_request()
     assert link.worker_impl == 'scriptworker'
     with pytest.raises(CoTError):
         link.task = {}
@@ -2258,13 +2261,15 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link,
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
     mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises
 ):
+    (source_url, raises) = ('https://github.com/mozilla-mobile/focus-android', False)
     mobile_github_release_link.task['metadata']['source'] = source_url
     mobile_chain.links = [mobile_github_release_link, mobile_build_link]
-    if raises:
-        with pytest.raises(CoTError):
+    with patch.object(mobile_chain, 'is_try_or_pull_request', return_value=create_finished_future(False)):
+        if raises:
+            with pytest.raises(CoTError):
+                await cotverify.trace_back_to_tree(mobile_chain)
+        else:
             await cotverify.trace_back_to_tree(mobile_chain)
-    else:
-        await cotverify.trace_back_to_tree(mobile_chain)
 
 
 

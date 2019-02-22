@@ -121,19 +121,18 @@ class ChainOfTrust(object):
         """
         return [x.task_id for x in self.links]
 
-    def is_try_or_pull_request(self):
+    async def is_try_or_pull_request(self):
         """Determine if any task in the chain is a try task.
 
         Returns:
             bool: True if a task is a try task.
 
         """
-        result = is_try_or_pull_request(self.context, self.task)
-        for link in self.links:
-            if link.is_try_or_pull_request:
-                result = True
-                break
-        return result
+        tasks = [asyncio.ensure_future(link.is_try_or_pull_request()) for link in self.links]
+        tasks.insert(0, asyncio.ensure_future(is_try_or_pull_request(self.context, self.task)))
+
+        conditions = await raise_future_exceptions(tasks)
+        return any(conditions)
 
     def get_link(self, task_id):
         """Get a ``LinkOfTrust`` by task id.
@@ -243,10 +242,9 @@ class LinkOfTrust(object):
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
 
-    @property
-    def is_try_or_pull_request(self):
+    async def is_try_or_pull_request(self):
         """bool: the task is either a try or a pull request one."""
-        return is_try_or_pull_request(self.context, self.task)
+        return await is_try_or_pull_request(self.context, self.task)
 
     @property
     def cot(self):
@@ -2072,7 +2070,7 @@ async def trace_back_to_tree(chain):
                     obj.name, obj.task_id
                 ))
     # Disallow restricted privs on is_try_or_pull_request.  This may be a redundant check.
-    if restricted_privs and chain.is_try_or_pull_request():
+    if restricted_privs and await chain.is_try_or_pull_request():
         errors.append(
             "{} {} has restricted privilege scope, and is_try_or_pull_request()!".format(
                 chain.name, chain.task_id

@@ -527,6 +527,22 @@ def get_loggable_url(url):
     return loggable_url
 
 
+def get_parts_of_url_path(url):
+    """Given a url, take out the path part and split it by '/'.
+
+    Args:
+        url (str): the url slice
+
+    returns
+        list: parts after the domain name of the URL
+
+    """
+    parsed = urlparse(url)
+    path = unquote(parsed.path).lstrip('/')
+    parts = path.split('/')
+    return parts
+
+
 # load_json_or_yaml_from_url {{{1
 async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
     """Retry a json/yaml file download, load it, then return its data.
