@@ -313,6 +313,10 @@ DEFAULT_CONFIG = frozendict({
             }),
             'mobile': frozendict({
                 'project:mobile:android-components:releng:beetmover:bucket:maven-production': 'android-components-repo',
+                'project:mobile:android-components:releng:beetmover:bucket:maven-snapshot-production': 'android-components-repo',
+
+                'project:mobile:fenix:releng:googleplay:product:fenix': 'fenix-repo',
+                'project:mobile:fenix:releng:signing:cert:release-signing': 'fenix-repo',
 
                 'project:mobile:focus:googleplay:product:focus': 'focus-repo',
                 'project:mobile:focus:releng:signing:cert:release-signing': 'focus-repo',
@@ -409,6 +413,9 @@ DEFAULT_CONFIG = frozendict({
                 ),
             }),
             'mobile': frozendict({
+                'fenix-repo': (
+                    '/mozilla-mobile/fenix',
+                ),
                 'focus-repo': (
                     '/mozilla-mobile/focus-android',
                 ),
