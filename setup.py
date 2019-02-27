@@ -19,6 +19,7 @@ if {'register', 'upload'}.intersection(set(sys.argv)):
 reqs = [
     "aiohttp>=3",
     "arrow",
+    "cryptography",
     "defusedxml",
     "dictdiffer",
     "frozendict",
@@ -26,7 +27,6 @@ reqs = [
     "jsonschema",
     "json-e>=2.5.0",
     "pexpect",
-    "PyNaCl",
     "python-gnupg",
     "PyYAML",
     "taskcluster>=4.0.0",
