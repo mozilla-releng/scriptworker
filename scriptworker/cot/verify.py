@@ -858,31 +858,32 @@ def verify_link_ed25519_cot_signature(chain, link, unsigned_path, signature_path
         (CoTError, ScriptWorkerEd25519Error): on signature verification failure.
 
     """
-    signature = read_from_file(signature_path, file_type='binary', exception=CoTError)
-    binary_contents = read_from_file(unsigned_path, file_type='binary', exception=CoTError)
-    errors = []
-    verify_key_seeds = chain.context.config['ed25519_public_keys'].get(link.worker_impl, [])
-    for seed in verify_key_seeds:
-        try:
-            verify_key = ed25519_verify_key_from_string(seed)
-            verify_ed25519_signature(
-                verify_key, binary_contents, signature,
-                "{} {}: {} ed25519 cot signature doesn't verify against {}: %(exc)s".format(
-                    link.name, link.task_id, link.worker_impl, seed
+    if chain.context.config['verify_cot_signature']:
+        signature = read_from_file(signature_path, file_type='binary', exception=CoTError)
+        binary_contents = read_from_file(unsigned_path, file_type='binary', exception=CoTError)
+        errors = []
+        verify_key_seeds = chain.context.config['ed25519_public_keys'].get(link.worker_impl, [])
+        for seed in verify_key_seeds:
+            try:
+                verify_key = ed25519_verify_key_from_string(seed)
+                verify_ed25519_signature(
+                    verify_key, binary_contents, signature,
+                    "{} {}: {} ed25519 cot signature doesn't verify against {}: %(exc)s".format(
+                        link.name, link.task_id, link.worker_impl, seed
+                    )
                 )
-            )
-            break
-        except ScriptWorkerEd25519Error as exc:
-            errors.append(str(exc))
-    else:
-        errors = errors or [
-            "{} {}: Unknown error verifying ed25519 cot signature. worker_impl {} verify_keys {}".format(
-                link.name, link.task_id, link.worker_impl,
-                verify_key_seeds
-            )
-        ]
-        message = "\n".join(errors)
-        raise CoTError(message)
+                break
+            except ScriptWorkerEd25519Error as exc:
+                errors.append(str(exc))
+        else:
+            errors = errors or [
+                "{} {}: Unknown error verifying ed25519 cot signature. worker_impl {} verify_keys {}".format(
+                    link.name, link.task_id, link.worker_impl,
+                    verify_key_seeds
+                )
+            ]
+            message = "\n".join(errors)
+            raise CoTError(message)
     link.cot = load_json_or_yaml(
         unsigned_path, is_path=True, exception=CoTError,
         message="{} {}: Invalid unsigned cot json body! %(exc)s".format(link.name, link.task_id)

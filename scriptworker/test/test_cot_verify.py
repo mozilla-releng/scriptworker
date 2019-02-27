@@ -1037,23 +1037,26 @@ def test_verify_link_gpg_cot_signature(chain, build_link, mocker, sig_verifies,
 
 
 # verify_link_ed25519_cot_signature {{{1
-@pytest.mark.parametrize('unsigned_path, signature_path, verifying_key_paths, raises', ((
+@pytest.mark.parametrize('unsigned_path, signature_path, verifying_key_paths, raises, verify_sigs', ((
     # Good
     os.path.join(ED25519_DIR, 'foo.json'),
     os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
     [os.path.join(ED25519_DIR, 'scriptworker_public_key')],
     False,
+    True,
 ), (
     # nonexistent unsigned_path
     os.path.join(ED25519_DIR, 'NONEXISTENT_PATH'),
     os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
     [os.path.join(ED25519_DIR, 'scriptworker_public_key')],
     True,
+    True,
 ), (
     # Bad verifying key
     os.path.join(ED25519_DIR, 'foo.json'),
     os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
     [os.path.join(ED25519_DIR, 'docker-worker_public_key')],
+    True,
     True,
 ), (
     # Bad+good verifying key
@@ -1064,9 +1067,19 @@ def test_verify_link_gpg_cot_signature(chain, build_link, mocker, sig_verifies,
         os.path.join(ED25519_DIR, 'scriptworker_public_key'),
     ],
     False,
+    True,
+), (
+    # Bad verifying key, but don't check sigs
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [os.path.join(ED25519_DIR, 'docker-worker_public_key')],
+    False,
+    False,
 )))
 def test_verify_link_ed25519_cot_signature(chain, build_link, mocker, unsigned_path,
-                                         signature_path, verifying_key_paths, raises):
+                                         signature_path, verifying_key_paths, raises,
+                                         verify_sigs):
+    chain.context.config['verify_cot_signature'] = verify_sigs
     chain.context.config['ed25519_public_keys'][build_link.worker_impl] = [
         read_from_file(path) for path in verifying_key_paths
     ]
