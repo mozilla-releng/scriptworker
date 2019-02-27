@@ -904,8 +904,8 @@ def verify_cot_signatures(chain):
 
     """
     for link in chain.links:
-        unsigned_path = link.get_artifact_full_path('chain-of-trust.json')
-        ed25519_signature_path = link.get_artifact_full_path('chain-of-trust.json.sig')
+        unsigned_path = link.get_artifact_full_path('public/chain-of-trust.json')
+        ed25519_signature_path = link.get_artifact_full_path('public/chain-of-trust.json.sig')
         try:
             verify_link_ed25519_cot_signature(chain, link, unsigned_path, ed25519_signature_path)
         except Exception as exc:
