@@ -6,35 +6,57 @@ easier standalone use. It could easily be a `console_script` though.
 
 """
 from __future__ import print_function
-from nacl.encoding import Base64Encoder
-from nacl.signing import SigningKey, VerifyKey
+import base64
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 import sys
 
 
-def signing_key_from_string(key_str):
-    """Create a SigningKey from a base64-encoded string."""
-    return SigningKey(key_str, encoder=Base64Encoder)
+def private_key_from_string(key_str):
+    """Create an Ed25519PrivateKey from a base64-encoded string."""
+    return Ed25519PrivateKey.from_private_bytes(
+        base64.b64decode(key_str)
+    )
 
 
-def verify_key_from_string(key_str):
-    """Create a VerifyKey from a base64-encoded string."""
-    return VerifyKey(key_str, encoder=Base64Encoder)
+def public_key_from_string(key_str):
+    """Create an Ed25519PublicKey from a base64-encoded string."""
+    return Ed25519PublicKey.from_public_bytes(
+        base64.b64decode(key_str)
+    )
+
+
+def b64_from_private_key(key):
+    """Get the base64 string from an Ed25519PrivateKey."""
+    return base64.b64encode(key.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption()
+    ), None).decode('utf-8')
+
+
+def b64_from_public_key(key):
+    """Get the base64 string from an Ed25519PublicKey."""
+    return base64.b64encode(key.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    ), None).decode('utf-8')
 
 
 prefix = ""
 if len(sys.argv) > 1:
     prefix = "{}_".format(sys.argv[1])
 
-sk = SigningKey.generate()
-vk = sk.verify_key
-sk_str = sk.encode(encoder=Base64Encoder).decode('utf-8')
-vk_str = vk.encode(encoder=Base64Encoder).decode('utf-8')
+privkey = Ed25519PrivateKey.generate()
+pubkey = privkey.public_key()
+privkey_str = b64_from_private_key(privkey)
+pubkey_str = b64_from_public_key(pubkey)
 
 # test
-sk2 = signing_key_from_string(sk_str)
-vk2 = verify_key_from_string(vk_str)
-assert sk == sk2
-assert vk == vk2
+privkey2 = private_key_from_string(privkey_str)
+pubkey2 = public_key_from_string(pubkey_str)
+assert b64_from_private_key(privkey2) == privkey_str
+assert b64_from_public_key(pubkey2) == pubkey_str
 
-open("{}private_key".format(prefix), "w").write(sk_str)
-open("{}public_key".format(prefix), "w").write(vk_str)
+open("{}private_key".format(prefix), "w").write(privkey_str)
+open("{}public_key".format(prefix), "w").write(pubkey_str)
