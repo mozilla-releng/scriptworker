@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [21.0.0] - 2019-03-05
+### Changed
+- `is_try_or_pull_request()` is now an async (instead of a sync property). So is `is_pull_request()`.
+- `extract_github_repo_owner_and_name()`, `extract_github_repo_and_revision_from_source_url()` have been moved to the `github` module.
+
+### Added
+- In the `github` module:
+  - `is_github_url()`,`get_tag_hash()`, `has_commit_landed_on_repository()`, `is_github_repo_owner_the_official_one()`
+- `utils.get_parts_of_url_path()`
+
 ## [20.0.1] - 2019-02-21
 ### Changed
 - update `ci-admin` and `ci-configuration` to reflect their new homes
