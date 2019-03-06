@@ -2242,6 +2242,9 @@ def verify_cot_cmdln(args=None, event_loop=None):
         args (list, optional): the commandline args to parse.  If None, use
             ``sys.argv[1:]`` .  Defaults to None.
 
+        event_loop (asyncio.events.AbstractEventLoop): the event loop to use.
+            If ``None``, use ``asyncio.get_event_loop()``. Defaults to ``None``.
+
     """
     args = args or sys.argv[1:]
     parser = argparse.ArgumentParser(
