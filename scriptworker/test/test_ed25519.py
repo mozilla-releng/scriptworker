@@ -68,3 +68,23 @@ def test_verify_ed25519_signature(unsigned_path, signature_path, public_key_path
 def test_bad_ed25519_public_key_from_string():
     with pytest.raises(ScriptWorkerEd25519Error):
         swed25519.ed25519_public_key_from_string('bad_base64_string')
+
+
+@pytest.mark.parametrize('pubkey_path, file_path, sig_path, exception', ((
+    os.path.join(ED25519_DIR, 'scriptworker_public_key'),
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    SystemExit
+), (
+    None,
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    ScriptWorkerEd25519Error
+)))
+def test_ed25519_cmdln(pubkey_path, file_path, sig_path, exception):
+    args = []
+    if pubkey_path is not None:
+        args.extend(['--pubkey', pubkey_path])
+    args.extend([file_path, sig_path])
+    with pytest.raises(exception):
+        swed25519.verify_ed25519_signature_cmdln(args=args, exception=ScriptWorkerEd25519Error)
