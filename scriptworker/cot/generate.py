@@ -8,7 +8,7 @@ Attributes:
 import logging
 import os
 from scriptworker.client import validate_json_schema
-from scriptworker.ed25519 import ed25519_sign, ed25519_signing_key_from_file
+from scriptworker.ed25519 import ed25519_private_key_from_file
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import GPG, sign
 from scriptworker.utils import (
@@ -124,8 +124,8 @@ def generate_cot(context, parent_path=None):
     write_to_file(unsigned_path, body)
     if context.config['sign_chain_of_trust']:
         ed25519_signature_path = '{}.sig'.format(unsigned_path)
-        ed25519_signing_key = ed25519_signing_key_from_file(context.config['ed25519_private_key_path'])
-        ed25519_signature = ed25519_sign(ed25519_signing_key, body.encode('utf-8'))
+        ed25519_private_key = ed25519_private_key_from_file(context.config['ed25519_private_key_path'])
+        ed25519_signature = ed25519_private_key.sign(body.encode('utf-8'))
         write_to_file(ed25519_signature_path, ed25519_signature, file_type='binary')
         body = sign(GPG(context), body)
     write_to_file(asc_path, body)

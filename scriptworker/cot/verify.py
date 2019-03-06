@@ -28,7 +28,7 @@ from scriptworker.artifacts import (
 from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.ed25519 import ed25519_verify_key_from_string, verify_ed25519_signature
+from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerEd25519Error, ScriptWorkerGPGException
 from scriptworker.github import GitHubRepository
 from scriptworker.gpg import get_body, GPG
@@ -865,7 +865,7 @@ def verify_link_ed25519_cot_signature(chain, link, unsigned_path, signature_path
         verify_key_seeds = chain.context.config['ed25519_public_keys'].get(link.worker_impl, [])
         for seed in verify_key_seeds:
             try:
-                verify_key = ed25519_verify_key_from_string(seed)
+                verify_key = ed25519_public_key_from_string(seed)
                 verify_ed25519_signature(
                     verify_key, binary_contents, signature,
                     "{} {}: {} ed25519 cot signature doesn't verify against {}: %(exc)s".format(

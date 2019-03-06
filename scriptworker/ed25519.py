@@ -5,41 +5,62 @@ Attributes:
     log (logging.Logger): the log object for the module
 
 """
+import base64
+from binascii import Error as Base64Error
+from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 import functools
 import logging
-from nacl.encoding import Base64Encoder
-from nacl.exceptions import BadSignatureError
-from nacl.signing import SigningKey, VerifyKey
 from scriptworker.exceptions import ScriptWorkerEd25519Error, ScriptWorkerException
 from scriptworker.utils import read_from_file
 
 log = logging.getLogger(__name__)
 
 
-def _ed25519_key_from_string(obj, string):
-    """Create an ed25519 key from ``string``, which is a seed.
+def ed25519_private_key_from_string(string):
+    """Create an ed25519 private key from ``string``, which is a seed.
 
     Args:
-        obj (nacl.signing.SigningKey or nacl.signing.VerifyKey): the object to instantiate.
         string (str): the string to use as a seed.
 
     Returns:
-        obj: the appropriate key type from ``path``
+        Ed25519PrivateKey: the private key
 
     """
     try:
-        return obj(string, encoder=Base64Encoder)
-    except (TypeError, ValueError) as exc:
-        raise ScriptWorkerEd25519Error("Can't create {}: {}!".format(obj, str(exc)))
+        return Ed25519PrivateKey.from_private_bytes(
+            base64.b64decode(string)
+        )
+    except (UnsupportedAlgorithm, Base64Error) as exc:
+        raise ScriptWorkerEd25519Error("Can't create Ed25519PrivateKey: {}!".format(str(exc)))
 
 
-def _ed25519_key_from_file(obj, path):
+def ed25519_public_key_from_string(string):
+    """Create an ed25519 public key from ``string``, which is a seed.
+
+    Args:
+        string (str): the string to use as a seed.
+
+    Returns:
+        Ed25519PublicKey: the public key
+
+    """
+    try:
+        return Ed25519PublicKey.from_public_bytes(
+            base64.b64decode(string)
+        )
+    except (UnsupportedAlgorithm, Base64Error) as exc:
+        raise ScriptWorkerEd25519Error("Can't create Ed25519PublicKey: {}!".format(str(exc)))
+
+
+def _ed25519_key_from_file(fn, path):
     """Create an ed25519 key from the contents of ``path``.
 
     ``path`` is a filepath containing a base64-encoded ed25519 key seed.
 
     Args:
-        obj (nacl.signing.SigningKey or nacl.signing.VerifyKey): the object to instantiate.
+        fn (callable): the function to call with the contents from ``path``
         path (str): the file path to the base64-encoded key seed.
 
     Returns:
@@ -50,35 +71,53 @@ def _ed25519_key_from_file(obj, path):
 
     """
     try:
-        return _ed25519_key_from_string(obj, read_from_file(path, exception=ScriptWorkerEd25519Error))
+        return fn(read_from_file(path, exception=ScriptWorkerEd25519Error))
     except ScriptWorkerException as exc:
-        raise ScriptWorkerEd25519Error("Can't create {} from {}: {}!".format(obj, path, str(exc)))
+        raise ScriptWorkerEd25519Error("Failed calling {} for {}: {}!".format(fn, path, str(exc)))
 
 
-def ed25519_key_to_string(key):
-    """Convert an ed25519 key to a base64-encoded string.
+ed25519_private_key_from_file = functools.partial(_ed25519_key_from_file, ed25519_private_key_from_string)
+ed25519_public_key_from_file = functools.partial(_ed25519_key_from_file, ed25519_public_key_from_string)
+
+
+def ed25519_private_key_to_string(key):
+    """Convert an ed25519 private key to a base64-encoded string.
 
     Args:
-        key (nacl.signing.SigningKey or nacl.signing.VerifyKey): the key to write to the file.
+        key (Ed25519PrivateKey): the key to write to the file.
 
     Returns:
         str: the key representation as a str
 
     """
-    return key.encode(encoder=Base64Encoder).decode('utf-8')
+    return base64.b64encode(key.private_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PrivateFormat.Raw,
+        encryption_algorithm=serialization.NoEncryption()
+    ), None).decode('utf-8')
 
 
-ed25519_signing_key_from_string = functools.partial(_ed25519_key_from_string, SigningKey)
-ed25519_verify_key_from_string = functools.partial(_ed25519_key_from_string, VerifyKey)
-ed25519_signing_key_from_file = functools.partial(_ed25519_key_from_file, SigningKey)
-ed25519_verify_key_from_file = functools.partial(_ed25519_key_from_file, VerifyKey)
-
-
-def verify_ed25519_signature(verify_key, contents, signature, message):
-    """Verify that ``signature`` comes from ``verify_key`` and ``contents``.
+def ed25519_public_key_to_string(key):
+    """Convert an ed25519 public key to a base64-encoded string.
 
     Args:
-        verify_key (nacl.signing.VerifyKey): the key to verify the signature
+        key (Ed25519PublicKey): the key to write to the file.
+
+    Returns:
+        str: the key representation as a str
+
+    """
+    return base64.b64encode(key.public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    ), None).decode('utf-8')
+
+
+def verify_ed25519_signature(public_key, contents, signature, message):
+    """Verify that ``signature`` comes from ``public_key`` and ``contents``.
+
+    Args:
+        public_key (Ed25519PublicKey): the key to verify the signature
         contents (bytes): the contents that was signed
         signature (bytes): the signature to verify
         message (str): the error message to raise.
@@ -88,33 +127,6 @@ def verify_ed25519_signature(verify_key, contents, signature, message):
 
     """
     try:
-        verify_key.verify(contents, signature=signature)
-    except BadSignatureError as exc:
+        public_key.verify(signature, contents)
+    except (UnsupportedAlgorithm, InvalidSignature) as exc:
         raise ScriptWorkerEd25519Error(message % {'exc': str(exc)})
-
-
-def ed25519_sign(signing_key, contents, signature_type='detached'):
-    """Create a signature of ``contents`` using ``signing_key``.
-
-    This can be a ``detached`` or ``attached`` signature.
-
-    Args:
-        verify_key (nacl.signing.VerifyKey): the key to verify the signature
-        contents (bytes): the contents to sign
-        signature_type (str, optional): Either ``detached`` or ``attached``.
-            Defaults to ``detached``.
-
-    Raises:
-        ScriptWorkerEd25519Error: on unknown ``signature_type``
-
-    Returns:
-        bytes: the signature.
-
-    """
-    full_sig = signing_key.sign(contents)
-    if signature_type == 'detached':
-        return full_sig.signature
-    elif signature_type == 'attached':
-        return full_sig
-    else:
-        raise ScriptWorkerEd25519Error("Unknown signature type {}!".format(signature_type))

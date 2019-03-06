@@ -1,6 +1,5 @@
 import base64
 import json
-from nacl.signing import SigningKey
 import os
 import pytest
 
@@ -14,44 +13,35 @@ ED25519_DIR = os.path.join(os.path.dirname(__file__), 'data', 'ed25519')
 
 
 def test_from_file():
-    sk_path = os.path.join(ED25519_DIR, 'scriptworker_private_key')
-    sk_string = read_from_file(sk_path)
-    sk = swed25519.ed25519_signing_key_from_file(sk_path)
-    vk_path = os.path.join(ED25519_DIR, 'scriptworker_public_key')
-    vk_string = read_from_file(vk_path)
-    vk = swed25519.ed25519_verify_key_from_file(vk_path)
-    assert vk == sk.verify_key
-    assert swed25519.ed25519_key_to_string(sk) == sk_string
-    assert swed25519.ed25519_key_to_string(vk) == vk_string
+    privkey_path = os.path.join(ED25519_DIR, 'scriptworker_private_key')
+    privkey_string = read_from_file(privkey_path)
+    privkey = swed25519.ed25519_private_key_from_file(privkey_path)
+    pubkey_path = os.path.join(ED25519_DIR, 'scriptworker_public_key')
+    pubkey_string = read_from_file(pubkey_path)
+    pubkey = swed25519.ed25519_public_key_from_file(pubkey_path)
+    assert swed25519.ed25519_public_key_to_string(privkey.public_key()) == pubkey_string
+    assert swed25519.ed25519_private_key_to_string(privkey) == privkey_string
+    assert swed25519.ed25519_public_key_to_string(pubkey) == pubkey_string
 
 
 def test_bad_file():
     with pytest.raises(ScriptWorkerEd25519Error):
-        swed25519.ed25519_signing_key_from_file(
+        swed25519.ed25519_private_key_from_file(
             os.path.join(ED25519_DIR, 'foo.json')
         )
 
 
 def test_sign():
-    sk_path = os.path.join(ED25519_DIR, 'scriptworker_private_key')
-    sk = swed25519.ed25519_signing_key_from_file(sk_path)
-    vk_path = os.path.join(ED25519_DIR, 'scriptworker_public_key')
-    vk = swed25519.ed25519_verify_key_from_file(vk_path)
+    privkey_path = os.path.join(ED25519_DIR, 'scriptworker_private_key')
+    privkey = swed25519.ed25519_private_key_from_file(privkey_path)
+    pubkey_path = os.path.join(ED25519_DIR, 'scriptworker_public_key')
+    pubkey = swed25519.ed25519_public_key_from_file(pubkey_path)
     binary_contents = read_from_file(os.path.join(ED25519_DIR, 'foo.json'), file_type='binary')
     detached_sig = read_from_file(os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'), file_type='binary')
-    assert swed25519.ed25519_sign(sk, binary_contents) == detached_sig
-    full_sig = swed25519.ed25519_sign(sk, binary_contents, signature_type='attached')
-    assert vk.verify(full_sig) == binary_contents
+    assert privkey.sign(binary_contents) == detached_sig
 
 
-def test_sign_exception():
-    sk_path = os.path.join(ED25519_DIR, 'scriptworker_private_key')
-    sk = swed25519.ed25519_signing_key_from_file(sk_path)
-    with pytest.raises(ScriptWorkerEd25519Error):
-        swed25519.ed25519_sign(sk, b'asdf', signature_type='illegal signature type')
-
-
-@pytest.mark.parametrize('unsigned_path, signature_path, verify_key_path, raises', ((
+@pytest.mark.parametrize('unsigned_path, signature_path, public_key_path, raises', ((
     # Good
     os.path.join(ED25519_DIR, 'foo.json'),
     os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
@@ -64,12 +54,17 @@ def test_sign_exception():
     os.path.join(ED25519_DIR, 'docker-worker_public_key'),
     True,
 )))
-def test_verify_ed25519_signature(unsigned_path, signature_path, verify_key_path, raises):
-    vk = swed25519.ed25519_verify_key_from_file(verify_key_path)
+def test_verify_ed25519_signature(unsigned_path, signature_path, public_key_path, raises):
+    pubkey = swed25519.ed25519_public_key_from_file(public_key_path)
     contents = read_from_file(unsigned_path, file_type='binary')
     sig = read_from_file(signature_path, file_type='binary')
     if raises:
         with pytest.raises(ScriptWorkerEd25519Error):
-            swed25519.verify_ed25519_signature(vk, contents, sig, "foo")
+            swed25519.verify_ed25519_signature(pubkey, contents, sig, "foo")
     else:
-        swed25519.verify_ed25519_signature(vk, contents, sig, "foo")
+        swed25519.verify_ed25519_signature(pubkey, contents, sig, "foo")
+
+
+def test_bad_ed25519_public_key_from_string():
+    with pytest.raises(ScriptWorkerEd25519Error):
+        swed25519.ed25519_public_key_from_string('bad_base64_string')
