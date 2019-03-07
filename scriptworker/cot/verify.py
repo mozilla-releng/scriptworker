@@ -859,6 +859,9 @@ def verify_link_ed25519_cot_signature(chain, link, unsigned_path, signature_path
 
     """
     if chain.context.config['verify_cot_signature']:
+        log.debug("Verifying the {} {} {} ed25519 chain of trust signature".format(
+            link.name, link.task_id, link.worker_impl
+        ))
         signature = read_from_file(signature_path, file_type='binary', exception=CoTError)
         binary_contents = read_from_file(unsigned_path, file_type='binary', exception=CoTError)
         errors = []
@@ -872,6 +875,7 @@ def verify_link_ed25519_cot_signature(chain, link, unsigned_path, signature_path
                         link.name, link.task_id, link.worker_impl, seed
                     )
                 )
+                log.debug("{} {}: ed25519 cot signature verified.".format(link.name, link.task_id))
                 break
             except ScriptWorkerEd25519Error as exc:
                 errors.append(str(exc))
