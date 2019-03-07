@@ -27,6 +27,8 @@ assert fake_session, fake_session_500  # silence flake8
 assert fake_session_404  # silence flake8
 
 # constants helpers and fixtures {{{1
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+
 # from https://github.com/SecurityInnovation/PGPy/blob/develop/tests/test_01_types.py
 text = {
     # some basic utf-8 test strings - these should all pass
@@ -310,6 +312,73 @@ def test_rm_dir():
     assert os.path.exists(tmp)
     utils.rm(tmp)
     assert not os.path.exists(tmp)
+
+
+# write_to_file {{{1
+@pytest.mark.parametrize('file_type,contents_or_path,expected,is_path', ((
+    'json', {'a': 'b'}, b"""{
+  "a": "b"
+}""", False
+), (
+    'binary', b'asdfasdf', b'asdfasdf', False
+), (
+    'binary', os.path.join(TEST_DATA_DIR, "binary.zip"), None, True
+), (
+    'text', '💩', b'\xf0\x9f\x92\xa9', False
+), (
+    'binary', u'грызть гранит науки'.encode('iso8859_5'),
+    b'\xd3\xe0\xeb\xd7\xe2\xec \xd3\xe0\xd0\xdd\xd8\xe2 \xdd\xd0\xe3\xda\xd8', False
+), (
+    'text', 'asdfasdf', b'asdfasdf', False
+)))
+def test_write_to_file(tmpdir, file_type, contents_or_path, expected, is_path):
+    path = os.path.join(tmpdir, 'foo')
+    if is_path:
+        with open(contents_or_path, 'rb') as fh:
+            contents_or_path = fh.read()
+        expected = contents_or_path
+    utils.write_to_file(path, contents_or_path, file_type=file_type)
+    with open(path, 'rb') as fh:
+        assert fh.read() == expected
+
+
+def test_write_to_file_bad_file_type(tmpdir):
+    path = os.path.join(tmpdir, 'foo')
+    with pytest.raises(ScriptWorkerException):
+        utils.write_to_file(path, 'foo', file_type='illegal file type')
+
+
+# read_from_file {{{1
+@pytest.mark.parametrize('file_type, contents_or_path, expected, exception, raises, is_path', ((
+    'binary', b'asdfasdf', b'asdfasdf', None, False, False
+), (
+    'binary', u'грызть гранит науки'.encode('iso8859_5'),
+    u'грызть гранит науки'.encode('iso8859_5'), None, False, False
+), (
+    'binary', os.path.join(TEST_DATA_DIR, "binary.zip"), None, None, False, True
+), (
+    'text', b'asdfasdf', 'asdfasdf', ScriptWorkerException, False, False
+), (
+    'text', b'\xf0\x9f\x92\xa9', '💩', None, False, False
+), (
+    'text', None, None, Exception, True, False
+), (
+    'bad_file_type', b'asdfasdf', 'asdfasdf', Exception, True, False
+)))
+def test_read_from_file(tmpdir, file_type, contents_or_path, expected, exception, raises, is_path):
+    path = os.path.join(tmpdir, 'foo')
+    if is_path:
+        with open(contents_or_path, 'rb') as fh:
+            contents_or_path = fh.read()
+        expected = contents_or_path
+    if contents_or_path is not None:
+        with open(path, 'wb') as fh:
+            fh.write(contents_or_path)
+    if raises:
+        with pytest.raises(exception):
+            utils.read_from_file(path, file_type=file_type, exception=exception)
+    else:
+        assert utils.read_from_file(path, file_type=file_type, exception=exception) == expected
 
 
 # download_file {{{1

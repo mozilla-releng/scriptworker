@@ -2,24 +2,28 @@
 # coding=utf-8
 """Test scriptworker.cot.verify
 """
-import asyncio
 from copy import deepcopy
 from frozendict import frozendict
 import json
 import jsone
 import logging
-import mock
 import os
 import pytest
 import tempfile
 from taskcluster.exceptions import TaskclusterFailure
+from unittest.mock import MagicMock, patch
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, ScriptWorkerGPGException, DownloadError
 from scriptworker.test import create_async, create_finished_future
-from scriptworker.utils import makedirs, load_json_or_yaml
-from unittest.mock import MagicMock, patch
+from scriptworker.utils import (
+    format_json,
+    load_json_or_yaml,
+    makedirs,
+    read_from_file,
+    write_to_file,
+)
 from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
 
 
@@ -38,6 +42,7 @@ VALID_WORKER_IMPLS = (
 
 COTV2_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv2")
 COTV4_DIR = os.path.join(os.path.dirname(__file__), "data", "cotv4")
+ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
 
 
 def write_artifact(context, task_id, path, contents):
@@ -48,6 +53,10 @@ def write_artifact(context, task_id, path, contents):
 
 
 async def die_async(*args, **kwargs):
+    raise CoTError("x")
+
+
+def die_sync(*args, **kwargs):
     raise CoTError("x")
 
 
@@ -431,7 +440,7 @@ async def test_get_all_links_in_chain(chain, decision_link, build_link):
 @pytest.mark.parametrize("bools,expected", (([False, False], False), ([False, True], True)))
 async def test_chain_is_try_or_pull_request(chain, bools, expected):
     for b in bools:
-        m = mock.MagicMock()
+        m = MagicMock()
         m.is_try_or_pull_request = create_async(b)
         chain.links.append(m)
     assert await chain.is_try_or_pull_request() == expected
@@ -518,7 +527,7 @@ def test_raise_on_errors(errors, raises):
     None, True
 )))
 def test_guess_worker_impl(chain, task, expected, raises):
-    link = mock.MagicMock()
+    link = MagicMock()
     link.task = task
     link.name = "foo"
     link.context = chain.context
@@ -564,7 +573,7 @@ def test_guess_task_type():
     {}, True
 )))
 def test_check_interactive_docker_worker(task, has_errors):
-    link = mock.MagicMock()
+    link = MagicMock()
     link.name = "foo"
     link.task = task
     result = cotverify.check_interactive_docker_worker(link)
@@ -732,11 +741,11 @@ async def test_build_task_dependencies(chain, mocker):
             ('build:docker-image', 'die'),
         ]
 
-    already_exists = mock.MagicMock()
+    already_exists = MagicMock()
     already_exists.task_id = 'already_exists'
     chain.links = [already_exists]
 
-    chain.context.queue = mock.MagicMock()
+    chain.context.queue = MagicMock()
     chain.context.queue.task = fake_task
 
     mocker.patch.object(cotverify, 'find_sorted_task_dependencies', new=fake_find)
@@ -755,32 +764,49 @@ async def test_build_task_dependencies(chain, mocker):
 
 
 # download_cot {{{1
-@pytest.mark.parametrize('upstream_artifacts, raises, download_artifacts_mock', ((
+@pytest.mark.parametrize('upstream_artifacts, raises, download_artifacts_mock, verify_sig, fails_optional', ((
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']}],
     True,
     die_async,
-), (
-    [{'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
     False,
-    die_async,
+    False,
 ), (
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']},
     {'taskId': 'task_id', 'paths': ['failed_path'], 'optional': True}],
     True,
     die_async,
+    False,
+    False
 ), (
     [{'taskId': 'task_id', 'paths': ['path1', 'path2']},],
     False,
     None,
+    True,
+    False,
+), (
+    [{'taskId': 'task_id', 'paths': ['path1', 'path2']},],
+    False,
+    None,
+    False,
+    True,
 ), (
     [],
     False,
     None,
+    False,
+    False
 )))
 @pytest.mark.asyncio
-async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_artifacts_mock):
-    async def down(*args, **kwargs):
+async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_artifacts_mock,
+                            verify_sig, fails_optional):
+    async def down(_, urls, **kwargs):
+        for url in urls:
+            if fails_optional and url.endswith('chain-of-trust.json'):
+                raise DownloadError("foo")
         return ['x']
+
+    def fake_artifact_url(_x, _y, path):
+        return path
 
     if download_artifacts_mock is None:
         download_artifacts_mock = down
@@ -788,12 +814,12 @@ async def test_download_cot(chain, mocker, upstream_artifacts, raises, download_
     def sha(*args, **kwargs):
         return "sha"
 
-    m = mock.MagicMock()
+    m = MagicMock()
     m.task_id = "task_id"
     m.cot_dir = "y"
     chain.links = [m]
-    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
-    mocker.patch.object(cotverify, 'get_artifact_url', new=noop_sync)
+    chain.context.config['verify_cot_signature'] = verify_sig
+    mocker.patch.object(cotverify, 'get_artifact_url', new=fake_artifact_url)
     if raises:
         mocker.patch.object(cotverify, 'download_artifacts', new=download_artifacts_mock)
         with pytest.raises(CoTError):
@@ -820,7 +846,7 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker):
     def fake_get_hash(*args, **kwargs):
         return sha
 
-    link = mock.MagicMock()
+    link = MagicMock()
     link.task_id = 'task_id'
     link.name = 'name'
     link.cot_dir = 'cot_dir'
@@ -848,7 +874,7 @@ async def test_download_cot_artifact(chain, path, sha, raises, mocker):
 
 @pytest.mark.asyncio
 async def test_download_cot_artifact_no_downloaded_cot(chain, mocker):
-    link = mock.MagicMock()
+    link = MagicMock()
     link.task_id = 'task_id'
     link.cot = None
     chain.links = [link]
@@ -886,48 +912,6 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
         mocker.patch.object(cotverify, 'download_cot_artifact', new=fake_download)
         result = await cotverify.download_cot_artifacts(chain)
         assert sorted(result) == ['path1', 'path2', 'path3']
-
-
-# is_task_required_by_any_mandatory_artifact {{{1
-@pytest.mark.parametrize('upstream_artifacts, task_id, expected', ((
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1', 'id1_path2'],
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }],
-    'id1',
-    True
-), (
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1', 'id1_path2'],
-        'optional': True,
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }],
-    'id1',
-    False
-), (
-    [{
-        'taskId': 'id1',
-        'paths': ['id1_path1'],
-        'optional': True,
-    }, {
-        'taskId': 'id2',
-        'paths': ['id2_path1', 'id2_path2'],
-    }, {
-        'taskId': 'id1',
-        'paths': ['id1_path2'],
-    }],
-    'id1',
-    True,
-)))
-def test_is_task_required_by_any_mandatory_artifact(chain, upstream_artifacts, task_id, expected):
-    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
-    assert cotverify.is_task_required_by_any_mandatory_artifact(chain, task_id) == expected
 
 
 # is_artifact_optional {{{1
@@ -1003,25 +987,125 @@ async def test_get_all_artifacts_per_task_id(chain, decision_link, build_link,
     assert expected == cotverify.get_all_artifacts_per_task_id(chain, upstream_artifacts)
 
 
-@pytest.mark.parametrize('upstream_artifacts, raises', ((
-    [{'taskId': 'build_task_id', 'paths': ['path1', 'path2']}],
-    True,
+# verify_link_gpg_cot_signature {{{1
+@pytest.mark.parametrize('sig_verifies, unsigned_path_exists, unsigned_path_matches, raises', ((
+    True, True, True, False
 ), (
-    [{'taskId': 'build_task_id', 'paths': ['failed_path'], 'optional': True}],
+    True, False, False, False
+), (
+    True, True, False, True
+), (
+    False, False, False, True
+)))
+def test_verify_link_gpg_cot_signature(chain, build_link, mocker, sig_verifies,
+                                       unsigned_path_exists, unsigned_path_matches, raises):
+    contents = {
+        'taskId': 'build_task_id',
+        'a': 'b',
+    }
+    bad_contents = {
+        'taskId': 'build_task_id',
+        'q': 'r',
+    }
+
+    def fake_body(*args, **kwargs):
+        if sig_verifies:
+            return format_json(contents)
+        else:
+            raise ScriptWorkerGPGException("Foo")
+
+    gpg_path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
+    unsigned_path = os.path.join(build_link.cot_dir, 'public/chain-of-trust.json')
+    makedirs(os.path.dirname(gpg_path))
+    touch(gpg_path)
+    if unsigned_path_exists:
+        with open(unsigned_path, 'w') as fh:
+            if unsigned_path_matches:
+                write_to_file(unsigned_path, contents, file_type='json')
+            else:
+                write_to_file(unsigned_path, bad_contents, file_type='json')
+    build_link._cot = None
+    mocker.patch.object(cotverify, 'read_from_file', new=noop_sync)
+    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
+    mocker.patch.object(cotverify, 'get_body', new=fake_body)
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.verify_link_gpg_cot_signature(chain, build_link, unsigned_path)
+    else:
+        cotverify.verify_link_gpg_cot_signature(chain, build_link, unsigned_path)
+        assert build_link.cot == contents
+
+
+# verify_link_ed25519_cot_signature {{{1
+@pytest.mark.parametrize('unsigned_path, signature_path, verifying_key_paths, raises, verify_sigs', ((
+    # Good
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [os.path.join(ED25519_DIR, 'scriptworker_public_key')],
     False,
-), (
-    [{'taskId': 'build_task_id', 'paths': ['path1', 'path2']},
-    {'taskId': 'build_task_id', 'paths': ['failed_path'], 'optional': True}],
     True,
 ), (
-    [],
+    # nonexistent unsigned_path
+    os.path.join(ED25519_DIR, 'NONEXISTENT_PATH'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [os.path.join(ED25519_DIR, 'scriptworker_public_key')],
+    True,
+    True,
+), (
+    # Bad verifying key
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [os.path.join(ED25519_DIR, 'docker-worker_public_key')],
+    True,
+    True,
+), (
+    # Bad+good verifying key
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [
+        os.path.join(ED25519_DIR, 'docker-worker_public_key'),
+        os.path.join(ED25519_DIR, 'scriptworker_public_key'),
+    ],
+    False,
+    True,
+), (
+    # Bad verifying key, but don't check sigs
+    os.path.join(ED25519_DIR, 'foo.json'),
+    os.path.join(ED25519_DIR, 'foo.json.scriptworker.sig'),
+    [os.path.join(ED25519_DIR, 'docker-worker_public_key')],
+    False,
     False,
 )))
-def test_verify_cot_signatures_no_file(chain, build_link, mocker, upstream_artifacts, raises):
-    chain.links = [build_link]
-    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
+def test_verify_link_ed25519_cot_signature(chain, build_link, mocker, unsigned_path,
+                                         signature_path, verifying_key_paths, raises,
+                                         verify_sigs):
+    chain.context.config['verify_cot_signature'] = verify_sigs
+    chain.context.config['ed25519_public_keys'][build_link.worker_impl] = [
+        read_from_file(path) for path in verifying_key_paths
+    ]
+    build_link._cot = None
+    build_link.task_id = None
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.verify_link_ed25519_cot_signature(chain, build_link, unsigned_path, signature_path)
+    else:
+        contents = load_json_or_yaml(unsigned_path, is_path=True)
+        cotverify.verify_link_ed25519_cot_signature(chain, build_link, unsigned_path, signature_path)
+        assert build_link.cot == contents
 
-    chain.task['payload']['upstreamArtifacts'] = upstream_artifacts
+
+# verify_cot_signatures {{{1
+@pytest.mark.parametrize('ed25519_mock, gpg_mock, raises', ((
+    noop_sync, die_sync, False
+), (
+    die_sync, noop_sync, False
+), (
+    die_sync, die_sync, True
+)))
+def test_verify_link_gpg_cot_signature_bad_sig(chain, mocker, build_link, ed25519_mock, gpg_mock, raises):
+    mocker.patch.object(cotverify, 'verify_link_ed25519_cot_signature', new=ed25519_mock)
+    mocker.patch.object(cotverify, 'verify_link_gpg_cot_signature', new=gpg_mock)
+    chain.links = [build_link]
     if raises:
         with pytest.raises(CoTError):
             cotverify.verify_cot_signatures(chain)
@@ -1029,39 +1113,7 @@ def test_verify_cot_signatures_no_file(chain, build_link, mocker, upstream_artif
         cotverify.verify_cot_signatures(chain)
 
 
-def test_verify_cot_signatures_bad_sig(chain, build_link, mocker):
-
-    def die(*args, **kwargs):
-        raise ScriptWorkerGPGException("x")
-
-    path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
-    makedirs(os.path.dirname(path))
-    touch(path)
-    chain.links = [build_link]
-    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
-    mocker.patch.object(cotverify, 'get_body', new=die)
-    with pytest.raises(CoTError):
-        cotverify.verify_cot_signatures(chain)
-
-
-def test_verify_cot_signatures(chain, build_link, mocker):
-
-    def fake_body(*args, **kwargs):
-        return '{"taskId": "build_task_id"}'
-
-    build_link._cot = None
-    unsigned_path = os.path.join(build_link.cot_dir, 'public/chainOfTrust.json.asc')
-    path = os.path.join(build_link.cot_dir, 'chainOfTrust.json')
-    makedirs(os.path.dirname(unsigned_path))
-    touch(unsigned_path)
-    chain.links = [build_link]
-    mocker.patch.object(cotverify, 'GPG', new=noop_sync)
-    mocker.patch.object(cotverify, 'get_body', new=fake_body)
-    cotverify.verify_cot_signatures(chain)
-    assert os.path.exists(path)
-    with open(path, "r") as fh:
-        assert json.load(fh) == {"taskId": "build_task_id"}
-
+# _take_expires_out_from_artifacts_in_payload {{{1
 @pytest.mark.parametrize('payload, expected', (
     ({}, {}),
     (
@@ -1938,10 +1990,10 @@ def test_check_and_update_action_task_group_id(rebuilt_gid, runtime_gid, action_
             }
         }
     }
-    parent_link = mock.MagicMock()
+    parent_link = MagicMock()
     parent_link.task_id = action_taskid
     parent_link.task = runtime_definition
-    decision_link = mock.MagicMock()
+    decision_link = MagicMock()
     decision_link.task_id = decision_taskid
     if raises:
         with pytest.raises(CoTError):
@@ -2118,9 +2170,9 @@ async def test_verify_task_types(chain, decision_link, build_link, docker_image_
 # verify_docker_worker_task {{{1
 @pytest.mark.asyncio
 async def test_verify_docker_worker_task(mocker):
-    chain = mock.MagicMock()
-    link = mock.MagicMock()
-    check = mock.MagicMock()
+    chain = MagicMock()
+    link = MagicMock()
+    check = MagicMock()
     mocker.patch.object(cotverify, 'check_interactive_docker_worker', new=check.method1)
     mocker.patch.object(cotverify, 'verify_docker_image_sha', new=check.method2)
     await cotverify.verify_docker_worker_task(chain, chain)
@@ -2134,7 +2186,7 @@ async def test_verify_docker_worker_task(mocker):
 # verify_generic_worker_task {{{1
 @pytest.mark.asyncio
 async def test_verify_generic_worker_task(mocker):
-    await cotverify.verify_generic_worker_task(mock.MagicMock(), mock.MagicMock())
+    await cotverify.verify_generic_worker_task(MagicMock(), MagicMock())
 
 
 # verify_worker_impls {{{1
@@ -2197,7 +2249,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     False,
 )))
 def test_get_source_url(task, expected, source_env_prefix, raises):
-    obj = mock.MagicMock()
+    obj = MagicMock()
     obj.task = task
     obj.context.config = {'source_env_prefix': source_env_prefix}
     if raises:
@@ -2310,8 +2362,8 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
 def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
-    context = mock.MagicMock()
-    context.queue = mock.MagicMock()
+    context = MagicMock()
+    context.queue = MagicMock()
     context.queue.task = noop_async
     path = os.path.join(tmpdir, 'x')
     makedirs(path)
@@ -2323,8 +2375,8 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
         return path
 
     def cot(*args, **kwargs):
-        m = mock.MagicMock()
-        m.links = [mock.MagicMock()]
+        m = MagicMock()
+        m.links = [MagicMock()]
         m.dependent_task_ids = noop_sync
         return m
 

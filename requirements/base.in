@@ -1,5 +1,6 @@
 aiohttp
 arrow
+cryptography>=2.6.1
 defusedxml
 dictdiffer
 frozendict

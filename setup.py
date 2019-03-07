@@ -19,6 +19,7 @@ if {'register', 'upload'}.intersection(set(sys.argv)):
 reqs = [
     "aiohttp>=3",
     "arrow",
+    "cryptography>=2.6.1",
     "defusedxml",
     "dictdiffer",
     "frozendict",
@@ -81,6 +82,7 @@ setup(
             "scriptworker = scriptworker.worker:main",
             "rebuild_gpg_homedirs = scriptworker.gpg:rebuild_gpg_homedirs",
             "verify_cot = scriptworker.cot.verify:verify_cot_cmdln",
+            "verify_ed25519_signature = scriptworker.ed25519:verify_ed25519_signature_cmdln",
         ],
     },
     zip_safe=False,

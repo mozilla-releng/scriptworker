@@ -133,6 +133,7 @@ async def test_mocker_run_tasks(context, successful_queue, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
     successful_queue.task = task
+
     async def claim_work(*args, **kwargs):
         return {'tasks': [deepcopy(task)]}
 
@@ -230,7 +231,7 @@ async def test_mocker_run_tasks_caught_exception(context, successful_queue, mock
 )))
 @pytest.mark.asyncio
 async def test_mocker_run_tasks_uncaught_exception(context, successful_queue, mocker,
-                                                 func_to_raise, exc):
+                                                   func_to_raise, exc):
     """Raise an uncaught exception within the run_tasks try/excepts.
 
     """

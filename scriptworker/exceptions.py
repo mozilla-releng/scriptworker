@@ -146,6 +146,24 @@ class CoTError(ScriptWorkerTaskException, KeyError):
         )
 
 
+class ScriptWorkerEd25519Error(CoTError):
+    """Scriptworker ed25519 error.
+
+    Attributes:
+        exit_code (int): this is set to 5 (internal-error).
+
+    """
+
+    def __init__(self, msg):
+        """Initialize ScriptWorkerEd25519Error.
+
+        Args:
+            msg (string): the error message
+
+        """
+        super(ScriptWorkerEd25519Error, self).__init__(msg)
+
+
 class ConfigError(ScriptWorkerException):
     """Invalid configuration provided to scriptworker.
 

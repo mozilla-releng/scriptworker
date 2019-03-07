@@ -11,7 +11,6 @@ from frozendict import frozendict
 import os
 import re
 
-# STATUSES {{{1
 STATUSES = {
     'success': 0,
     'failure': 1,
@@ -123,6 +122,20 @@ DEFAULT_CONFIG = frozendict({
     "pubkey_path": "...",
     "privkey_path": "...",
     "my_email": "scriptworker@example.com",
+
+    # ed25519 settings
+    "ed25519_private_key_path": "...",
+    "ed25519_public_keys": frozendict({
+        "docker-worker": tuple([
+            'J+PAKmq3jkS2uCpBk5WU2ycrnTFPwZujJT4OHAxm38I=',
+        ]),
+        "generic-worker": tuple([
+            '6UPrVTyw0EPQV7bCEMXo+5jNR4clbK55JWG74bBJHZQ=',
+        ]),
+        "scriptworker": tuple([
+            'DaEKQ79ZC/X+7O8zwm8iyhwTlgyjRSi/TDd63fh2JG0=',
+        ]),
+    }),
 
     "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
     "pushlog_url": "{repo}/json-pushes?changeset={revision}&tipsonly=1&version=2&full=1",

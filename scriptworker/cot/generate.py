@@ -8,9 +8,16 @@ Attributes:
 import logging
 import os
 from scriptworker.client import validate_json_schema
+from scriptworker.ed25519 import ed25519_private_key_from_file
 from scriptworker.exceptions import ScriptWorkerException
 from scriptworker.gpg import GPG, sign
-from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json_or_yaml
+from scriptworker.utils import (
+    filepaths_in_dir,
+    format_json,
+    get_hash,
+    load_json_or_yaml,
+    write_to_file,
+)
 
 log = logging.getLogger(__name__)
 
@@ -87,13 +94,13 @@ def generate_cot_body(context):
 
 
 # generate_cot {{{1
-def generate_cot(context, path=None):
+def generate_cot(context, parent_path=None):
     """Format and sign the cot body, and write to disk.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
-        path (str, optional): The path to write the chain of trust artifact to.
-            If None, this is artifact_dir/public/chainOfTrust.json.asc.
+        parent_path (str, optional): The directory to write the chain of trust
+            artifacts to.  If None, this is ``artifact_dir/public/``.
             Defaults to None.
 
     Returns:
@@ -111,9 +118,15 @@ def generate_cot(context, path=None):
     )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
-    path = path or os.path.join(context.config['artifact_dir'], "public", "chainOfTrust.json.asc")
+    parent_path = parent_path or os.path.join(context.config['artifact_dir'], 'public')
+    asc_path = os.path.join(parent_path, "chainOfTrust.json.asc")
+    unsigned_path = os.path.join(parent_path, 'chain-of-trust.json')
+    write_to_file(unsigned_path, body)
     if context.config['sign_chain_of_trust']:
+        ed25519_signature_path = '{}.sig'.format(unsigned_path)
+        ed25519_private_key = ed25519_private_key_from_file(context.config['ed25519_private_key_path'])
+        ed25519_signature = ed25519_private_key.sign(body.encode('utf-8'))
+        write_to_file(ed25519_signature_path, ed25519_signature, file_type='binary')
         body = sign(GPG(context), body)
-    with open(path, "w") as fh:
-        print(body, file=fh, end="")
+    write_to_file(asc_path, body)
     return body
