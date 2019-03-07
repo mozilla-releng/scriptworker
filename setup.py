@@ -19,7 +19,7 @@ if {'register', 'upload'}.intersection(set(sys.argv)):
 reqs = [
     "aiohttp>=3",
     "arrow",
-    "cryptography",
+    "cryptography>=2.6.1",
     "defusedxml",
     "dictdiffer",
     "frozendict",

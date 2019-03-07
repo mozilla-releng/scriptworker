@@ -2,6 +2,28 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [22.0.0] - 2019-03-07
+### Added
+- ed25519 cot signature generation and verification support.
+- `scripts/gen_ed25519_key.py` - a standalone script to generate an ed25519 keypair
+- `ed25519_private_key_path` and `ed25519_public_keys` config items
+- `scriptworker.ed25519` module
+- `verify_link_gpg_cot_signature` is a new function, but is deprecated and will be removed in a future release.
+- `verify_link_ed25519_cot_signature` is a new function.
+- added `write_to_file` and `read_from_file` utils
+
+### Changed
+- gpg support in chain of trust is now deprecated, and will be removed in a future release.
+- `generate_cot`'s `path` kwarg is now `parent_path`.
+- `generate_cot` now generates up to 3 files: `chainOfTrust.json.asc`, `chain-of-trust.json`, and `chain-of-trust.json.sig`.
+- `download_cot` now also downloads `chain-of-trust.json` as an optional artifact, and adds `chain-of-trust.json.sig` as an optional artifact if signature verification is enabled. These will become mandatory artifacts in a future release.
+- `chainOfTrust.json.asc` is now a mandatory artifact in cot verification, but is deprecated. We will remove this artifact in a future release.
+- `verify_cot_signatures` verifies ed25519, and falls back to gpg. We will make ed25519 signature verification mandatory in a future release, and remove gpg verification.
+- we now require `cryptography>=2.6.1` for ed25519 support.
+
+### Removed
+- `is_task_required_by_any_mandatory_artifact` is removed
+
 ## [21.0.0] - 2019-03-05
 ### Changed
 - `is_try_or_pull_request()` is now an async (instead of a sync property). So is `is_pull_request()`.
