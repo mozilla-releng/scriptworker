@@ -131,7 +131,7 @@ def verify_ed25519_signature(public_key, contents, signature, message):
     """
     try:
         public_key.verify(signature, contents)
-    except (UnsupportedAlgorithm, InvalidSignature) as exc:
+    except InvalidSignature as exc:
         raise ScriptWorkerEd25519Error(message % {'exc': str(exc)})
 
 
@@ -179,5 +179,4 @@ default to ``config['ed25519_public_keys']``.""")
                 sys.exit(0)
             except ScriptWorkerEd25519Error:
                 pass
-    else:
-        raise exception("This is not a valid signature!")
+    raise exception("This is not a valid signature!")

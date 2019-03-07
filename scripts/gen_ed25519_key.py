@@ -32,7 +32,7 @@ def b64_from_private_key(key):
         encoding=serialization.Encoding.Raw,
         format=serialization.PrivateFormat.Raw,
         encryption_algorithm=serialization.NoEncryption()
-    ), None).decode('utf-8')
+    )).decode('utf-8')
 
 
 def b64_from_public_key(key):
@@ -40,7 +40,7 @@ def b64_from_public_key(key):
     return base64.b64encode(key.public_bytes(
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
-    ), None).decode('utf-8')
+    )).decode('utf-8')
 
 
 prefix = ""
@@ -58,5 +58,7 @@ pubkey2 = public_key_from_string(pubkey_str)
 assert b64_from_private_key(privkey2) == privkey_str
 assert b64_from_public_key(pubkey2) == pubkey_str
 
-open("{}private_key".format(prefix), "w").write(privkey_str)
-open("{}public_key".format(prefix), "w").write(pubkey_str)
+with open("{}private_key".format(prefix), "w") as fh:
+    fh.write(privkey_str)
+with open("{}public_key".format(prefix), "w") as fh:
+    fh.write(pubkey_str)
