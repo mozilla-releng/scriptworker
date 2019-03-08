@@ -64,7 +64,7 @@ To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".fo
 
 
 def build_config(override, basedir):
-    randstring = slugid.nice()[0:6].decode('utf-8')
+    randstring = slugid.nice()[0:6]
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     GPG_HOME = os.path.join(os.path.dirname(__file__), "data", "gpg")
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
@@ -165,8 +165,8 @@ async def remember_cwd():
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_run_successful_task(context_function):
-    task_id = slugid.nice().decode('utf-8')
-    task_group_id = slugid.nice().decode('utf-8')
+    task_id = slugid.nice()
+    task_group_id = slugid.nice()
     async with context_function(None) as context:
         result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
@@ -183,7 +183,7 @@ async def test_run_successful_task(context_function):
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_run_maxtimeout(context_function):
-    task_id = slugid.nice().decode('utf-8')
+    task_id = slugid.nice()
     partial_config = {
         'task_max_timeout': 2,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
@@ -220,7 +220,7 @@ async def run_task_until_stopped(context):
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.asyncio
 async def test_cancel_task():
-    task_id = slugid.nice().decode('utf-8')
+    task_id = slugid.nice()
     partial_config = {
         'invalid_reclaim_status': 19,
         'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
@@ -263,7 +263,7 @@ async def do_shutdown(context):
 @pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.asyncio
 async def test_shutdown():
-    task_id = slugid.nice().decode('utf-8')
+    task_id = slugid.nice()
     partial_config = {
         'task_script': ('bash', '-c', '>&2 echo running task script && sleep 30 && exit 1'),
     }
@@ -426,7 +426,7 @@ async def test_verify_production_cot(branch_context):
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_private_artifacts(context_function):
-    task_group_id = task_id = slugid.nice().decode('utf-8')
+    task_group_id = task_id = slugid.nice()
     override = {
         'task_script': (
             'bash', '-c',
