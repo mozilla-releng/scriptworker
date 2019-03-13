@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [22.0.1] - 2019-03-13
+### Fixed
+- Allow snapcraft beta scope on mozilla-release
+
 ## [22.0.0] - 2019-03-07
 ### Added
 - ed25519 cot signature generation and verification support.
