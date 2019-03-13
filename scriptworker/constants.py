@@ -304,7 +304,7 @@ DEFAULT_CONFIG = frozendict({
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
                 'project:releng:signing:cert:release-signing': 'all-release-branches',
 
-                'project:releng:snapcraft:firefox:beta': 'beta',
+                'project:releng:snapcraft:firefox:beta': 'beta-or-release',     # Needed on release for RCs
                 'project:releng:snapcraft:firefox:candidate': 'release',
 
                 'project:releng:ship-it:production': 'all-production-branches',
@@ -363,6 +363,10 @@ DEFAULT_CONFIG = frozendict({
                 ),
                 'beta': (
                     "/releases/mozilla-beta",
+                ),
+                'beta-or-release': (
+                    "/releases/mozilla-beta",
+                    "/releases/mozilla-release",
                 ),
                 'esr': (
                     "/releases/mozilla-esr52",
