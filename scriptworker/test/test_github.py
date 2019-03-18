@@ -211,6 +211,30 @@ def test_extract_github_repo_owner_and_name(repo_url, expected_user, expected_re
         assert github.extract_github_repo_owner_and_name(repo_url) == (expected_user, expected_repo_name)
 
 
+@pytest.mark.parametrize('repo_url, expected, raises', ((
+    'https://github.com/mozilla-mobile/android-components',
+    'mozilla-mobile/android-components', False
+), (
+    'https://github.com/mozilla-mobile/android-components.git',
+    'mozilla-mobile/android-components', False
+), (
+    'https://github.com/JohanLorenzo/android-components',
+    'JohanLorenzo/android-components', False
+), (
+    'https://github.com/JohanLorenzo/android-components/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml',
+    'JohanLorenzo/android-components', False
+), (
+    'https://hg.mozilla.org/mozilla-central',
+    None, True
+)))
+def test_extract_github_repo_full_name(repo_url, expected, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            github.extract_github_repo_full_name(repo_url)
+    else:
+        assert github.extract_github_repo_full_name(repo_url) == expected
+
+
 @pytest.mark.parametrize('repo_url, expected_user, expected_repo_name, raises', ((
     'https://github.com/JohanLorenzo/android-components/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml',
     'https://github.com/JohanLorenzo/android-components', '0123456789abcdef0123456789abcdef01234567', False,

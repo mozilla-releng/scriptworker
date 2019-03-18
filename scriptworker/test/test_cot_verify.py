@@ -1334,6 +1334,7 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
         'event': {
             'repository': {
                 'clone_url': 'https://github.com/mozilla-mobile/focus-android',
+                'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
             },
             'release': {
@@ -1371,6 +1372,7 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         'event': {
             'repository': {
                 'clone_url': 'https://github.com/mozilla-mobile/focus-android',
+                'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
             },
             'release': {
@@ -1413,6 +1415,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
     assert context == {
         'event': {
             'repository': {
+                'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
                 'pushed_at': '1549022400',
             },
@@ -1450,6 +1453,11 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
     }
 
     github_repo_mock.get_pull_request.return_value = {
+        'base': {
+            'repo': {
+                'full_name': 'mozilla-mobile/focus-android',
+            },
+        },
         'head': {
             'ref': 'some-branch',
             'repo': {
@@ -1489,6 +1497,11 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
                 'html_url': 'https://github.com/JohanLorenzo/focus-android',
             },
             'pull_request': {
+                'base': {
+                    'repo': {
+                        'full_name': 'mozilla-mobile/focus-android',
+                    },
+                },
                 'head': {
                     'ref': 'some-branch',
                     'sha': 'somerevision',
@@ -1514,6 +1527,7 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         'taskId': None,
         'tasks_for': 'github-pull-request',
     }
+
 
 @pytest.mark.asyncio
 async def test_populate_jsone_context_fail(mobile_chain, mobile_github_release_link):

@@ -30,11 +30,14 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerEd25519Error, ScriptWorkerGPGException
-from scriptworker.github import GitHubRepository
+from scriptworker.github import (
+    GitHubRepository,
+    extract_github_repo_owner_and_name,
+    extract_github_repo_full_name,
+)
 from scriptworker.gpg import get_body, GPG
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
-    extract_github_repo_owner_and_name,
     get_action_callback_name,
     get_and_check_project,
     get_and_check_tasks_for,
@@ -1140,6 +1143,7 @@ async def _get_additional_github_releases_jsone_context(decision_link):
                 # This can't be done at the moment because some mobile projects still rely on the
                 # bad value
                 'clone_url': repo_url,
+                'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
             },
             'release': {
@@ -1177,6 +1181,7 @@ def _get_additional_git_cron_jsone_context(decision_link):
                 # This can't be done at the moment because some mobile projects still rely on the
                 # bad value
                 'clone_url': repo,
+                'full_name': extract_github_repo_full_name(repo),
                 'html_url': repo,
             },
             'release': {
@@ -1220,6 +1225,11 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
                 'html_url': pull_request_data['head']['repo']['html_url'],
             },
             'pull_request': {
+                'base': {
+                    'repo': {
+                        'full_name': pull_request_data['base']['repo']['full_name'],
+                    },
+                },
                 'head': {
                     'ref': pull_request_data['head']['ref'],
                     'sha': pull_request_data['head']['sha'],
@@ -1230,7 +1240,7 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
                         # This becomes a problem if a staging release was kicked off and the PR got
                         # updated in the meantime.
                         'pushed_at': get_push_date_time(task, source_env_prefix),
-                    }
+                    },
                 },
                 'title': pull_request_data['title'],
                 'number': pull_request_number,
@@ -1263,6 +1273,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     return {
         'event': {
             'repository': {
+                'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
                 'pushed_at': get_push_date_time(task, source_env_prefix),
             },
