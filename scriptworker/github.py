@@ -160,6 +160,24 @@ def extract_github_repo_owner_and_name(url):
     return repo_owner, _strip_trailing_dot_git(repo_name)
 
 
+def extract_github_repo_full_name(url):
+    """Given an URL, return the full name of it.
+
+    The full name is ``RepoOwner/RepoName``.
+
+    Args:
+        url (str): The URL to the GitHub repository
+
+    Raises:
+        ValueError: on url that aren't from github
+
+    Returns:
+        str: the full name.
+
+    """
+    return '/'.join(extract_github_repo_owner_and_name(url))
+
+
 def extract_github_repo_and_revision_from_source_url(url):
     """Given an URL, return the repo name and who owns it.
 
