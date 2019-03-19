@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [22.1.0] - 2019-03-19
+### Added
+- `event.repository.full_name` and `event.pull_request.base.repo.full_name` on `cot_verify` (for GitHub repos)
+
 ## [22.0.1] - 2019-03-13
 ### Fixed
 - Allow snapcraft beta scope on mozilla-release
