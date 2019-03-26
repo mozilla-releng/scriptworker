@@ -83,11 +83,7 @@ def test_main_running_sigterm(mocker, context, event_loop, running):
             json.dump(context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
-        if running:
-            worker.main(event_loop=event_loop)
-        else:
-            with pytest.raises(SystemExit):
-                worker.main(event_loop=event_loop)
+        worker.main(event_loop=event_loop)
     finally:
         os.remove(tmp)
 
