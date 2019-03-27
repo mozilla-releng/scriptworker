@@ -770,7 +770,7 @@ def get_all_artifacts_per_task_id(chain, upstream_artifacts):
         upstream_artifacts: the list of upstream artifact definitions
 
     Returns:
-        dict: list of paths to downloaded artifacts ordered by taskId
+        dict: sorted list of paths to downloaded artifacts ordered by taskId
 
     """
     all_artifacts_per_task_id = {}
@@ -797,7 +797,7 @@ def get_all_artifacts_per_task_id(chain, upstream_artifacts):
 
     # Avoid duplicate paths per task_id
     for task_id, paths in all_artifacts_per_task_id.items():
-        all_artifacts_per_task_id[task_id] = sorted(list(set(paths)))
+        all_artifacts_per_task_id[task_id] = sorted(set(paths))
 
     return all_artifacts_per_task_id
 
