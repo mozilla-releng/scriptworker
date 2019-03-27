@@ -58,7 +58,8 @@ def test_main(mocker, context, event_loop):
         os.remove(tmp)
 
 
-def test_main_sigterm(mocker, context, event_loop):
+@pytest.mark.parametrize('running', (True, False))
+def test_main_running_sigterm(mocker, context, event_loop, running):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
     run_tasks_cancelled = event_loop.create_future()
@@ -71,7 +72,8 @@ def test_main_sigterm(mocker, context, event_loop):
     async def async_main(internal_context, _):
         # scriptworker reads context from a file, so we have to modify the context given here instead of the variable
         # from the fixture
-        internal_context.running_tasks = MockRunTasks()
+        if running:
+            internal_context.running_tasks = MockRunTasks()
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
 
@@ -85,45 +87,16 @@ def test_main_sigterm(mocker, context, event_loop):
     finally:
         os.remove(tmp)
 
-    event_loop.run_until_complete(run_tasks_cancelled)
-    assert run_tasks_cancelled.result()
+    if running:
+        event_loop.run_until_complete(run_tasks_cancelled)
+        assert run_tasks_cancelled.result()
 
 
 # async_main {{{1
 @pytest.mark.asyncio
 async def test_async_main(context, mocker, tmpdir):
-    path = "{}.tmp".format(context.config['base_gpg_home_dir'])
-
-    async def tweak_lockfile(_):
-        path = "{}.tmp".format(context.config['base_gpg_home_dir'])
-        try:
-            os.makedirs(path)
-        except FileExistsError:
-            pass
-        lockfile = context.config['gpg_lockfile']
-        if os.path.exists(lockfile):
-            with open(lockfile, "w") as fh:
-                print("ready:", file=fh)
-        else:
-            with open(lockfile, "w") as fh:
-                print("locked:", file=fh)
-
-    def exit(*args, **kwargs):
-        sys.exit()
-
-    try:
-        mocker.patch.object(worker, 'run_tasks', new=tweak_lockfile)
-        mocker.patch.object(asyncio, 'sleep', new=noop_async)
-        mocker.patch.object(worker, 'rm', new=noop_sync)
-        mocker.patch.object(os, 'rename', new=noop_sync)
-        mocker.patch.object(worker, 'rm_lockfile', new=exit)
-        await worker.async_main(context, {})
-        await worker.async_main(context, {})
-        with pytest.raises(SystemExit):
-            await worker.async_main(context, {})
-    finally:
-        if os.path.exists(path):
-            shutil.rmtree(path)
+    mocker.patch.object(worker, 'run_tasks', new=noop_async)
+    await worker.async_main(context, {})
 
 
 # run_tasks {{{1

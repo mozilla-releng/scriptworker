@@ -1,6 +1,6 @@
-===============================
+===================
 Scriptworker Readme
-===============================
+===================
 
 .. image:: https://travis-ci.org/mozilla-releng/scriptworker.svg?branch=master
     :target: https://travis-ci.org/mozilla-releng/scriptworker
@@ -34,9 +34,11 @@ Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.script
 
 * Launch: ``scriptworker [config_path]``
 
--------
+.. _build the docker image:
+
+-----------------------
 Building a docker image
--------
+-----------------------
 
 First, create a `secrets.json`. For integration testing, you'll need to define the `integration_credentials`; to do any other authenticated work, you'll need to define `credentials`.
 
@@ -48,8 +50,6 @@ Then::
 -------
 Testing
 -------
-
-Note: GPG tests require gpg 2.0.x!
 
 Without integration tests, install tox, then
 
@@ -81,14 +81,3 @@ then
 It's also possible to test in docker. First, `build the docker image`_, making sure to add integration credentials to `secrets.json`. Then::
 
     docker run -i scriptworker-test-$PY_DOT_VERSION
-
-GPG Homedir testing
-^^^^^^^^^^^^^^^^^^^
-
-Sometimes it's nice to be able to test things like ``rebuild_gpg_homedirs``.  To do so, `build the docker image`_, then::
-
-    docker run -i scriptworker-test-$PY_DOT_VERSION gpg
-    # in the docker shell,
-    rebuild_gpg_homedirs gnupg.yaml
-
-.. _build the docker image: #building-a-docker-image

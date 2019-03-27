@@ -130,23 +130,20 @@ def check_config(config, path):
         if key not in DEFAULT_CONFIG:
             messages.append("Unknown key {} in {}!".format(key, path))
             continue
-        if DEFAULT_CONFIG[key] is not None:
-            if value is None:
-                messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
+        if value is None:
+            messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
+        else:
+            value_type = type(value)
+            if isinstance(DEFAULT_CONFIG[key], Mapping) and 'by-cot-product' in DEFAULT_CONFIG[key]:
+                default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][config['cot_product']])
             else:
-                value_type = type(value)
-                if isinstance(DEFAULT_CONFIG[key], Mapping) and 'by-cot-product' in DEFAULT_CONFIG[key]:
-                    default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][config['cot_product']])
-                else:
-                    default_type = type(DEFAULT_CONFIG[key])
-                if value_type is not default_type:
-                    messages.append(
-                        "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
-                    )
+                default_type = type(DEFAULT_CONFIG[key])
+            if value_type is not default_type:
+                messages.append(
+                    "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
+                )
         if value in ("...", b"..."):
             messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
-        if key in ("gpg_public_keyring", "gpg_secret_keyring") and not value.startswith('%(gpg_home)s/'):
-            messages.append("{} needs to start with %(gpg_home)s/ to be portable!".format(key))
         if key in ("provisioner_id", "worker_group", "worker_type", "worker_id") and not _is_id_valid(value):
             messages.append('{} doesn\'t match "{}" (required by Taskcluster)'.format(key, _GENERIC_ID_REGEX.pattern))
     return messages
@@ -220,9 +217,6 @@ def create_config(config_path="scriptworker.yaml"):
 # get_context_from_cmdln {{{1
 def get_context_from_cmdln(args, desc="Run scriptworker"):
     """Create a Context object from args.
-
-    This was originally part of main(), but we use it in
-    ``scriptworker.gpg.rebuild_gpg_homedirs`` too.
 
     Args:
         args (list): the commandline args.  Generally sys.argv

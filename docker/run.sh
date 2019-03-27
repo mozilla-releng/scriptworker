@@ -16,15 +16,10 @@ test_env() {
 
 if [ $1 == "unittest" ]; then
     test_env
-    rm /dev/random && ln -s /dev/urandom /dev/random  # speed up gpg tests
     PYVER=`cat /builds/test/pyver`
     tox -e py$PYVER
     rc=$?
     exit $rc
-elif [ $1 == "gpg" ] ; then
-    test_env
-    cp /builds/test/gnupg.yaml .
-    exec /bin/bash -il
 else
    echo "unknown mode: $1"
    exit 1
