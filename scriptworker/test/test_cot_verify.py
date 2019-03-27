@@ -963,7 +963,7 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
 
 
 @pytest.mark.parametrize("upstream_artifacts,expected", ((
-    None, {'decision_task_id': ['public/task-graph.json', 'public/actions.json', 'public/parameters.yml']}
+    None, {'decision_task_id': ['public/actions.json', 'public/parameters.yml', 'public/task-graph.json']}
 ), (
     [{
         "taskId": "id1",
@@ -973,7 +973,24 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
         "paths": ["id2_path1", "id2_path2"],
     }],
     {
-        'decision_task_id': ['public/task-graph.json', 'public/actions.json', 'public/parameters.yml'],
+        'decision_task_id': ['public/actions.json', 'public/parameters.yml', 'public/task-graph.json'],
+        'id1': ['id1_path1', 'id1_path2'],
+        'id2': ['id2_path1', 'id2_path2'],
+    }
+), (
+    # same, but with duplicate paths
+    [{
+        "taskId": "id1",
+        "paths": ["id1_path1", "id1_path2"],
+    }, {
+        "taskId": "id2",
+        "paths": ["id2_path1", "id2_path2"],
+    }, {
+        "taskId": "id1",
+        "paths": ["id1_path1", "id1_path2"],
+    }],
+    {
+        'decision_task_id': ['public/actions.json', 'public/parameters.yml', 'public/task-graph.json'],
         'id1': ['id1_path1', 'id1_path2'],
         'id2': ['id2_path1', 'id2_path2'],
     }
