@@ -2,6 +2,35 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.0] - 2019-03-27
+### Added
+- added `CODE_OF_CONDUCT.md`.
+- `verify_cot` now has a `--verify-sigs` option to test level 3 chains of trust with signature verification on.
+- added a `verify_ed25519_signature` endpoint helper script.
+
+### Changed
+- Updated documentation to reflect the new ed25519-only chain of trust world.
+- `docker/run.sh` no longer points `/dev/random` to `/dev/urandom`, and no longer has hacks to install an old version of gpg.
+- `public/chain-of-trust.json` is now a mandatory artifact in cot verification. `public/chain-of-trust.json.sig` is mandatory if signature verification is on. `public/chainOfTrust.json.asc` is no longer used.
+- similarly, `public/chainOfTrust.json.asc` is no longer generated or uploaded by scriptworker.
+- `add_enumerable_item_to_dict` now uses `setdefault` instead of `try/except`.
+
+### Fixed
+- added missing modules to the source documentation.
+- restored missing test branch coverage.
+- `get_all_artifacts_per_task_id` now returns a sorted, unique list of artifacts, preventing duplicate concurrent downloads of the same file.
+- `test_verify_production_cot` now tests win64 repackage-signing instead of linux64 repackage-signing because linux64 stopped running repackage-signing. We also test an esr60 index.
+
+### Removed
+- removed gpg support from chain of trust verification.
+- removed `scriptworker.gpg` module and associated tests.
+- removed the `defusedxml`, `pexpect`, and `python-gnupg` dependencies.
+- removed the `create_gpg_keys.py` and `gpg_helper.sh` helper scripts.
+- removed gpg-specific config.
+- removed `ScriptWorkerGPGException`
+- removed the `rebuild_gpg_homedirs` endpoint.
+- removed the `check_pubkeys.py` and `gen1000keys.py` test scripts.
+
 ## [22.1.0] - 2019-03-19
 ### Added
 - `event.repository.full_name` and `event.pull_request.base.repo.full_name` on `cot_verify` (for GitHub repos)
