@@ -20,7 +20,7 @@ Ed25519 key management
 The chain of trust artifacts are signed. We need to keep track of the ed25519
 public keys to verify them.
 
-We keep the level 3 gecko pubkeys in ``scriptworker.constants.ed25519_public_keys``, as base64-encoded ascii string. Once decoded, these are the seeds for the ed25519 public keys. These are tuples of valid keys, to allow for key rotation.
+We keep the level 3 gecko pubkeys in ``scriptworker.constants.ed25519_public_keys``, as base64-encoded ascii strings. Once decoded, these are the seeds for the ed25519 public keys. These are tuples of valid keys, to allow for key rotation.
 
 Building the chain
 ~~~~~~~~~~~~~~~~~~

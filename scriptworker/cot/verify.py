@@ -605,34 +605,34 @@ async def download_cot(chain):
         BaseDownloadError: on failure.
 
     """
-    mandatory_artifact_tasks = []
+    artifact_tasks = []
     # only deal with chain.links, which are previously finished tasks with
     # signed chain of trust artifacts.  ``chain.task`` is the current running
     # task, and will not have a signed chain of trust artifact yet.
     for link in chain.links:
         task_id = link.task_id
         parent_dir = link.cot_dir
-        mandatory_urls = []
+        urls = []
 
         unsigned_url = get_artifact_url(chain.context, task_id, 'public/chain-of-trust.json')
-        mandatory_urls.append(unsigned_url)
+        urls.append(unsigned_url)
         if chain.context.config['verify_cot_signature']:
-            mandatory_urls.append(
+            urls.append(
                 get_artifact_url(chain.context, task_id, 'public/chain-of-trust.json.sig')
             )
 
-        mandatory_artifact_tasks.append(
+        artifact_tasks.append(
             asyncio.ensure_future(
                 download_artifacts(
-                    chain.context, mandatory_urls, parent_dir=parent_dir,
+                    chain.context, urls, parent_dir=parent_dir,
                     valid_artifact_task_ids=[task_id]
                 )
             )
         )
 
-    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    artifacts_paths = await raise_future_exceptions(artifact_tasks)
 
-    for path in mandatory_artifacts_paths:
+    for path in artifacts_paths:
         sha = get_hash(path[0])
         log.debug("{} downloaded; hash is {}".format(path[0], sha))
 

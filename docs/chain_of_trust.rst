@@ -3,6 +3,8 @@ Chain of Trust
 
 .. include:: cot_overview.rst
 
+.. include:: cot_key_management.rst
+
 .. include:: cot_generate.rst
 
 .. include:: cot_verify.rst

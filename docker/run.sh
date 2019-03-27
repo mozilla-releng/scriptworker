@@ -16,7 +16,6 @@ test_env() {
 
 if [ $1 == "unittest" ]; then
     test_env
-    rm /dev/random && ln -s /dev/urandom /dev/random
     PYVER=`cat /builds/test/pyver`
     tox -e py$PYVER
     rc=$?
