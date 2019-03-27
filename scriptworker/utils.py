@@ -713,16 +713,11 @@ def add_enumerable_item_to_dict(dict_, key, item):
         item (whatever): The item to add to the list associated to the key
 
     """
+    dict_.setdefault(key, [])
     if isinstance(item, (list, tuple)):
-        try:
-            dict_[key].extend(item)
-        except KeyError:
-            dict_[key] = list(item)
+        dict_[key].extend(item)
     else:
-        try:
-            dict_[key].append(item)
-        except KeyError:
-            dict_[key] = [item]
+        dict_[key].append(item)
 
 
 # remove_empty_keys {{{1

@@ -795,6 +795,10 @@ def get_all_artifacts_per_task_id(chain, upstream_artifacts):
                 dict_=all_artifacts_per_task_id, key=upstream_dict['taskId'], item=upstream_dict['paths']
             )
 
+    # Avoid duplicate paths per task_id
+    for task_id, paths in all_artifacts_per_task_id.items():
+        all_artifacts_per_task_id[task_id] = sorted(list(set(paths)))
+
     return all_artifacts_per_task_id
 
 
