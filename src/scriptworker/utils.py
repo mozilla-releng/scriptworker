@@ -666,7 +666,6 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
                 if not chunk:
                     break
                 fd.write(chunk)
-    log.info("Done")
 
 
 # get_loggable_url {{{1

@@ -1274,9 +1274,6 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             'Unknown cot_product_type "{}" for cot_product "{}"!'.format(chain.context.config["cot_product_type"], chain.context.config["cot_product"])
         )
 
-    log.debug("{} json-e context:".format(parent_link.name))
-    # format_json() breaks on lambda values; use pprint.pformat here.
-    log.debug(pprint.pformat(jsone_context))
     return jsone_context
 
 
@@ -1820,7 +1817,6 @@ def get_source_url(obj):
     """
     source_env_prefix = obj.context.config["source_env_prefix"]
     task = obj.task
-    log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task["metadata"]["source"]
     if repo and not verify_repo_matches_url(repo, source):
@@ -1944,7 +1940,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
                 raise
             else:
                 raise CoTError(str(exc))
-        log.info("Good.")
+        log.info("taskId %s passes chain of trust verification.", chain.task_id)
 
 
 # verify_cot_cmdln {{{1
@@ -1970,10 +1966,6 @@ async def _async_verify_cot_cmdln(opts, tmp):
             context.config["github_oauth_token"] = os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN")
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
         await verify_chain_of_trust(cot, check_task=True)
-        log.info(format_json(cot.dependent_task_ids()))
-        log.info("{} : {}".format(cot.name, cot.task_id))
-        for link in cot.links:
-            log.info("{} : {}".format(link.name, link.task_id))
 
 
 def verify_cot_cmdln(args=None, event_loop=None):
