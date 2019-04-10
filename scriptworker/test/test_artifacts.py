@@ -42,7 +42,8 @@ def context(rw_context):
 
 MIME_TYPES = {
     '/foo/bar/test.txt': ('text/plain', None),
-    '/tmp/blah.tgz': ('application/x-tar', 'gzip'),
+    '/tmp/blah.tgz': ('application/x-tar', None),
+    '/tmp/blah.tar.gz': ('application/x-tar', None),
     '~/Firefox.dmg': ('application/x-apple-diskimage', None),
     '/foo/bar/blah.log': ('text/plain', None),
     '/foo/bar/chainOfTrust.asc': ('text/plain', None),

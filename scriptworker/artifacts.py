@@ -4,8 +4,6 @@ Importing this script updates the mimetypes database. This maps some known exten
 in S3.
 
 """
-import posixpath
-
 import aiohttp
 import arrow
 import asyncio
@@ -34,13 +32,16 @@ _GZIP_SUPPORTED_CONTENT_TYPE = ('text/plain', 'application/json', 'text/html', '
 
 
 _EXTENSION_TO_MIME_TYPE = {
-    'txt': ('text/plain', None),
-    'tgz': ('application/x-tar', 'gzip'),
-    'dmg': ('application/x-apple-diskimage', None),
-    'log': ('text/plain', None),
-    'asc': ('text/plain', None),
-    'diff': ('text/plain', None),
-    'xml': ('application/xml', None),
+    # do not use gzip encoding for .tar.gz or .tgz, or we'll gunzip while
+    # downloading, breaking cot verification
+    '.tar.gz': ('application/x-tar', None),
+    '.tgz': ('application/x-tar', None),
+    '.txt': ('text/plain', None),
+    '.dmg': ('application/x-apple-diskimage', None),
+    '.log': ('text/plain', None),
+    '.asc': ('text/plain', None),
+    '.diff': ('text/plain', None),
+    '.xml': ('application/xml', None),
 }
 
 
@@ -119,10 +120,9 @@ def guess_content_type_and_encoding(path):
         str: the content type of the file
 
     """
-    #  TODO: is mimetypes needed? Maybe we can depend purely on our own _EXTENSION_TO_MIME_TYPE mapping
-    _, extension = posixpath.splitext(path)
-    if _EXTENSION_TO_MIME_TYPE.get(extension[1:]):
-        return _EXTENSION_TO_MIME_TYPE.get(extension[1:])
+    for ext, content_type in _EXTENSION_TO_MIME_TYPE.items():
+        if path.endswith(ext):
+            return content_type
 
     content_type, encoding = mimetypes.guess_type(path)
     content_type = content_type or "application/binary"
