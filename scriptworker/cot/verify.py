@@ -1202,7 +1202,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
             'ref': get_branch(task, source_env_prefix),
             'after': commit_hash,
             'sender': {
-                'login': commit_data['author']['login'],
+                'login': commit_data['committer']['login'],
             },
         },
     }
