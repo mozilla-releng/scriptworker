@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.1] - 2019-04-11
+### Fixed
+- CoT on Github: PRs merged by someone else break CoT
+
 ## [23.0.0] - 2019-03-27
 ### Added
 - added `CODE_OF_CONDUCT.md`.
