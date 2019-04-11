@@ -1356,7 +1356,7 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
 async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link):
     github_repo_mock = MagicMock()
     github_repo_mock.get_commit.return_value = {
-        'author': {
+        'committer': {
             'login': 'some-user',
         },
     }
