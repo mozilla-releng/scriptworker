@@ -2154,7 +2154,12 @@ async def _async_verify_cot_cmdln(opts, tmp):
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
-        context.queue = context.queue or Queue(session=session)
+        context.queue = context.queue or Queue(
+            session=session,
+            options={
+                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://taskcluster.net'),
+            },
+        )
         context.task = await context.queue.task(opts.task_id)
         context.config.update({
             'cot_product': opts.cot_product,

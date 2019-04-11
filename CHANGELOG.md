@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.2] - 2019-04-11
+### Fixed
+- `s,scriptharness,scriptworker` in `docs/conf.py`
+- specify `rootUrl` for `verify_cot` if used without credentials.
+
+### Changed
+- Upload .tar.gz without gzip encoding. Gzip encoding resulted in uncompressing the tarball during download, breaking cot hash verification
+
 ## [23.0.1] - 2019-04-11
 ### Fixed
 - CoT on Github: PRs merged by someone else break CoT
