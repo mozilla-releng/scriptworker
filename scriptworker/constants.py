@@ -155,6 +155,8 @@ DEFAULT_CONFIG = frozendict({
         # We haven't had the need for mobile-2-decision yet
         # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
         "mobile-3-decision",
+        # this app is neither mobile nor gecko so for now has its own thing
+        "application-services-r",
     ),
 
     # docker-image cot
@@ -167,6 +169,8 @@ DEFAULT_CONFIG = frozendict({
 
         "mobile-1-images",  # there is no mobile level 2.
         "mobile-3-images",
+        # TODO: to change this to something else?
+        "application-services-r",
     ),
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
@@ -208,6 +212,14 @@ DEFAULT_CONFIG = frozendict({
                     for repo_name in ('android-components', 'focus-android', 'reference-browser', 'fenix')
                 ]),
             }),),
+            'application-services': (frozendict({
+                "schemes": ("https", "ssh", ),
+                "netlocs": ("github.com", ),
+                "path_regexes": (
+                    r"^(?P<path>/mozilla/application-services)(/|.git|$)",
+                    r"^(?P<path>/MihaiTabara/application-services)(/|.git|$)",
+                ),
+            }),),
         }),
     },
 
@@ -224,6 +236,13 @@ DEFAULT_CONFIG = frozendict({
                 'github-push',
                 'github-release',
             ),
+            'application-services': (
+                # On staging releases, level 1 docker images may be built in the pull-request graph
+                'github-pull-request',
+                # Similarly, docker images can be built on regular push. This is usually the case
+                # for level 3 images
+                'github-release',
+            ),
         }),
     },
 
@@ -232,6 +251,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': '',
             'thunderbird': '',
             'mobile': 'mozilla-mobile',
+            'application-services': 'mozilla',
         }),
     },
 
@@ -295,6 +315,9 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:mobile:reference-browser:releng:signing:cert:release-signing': 'reference-browser-repo',
                 'project:mobile:reference-browser:releng:googleplay:product:reference-browser': 'reference-browser-repo',
+            }),
+            'application-services': frozendict({
+                'project:mozilla:application-services:releng:beetmover:bucket:maven-production': 'application-services-repo',
             }),
         }),
     },
@@ -402,6 +425,11 @@ DEFAULT_CONFIG = frozendict({
                     '/mozilla-mobile/reference-browser',
                 ),
             }),
+            'application-services': frozendict({
+                'application-services-repo': (
+                    '/mozilla/application-services',
+                )
+            }),
         }),
     },
     'prebuilt_docker_image_task_types': {
@@ -409,6 +437,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': ('decision', 'action', 'docker-image'),
             'thunderbird': ('decision', 'action', 'docker-image'),
             'mobile': 'any',  # all allowed
+            'application-services': 'any',  # all allowed
         }),
     },
     'source_env_prefix': {
@@ -416,6 +445,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': 'GECKO',
             'thunderbird': 'COMM',
             'mobile': 'MOBILE',
+            'application-services': 'APPSERVICES',
         })
     },
     'extra_run_task_arguments': {
@@ -423,6 +453,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': (),
             'thunderbird': ('--comm-checkout=',),
             'mobile': (),
+            'application-services': (),
         })
     },
 })
