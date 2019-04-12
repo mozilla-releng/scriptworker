@@ -33,8 +33,8 @@ Chain of Trust Versions
 2. CoT v2: rebuild task definitions via json-e. `7.0.0 on 2018-01-18 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#700---2018-01-18>`_
 3. Generic action hook support. `12.0.0 on 2018-05-29 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1200---2018-05-29>`_
 4. Release promotion action hook support. `17.1.0 on 2018-12-28 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1710---2018-12-28>`_
-5. ed25519 support; deprecate GPG support.
-6. drop support for gpg
+5. ed25519 support; deprecate GPG support. `22.0.0 on 2019-03-07 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#2200---2019-03-07>`_
+6. drop support for gpg `23.0.0 on 2019-03-27 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#2300---2019-03-27>`_
 
 Planned future versions:
 
