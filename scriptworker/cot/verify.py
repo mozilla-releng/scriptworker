@@ -990,7 +990,6 @@ async def get_scm_level(context, project):
     return level
 
 
-# populate_jsone_context {{{1
 async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
     params_path = decision_link.get_artifact_full_path('public/parameters.yml')
     parameters = load_json_or_yaml(params_path, is_path=True, file_type='yaml')
@@ -1061,10 +1060,7 @@ async def _get_additional_github_releases_jsone_context(decision_link):
     return {
         'event': {
             'repository': {
-                # TODO: Append ".git" to clone_url in order to match what GitHub actually provide.
-                # This can't be done at the moment because some mobile projects still rely on the
-                # bad value
-                'clone_url': repo_url,
+                'clone_url': "{}.git".format(repo_url),
                 'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
             },
@@ -1228,6 +1224,7 @@ async def _get_additional_hg_cron_jsone_context(parent_link, decision_link):
     return jsone_context
 
 
+# populate_jsone_context {{{1
 async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
     """Populate the json-e context to rebuild ``parent_link``'s task definition.
 
@@ -1267,7 +1264,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         'taskId': None
     }
 
-    if chain.context.config['cot_product'] == 'mobile':
+    if chain.context.config['cot_product'] in ('mobile', 'application-services'):
         if tasks_for == 'github-release':
             jsone_context.update(
                 await _get_additional_github_releases_jsone_context(decision_link)
@@ -1308,7 +1305,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
     return jsone_context
 
 
-# get_jsone_context_and_template {{{1
+# get_in_tree_template {{{1
 async def get_in_tree_template(link):
     """Get the in-tree json-e template for a given link.
 
@@ -1470,6 +1467,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     return jsone_context, tmpl
 
 
+# get_jsone_context_and_template {{{1
 async def get_jsone_context_and_template(chain, parent_link, decision_link, tasks_for):
     """Get the appropriate json-e context and template for any parent task.
 
