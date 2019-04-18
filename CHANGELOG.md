@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.3] - 2019-04-19
+### Added
+- Support for `application-services` in CoT for beetmoverworkers
+
+### Changed
+- `_get_additional_github_releases_jsone_context`'s `clone_url` now returns the correct url suffixing in `git`
+
 ## [23.0.2] - 2019-04-11
 ### Fixed
 - `s,scriptharness,scriptworker` in `docs/conf.py`
