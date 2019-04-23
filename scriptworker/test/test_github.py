@@ -158,7 +158,10 @@ def test_get_tag_hash(github_repository, tags, raises, expected):
 )))
 @pytest.mark.asyncio
 async def test_has_commit_landed_on_repository(context, github_repository, commitish, expected_url, html_text, raises, expected):
-    async def retry_request(_, url):
+    context.config = {'github_oauth_token': 'fakegithubtoken'}
+
+    async def retry_request(_, url, headers):
+        assert headers == {"Authorization": "token fakegithubtoken"}
         assert url == expected_url
         return html_text
 

@@ -114,7 +114,8 @@ class GitHubRepository():
         repo = self._github_repository.html_url
 
         url = '/'.join([repo.rstrip('/'), 'branch_commits', revision])
-        html_data = await retry_request(context, url)
+        headers = {"Authorization": "token {}".format(context.config['github_oauth_token'])}
+        html_data = await retry_request(context, url, headers=headers)
         html_text = html_data.strip()
         # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
         # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
