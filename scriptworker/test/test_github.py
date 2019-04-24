@@ -11,7 +11,11 @@ from scriptworker.exceptions import ConfigError
 
 @pytest.yield_fixture(scope='function')
 def context():
-    yield Context()
+    ctx = Context()
+    ctx.task = {
+        'taskGroupId': 'bobo',
+    }
+    yield ctx
 
 
 @pytest.yield_fixture(scope='function')
@@ -104,26 +108,26 @@ def test_get_tag_hash(github_repository, tags, raises, expected):
 
 
 @pytest.mark.parametrize('commitish, expected_url, html_text, raises, expected', ((
-    '0123456789abcdef0123456789abcdef01234567',
-    'https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234567',
+    '0129abcdef012345643456789abcdef012345678',
+    'https://github.com/some-user/some-repo/branch_commits/0129abcdef012345643456789abcdef012345678',
     '\r\n\r\n',
     False,
     False,
 ), (
-    '0123456789abcdef0123456789abcdef01234567',
-    'https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234567',
+    '0f0123456789abcdef012123456789abcde34565',
+    'https://github.com/some-user/some-repo/branch_commits/0f0123456789abcdef012123456789abcde34565',
     '\n',
     False,
     False,
 ), (
-    '0123456789abcdef0123456789abcdef01234567',
-    'https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234567',
+    '0123456789abcdef0123456789abcdef01234568',
+    'https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234568',
     '',
     False,
     False,
 ), (
-    '0123456789abcdef0123456789abcdef01234567',
-    'https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234567',
+    '06789abcdf0123ef01123456789abcde45234569',
+    'https://github.com/some-user/some-repo/branch_commits/06789abcdf0123ef01123456789abcde45234569',
     '''
 
 
@@ -168,6 +172,22 @@ async def test_has_commit_landed_on_repository(context, github_repository, commi
                 await github_repository.has_commit_landed_on_repository(context, commitish)
         else:
             assert await github_repository.has_commit_landed_on_repository(context, commitish) == expected
+
+
+@pytest.mark.asyncio
+async def test_has_commit_landed_on_repository_cache(context, github_repository):
+    is_cached = False
+    async def retry_request(_, _url):
+        if is_cached:
+            assert False, "retry_request should not have been called."
+        return '\n'
+
+    with patch('scriptworker.github.retry_request', retry_request):
+        await github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678")
+        is_cached = True
+        await github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678")
+        is_cached = False
+        await github_repository.has_commit_landed_on_repository(context, "456789abcdef0123456780129abcdef012345643")
 
 
 @pytest.mark.parametrize('url, expected', ((
