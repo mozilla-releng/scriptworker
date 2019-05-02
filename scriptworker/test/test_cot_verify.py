@@ -159,6 +159,7 @@ def _craft_build_link(chain, source_url='https://hg.mozilla.org/mozilla-central'
                 },
             },
             'image': {
+                'type': 'task-image',
                 'taskId': 'docker_image_task_id',
                 'path': 'path/image',
             },
