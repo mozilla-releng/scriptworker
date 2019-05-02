@@ -1162,36 +1162,18 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
         )
 
     pull_request_data = github_repo.get_pull_request(pull_request_number)
+    # Even though pull_request_data['head']['repo']['pushed_at'] does exist,
+    # we can't reliably use it because a new commit would update the HEAD data.
+    # This becomes a problem if a staging release was kicked off and the PR got
+    # updated in the meantime.
+    pull_request_data['head']['updated_at'] = get_push_date_time(task, source_env_prefix)
 
     return {
         'event': {
             # TODO: Expose the action that triggered the graph in payload.env
             'action': 'synchronize',
-            'repository': {
-                'html_url': pull_request_data['head']['repo']['html_url'],
-            },
-            'pull_request': {
-                'base': {
-                    'repo': {
-                        'full_name': pull_request_data['base']['repo']['full_name'],
-                    },
-                },
-                'head': {
-                    'ref': pull_request_data['head']['ref'],
-                    'sha': pull_request_data['head']['sha'],
-                    'repo': {
-                        'html_url': pull_request_data['head']['repo']['html_url'],
-                        # Even though pull_request_data['head']['repo']['pushed_at'] does exist,
-                        # we can't reliably use it because a new commit would update the HEAD data.
-                        # This becomes a problem if a staging release was kicked off and the PR got
-                        # updated in the meantime.
-                        'pushed_at': get_push_date_time(task, source_env_prefix),
-                    },
-                },
-                'title': pull_request_data['title'],
-                'number': pull_request_number,
-                'html_url': pull_request_data['html_url'],
-            },
+            'repository': pull_request_data['base']['repo'],
+            'pull_request': pull_request_data,
             'sender': {
                 'login': pull_request_data['head']['user']['login'],
             },

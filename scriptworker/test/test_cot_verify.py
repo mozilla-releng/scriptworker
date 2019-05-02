@@ -1491,6 +1491,7 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
     github_repo_mock.get_pull_request.return_value = {
         'base': {
             'repo': {
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
                 'full_name': 'mozilla-mobile/focus-android',
             },
         },
@@ -1505,6 +1506,7 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
             },
         },
         'html_url': 'https://github.com/mozilla-mobile/focus-android/pulls/1234',
+        'number': 1234,
         'title': 'Some PR title',
     }
     github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
@@ -1530,12 +1532,14 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         'event': {
             'action': 'synchronize',
             'repository': {
-                'html_url': 'https://github.com/JohanLorenzo/focus-android',
+                'full_name': 'mozilla-mobile/focus-android',
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
             },
             'pull_request': {
                 'base': {
                     'repo': {
                         'full_name': 'mozilla-mobile/focus-android',
+                        'html_url': 'https://github.com/mozilla-mobile/focus-android',
                     },
                 },
                 'head': {
@@ -1543,8 +1547,11 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
                     'sha': 'somerevision',
                     'repo': {
                         'html_url': 'https://github.com/JohanLorenzo/focus-android',
-                        'pushed_at': '2019-02-01T12:00:00Z',
                     },
+                    'user': {
+                        'login': 'some-user',
+                    },
+                    'updated_at': '2019-02-01T12:00:00Z',
                 },
                 'title': 'Some PR title',
                 'number': 1234,
