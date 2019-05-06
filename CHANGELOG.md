@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.4] - 2019-05-06
+### Fixed
+- [Issue #334](https://github.com/mozilla-releng/scriptworker/issues/334): Github's `web-flow` user breaking Chain of Trust.
+
 ## [23.0.3] - 2019-04-19
 ### Added
 - Support for `application-services` in CoT for beetmoverworkers
