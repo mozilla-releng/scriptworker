@@ -1353,11 +1353,19 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
 
 
 @pytest.mark.asyncio
-async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link):
+@pytest.mark.parametrize('committer_login, author_login', (
+    ('some-user', 'some-user'),
+    ('some-user', 'some-other-user'),
+    ('web-flow', 'some-user'),
+))
+async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link, committer_login, author_login):
     github_repo_mock = MagicMock()
     github_repo_mock.get_commit.return_value = {
         'committer': {
-            'login': 'some-user',
+            'login': committer_login,
+        },
+        'author': {
+            'login': author_login,
         },
     }
     github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
