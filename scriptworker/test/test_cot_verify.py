@@ -1289,6 +1289,7 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
     del context['as_slugid']
     assert context == {
         'event': {
+            'action': 'published',
             'repository': {
                 'clone_url': 'https://github.com/mozilla-mobile/focus-android.git',
                 'full_name': 'mozilla-mobile/focus-android',
