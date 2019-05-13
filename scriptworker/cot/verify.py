@@ -1059,6 +1059,7 @@ async def _get_additional_github_releases_jsone_context(decision_link):
     # [2] https://developer.github.com/v3/activity/events/types/#releaseevent
     return {
         'event': {
+            'action': 'published',
             'repository': {
                 'clone_url': "{}.git".format(repo_url),
                 'full_name': extract_github_repo_full_name(repo_url),
@@ -1286,7 +1287,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
                 await _get_additional_github_push_jsone_context(decision_link)
             )
         else:
-            raise CoTError('Unknown tasks_for "{}" for cot_product "mobile"!'.format(tasks_for))
+            raise CoTError('Unknown tasks_for "{}" for cot_product "{}"!'.format(tasks_for, chain.context.config['cot_product']))
     else:
         jsone_context['repository']['level'] = await get_scm_level(chain.context, project)
 
