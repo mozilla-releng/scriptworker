@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.6] - 2019-05-22
+### Fixed
+- [Issue #331](https://github.com/mozilla-releng/scriptworker/issues/331): Cache `has_commit_landed_on_repository()` results so Github doesn't error out because we hammered the API too often in a short period of time.
+
 ## [23.0.5] - 2019-05-13
 ### Fixed
 - Fix logging
