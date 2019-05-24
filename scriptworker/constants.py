@@ -271,12 +271,10 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:releng:bouncer:server:production': 'all-production-branches',
 
-                # As part of the Dawn project we decided to use the Aurora Google Play
-                # app to ship Firefox Nightly. This means that the "nightly" trees need
-                # to have the scopes to ship to this product.
-                # https://bugzilla.mozilla.org/show_bug.cgi?id=1357808 has additional
-                # background and discussion.
-                'project:releng:googleplay:aurora': 'nightly',
+                # Fennec rides the 68 train. This means, Fennec Nightly will first be shipped off
+                # mozilla-central then mozilla-esr68. Fennec Beta and Release will move to
+                # mozilla-esr68 too.
+                'project:releng:googleplay:aurora': 'beta',
                 'project:releng:googleplay:beta': 'beta',
                 'project:releng:googleplay:release': 'release',
 
