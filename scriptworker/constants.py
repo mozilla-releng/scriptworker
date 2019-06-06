@@ -331,8 +331,8 @@ DEFAULT_CONFIG = frozendict({
                 'all-release-branches': (
                     "/releases/mozilla-beta",
                     "/releases/mozilla-release",
-                    "/releases/mozilla-esr52",
                     "/releases/mozilla-esr60",
+                    "/releases/mozilla-esr68",
                     "/projects/birch",
                     "/projects/jamun",
                     "/projects/maple",
@@ -349,8 +349,8 @@ DEFAULT_CONFIG = frozendict({
                     "/releases/mozilla-release",
                 ),
                 'esr': (
-                    "/releases/mozilla-esr52",
                     "/releases/mozilla-esr60",
+                    "/releases/mozilla-esr68",
                 ),
                 'nightly': (
                     "/mozilla-central",
@@ -367,8 +367,8 @@ DEFAULT_CONFIG = frozendict({
                     "/releases/mozilla-unified",
                     "/releases/mozilla-beta",
                     "/releases/mozilla-release",
-                    "/releases/mozilla-esr52",
                     "/releases/mozilla-esr60",
+                    "/releases/mozilla-esr68",
                     "/projects/birch",
                     "/projects/jamun",
                     "/projects/oak",
@@ -379,8 +379,8 @@ DEFAULT_CONFIG = frozendict({
                     "/mozilla-central",
                     "/releases/mozilla-beta",
                     "/releases/mozilla-release",
-                    "/releases/mozilla-esr52",
                     "/releases/mozilla-esr60",
+                    "/releases/mozilla-esr68",
                 ),
 
                 'all-staging-branches': (
