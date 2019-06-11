@@ -2,9 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.0.9] - 2019-06-11
+### Fixed
+- Fennec Nightly cannot be shipped off mozilla-esr68
+
 ## [23.0.8] - 2019-06-06
 ### Added
-- Added support for mozilla-esr60.
+- Added support for mozilla-esr68.
 
 ## [23.0.7] - 2019-05-24
 ### Fixed
