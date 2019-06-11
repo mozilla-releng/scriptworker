@@ -274,7 +274,7 @@ DEFAULT_CONFIG = frozendict({
                 # Fennec rides the 68 train. This means, Fennec Nightly will first be shipped off
                 # mozilla-central then mozilla-esr68. Fennec Beta and Release will move to
                 # mozilla-esr68 too.
-                'project:releng:googleplay:aurora': 'beta',
+                'project:releng:googleplay:aurora': 'esr68',
                 'project:releng:googleplay:beta': 'beta',
                 'project:releng:googleplay:release': 'release',
 
@@ -350,6 +350,9 @@ DEFAULT_CONFIG = frozendict({
                 ),
                 'esr': (
                     "/releases/mozilla-esr60",
+                    "/releases/mozilla-esr68",
+                ),
+                'esr68': (
                     "/releases/mozilla-esr68",
                 ),
                 'nightly': (
