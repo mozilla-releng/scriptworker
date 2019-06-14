@@ -70,6 +70,7 @@ from scriptworker.utils import (
     read_from_file,
     remove_empty_keys,
     rm,
+    write_to_file,
 )
 from taskcluster.exceptions import TaskclusterFailure
 from taskcluster.aio import Queue
@@ -2225,3 +2226,80 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
             rm(tmp)
         else:
             log.info("Artifacts are in {}".format(tmp))
+
+
+# create_test_workdir {{{1
+async def _async_create_test_workdir(task_id, path, queue=None):
+    async with aiohttp.ClientSession() as session:
+        context = Context()
+        context.session = session
+        context.config = dict(deepcopy(DEFAULT_CONFIG))
+        context.credentials = read_worker_creds()
+        context.queue = queue or context.queue or Queue(
+            session=session,
+            options={
+                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://taskcluster.net'),
+            },
+        )
+        context.task = await context.queue.task(task_id)
+        work_dir = os.path.abspath(path)
+        context.config.update({
+            'work_dir': work_dir,
+            'artifact_dir': os.path.join(work_dir, 'artifacts'),
+            'task_log_dir': os.path.join(work_dir, 'artifacts', 'public', 'logs'),
+            'verify_cot_signature': False,
+        })
+        context.config = apply_product_config(context.config)
+        write_to_file(os.path.join(work_dir, "task.json"), context.task, file_type='json')
+        # we could add chain-of-trust.json and verify sha
+        for ua in context.task["payload"]["upstreamArtifacts"]:
+            task_id = ua["taskId"]
+            for path in ua["paths"]:
+                parent_dir = os.path.join(work_dir, "cot", task_id)
+                url = get_artifact_url(context, task_id, path)
+                loggable_url = get_loggable_url(url)
+                log.info("Downloading artifact:\n{}".format(loggable_url))
+                await download_artifacts(
+                    context, [url], parent_dir=parent_dir,
+                    valid_artifact_task_ids=[task_id]
+                )
+
+
+def create_test_workdir(args=None, event_loop=None):
+    """Create a test workdir, for manual testing purposes.
+
+    Args:
+        args (list, optional): the commandline args to parse.  If None, use
+            ``sys.argv[1:]`` .  Defaults to None.
+
+        event_loop (asyncio.events.AbstractEventLoop): the event loop to use.
+            If ``None``, use ``asyncio.get_event_loop()``. Defaults to ``None``.
+
+    """
+    args = args or sys.argv[1:]
+    parser = argparse.ArgumentParser(
+        description="""Populate a test `work_dir`.
+
+Given a scriptworker task's `task_id`, get its task definition, write it to
+`./work/task.json`, then download its `upstreamArtifacts` and put them in
+`./work/cot/TASK_ID/PATH`.
+
+This is helpful in manually testing a *script run.""")
+    parser.add_argument('--path', help='relative path to the work_dir', default='work')
+    parser.add_argument('--overwrite', help='overwrite an existing work_dir',
+                        action='store_true', default=False)
+    parser.add_argument('task_id', help='the task id to test')
+    opts = parser.parse_args(args)
+
+    log = logging.getLogger('scriptworker')
+    log.setLevel(logging.DEBUG)
+    logging.basicConfig()
+    if os.path.exists(opts.path):
+        if not opts.overwrite:
+            log.critical("Cowardly refusing to delete %s!", opts.path)
+            sys.exit(1)
+        rm(opts.path)
+    makedirs(opts.path)
+    event_loop = event_loop or asyncio.get_event_loop()
+    event_loop.run_until_complete(_async_create_test_workdir(opts.task_id, opts.path))
+    log.info("Done.")
