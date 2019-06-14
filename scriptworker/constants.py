@@ -275,7 +275,7 @@ DEFAULT_CONFIG = frozendict({
                 # mozilla-central then mozilla-esr68. Fennec Beta and Release will move to
                 # mozilla-esr68 too.
                 'project:releng:googleplay:aurora': 'esr68',
-                'project:releng:googleplay:beta': 'beta',
+                'project:releng:googleplay:beta': 'esr68',
                 'project:releng:googleplay:release': 'release',
 
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
