@@ -530,7 +530,7 @@ def prepare_to_run_task(context, claim_task):
     """
     current_task_info = {}
     context.claim_task = claim_task
-    current_task_info['taskId'] = get_task_id(claim_task)
+    current_task_info['taskId'] = context.task_id
     current_task_info['runId'] = get_run_id(claim_task)
     log.info("Going to run taskId {taskId} runId {runId}!".format(
         **current_task_info
@@ -556,12 +556,15 @@ async def run_task(context, to_cancellable_process):
         int: exit code
 
     """
+    env = deepcopy(os.environ)
+    env['TASK_ID'] = context.task_id or 'None'
     kwargs = {  # pragma: no branch
         'stdout': PIPE,
         'stderr': PIPE,
         'stdin': None,
         'close_fds': True,
         'preexec_fn': lambda: os.setsid(),
+        'env': env,
     }
 
     subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)

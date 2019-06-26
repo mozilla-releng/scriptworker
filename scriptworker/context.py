@@ -102,6 +102,12 @@ class Context(object):
         if self._credentials:
             return dict(deepcopy(self._credentials))
 
+    @property
+    def task_id(self):
+        """string: The running task's taskId."""
+        if self.claim_task:
+            return self.claim_task['status']['taskId']
+
     @credentials.setter
     def credentials(self, creds):
         self._credentials = creds
