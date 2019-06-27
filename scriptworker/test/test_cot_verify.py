@@ -2318,7 +2318,7 @@ def test_audit_log_formatter(level, expected):
 
 
 # verify_chain_of_trust {{{1
-@pytest.mark.parametrize("exc", (None, KeyError, CoTError))
+@pytest.mark.parametrize("exc", (None, KeyError, TypeError, CoTError))
 @pytest.mark.asyncio
 async def test_verify_chain_of_trust(chain, exc, mocker):
 

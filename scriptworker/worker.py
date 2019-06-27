@@ -62,7 +62,7 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
         log.error("Hit ScriptWorkerException: {}".format(e))
     except Exception as e:
         log.exception("SCRIPTWORKER_UNEXPECTED_EXCEPTION task {}".format(e))
-        raise
+        status = STATUSES['internal-error']
     return status
 
 
