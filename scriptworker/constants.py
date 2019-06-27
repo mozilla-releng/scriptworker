@@ -283,6 +283,7 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:releng:snapcraft:firefox:beta': 'beta-or-release',     # Needed on release for RCs
                 'project:releng:snapcraft:firefox:candidate': 'release',
+                'project:releng:snapcraft:firefox:esr': 'esr',
 
                 'project:releng:ship-it:production': 'all-production-branches',
 
