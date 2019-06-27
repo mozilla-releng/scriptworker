@@ -2143,7 +2143,7 @@ async def verify_chain_of_trust(chain):
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
             await trace_back_to_tree(chain)
-        except (BaseDownloadError, KeyError, AttributeError) as exc:
+        except (BaseDownloadError, KeyError, TypeError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
                 raise

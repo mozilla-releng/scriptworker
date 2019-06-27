@@ -197,22 +197,29 @@ async def test_mocker_run_tasks_caught_exception(context, successful_queue, mock
     assert status == expected
 
 
-@pytest.mark.parametrize("func_to_raise,exc", ((
-    'run_task', ValueError
-), (
-    'upload_artifacts', OSError
-)))
 @pytest.mark.asyncio
-async def test_mocker_run_tasks_uncaught_exception(context, successful_queue, mocker,
-                                                   func_to_raise, exc):
+async def test_mocker_upload_artifacts_uncaught_exception(context, successful_queue, mocker):
     """Raise an uncaught exception within the run_tasks try/excepts.
 
     """
-    _mocker_run_tasks_helper(mocker, exc, func_to_raise)
+    _mocker_run_tasks_helper(mocker, OSError, 'upload_artifacts')
 
     context.queue = successful_queue
-    with pytest.raises(exc):
+    with pytest.raises(OSError):
         await worker.run_tasks(context)
+
+
+@pytest.mark.asyncio
+async def test_unexpected_exception_catch_and_tell_taskcluster(context, successful_queue, mocker):
+    def fail():
+        raise Exception()
+
+    async def run(coroutine):
+        await coroutine
+
+    mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
+    status = await do_run_task(context, run, lambda x: x)
+    assert status == STATUSES['internal-error']
 
 
 @pytest.mark.asyncio
