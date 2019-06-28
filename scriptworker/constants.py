@@ -30,6 +30,13 @@ _ALLOWED_MOBILE_GITHUB_OWNERS = (
     'mitchhentges',
 )
 
+_ALLOWED_APPLICATION_SERVICES_GITHUB_OWNERS = (
+    'mozilla',
+    # Owners below are allowed to run staging releases
+    'MihaiTabara',
+    'mitchhentges',
+)
+
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
 # instance maintainers, also make changes to ``scriptworker.yaml.tmpl``.
@@ -215,10 +222,10 @@ DEFAULT_CONFIG = frozendict({
             'application-services': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
-                "path_regexes": (
-                    r"^(?P<path>/mozilla/application-services)(/|.git|$)",
-                    r"^(?P<path>/MihaiTabara/application-services)(/|.git|$)",
-                ),
+                "path_regexes": tuple([
+                    r"^(?P<path>/{}/application-services)(/|.git|$)".format(repo_owner)
+                    for repo_owner in _ALLOWED_APPLICATION_SERVICES_GITHUB_OWNERS
+                ]),
             }),),
         }),
     },
