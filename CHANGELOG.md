@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.3.1] - 2019-07-02
+### Fixed
+- Fennec Release is now shipped off mozilla-esr68
+
 ## [23.3.0] - 2019-06-28
 ### Changed
 - Allows `mitchhentges` to do staging `application-services` tasks
@@ -19,11 +23,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [23.0.10] - 2019-06-11
 ### Fixed
-- Fennec Beta cannot be shipped off mozilla-esr68
+- Fennec Beta is now shipped off mozilla-esr68
 
 ## [23.0.9] - 2019-06-11
 ### Fixed
-- Fennec Nightly cannot be shipped off mozilla-esr68
+- Fennec Nightly is now shipped off mozilla-esr68
 
 ## [23.0.8] - 2019-06-06
 ### Added
