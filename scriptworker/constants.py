@@ -283,7 +283,7 @@ DEFAULT_CONFIG = frozendict({
                 # mozilla-esr68 too.
                 'project:releng:googleplay:aurora': 'esr68',
                 'project:releng:googleplay:beta': 'esr68',
-                'project:releng:googleplay:release': 'release',
+                'project:releng:googleplay:release': 'esr68',
 
                 'project:releng:signing:cert:nightly-signing': 'all-nightly-branches',
                 'project:releng:signing:cert:release-signing': 'all-release-branches',
