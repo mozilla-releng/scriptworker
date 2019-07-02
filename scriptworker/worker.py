@@ -12,6 +12,7 @@ import logging
 import os
 import sys
 import signal
+import socket
 import typing
 
 from scriptworker.artifacts import upload_artifacts
@@ -228,6 +229,7 @@ def main(event_loop=None):
     """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
+    log.info("Worker FQDN: {}".format(socket.getfqdn()))
     cleanup(context)
     context.event_loop = event_loop or asyncio.get_event_loop()
 

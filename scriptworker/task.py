@@ -702,7 +702,8 @@ async def claim_work(context):
         dict: a dict containing a list of the task definitions of the tasks claimed.
 
     """
-    log.debug("Calling claimWork...")
+    log.debug("Calling claimWork for {}/{}...".format(
+        context.config['worker_group'], context.config['worker_id']))
     payload = {
         'workerGroup': context.config['worker_group'],
         'workerId': context.config['worker_id'],
