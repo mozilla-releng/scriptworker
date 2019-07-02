@@ -3,6 +3,9 @@
 We don't yet have a scriptworker provisioner, so spinning up new instances of a specific type is still a manual process that can definitely use improvement.  Here are docs on how to spin a new instance up. These instructions apply to any type of scriptworker that
 already has an instance running, hence configurations already exists.
 
+<span style="color:red">**We now have enforced MFA policy set in order to talk to the Amazon API. If you don't have that set up and working on your machine, you can either try to set it up by following
+[this](https://mana.mozilla.org/wiki/pages/viewpage.action?pageId=48595296) and [this](https://github.com/oremj/aws-assume-role) or skip directly to [step 2a](#2b---using-aws-console).</span>**
+
 ## 1. initial setup
 
 To begin with, you need to figure out the network basics, IP and DNS entries. With these at hand, you'll be ready to spin out a new instance. To ease some of these operations, you need to use the `build-cloud-tools` repository.
@@ -86,7 +89,10 @@ Go to the EC2 console, go to the appropriate region (usw2, use1).
 - Select an existing group; e.g. choose the `beetmover-worker` group; review and launch
 - make sure to choose a keypair you have access to, e.g. aws-releng or generate your own keypair.  Puppet will overwrite this.
 
-Alternatively, you can create a template based on an existing instance and then launch another instance based on that template, after you amend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
+**Alternatively**, you can create a template based on an existing instance and then launch another instance based on that template, after you amend the `ami-id`, `subnet`, `security-groups` and IP/DNS entries.
+If you go down this path, make sure to nuke the `Network` section altogether when both creating the template from existing instance but also when you instantiate from it. `AWS` will automatically assign an `eth0` interface with private IP set from the ones available,
+if you set up the subnet and security group correctly. You can then use the already assigned IP to ask for help from IT with the DNS records by [filing a bug](https://bugzilla.mozilla.org/enter_bug.cgi?product=Infrastructure%20%26%20Operations&component=DNS%20and%20Domain%20Registration)
+like [bug 1503550](https://bugzilla.mozilla.org/show_bug.cgi?id=1503550).
 
 
 ## 3. puppetize the instance
