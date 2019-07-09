@@ -404,17 +404,20 @@ DEFAULT_CONFIG = frozendict({
                 'all-release-branches': (
                     "/releases/comm-beta",
                     "/releases/comm-esr60",
+                    "/releases/comm-esr68",
                 ),
                 'beta': (
                     "/releases/comm-beta",
                 ),
                 'esr': (
                     "/releases/comm-esr60",
+                    "/releases/comm-esr68",
                 ),
                 'all-nightly-branches': (
                     "/comm-central",
                     "/releases/comm-beta",
                     "/releases/comm-esr60",
+                    "/releases/comm-esr68",
                 ),
                 'nightly': (
                     "/comm-central",
