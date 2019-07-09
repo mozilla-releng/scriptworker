@@ -31,8 +31,8 @@ CREDS_FILES = (
 )
 
 # Based on
-# https://github.com/taskcluster/taskcluster-queue/blob/ced3b7bd824b445fd33ce0deb5de87a65f02b8b3/src/api.js#L94
-_GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,22}$')
+# https://github.com/taskcluster/taskcluster/blob/8bf75678626567ec2fdae3889dff2f6d86235958/services/queue/src/api.js#L63
+_GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,38}$')
 _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
