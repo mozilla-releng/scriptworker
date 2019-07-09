@@ -16,7 +16,7 @@
       "$eval": "taskId"
     },
     "parameters": {
-      "$eval": "payload.decision.parameters"
+      "$eval": "payload.decision['parameters']"
     },
     "push": {
       "$eval": "payload.decision.push"
