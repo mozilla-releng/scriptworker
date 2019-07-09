@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.3.3] - 2019-07-09
+### Changed
+- Allow longer (up to 38 characters) worker_id
+
+## [23.3.2] - 2019-07-02
+### Added
+- Log worker_group, worker_id, FQDN
+
 ## [23.3.1] - 2019-07-02
 ### Fixed
 - Fennec Release is now shipped off mozilla-esr68

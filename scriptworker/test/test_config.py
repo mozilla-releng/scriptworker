@@ -125,9 +125,9 @@ def test_check_config_invalid_type(t_config):
 
 @pytest.mark.parametrize("params", ("provisioner_id", "worker_group", "worker_type", "worker_id"))
 def test_check_config_invalid_ids(params, t_config):
-    t_config[params] = 'twenty-three-characters'
+    t_config[params] = 'way-way-way-more-than-thirty-eight-characters'
     messages = config.check_config(t_config, "test_path")
-    assert '{} doesn\'t match "^[a-zA-Z0-9-_]{{1,22}}$" (required by Taskcluster)'.format(params) in messages
+    assert '{} doesn\'t match "^[a-zA-Z0-9-_]{{1,38}}$" (required by Taskcluster)'.format(params) in messages
 
 
 def test_check_config_good(t_config):
