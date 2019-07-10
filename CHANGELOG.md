@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.4.0] - 2019-07-10
+### Added
+- Added support for comm-esr68.
+
+### Changed
+- Allow actions to not pass parameters explicitly.
+
 ## [23.3.3] - 2019-07-09
 ### Changed
 - Allow longer (up to 38 characters) worker_id

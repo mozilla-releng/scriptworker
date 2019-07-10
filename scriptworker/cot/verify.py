@@ -1386,7 +1386,7 @@ def _wrap_action_hook_with_let(tmpl, action_perm):
             'push': {'$eval': 'payload.decision.push'},
             'repository': {'$eval': 'payload.decision.repository'},
             'input': {'$eval': 'payload.user.input'},
-            'parameters': {'$eval': 'payload.decision.parameters'},
+            'parameters': {'$eval': "payload.decision['parameters']"},
 
             'taskId': {'$eval': 'payload.user.taskId'},
             'taskGroupId': {'$eval': 'payload.user.taskGroupId'},
@@ -1400,7 +1400,7 @@ def _render_action_hook_payload(action_defn, action_context, action_task):
     hook_payload = action_defn['hookPayload']
     context = {
         'input': action_context['input'],
-        'parameters': action_context['parameters'],
+        'parameters': action_context.get('parameters'),
         'taskGroupId': action_task.decision_task_id,
         'taskId': action_context['taskId'],
     }
