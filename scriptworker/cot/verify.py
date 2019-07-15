@@ -2252,9 +2252,9 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.config = apply_product_config(context.config)
         write_to_file(os.path.join(work_dir, "task.json"), context.task, file_type='json')
         # we could add chain-of-trust.json and verify sha
-        for ua in context.task["payload"]["upstreamArtifacts"]:
-            task_id = ua["taskId"]
-            for path in ua["paths"]:
+        for upstream_artifact in context.task["payload"]["upstreamArtifacts"]:
+            task_id = upstream_artifact["taskId"]
+            for path in upstream_artifact["paths"]:
                 parent_dir = os.path.join(work_dir, "cot", task_id)
                 url = get_artifact_url(context, task_id, path)
                 loggable_url = get_loggable_url(url)
@@ -2287,7 +2287,7 @@ Given a scriptworker task's `task_id`, get its task definition, write it to
 This is helpful in manually testing a *script run.""")
     parser.add_argument('--path', help='relative path to the work_dir', default='work')
     parser.add_argument('--overwrite', help='overwrite an existing work_dir',
-                        action='store_true', default=False)
+                        action='store_true')
     parser.add_argument('task_id', help='the task id to test')
     opts = parser.parse_args(args)
 
@@ -2296,7 +2296,7 @@ This is helpful in manually testing a *script run.""")
     logging.basicConfig()
     if os.path.exists(opts.path):
         if not opts.overwrite:
-            log.critical("Cowardly refusing to delete %s!", opts.path)
+            log.critical("Scriptworker will not delete %s without --overwrite!", opts.path)
             sys.exit(1)
         rm(opts.path)
     makedirs(opts.path)
