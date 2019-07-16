@@ -78,6 +78,7 @@ setup(
         "console_scripts": [
             "scriptworker = scriptworker.worker:main",
             "verify_cot = scriptworker.cot.verify:verify_cot_cmdln",
+            "create_test_workdir = scriptworker.cot.verify:create_test_workdir",
             "verify_ed25519_signature = scriptworker.ed25519:verify_ed25519_signature_cmdln",
         ],
     },

@@ -2367,3 +2367,64 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
     mocker.patch.object(cotverify, 'verify_chain_of_trust', new=noop_async)
 
     cotverify.verify_cot_cmdln(args=args, event_loop=event_loop)
+
+
+# create_test_workdir {{{1
+@pytest.mark.asyncio
+async def test_async_create_test_workdir(mocker, tmpdir):
+    """``_async_create_test_workdir`` populates ``path`` with ``task.json`` and
+    cot artifacts.
+
+    """
+    task_defn = {
+        "payload": {
+            "upstreamArtifacts": [{
+                "taskId": "taskId1",
+                "paths": ["public/build/one", "public/build/two"],
+            }],
+        },
+    }
+
+    async def fake_task(task_id):
+        return task_defn
+
+    queue = mocker.MagicMock()
+    queue.task = fake_task
+    mocker.patch.object(cotverify, "download_artifacts", new=noop_async)
+
+    await cotverify._async_create_test_workdir("taskId", tmpdir, queue=queue)
+    contents = load_json_or_yaml(os.path.join(tmpdir, "task.json"), is_path=True)
+    assert contents == task_defn
+
+
+@pytest.mark.parametrize("exists, overwrite, raises", ((
+    True, True, False,
+), (
+    False, False, False,
+), (
+    False, True, False,
+), (
+    True, False, True,
+)))
+def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, raises):
+    """``create_test_workdir`` fails if ``path`` exists and ``--overwrite`` isn't
+    passed. Otherwise we call ``_async_create_test_workdir`` with the appropriate
+    args.
+
+    """
+    work_dir = os.path.join(tmpdir, "work")
+    args = ["--path", work_dir, "taskId"]
+    if overwrite:
+        args.append("--overwrite")
+
+    async def fake_create(*args):
+        assert args == ("taskId", work_dir)
+
+    mocker.patch.object(cotverify, "_async_create_test_workdir", new=fake_create)
+    if exists:
+        makedirs(work_dir)
+    if raises:
+        with pytest.raises(SystemExit):
+            cotverify.create_test_workdir(args=args, event_loop=event_loop)
+    else:
+        cotverify.create_test_workdir(args=args, event_loop=event_loop)
