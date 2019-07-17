@@ -64,6 +64,10 @@ def die_sync(*args, **kwargs):
 def chain(rw_context):
     yield _craft_chain(rw_context, scopes=['project:releng:signing:cert:nightly-signing', 'ignoreme'])
 
+@pytest.yield_fixture(scope='function')
+def try_chain(rw_context):
+    yield _craft_chain(rw_context, scopes=['project:releng:signing:cert:dep-signing', 'ignoreme'])
+
 
 @pytest.yield_fixture(scope='function')
 def mobile_chain(mobile_rw_context):
@@ -159,6 +163,7 @@ def _craft_build_link(chain, source_url='https://hg.mozilla.org/mozilla-central'
                 },
             },
             'image': {
+                'type': 'task-image',
                 'taskId': 'docker_image_task_id',
                 'path': 'path/image',
             },
@@ -255,7 +260,7 @@ def mobile_github_push_link(mobile_chain):
     yield decision_link
 
 
-def _craft_decision_link(chain, tasks_for, source_url='https://hg.mozilla.org/mozilla-central'):
+def _craft_decision_link(chain, *, tasks_for, source_url='https://hg.mozilla.org/mozilla-central'):
     link = cotverify.LinkOfTrust(chain.context, 'decision', 'decision_task_id')
     link.cot = {
         'taskId': 'decision_task_id',
@@ -632,6 +637,71 @@ def test_verify_docker_image_sha_wrong_task_type(chain, build_link, decision_lin
         with pytest.raises(CoTError):
             cotverify.verify_docker_image_sha(chain, build_link)
     else:
+        cotverify.verify_docker_image_sha(chain, build_link)
+
+
+def test_verify_docker_image_sha_indexed_image(mobile_chain, decision_link):
+    """
+    Indexed image are not allowed with restricted scopes.
+    """
+    chain = mobile_chain
+    decision_link.task['payload']['image'] = {
+        "namespace": "trust-domain.v2.taskgraph-try.latest.taskgraph.decision-image",
+        "path": "public/image.tar.zst",
+        "type": "indexed-image"
+    }
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, decision_link)
+
+
+def test_verify_docker_image_sha_indexed_image_pr(mobile_chain_pull_request, decision_link):
+    """
+    Indexed image are allowed with no restricted scopes.
+    """
+    chain = mobile_chain_pull_request
+    decision_link.task['payload']['image'] = {
+        "namespace": "trust-domain.v2.taskgraph-try.latest.taskgraph.decision-image",
+        "path": "public/image.tar.zst",
+        "type": "indexed-image"
+    }
+    cotverify.verify_docker_image_sha(chain, decision_link)
+
+
+
+def test_verify_docker_image_sha_unknown_image_type(mobile_chain, decision_link):
+    """
+    Unknown image types are not allowed.
+    """
+    chain = mobile_chain
+    decision_link.task['payload']['image'] = {
+        "type": "spooky-image"
+    }
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, decision_link)
+
+
+def test_verify_docker_image_sha_unknown_image_type_pr(mobile_chain_pull_request, decision_link):
+    """
+    Unknown image type are not allowed, even for github PRs.
+    """
+    chain = mobile_chain_pull_request
+    decision_link.task['payload']['image'] = {
+        "type": "spooky-image"
+    }
+    with pytest.raises(CoTError):
+        cotverify.verify_docker_image_sha(chain, decision_link)
+
+def test_verify_docker_image_sha_indexed_build(try_chain, decision_link, build_link):
+    """
+    For hg based projects, non-decision/docker-image type tasks can't use indexed images.
+    """
+    chain = try_chain
+    build_link.task['payload']['image'] = {
+        "namespace": "trust-domain.v2.taskgraph-try.latest.taskgraph.decision-image",
+        "path": "public/image.tar.zst",
+        "type": "indexed-image"
+    }
+    with pytest.raises(CoTError):
         cotverify.verify_docker_image_sha(chain, build_link)
 
 

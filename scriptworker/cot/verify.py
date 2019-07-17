@@ -167,6 +167,18 @@ class ChainOfTrust(object):
         """
         return self.task_type in DECISION_TASK_TYPES
 
+    def has_restricted_scopes(self):
+        """Determine if this task is requesting any restricted scopes.
+
+        Returns:
+            bool: whether this task requested restricted scopes.
+
+        """
+        return any(
+            (scope in self.context.config['cot_restricted_scopes'])
+            for scope in self.task['scopes']
+        )
+
     def get_all_links_in_chain(self):
         """Return all links in the chain of trust, including the target task.
 
@@ -471,19 +483,20 @@ def verify_docker_image_sha(chain, link):
     task = link.task
     errors = []
 
-    if isinstance(task['payload'].get('image'), dict):
+    image = task['payload'].get('image')
+    if isinstance(image, dict) and image['type'] == 'task-image':
         # Using pre-built image from docker-image task
         docker_image_task_id = task['extra']['chainOfTrust']['inputs']['docker-image']
         log.debug("Verifying {} {} against docker-image {}".format(
             link.name, link.task_id, docker_image_task_id
         ))
-        if docker_image_task_id != task['payload']['image']['taskId']:
+        if docker_image_task_id != image['taskId']:
             errors.append("{} {} docker-image taskId isn't consistent!: {} vs {}".format(
                 link.name, link.task_id, docker_image_task_id,
                 task['payload']['image']['taskId']
             ))
         else:
-            path = task['payload']['image']['path']
+            path = image['path']
             # we need change the hash alg everywhere if we change, and recreate
             # the docker images...
             image_hash = cot['environment']['imageArtifactHash']
@@ -501,6 +514,19 @@ def verify_docker_image_sha(chain, link):
                 ))
             else:
                 log.debug("Found matching docker-image sha {}".format(upstream_sha))
+    elif isinstance(image, dict) and image['type'] == 'indexed-image':
+        # FIXME: Indexed image should be verified by CoT as well
+        if chain.has_restricted_scopes():
+            errors.append("Indexed images are not usable for tasks with restricted scopes.")
+        prebuilt_task_types = chain.context.config['prebuilt_docker_image_task_types']
+        if prebuilt_task_types != "any" and link.task_type not in prebuilt_task_types:
+            errors.append(
+                "Task type {} not allowed to use a indexed docker image!".format(
+                    link.task_type
+                )
+            )
+    elif isinstance(image, dict):
+        errors.append("Unknown type of docker image {}.".format(image.get('type')))
     else:
         prebuilt_task_types = chain.context.config['prebuilt_docker_image_task_types']
         if prebuilt_task_types != "any" and link.task_type not in prebuilt_task_types:
@@ -2044,13 +2070,14 @@ async def trace_back_to_tree(chain):
     """
     errors = []
     repos = {}
-    restricted_privs = None
     rules = {}
     for my_key, config_key in {
         'scopes': 'cot_restricted_scopes',
         'trees': 'cot_restricted_trees'
     }.items():
         rules[my_key] = chain.context.config[config_key]
+
+    restricted_privs = chain.has_restricted_scopes()
 
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
@@ -2065,7 +2092,6 @@ async def trace_back_to_tree(chain):
     for scope in chain.task['scopes']:
         if scope in rules['scopes']:
             log.info("Found privileged scope {}".format(scope))
-            restricted_privs = True
             level = rules['scopes'][scope]
             if my_repo not in rules['trees'][level]:
                 errors.append("{} {}: repo {} not allowlisted for scope {}!".format(
