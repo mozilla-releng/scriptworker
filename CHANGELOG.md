@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.5.0] - 2019-07-17
+### Added
+- Provide more complete github contexts to pull requests.
+- Allow using indexed-tasks for decision task images in unrestricted contexts.
+
 ## [23.4.0] - 2019-07-10
 ### Added
 - Added support for comm-esr68.

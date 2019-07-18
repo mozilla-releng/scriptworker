@@ -13,7 +13,7 @@ LEGAL_VERSIONS = (
     ('0.1.0', (0, 1, 0)),
     ('1.2.3', (1, 2, 3)),
     ('4.1.5', (4, 1, 5)),
-    ('9.2.0-alpha', (9, 2, 0, "alpha")),
+    ('9.2.0alpha', (9, 2, 0, "alpha")),
 )
 ILLEGAL_LENGTH_VERSIONS = (
     (0, ),
@@ -50,7 +50,7 @@ def test_illegal_three_version():
 def test_four_version():
     """test_version | 3 digit + string tuple -> version string
     """
-    assert swversion.get_version_string((0, 1, 0, 'alpha')) == '0.1.0-alpha'
+    assert swversion.get_version_string((0, 1, 0, 'alpha')) == '0.1.0alpha'
 
 
 @pytest.mark.parametrize("version_tuple", ILLEGAL_LENGTH_VERSIONS)

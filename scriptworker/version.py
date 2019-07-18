@@ -35,14 +35,14 @@ def get_version_string(version):
       version (Tuple[int, int, int, str]): three ints and an optional string.
 
     Returns:
-      version_string (str): the tuple translated into a string per semver.org
+      version_string (str): the tuple translated into a string per PEP 440
 
     """
     version_len = len(version)
     if version_len == 3:
         version_string = '%d.%d.%d' % version
     elif version_len == 4:
-        version_string = '%d.%d.%d-%s' % version
+        version_string = '%d.%d.%d%s' % version
     else:
         raise Exception(
             'Version tuple is non-semver-compliant {} length!'.format(version_len)
@@ -52,7 +52,7 @@ def get_version_string(version):
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (23, 4, 0)
+__version__ = (23, 5, 0)
 __version_string__ = get_version_string(__version__)
 
 
@@ -79,7 +79,7 @@ def write_version(name=None, path=None):
             'version_string': __version_string__,
         }
         with open(path, 'w') as filehandle:
-            filehandle.write(json.dumps(contents, sort_keys=True, indent=4))
+            print(json.dumps(contents, sort_keys=True, indent=4), file=filehandle)
 
 
 write_version(name=__name__)
