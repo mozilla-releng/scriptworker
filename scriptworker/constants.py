@@ -9,7 +9,6 @@ Attributes:
 """
 from frozendict import frozendict
 import os
-import re
 
 STATUSES = {
     'success': 0,
@@ -21,21 +20,6 @@ STATUSES = {
     'superseded': 6,
     'intermittent-task': 7,
 }
-
-_ALLOWED_MOBILE_GITHUB_OWNERS = (
-    'mozilla-mobile',
-    # Owners below are allowed to run staging releases
-    'JohanLorenzo',
-    'MihaiTabara',
-    'mitchhentges',
-)
-
-_ALLOWED_APPLICATION_SERVICES_GITHUB_OWNERS = (
-    'mozilla',
-    # Owners below are allowed to run staging releases
-    'MihaiTabara',
-    'mitchhentges',
-)
 
 # DEFAULT_CONFIG {{{1
 # When making changes to DEFAULT_CONFIG that may be of interest to scriptworker
@@ -180,9 +164,10 @@ DEFAULT_CONFIG = frozendict({
         "application-services-r",
     ),
 
+
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;
     # all other repos are relegated to CI scopes.
-    'valid_vcs_rules': {
+    'trusted_vcs_rules': {
         'by-cot-product': frozendict({
             'firefox': (frozendict({
                 "schemes": ("https", "ssh", ),
@@ -191,8 +176,7 @@ DEFAULT_CONFIG = frozendict({
                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                    r"^(?P<path>/projects/([A-Za-z0-9-]+))(/|$)",
-                    r"^(?P<path>/(try))(/|$)",
+                    r"^(?P<path>/projects/(birch|jamun|maple|oak))(/|$)",
                 ),
             }),),
             # XXX We should also check the mozilla-central tree that is being used.
@@ -202,33 +186,40 @@ DEFAULT_CONFIG = frozendict({
                 "path_regexes": (
                     r"^(?P<path>/comm-central)(/|$)",
                     r"^(?P<path>/releases/comm-(beta|esr\d+))(/|$)",
-                    r"^(?P<path>/(try-comm-central))(/|$)",
                 ),
             }),),
             'mobile': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
                 "path_regexes": tuple([
-                    # XXX We allow Github forks to run staging releases. Please make sure to
-                    # restrict production scopes to the origin repo (with cot_restricted_scopes)!
-                    r"^(?P<path>/{repo_owner}/{repo_name})(/|.git|$)".format(
-                        repo_owner=re.escape(username),
-                        repo_name=re.escape(repo_name)
-                    )
-                    for username in _ALLOWED_MOBILE_GITHUB_OWNERS
-                    for repo_name in ('android-components', 'focus-android', 'reference-browser', 'fenix')
+                    r"^(?P<path>/mozilla-mobile/(?:android-components|focus-android|reference-browser|fenix))(/|.git|$)",
                 ]),
             }),),
             'application-services': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
-                "path_regexes": tuple([
-                    r"^(?P<path>/{}/application-services)(/|.git|$)".format(repo_owner)
-                    for repo_owner in _ALLOWED_APPLICATION_SERVICES_GITHUB_OWNERS
-                ]),
+                "path_regexes": (
+                    r"^(?P<path>/mozilla/application-services)(/|.git|$)",
+                ),
             }),),
         }),
     },
+
+    # The project can't be unambigously parsed from a path on hg.mozilla.org.
+    # This contains a list of known projects to help extract it.
+    "valid_vcs_rules": (frozendict({
+        "schemes": ("https", "ssh", ),
+        "netlocs": ("hg.mozilla.org", ),
+        "path_regexes": (
+            r"^/(?P<project>mozilla-(central|unified))(/|$)",
+            r"^/(?P<project>comm-central)(/|$)",
+            r"^/integration/(?P<project>([A-Za-z0-9-]+))(/|$)",
+            r"^/releases/(?P<project>(comm|mozilla)-([A-Za-z0-9-]+))(/|$)",
+            r"^/projects/(?P<project>([A-Za-z0-9-]+))(/|$)",
+            r"^/ci/(?P<project>([A-Za-z0-9-]+))(/|$)",
+            r"^/(?P<project>(try|try-comm-central))(/|$)",
+        ),
+    }),),
 
     'valid_tasks_for': {
         'by-cot-product': frozendict({
