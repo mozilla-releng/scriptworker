@@ -67,28 +67,71 @@ async def get_context(config_override=None):
         "balrog-.*-nightly/opt": "balrog",
         "beetmover-repackage-.*-nightly/opt": "beetmover",
     },
+    "cot_product": "firefox",
+}, {
+    "name": "mozilla-esr68 nightly android",
+    "index": "gecko.v2.mozilla-esr68.latest.firefox.decision-nightly-android",
+    "task_label_to_task_type": {
+        "push-apk/opt": "pushapk",
+    },
+    "cot_product": "firefox",
 }, {
     "name": "mozilla-central nightly android",
     "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-android",
     "task_label_to_task_type": {
         "push-apk/opt": "pushapk",
     },
+    "cot_product": "firefox",
 }, {
     "name": "mozilla-central win64 en-US repackage signing",
     "index": "gecko.v2.mozilla-central.nightly.latest.firefox.win64-nightly-repackage-signing",
     "task_type": "signing",
+    "cot_product": "firefox",
 }, {
     "name": "mozilla-beta win64 en-US repackage signing",
     "index": "gecko.v2.mozilla-beta.nightly.latest.firefox.win64-nightly-repackage-signing",
     "task_type": "signing",
+    "cot_product": "firefox",
 }, {
     "name": "mozilla-release win64 en-US repackage signing",
     "index": "gecko.v2.mozilla-release.nightly.latest.firefox.win64-nightly-repackage-signing",
     "task_type": "signing",
+    "cot_product": "firefox",
 }, {
     "name": "mozilla-esr60 win64 en-US repackage signing",
     "index": "gecko.v2.mozilla-esr60.nightly.latest.firefox.win64-nightly-repackage-signing",
     "task_type": "signing",
+    "cot_product": "firefox",
+}, {
+    "name": "mozilla-esr68 win64 en-US repackage signing",
+    "index": "gecko.v2.mozilla-esr60.nightly.latest.firefox.win64-nightly-repackage-signing",
+    "task_type": "signing",
+    "cot_product": "firefox",
+}, {
+    "name": "fenix nightly",
+    "index": "project.mobile.fenix.v2.nightly.latest",
+    "task_type": "build",
+    "cot_product": "mobile",
+}, {
+    "name": "fenix master raptor aarch64",
+    "index": "project.mobile.fenix.v2.branch.master.latest.raptor.aarch64",
+    "task_type": "build",
+    "cot_product": "mobile",
+}, {
+    "name": "reference-browser nightly",
+    "index": "project.mobile.reference-browser.v2.nightly.latest",
+    "task_type": "signing",
+    "cot_product": "mobile",
+}, {
+    "name": "reference-browser master raptor aarch64",
+    "index": "project.mobile.reference-browser.v2.branch.master.latest.raptor.aarch64",
+    "task_type": "build",
+    "cot_product": "mobile",
+}, {
+    "name": "focus nightly",
+    "index": "project.mobile.focus.signed-nightly.nightly.latest",
+    "task_type": "signing",
+    "cot_product": "mobile",
 }))
 @pytest.mark.asyncio
 async def test_verify_production_cot(branch_context):
@@ -127,7 +170,7 @@ async def test_verify_production_cot(branch_context):
         cot = ChainOfTrust(context, task_type, task_id=task_id)
         await verify_chain_of_trust(cot)
 
-    async with get_context() as context:
+    async with get_context({'cot_product': branch_context['cot_product']}) as context:
         context.queue = queue
         task_id = await get_task_id_from_index(branch_context['index'])
         assert task_id, "{}: Can't get task_id from index {}!".format(
