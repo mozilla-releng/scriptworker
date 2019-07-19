@@ -26,7 +26,9 @@ from taskcluster.aio import Index, Queue
 log = logging.getLogger(__name__)
 
 # constants helpers and fixtures {{{1
-SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping production CoT verification tests"
+pytestmark = [
+    pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason="NO_TESTS_OVER_WIRE: skipping production CoT verification test")
+]
 
 
 def read_integration_creds():
@@ -59,7 +61,6 @@ async def get_context(config_override=None):
 
 
 # verify_cot {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("branch_context", ({
     "name": "mozilla-central nightly desktop",
     "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-desktop",

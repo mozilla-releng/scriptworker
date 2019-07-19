@@ -31,7 +31,10 @@ from . import integration_create_task_payload
 log = logging.getLogger(__name__)
 
 # constants helpers and fixtures {{{1
-SKIP_REASON = "NO_TESTS_OVER_WIRE: skipping integration test"
+pytestmark = [
+    pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason="NO_TESTS_OVER_WIRE: skipping integration test"),
+    pytest.mark.skipif(os.environ.get("NO_CREDENTIALS_TESTS"), reason="NO_CREDENTIALS_TESTS: skipping integration test")
+]
 
 
 def read_integration_creds():
@@ -56,7 +59,7 @@ with the format
 
 This clientId will need the scope assume:project:taskcluster:worker-test-scopes
 
-To skip integration tests, set the environment variable NO_TESTS_OVER_WIRE""".format(files=CREDS_FILES)
+To skip integration tests, set the environment variable NO_CREDENTIALS_TESTS""".format(files=CREDS_FILES)
     )
 
 
@@ -150,7 +153,6 @@ async def remember_cwd():
 
 
 # run_successful_task {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_run_successful_task(context_function):
@@ -168,7 +170,6 @@ async def test_run_successful_task(context_function):
 
 
 # run_maxtimeout {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_run_maxtimeout(context_function):
@@ -206,7 +207,6 @@ async def run_task_until_stopped(context):
         return status
 
 
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.asyncio
 async def test_cancel_task():
     task_id = slugid.nice()
@@ -249,7 +249,6 @@ async def do_shutdown(context):
         break
 
 
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.asyncio
 async def test_shutdown():
     task_id = slugid.nice()
@@ -302,7 +301,6 @@ async def test_shutdown():
 
 
 # empty_queue {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_empty_queue(context_function):
@@ -314,7 +312,6 @@ async def test_empty_queue(context_function):
 
 
 # temp_creds {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_temp_creds(context_function):
@@ -330,7 +327,6 @@ async def test_temp_creds(context_function):
 
 
 # private artifacts {{{1
-@pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason=SKIP_REASON)
 @pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
 @pytest.mark.asyncio
 async def test_private_artifacts(context_function):
