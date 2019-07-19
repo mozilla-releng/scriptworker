@@ -38,7 +38,7 @@ from scriptworker.github import (
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
     get_action_callback_name,
-    get_and_check_project,
+    get_project,
     get_and_check_tasks_for,
     get_commit_message,
     get_decision_task_id,
@@ -1265,17 +1265,11 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
          "default": parent_link.task_id,
          "decision": decision_link.task_id,
     }
-    source_url = get_source_url(decision_link)
-    project = get_and_check_project(chain.context.config['valid_vcs_rules'], source_url)
     log.debug("task_ids: {}".format(task_ids))
     jsone_context = {
         'now': parent_link.task['created'],
         'as_slugid': lambda x: task_ids.get(x, task_ids['default']),
         'tasks_for': tasks_for,
-        'repository': {
-            'url': get_repo(decision_link.task, decision_link.context.config['source_env_prefix']),
-            'project': project,
-        },
         'ownTaskId': parent_link.task_id,
         'taskId': None
     }
@@ -1298,7 +1292,13 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         else:
             raise CoTError('Unknown tasks_for "{}" for cot_product "{}"!'.format(tasks_for, chain.context.config['cot_product']))
     else:
-        jsone_context['repository']['level'] = await get_scm_level(chain.context, project)
+        source_url = get_source_url(decision_link)
+        project = get_project(chain.context.config['valid_vcs_rules'], source_url)
+        jsone_context['repository'] = {
+            'url': get_repo(decision_link.task, decision_link.context.config['source_env_prefix']),
+            'level': await get_scm_level(chain.context, project),
+            'project': project,
+        }
 
         if tasks_for == 'action':
             jsone_context.update(
@@ -2066,7 +2066,7 @@ async def trace_back_to_tree(chain):
     for obj in [chain] + chain.links:
         source_url = get_source_url(obj)
         repo_path = match_url_regex(
-            chain.context.config['valid_vcs_rules'], source_url, match_url_path_callback
+            chain.context.config['trusted_vcs_rules'], source_url, match_url_path_callback
         )
         repos[obj] = repo_path
     # check for restricted scopes.

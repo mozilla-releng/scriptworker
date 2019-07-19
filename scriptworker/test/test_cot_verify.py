@@ -1376,10 +1376,6 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
-        'repository': {
-            'project': 'focus-android',
-            'url': 'https://github.com/mozilla-mobile/focus-android',
-        },
         'taskId': None,
         'tasks_for': 'github-release',
     }
@@ -1414,10 +1410,6 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
-        'repository': {
-            'project': 'focus-android',
-            'url': 'https://github.com/mozilla-mobile/focus-android',
-        },
         'taskId': None,
         'tasks_for': 'cron',
     }
@@ -1463,10 +1455,6 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
-        'repository': {
-            'project': 'focus-android',
-            'url': 'https://github.com/mozilla-mobile/focus-android',
-        },
         'taskId': None,
         'tasks_for': 'github-push',
     }
@@ -1563,10 +1551,6 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         },
         'now': '2018-01-01T12:00:00.000Z',
         'ownTaskId': 'decision_task_id',
-        'repository': {
-            'project': 'focus-android',
-            'url': 'https://github.com/JohanLorenzo/focus-android',
-        },
         'taskId': None,
         'tasks_for': 'github-pull-request',
     }

@@ -32,7 +32,6 @@ from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     get_parts_of_url_path,
-    match_url_path_callback,
     match_url_regex,
 )
 
@@ -274,8 +273,8 @@ def get_worker_type(task):
     return task['workerType']
 
 
-# get_and_check_project {{{1
-def get_and_check_project(valid_vcs_rules, source_url):
+# get_project {{{1
+def get_project(valid_vcs_rules, source_url):
     """Given vcs rules and a source_url, return the project.
 
     The project is in the path, but is the repo name.
@@ -293,10 +292,12 @@ def get_and_check_project(valid_vcs_rules, source_url):
         str: the project.
 
     """
-    project_path = match_url_regex(valid_vcs_rules, source_url, match_url_path_callback)
-    if project_path is None:
+    def match_url_project_callback(match):
+        path_info = match.groupdict()
+        return path_info['project']
+    project = match_url_regex(valid_vcs_rules, source_url, match_url_project_callback)
+    if project is None:
         raise ValueError("Unknown repo for source url {}!".format(source_url))
-    project = project_path.split('/')[-1]
     return project
 
 

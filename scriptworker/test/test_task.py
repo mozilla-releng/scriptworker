@@ -192,7 +192,7 @@ def test_get_worker_type(task, result):
     assert swtask.get_worker_type(task) == result
 
 
-# get_and_check_project {{{1
+# get_project {{{1
 @pytest.mark.parametrize("source_url, expected, raises, context_type", ((
     "https://hg.mozilla.org/mozilla-central", "mozilla-central", False, "firefox"
 ), (
@@ -202,41 +202,19 @@ def test_get_worker_type(task, result):
 ), (
     "https://hg.mozilla.org/try", "try", False, "firefox"
 ), (
-    "https://hg.mozilla.org/releases/unknown", "", True, "firefox"
-# Mobile
+    "https://hg.mozilla.org/releases/unknown", "unknown", True, "firefox"
 ), (
-    "https://github.com/mozilla-mobile/android-components", "android-components", False, "mobile",
-), (
-    "https://github.com/mozilla-mobile/focus-android", "focus-android", False, "mobile",
-), (
-    "https://github.com/mozilla-mobile/reference-browser", "reference-browser", False, "mobile",
-), (
-    "https://github.com/mozilla-mobile/unknown-repo", "", True, "mobile",
-), (
-    "https://github.com/mozilla-mobile/android-components.git", "android-components", False, "mobile",
-), (
-    "ssh://github.com/mozilla-mobile/android-components", "android-components", False, "mobile",
-), (
-    "ssh://github.com/mozilla-mobile/android-components.git", "android-components", False, "mobile",
-# Allowed staging users
-), (
-    "https://github.com/JohanLorenzo/reference-browser", "reference-browser", False, "mobile",
-), (
-    "https://github.com/mitchhentges/reference-browser", "reference-browser", False, "mobile",
-), (
-    "https://github.com/MihaiTabara/reference-browser", "reference-browser", False, "mobile",
-), (
-    "https://github.com/UnknownUser/reference-browser", "", True, "mobile",
+    "https://hg.mozilla.org/users/mozilla_hocat.ca/esr60-stage/", "", True, "firefox"
 )))
-def test_get_and_check_project(context, mobile_context, source_url, expected, raises, context_type):
+def test_get_project(context, mobile_context, source_url, expected, raises, context_type):
     context_ = mobile_context if context_type == 'mobile' else context
 
     if raises:
         with pytest.raises(ValueError):
-            swtask.get_and_check_project(context_.config['valid_vcs_rules'], source_url)
+            swtask.get_project(context_.config['valid_vcs_rules'], source_url)
     else:
         assert expected == \
-            swtask.get_and_check_project(context_.config['valid_vcs_rules'], source_url)
+            swtask.get_project(context_.config['valid_vcs_rules'], source_url)
 
 
 # get_and_check_tasks_for {{{1

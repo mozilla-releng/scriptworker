@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.6.0] - 2019-07-19
+### Fixed
+- Don't include the non-existent top-level `repository` key in github json-e context.
+- Remove untrusted repos from list of repos accepted by `trace_back_to_tree` controlling
+  tasks allowed as dependencies to tasks with restricted scopes.
+
+### Changed
+- Allow arbitrary github repos (with appropriate scopes, in particular PRs), to use non-restricted
+  scopes.
+
 ## [23.5.0] - 2019-07-17
 ### Added
 - Provide more complete github contexts to pull requests.
