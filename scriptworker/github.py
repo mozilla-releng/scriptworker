@@ -1,6 +1,5 @@
 """GitHub helper functions."""
 
-import asyncio
 import re
 
 from github3 import GitHub
@@ -14,7 +13,6 @@ from scriptworker.utils import (
 
 _GIT_FULL_HASH_PATTERN = re.compile(r'^[0-9a-f]{40}$')
 _branch_commits_cache = {}
-_branch_commits_cache_lock = asyncio.Lock()
 
 
 class GitHubRepository():
@@ -119,13 +117,12 @@ class GitHubRepository():
         url = '/'.join([repo.rstrip('/'), 'branch_commits', revision])
         from scriptworker.task import get_decision_task_id
         cache_key = '{}-{}'.format(get_decision_task_id(context.task), url)
-        async with _branch_commits_cache_lock:
-            if cache_key in _branch_commits_cache:
-                html_text = _branch_commits_cache[cache_key]
-            else:
-                html_data = await retry_request(context, url)
-                html_text = html_data.strip()
-                _branch_commits_cache[cache_key] = html_text
+        if cache_key in _branch_commits_cache:
+            html_text = _branch_commits_cache[cache_key]
+        else:
+            html_data = await retry_request(context, url)
+            html_text = html_data.strip()
+            _branch_commits_cache[cache_key] = html_text
         # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
         # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
         # represents the branches on which the given revision is present.

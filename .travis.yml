@@ -12,6 +12,13 @@ matrix:
       dist: xenial
       env: TOXENV=py37 NO_TESTS_OVER_WIRE=1
       sudo: true
+    - python: 3.7
+      # from https://github.com/travis-ci/travis-ci/issues/9815#issuecomment-401756442
+      dist: xenial
+      env: TOXENV=py37-cot NO_CREDENTIALS_TESTS=1
+      sudo: true
+  allow_failures:
+    - env: TOXENV=py37-cot NO_CREDENTIALS_TESTS=1
 
 install:
   - python -mpip install tox

@@ -53,6 +53,10 @@ Testing
 
 Without integration tests, install tox, then
 
+``NO_CREDENTIALS_TESTS=1 tox -e py36``
+
+Without any tests connecting ot the net, then
+
 ``NO_TESTS_OVER_WIRE=1 tox -e py36``
 
 With integration tests, first create a client with the scopes::
