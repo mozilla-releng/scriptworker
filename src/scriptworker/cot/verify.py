@@ -2056,6 +2056,23 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
             log.info("Artifacts are in {}".format(tmp))
 
 
+def download_artifact(*, task_id, task_type, cot_product, artifact, dest_path):
+    with tempfile.TemporaryDirectory() as tmp:
+
+        async def run():
+            cot = await _async_verify_task_cot(tmp, task_id=task_id, task_type=task_type, cot_product=cot_product, verify_sigs=True, check_task=True)
+            async with aiohttp.ClientSession() as session:
+                cot.context.session = session
+                await download_cot_artifact(cot, task_id, artifact)
+            link = cot.get_link(task_id)
+            artifact_path = link.get_artifact_full_path(artifact)
+            return artifact_path
+
+        event_loop = asyncio.get_event_loop()
+        artifact_path = event_loop.run_until_complete(run())
+        os.rename(artifact_path, dest_path)
+
+
 # create_test_workdir {{{1
 async def _async_create_test_workdir(task_id, path, queue=None):
     async with aiohttp.ClientSession() as session:
