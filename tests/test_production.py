@@ -160,7 +160,7 @@ async def test_verify_production_cot(branch_context):
         log.info("Verifying {} {} {}...".format(name, task_id, task_type))
         context.task = await queue.task(task_id)
         cot = ChainOfTrust(context, task_type, task_id=task_id)
-        await verify_chain_of_trust(cot)
+        await verify_chain_of_trust(cot, check_task=True)
 
     async with get_context({"cot_product": branch_context["cot_product"]}) as context:
         context.queue = queue
