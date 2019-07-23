@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [23.6.1] - 2019-07-23
+### Added
+- Add support for dedicated per-level workerTypes in application-services
+
 ## [23.6.0] - 2019-07-19
 ### Fixed
 - Don't include the non-existent top-level `repository` key in github json-e context.
