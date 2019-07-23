@@ -146,7 +146,9 @@ DEFAULT_CONFIG = frozendict({
         # We haven't had the need for mobile-2-decision yet
         # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
         "mobile-3-decision",
-        # this app is neither mobile nor gecko so for now has its own thing
+        "app-services-1-decision",
+        "app-services-3-decision",
+        # TODO: remove this once bug 1563328 is fixed
         "application-services-r",
     ),
 
@@ -160,7 +162,9 @@ DEFAULT_CONFIG = frozendict({
 
         "mobile-1-images",  # there is no mobile level 2.
         "mobile-3-images",
-        # TODO: to change this to something else?
+        "app-services-1-images",
+        "app-services-3-images",
+        # TODO: remove this once bug 1563328 is fixed
         "application-services-r",
     ),
 
