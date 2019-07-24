@@ -148,8 +148,6 @@ DEFAULT_CONFIG = frozendict({
         "mobile-3-decision",
         "app-services-1-decision",
         "app-services-3-decision",
-        # TODO: remove this once bug 1563328 is fixed
-        "application-services-r",
     ),
 
     # docker-image cot
@@ -164,8 +162,6 @@ DEFAULT_CONFIG = frozendict({
         "mobile-3-images",
         "app-services-1-images",
         "app-services-3-images",
-        # TODO: remove this once bug 1563328 is fixed
-        "application-services-r",
     ),
 
 

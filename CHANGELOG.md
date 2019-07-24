@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [XX.Y.Z] - TODO
+### Removed
+- Support for old `application-services-r` workerType
+
 ## [23.6.1] - 2019-07-23
 ### Added
 - Add support for dedicated per-level workerTypes in application-services
