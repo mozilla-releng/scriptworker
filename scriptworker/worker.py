@@ -242,7 +242,14 @@ def main(event_loop=None):
         if context.running_tasks is not None:
             await context.running_tasks.cancel()
 
+    async def _handle_sigusr1():
+        """Stop accepting new tasks."""
+        log.info("SIGUSR1 received; no more tasks will be taken")
+        nonlocal done
+        done = True
+
     context.event_loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.ensure_future(_handle_sigterm()))
+    context.event_loop.add_signal_handler(signal.SIGUSR1, lambda: asyncio.ensure_future(_handle_sigusr1()))
 
     while not done:
         try:
