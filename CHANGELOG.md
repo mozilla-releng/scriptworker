@@ -2,7 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [XX.Y.Z] - TODO
+## [23.6.2] - 2019-07-26
+
+### Added
+- Support for graceful shutdown without cancelling using SIGUSR1
+
 ### Removed
 - Support for old `application-services-r` workerType
 

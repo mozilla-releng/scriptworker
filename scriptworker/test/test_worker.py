@@ -92,6 +92,38 @@ def test_main_running_sigterm(mocker, context, event_loop, running):
         assert run_tasks_cancelled.result()
 
 
+@pytest.mark.parametrize('running', (True, False))
+def test_main_running_sigusr1(mocker, context, event_loop, running):
+    """Test that sending SIGUSR1 causes the main loop to stop after the next
+    call to async_main without cancelling the task."""
+    run_tasks_cancelled = event_loop.create_future()
+
+    class MockRunTasks:
+        @staticmethod
+        def cancel():
+            run_tasks_cancelled.set_result(True)
+
+    async def async_main(internal_context, _):
+        # scriptworker reads context from a file, so we have to modify the
+        # context given here instead of the variable from the fixture
+        if running:
+            internal_context.running_tasks = MockRunTasks()
+        # Send SIGUSR1 to ourselves so that we stop
+        os.kill(os.getpid(), signal.SIGUSR1)
+
+    _, tmp = tempfile.mkstemp()
+    try:
+        with open(tmp, "w") as fh:
+            json.dump(context.config, fh)
+        mocker.patch.object(worker, 'async_main', new=async_main)
+        mocker.patch.object(sys, 'argv', new=['x', tmp])
+        worker.main(event_loop=event_loop)
+    finally:
+        os.remove(tmp)
+
+    assert not run_tasks_cancelled.done()
+
+
 # async_main {{{1
 @pytest.mark.asyncio
 async def test_async_main(context, mocker, tmpdir):
