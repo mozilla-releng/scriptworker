@@ -257,3 +257,6 @@ def main(event_loop=None):
         except Exception:
             log.critical("Fatal exception", exc_info=1)
             raise
+    else:
+        log.info("Scriptworker stopped at {} UTC".format(arrow.utcnow().format()))
+        log.info("Worker FQDN: {}".format(socket.getfqdn()))
