@@ -10,7 +10,6 @@ Attributes:
 
 """
 import aiohttp
-import arrow
 import asyncio
 from copy import deepcopy
 import json
@@ -33,8 +32,6 @@ class Context(object):
     Attributes:
         config (dict): the running config.  In production this will be a
             FrozenDict.
-        credentials_timestamp (int): the unix timestamp when we last updated
-            our credentials.
         proc (task_process.TaskProcess): when launching the script, this is
             the process object.
         queue (taskcluster.aio.Queue): the taskcluster Queue object
@@ -47,7 +44,6 @@ class Context(object):
     """
 
     config = None
-    credentials_timestamp = None
     proc = None
     queue = None
     session = None
@@ -95,8 +91,7 @@ class Context(object):
 
         These come from the config or CREDS_FILES or environment.
 
-        When setting credentials, also create a new ``self.queue`` and
-        update self.credentials_timestamp.
+        When setting credentials, also create a new ``self.queue``.
 
         """
         if self._credentials:
@@ -112,7 +107,6 @@ class Context(object):
     def credentials(self, creds):
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
-        self.credentials_timestamp = arrow.utcnow().timestamp
 
     def create_queue(self, credentials):
         """Create a taskcluster queue.

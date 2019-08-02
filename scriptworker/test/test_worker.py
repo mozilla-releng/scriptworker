@@ -29,7 +29,6 @@ assert successful_queue  # silence flake8
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope='function')
 def context(rw_context):
-    rw_context.credentials_timestamp = arrow.utcnow().shift(minutes=-10).timestamp
     yield rw_context
 
 
