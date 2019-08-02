@@ -32,13 +32,10 @@ If you're changing any dependencies, please update `requirements/*.in` and `setu
 If you add change the list of files that need to be packaged (either adding new files, or removing previous packaged files), modify `MANIFEST.in`.
 
 ### Requirements
-It's good practice to keep `requirements/base.txt` up to date.  To do so:
+It's good practice to keep the pinned requirements files up to date.  To do so:
 
 ```bash
-    # build the pip docker image
-    ./scripts/pip build
-    # pin the requirements
-    ./scripts/pip pin
+    ./scripts/pin.sh
 ```
 
 A `git diff` will then show what has changed in the scriptworker dependencies since the last time `pip-compile-multi` was run.  Assuming we only add the new dependencies when tox is green, we have a last-known-good set of dependencies.  Add these to the list of changes to commit.

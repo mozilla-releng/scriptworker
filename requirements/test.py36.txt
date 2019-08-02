@@ -5,7 +5,7 @@
 #
 #    pip-compile-multi
 #
--r base.txt
+-r base.py36.txt
 async-generator==1.10 \
     --hash=sha256:01c7bf666359b4967d2cda0000cc2e4af16a0ae098cbffcb8472fb9e8ad6585b \
     --hash=sha256:6ebb3d106c12920aaae42ccb6f787ef5eefdcdd166ea3d628fa8476abe712144 \
