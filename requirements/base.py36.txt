@@ -103,10 +103,13 @@ dictdiffer==0.8.0 \
     --hash=sha256:b3ad476fc9cca60302b52c50e1839342d2092aeaba586d69cbf9249f87f52463
 frozendict==1.2 \
     --hash=sha256:774179f22db2ef8a106e9c38d4d1f8503864603db08de2e33be5b778230f6e45
+idna-ssl==1.1.0 \
+    --hash=sha256:a933e3bb13da54383f9e8f35dc4f9cb9eb9b3b78c6b36f311254d6d0d92c6c7c \
+    # via aiohttp
 idna==2.8 \
     --hash=sha256:c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407 \
     --hash=sha256:ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c \
-    # via requests, yarl
+    # via idna-ssl, requests, yarl
 json-e==3.0.0 \
     --hash=sha256:d2914f785d93ecc4f0b2ad6e3f2791f33327eaa740a3c4917d68a9a485dd282d
 jsonschema==3.0.2 \
@@ -192,6 +195,11 @@ taskcluster==15.0.0 \
     --hash=sha256:3d5f080cf6c27772983dfa3945ad558d1f7d35f5bcdd483cfd2b704aa2180f85 \
     --hash=sha256:4e4a0348cbe29bf54a7354e67968bc0d8a00e2376d9be37c82b6d0095d9d9341 \
     --hash=sha256:78d30dc38526ce2cce051b0acecc40021130f8a4d4829cc1a11836ca40a48cd9
+typing-extensions==3.7.4 \
+    --hash=sha256:2ed632b30bb54fc3941c382decfd0ee4148f5c591651c9272473fea2c6397d95 \
+    --hash=sha256:b1edbbf0652660e32ae780ac9433f4231e7339c7f9a8057d0f042fcbcea49b87 \
+    --hash=sha256:d8179012ec2c620d3791ca6fe2bf7979d979acdbef1fca0bc56b37411db682ed \
+    # via aiohttp
 urllib3==1.25.3 \
     --hash=sha256:b246607a25ac80bedac05c6f282e3cdaf3afb65420fd024ac94435cabe6e18d1 \
     --hash=sha256:dbe59173209418ae49d485b87d1681aefa36252ee85884c31346debd19463232 \
