@@ -181,14 +181,18 @@ def rm(path):
 
 # cleanup {{{1
 def cleanup(context):
-    """Clean up the work_dir and artifact_dir between task runs, then recreate.
+    """Clean up the base_work_dir and base_artifact_dir between task runs,
+    then recreate.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 
     """
-    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
-        path = context.config[name]
+    paths = [
+        context.config['base_work_dir'],
+        context.config['base_artifact_dir'],
+    ]
+    for path in paths:
         if os.path.exists(path):
             log.debug("rm({})".format(path))
             rm(path)

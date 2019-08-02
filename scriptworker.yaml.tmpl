@@ -56,14 +56,15 @@ github_oauth_token: somegithubtoken
 # Scriptworker logs go here; this is a long-lived directory.
 log_dir: "/tmp/log"
 
-# work_dir and artifact_dir will be nuked before every task run.
-work_dir: "/tmp/work"
-artifact_dir: "/tmp/artifact"
+# How many tasks scriptworker will claim and run concurrently
+num_concurrent_tasks: 1
 
-# task_log_dir should be a subdirectory of artifact_dir; its relative path will be the same
-# as the log artifacts in taskcluster (i.e., public/logs).
+# base_work_dir and base_artifact_dir will be nuked periodically
+base_work_dir: "/tmp/work"
+base_artifact_dir: "/tmp/artifact"
+
 # Set this to private/... if the logs shouldn't be publicly visible.
-task_log_dir: "/tmp/artifact/public/logs"
+task_log_dir_template: "%(artifact_dir)s/public/logs"
 
 
 #-----------------------------------------------------------------------------------------------

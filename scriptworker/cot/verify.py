@@ -2083,9 +2083,8 @@ async def _async_verify_cot_cmdln(opts, tmp):
         context.task = await context.queue.task(opts.task_id)
         context.config.update({
             'cot_product': opts.cot_product,
-            'work_dir': os.path.join(tmp, 'work'),
-            'artifact_dir': os.path.join(tmp, 'artifacts'),
-            'task_log_dir': os.path.join(tmp, 'artifacts', 'public', 'logs'),
+            'base_work_dir': os.path.join(tmp, 'work'),
+            'base_artifact_dir': os.path.join(tmp, 'artifacts'),
             'verify_cot_signature': opts.verify_sigs,
         })
         context.config = apply_product_config(context.config)
@@ -2158,8 +2157,8 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.task = await context.queue.task(task_id)
         work_dir = os.path.abspath(path)
         context.config.update({
-            'work_dir': work_dir,
-            'artifact_dir': os.path.join(work_dir, 'artifacts'),
+            'base_work_dir': work_dir,
+            'base_artifact_dir': os.path.join(work_dir, 'artifacts'),
             'task_log_dir': os.path.join(work_dir, 'artifacts', 'public', 'logs'),
             'verify_cot_signature': False,
         })

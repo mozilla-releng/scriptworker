@@ -69,10 +69,11 @@ DEFAULT_CONFIG = frozendict({
     "verbose": True,
 
     # Task settings
-    "work_dir": "...",
+    "num_concurrent_tasks": 1,
+    "base_work_dir": "...",
+    "base_artifact_dir": "...",
+    "task_log_dir_template": "%(artifact_dir)s/public/logs",
     "log_dir": "...",
-    "artifact_dir": "...",
-    "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
     "artifact_upload_timeout": 60 * 20,
     "aiohttp_max_connections": 15,
 
