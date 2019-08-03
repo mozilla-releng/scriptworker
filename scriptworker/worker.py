@@ -18,12 +18,12 @@ import typing
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
+from scriptworker.context import TaskContext
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
     reclaim_task, run_task, worst_level
-from scriptworker.task_process import TaskProcess
 from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
@@ -36,9 +36,9 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
     Returns the integer status of the task.
 
     args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.WorkerContext): the scriptworker context.
         run_cancellable (typing.Callable): wraps future such that it'll cancel upon worker shutdown
-        to_cancellable_process (typing.Callable): wraps ``TaskProcess`` such that it will stop if the worker is shutting
+        to_cancellable_process (typing.Callable): wraps ``TaskContext`` such that it will stop if the worker is shutting
             down
 
     Raises:
@@ -74,7 +74,7 @@ async def do_upload(context, files):
     Returns the integer status of the upload.
 
     args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.WorkerContext): the scriptworker context.
         files (list of str): list of files to be uploaded as artifacts
 
     Raises:
@@ -112,7 +112,7 @@ class RunTasks:
         """Claims and processes Taskcluster work.
 
         Args:
-            context (scriptworker.context.Context): context of worker
+            context (scriptworker.context.WorkerContext): context of worker
 
         Returns: status code of build
 
@@ -125,9 +125,7 @@ class RunTasks:
                 await self._run_cancellable(asyncio.sleep(context.config['poll_interval']))
                 return None
 
-            # Assume only a single task, but should more than one fall through,
-            # run them sequentially.  A side effect is our return status will
-            # be the status of the final task run.
+            # TODO run tasks concurrently.
             status = None
             for task_defn in tasks.get('tasks', []):
                 prepare_to_run_task(context, task_defn)
@@ -159,7 +157,7 @@ class RunTasks:
         self.future = None
         return result
 
-    async def _to_cancellable_process(self, task_process: TaskProcess):
+    async def _to_cancellable_process(self, task_process: TaskContext):
         self.task_process = task_process
 
         if self.is_cancelled:
@@ -185,7 +183,7 @@ async def run_tasks(context):
     run.
 
     args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.WorkerContext): the scriptworker context.
 
     Raises:
         Exception: on unexpected exception.
@@ -209,7 +207,7 @@ async def async_main(context, credentials):
     http://docs.taskcluster.net/queue/worker-interaction/
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.WorkerContext): the scriptworker context.
     """
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     async with aiohttp.ClientSession(connector=conn) as session:

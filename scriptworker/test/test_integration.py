@@ -21,7 +21,7 @@ from scriptworker.config import (
     read_worker_creds,
 )
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
+from scriptworker.context import WorkerContext
 import scriptworker.log as swlog
 import scriptworker.artifacts as artifacts
 import scriptworker.worker as worker
@@ -99,7 +99,7 @@ def build_config(override, basedir):
 
 @async_contextmanager
 async def get_context(config_override=None):
-    context = Context()
+    context = WorkerContext()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
         swlog.update_logging_config(context)

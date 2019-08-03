@@ -5,13 +5,13 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from scriptworker import github
-from scriptworker.context import Context
+from scriptworker.context import WorkerContext
 from scriptworker.exceptions import ConfigError
 
 
 @pytest.yield_fixture(scope='function')
 def context():
-    ctx = Context()
+    ctx = WorkerContext()
     ctx.task = {
         'taskGroupId': 'bobo',
     }

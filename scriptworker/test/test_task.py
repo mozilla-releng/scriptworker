@@ -19,7 +19,7 @@ import taskcluster.exceptions
 import time
 from unittest.mock import MagicMock
 
-from scriptworker.task_process import TaskProcess
+from scriptworker.context import TaskContext
 from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
@@ -489,7 +489,7 @@ async def test_run_task(context):
 
 @pytest.mark.asyncio
 async def test_run_task_shutdown(context):
-    async def stop_task_process(task_process: TaskProcess):
+    async def stop_task_process(task_process: TaskContext):
         await task_process.worker_shutdown_stop()
         return task_process
 

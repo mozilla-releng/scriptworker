@@ -18,7 +18,7 @@ import sys
 from urllib.parse import unquote
 
 from scriptworker.constants import STATUSES
-from scriptworker.context import Context
+from scriptworker.context import ScriptContext
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 from scriptworker.utils import load_json_or_yaml, match_url_regex
 
@@ -72,7 +72,7 @@ def validate_task_schema(context, schema_key='schema_file'):
     """Validate the task definition.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context. It must contain a task and
+        context (ScriptContext): the scriptworker context. It must contain a task and
             the config pointing to the schema file
         schema_key: the key in `context.config` where the path to the schema file is. Key can contain
             dots (e.g.: 'schema_files.file_a'), in which case
@@ -165,11 +165,7 @@ def sync_main(async_main, config_path=None, default_config=None,
 
 
 def _init_context(config_path=None, default_config=None):
-    context = Context()
-
-    # This prevents *script from overwriting json on disk
-    context.write_json = lambda *args: None
-    context.write_json()  # for coverage
+    context = ScriptContext()
 
     if config_path is None:
         if len(sys.argv) != 2:

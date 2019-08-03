@@ -17,7 +17,7 @@ from scriptworker.config import (
     read_worker_creds,
 )
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
+from scriptworker.context import WorkerContext
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 import scriptworker.log as swlog
 import scriptworker.utils as utils
@@ -48,7 +48,7 @@ def build_config(override, basedir):
 
 @async_contextmanager
 async def get_context(config_override=None):
-    context = Context()
+    context = WorkerContext()
     with tempfile.TemporaryDirectory() as tmp:
         context.config = build_config(config_override, basedir=tmp)
         credentials = read_integration_creds()

@@ -20,6 +20,7 @@ import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
+from scriptworker.context import TaskContext
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
     GitHubRepository,
@@ -29,7 +30,6 @@ from scriptworker.github import (
     is_github_url,
 )
 from scriptworker.log import get_log_filehandle, pipe_to_log
-from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     get_parts_of_url_path,
 )
@@ -599,7 +599,7 @@ async def run_task(context, to_cancellable_process):
     }
 
     subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
-    context.proc = await to_cancellable_process(TaskProcess(subprocess))
+    context.proc = await to_cancellable_process(TaskContext(subprocess))
     timeout = context.config['task_max_timeout']
 
     with get_log_filehandle(context) as log_filehandle:

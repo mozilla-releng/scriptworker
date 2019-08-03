@@ -21,7 +21,7 @@ from unittest.mock import MagicMock
 
 import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
+from scriptworker.context import ScriptContext
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 
 from . import noop_sync
@@ -267,7 +267,7 @@ def test_init_context(config, monkeypatch, mocker, does_use_argv, default_config
 
         context = client._init_context(**kwargs)
 
-    assert isinstance(context, Context)
+    assert isinstance(context, ScriptContext)
     assert context.task['this_is_a_task'] is True
 
     expected_config = deepcopy(config)

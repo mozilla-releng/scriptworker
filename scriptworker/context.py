@@ -5,6 +5,18 @@ Most functions need access to a similar set of objects.  Rather than
 having to pass them all around individually or create a monolithic 'self'
 object, let's point to them from a single context object.
 
+::
+
+               BaseContext
+                     |
+          -----------------------
+          |                     |
+    ScriptContext       BaseWorkerContext
+                                |
+                     -----------------------
+                     |                     |
+               WorkerContext          TaskContext
+
 Attributes:
     log (logging.Logger): the log object for the module.
 
@@ -15,6 +27,7 @@ from copy import deepcopy
 import json
 import logging
 import os
+import signal
 import tempfile
 
 from scriptworker.utils import makedirs, load_json_or_yaml_from_url
@@ -23,67 +36,71 @@ from taskcluster.aio import Queue
 log = logging.getLogger(__name__)
 
 
-class Context(object):
-    """Basic config holding object.
+# BaseContext {{{1
+class BaseContext(object):
+    """Base context object.
 
-    Avoids putting everything in single monolithic object, but allows for
-    passing around config and easier overriding in tests.
+    Allows for passing around config and easier overriding in tests.
+    Most likely we'll be using non-Base context objects.
 
     Attributes:
         config (dict): the running config.  In production this will be a
             FrozenDict.
-        proc (task_process.TaskProcess): when launching the script, this is
-            the process object.
-        queue (taskcluster.aio.Queue): the taskcluster Queue object
-            containing the scriptworker credentials.
         session (aiohttp.ClientSession): the default aiohttp session
-        task (dict): the task definition for the current task.
-        temp_queue (taskcluster.aio.Queue): the taskcluster Queue object
-            containing the task-specific temporary credentials.
 
     """
 
     config = None
-    proc = None
-    queue = None
     session = None
+
+
+# ScriptContext {{{1
+class ScriptContext(BaseContext):
+    """Script context object (e.g. scriptworker.client).
+
+    We'll use this until we transition away from using context objects
+    in our scripts.
+
+    Attributes:
+        task (dict): the running task definition
+
+    """
+
     task = None
-    temp_queue = None
-    running_tasks = None
+
+
+# BaseWorkerContext {{{1
+class BaseWorkerContext(BaseContext):
+    """Base worker context.
+
+    Contains shared structure between both ``WorkerContext`` and
+    ``TaskContext``.
+
+    Scripts shouldn't need to use worker context objects
+
+        queue (taskcluster.aio.Queue): the taskcluster Queue object
+            containing the scriptworker credentials.
+
+    """
+
+    queue = None
     _credentials = None
-    _claim_task = None  # This assumes a single task per worker.
     _event_loop = None
-    _temp_credentials = None  # This assumes a single task per worker.
-    _reclaim_task = None
-    _projects = None
 
     @property
-    def claim_task(self):
-        """dict: The current or most recent claimTask definition json from the queue.
+    def event_loop(self):
+        """asyncio.BaseEventLoop: the running event loop.
 
-        This contains the task definition, as well as other task-specific
-        info.
-
-        When setting ``claim_task``, we also set ``self.task`` and
-        ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
-        then write a task.json to disk.
+        This fixture mainly exists to allow for overrides during unit tests.
 
         """
-        return self._claim_task
+        if not self._event_loop:
+            self._event_loop = asyncio.get_event_loop()
+        return self._event_loop
 
-    @claim_task.setter
-    def claim_task(self, claim_task):
-        self._claim_task = claim_task
-        self.reclaim_task = None
-        self.proc = None
-        if claim_task:
-            self.task = claim_task['task']
-            self.temp_credentials = claim_task['credentials']
-            path = os.path.join(self.config['work_dir'], "task.json")
-            self.write_json(path, self.task, "Writing task file to {path}...")
-        else:
-            self.temp_credentials = None
-            self.task = None
+    @event_loop.setter
+    def event_loop(self, event_loop):
+        self._event_loop = event_loop
 
     @property
     def credentials(self):
@@ -96,12 +113,6 @@ class Context(object):
         """
         if self._credentials:
             return dict(deepcopy(self._credentials))
-
-    @property
-    def task_id(self):
-        """string: The running task's taskId."""
-        if self.claim_task:
-            return self.claim_task['status']['taskId']
 
     @credentials.setter
     def credentials(self, creds):
@@ -125,6 +136,124 @@ class Context(object):
                 session=session
             )
 
+
+# WorkerContext {{{1
+class WorkerContext(object):
+    """The context for the running scriptworker.
+
+    Attributes:
+        proc (task_process.TaskProcess): when launching the script, this is
+            the process object.
+        task (dict): the task definition for the current task.
+
+    """
+
+    running_tasks = None
+    _projects = None
+
+    @property
+    def projects(self):
+        """dict: The current contents of ``projects.yml``, which defines CI configuration.
+
+        I'd love to auto-populate this; currently we need to set this from
+        the config's ``project_configuration_url``.
+
+        """
+        if self._projects:
+            return dict(deepcopy(self._projects))
+
+    @projects.setter
+    def projects(self, projects):
+        self._projects = projects
+
+    async def populate_projects(self, force=False):
+        """Download the ``projects.yml`` file and populate ``self.projects``.
+
+        This only sets it once, unless ``force`` is set.
+
+        Args:
+            force (bool, optional): Re-run the download, even if ``self.projects``
+                is already defined. Defaults to False.
+
+        """
+        if force or not self.projects:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                self.projects = await load_json_or_yaml_from_url(
+                    self, self.config['project_configuration_url'],
+                    os.path.join(tmpdirname, 'projects.yml')
+                )
+
+
+# TaskContext {{{1
+class TaskContext(BaseWorkerContext):
+    """Context for a running task process inside a scriptworker.
+
+    This was split out from WorkerContext when we decided to support
+    multiple concurrent tasks per scriptworker.
+
+    """
+
+    proc = None
+    task = None
+    process = None
+    stopped_due_to_worker_shutdown = False
+    _claim_task = None
+    _reclaim_task = None
+
+    async def worker_shutdown_stop(self):
+        """Invoke on worker shutdown to stop task process."""
+        self.stopped_due_to_worker_shutdown = True
+        await self.stop()
+
+    async def stop(self):
+        """Stop the current task process.
+
+        Starts with SIGTERM, gives the process 1 second to terminate, then kills it
+
+        """
+        # negate pid so that signals apply to process group
+        pgid = -self.process.pid
+        try:
+            os.kill(pgid, signal.SIGTERM)
+            await asyncio.sleep(1)
+            os.kill(pgid, signal.SIGKILL)
+        except (OSError, ProcessLookupError):
+            return
+
+    @property
+    def claim_task(self):
+        """dict: The current or most recent claimTask definition json from the queue.
+
+        This contains the task definition, as well as other task-specific
+        info.
+
+        When setting ``claim_task``, we also set ``self.task`` and
+        ``self.credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
+        then write a task.json to disk.
+
+        """
+        return self._claim_task
+
+    @claim_task.setter
+    def claim_task(self, claim_task):
+        self._claim_task = claim_task
+        self.reclaim_task = None
+        self.proc = None
+        if claim_task:
+            self.task = claim_task['task']
+            self.temp_credentials = claim_task['credentials']
+            path = os.path.join(self.config['work_dir'], "task.json")
+            self.write_json(path, self.task, "Writing task file to {path}...")
+        else:
+            self.temp_credentials = None
+            self.task = None
+
+    @property
+    def task_id(self):
+        """string: The running task's taskId."""
+        if self.claim_task:
+            return self.claim_task['status']['taskId']
+
     @property
     def reclaim_task(self):
         """dict: The most recent reclaimTask definition.
@@ -146,21 +275,6 @@ class Context(object):
         if value is not None:
             self.temp_credentials = value['credentials']
 
-    @property
-    def temp_credentials(self):
-        """dict: The latest temp credentials, or None if we haven't claimed a task yet.
-
-        When setting, create ``self.temp_queue`` from the temp taskcluster creds.
-
-        """
-        if self._temp_credentials:
-            return dict(deepcopy(self._temp_credentials))
-
-    @temp_credentials.setter
-    def temp_credentials(self, credentials):
-        self._temp_credentials = credentials
-        self.temp_queue = self.create_queue(self.temp_credentials)
-
     def write_json(self, path, contents, message):
         """Write json to disk.
 
@@ -174,50 +288,3 @@ class Context(object):
         makedirs(os.path.dirname(path))
         with open(path, "w") as fh:
             json.dump(contents, fh, indent=2, sort_keys=True)
-
-    @property
-    def projects(self):
-        """dict: The current contents of ``projects.yml``, which defines CI configuration.
-
-        I'd love to auto-populate this; currently we need to set this from
-        the config's ``project_configuration_url``.
-
-        """
-        if self._projects:
-            return dict(deepcopy(self._projects))
-
-    @projects.setter
-    def projects(self, projects):
-        self._projects = projects
-
-    @property
-    def event_loop(self):
-        """asyncio.BaseEventLoop: the running event loop.
-
-        This fixture mainly exists to allow for overrides during unit tests.
-
-        """
-        if not self._event_loop:
-            self._event_loop = asyncio.get_event_loop()
-        return self._event_loop
-
-    @event_loop.setter
-    def event_loop(self, event_loop):
-        self._event_loop = event_loop
-
-    async def populate_projects(self, force=False):
-        """Download the ``projects.yml`` file and populate ``self.projects``.
-
-        This only sets it once, unless ``force`` is set.
-
-        Args:
-            force (bool, optional): Re-run the download, even if ``self.projects``
-                is already defined. Defaults to False.
-
-        """
-        if force or not self.projects:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                self.projects = await load_json_or_yaml_from_url(
-                    self, self.config['project_configuration_url'],
-                    os.path.join(tmpdirname, 'projects.yml')
-                )

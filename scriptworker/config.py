@@ -18,7 +18,7 @@ from yaml import safe_load
 from collections import Mapping
 
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import Context
+from scriptworker.context import WorkerContext
 from scriptworker.exceptions import ConfigError
 from scriptworker.log import update_logging_config
 from scriptworker.utils import load_json_or_yaml
@@ -216,17 +216,17 @@ def create_config(config_path="scriptworker.yaml"):
 
 # get_context_from_cmdln {{{1
 def get_context_from_cmdln(args, desc="Run scriptworker"):
-    """Create a Context object from args.
+    """Create a WorkerContext object from args.
 
     Args:
         args (list): the commandline args.  Generally sys.argv
 
     Returns:
-        tuple: ``scriptworker.context.Context`` with populated config, and
-            credentials frozendict
+        tuple: ``scriptworker.context.WorkerContext`` with populated config,
+            and credentials frozendict
 
     """
-    context = Context()
+    context = WorkerContext()
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
         "config_path", type=str, nargs="?", default="scriptworker.yaml",
