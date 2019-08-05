@@ -142,13 +142,11 @@ class WorkerContext(object):
     """The context for the running scriptworker.
 
     Attributes:
-        proc (task_process.TaskProcess): when launching the script, this is
-            the process object.
-        task (dict): the task definition for the current task.
+        running_tasks (list): a list of running TaskContext objects.
 
     """
 
-    running_tasks = None
+    running_tasks = []
     _projects = None
 
     @property
@@ -191,14 +189,49 @@ class TaskContext(BaseWorkerContext):
     This was split out from WorkerContext when we decided to support
     multiple concurrent tasks per scriptworker.
 
+    Attributes:
+        claim_task (dict): the claim_task definition for the current task.
+        credentials (dict): the temporary credentials for the current task.
+        process (task_process.TaskProcess): when launching the script, this
+            is the process object.
+        stopped_due_to_worker_shutdown (bool): whether this task has stopped
+            due to worker shutdown.
+        task (dict): the task definition for the current task.
+        work_dir (str): the path to the working directory
+        artifact_dir (str): the path to the artifact directory
+        task_log_dir (str): the path to the task logging directory
+
     """
 
-    proc = None
-    task = None
     process = None
     stopped_due_to_worker_shutdown = False
-    _claim_task = None
     _reclaim_task = None
+
+    def __init__(self, context, claim_task):
+        """Context for an invidual task running in a scriptworker.
+
+        This is separate from the worker context because there can be
+        multiple tasks running concurrently in a single worker.
+
+        """
+        self._task_num = len(context.running_tasks + 1)
+        self.work_dir = os.path.join(
+            context.config["base_work_dir"],
+            str(self._task_num)
+        )
+        self.artifact_dir = os.path.join(
+            context.config["base_artifact_dir"],
+            str(self._task_num)
+        )
+        self.task_log_dir = context.config["task_log_dir"] % {
+            "artifact_dir": self.artifact_dir,
+        }
+        makedirs(self.work_dir)
+        makedirs(self.artifact_dir)
+        makedirs(self.task_log_dir)
+        self.claim_task = claim_task
+        self.task = claim_task['task']
+        self.credentials = claim_task['credentials']
 
     async def worker_shutdown_stop(self):
         """Invoke on worker shutdown to stop task process."""
@@ -221,38 +254,16 @@ class TaskContext(BaseWorkerContext):
             return
 
     @property
-    def claim_task(self):
-        """dict: The current or most recent claimTask definition json from the queue.
-
-        This contains the task definition, as well as other task-specific
-        info.
-
-        When setting ``claim_task``, we also set ``self.task`` and
-        ``self.credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
-        then write a task.json to disk.
-
-        """
-        return self._claim_task
-
-    @claim_task.setter
-    def claim_task(self, claim_task):
-        self._claim_task = claim_task
-        self.reclaim_task = None
-        self.proc = None
-        if claim_task:
-            self.task = claim_task['task']
-            self.temp_credentials = claim_task['credentials']
-            path = os.path.join(self.config['work_dir'], "task.json")
-            self.write_json(path, self.task, "Writing task file to {path}...")
-        else:
-            self.temp_credentials = None
-            self.task = None
-
-    @property
     def task_id(self):
         """string: The running task's taskId."""
         if self.claim_task:
             return self.claim_task['status']['taskId']
+
+    @property
+    def run_id(self):
+        """string: The running task's runId."""
+        if self.claim_task:
+            return self.claim_task['runId']
 
     @property
     def reclaim_task(self):
@@ -260,7 +271,7 @@ class TaskContext(BaseWorkerContext):
 
         This contains the newest expiration time and the newest temp credentials.
 
-        When setting ``reclaim_task``, we also set ``self.temp_credentials``.
+        When setting ``reclaim_task``, we also set ``self.credentials``.
 
         ``reclaim_task`` will be ``None`` if there hasn't been a claimed task yet,
         or if a task has been claimed more recently than the most recent
@@ -273,7 +284,7 @@ class TaskContext(BaseWorkerContext):
     def reclaim_task(self, value):
         self._reclaim_task = value
         if value is not None:
-            self.temp_credentials = value['credentials']
+            self.credentials = value['credentials']
 
     def write_json(self, path, contents, message):
         """Write json to disk.

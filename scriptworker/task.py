@@ -556,21 +556,26 @@ def prepare_to_run_task(context, claim_task):
         claim_task (dict): the claim_task dict.
 
     Returns:
-        dict: the contents of `current_task_info.json`
+        TaskContext: the context for the task
 
     """
     current_task_info = {}
-    context.claim_task = claim_task
-    current_task_info['taskId'] = context.task_id
+    task_context = TaskContext()
+    task_context.claim_task = claim_task
+    current_task_info['taskId'] = task_context.task_id
     current_task_info['runId'] = get_run_id(claim_task)
     log.info("Going to run taskId {taskId} runId {runId}!".format(
         **current_task_info
     ))
-    context.write_json(
-        os.path.join(context.config['work_dir'], 'current_task_info.json'),
+    task_context.write_json(
+        os.path.join(task_context.config['work_dir'], 'current_task_info.json'),
         current_task_info, "Writing current task info to {path}..."
     )
-    return current_task_info
+    task_context.write_json(
+        os.path.join(task_context.config['work_dir'], 'current_task_info.json'),
+        task_context.task, "Writing current task info to {path}..."
+    )
+    return task_context
 
 
 # run_task {{{1
