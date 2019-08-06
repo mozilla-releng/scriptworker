@@ -133,17 +133,17 @@ class RunTasks:
                 self.task_contexts.append(task_context)
             # TODO run tasks concurrently.
                 try:
-                    status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
-                    artifacts_paths = filepaths_in_dir(context.config['artifact_dir'])
+                    status = await do_run_task(task_context, self._run_cancellable, self._to_cancellable_process)
+                    artifacts_paths = filepaths_in_dir(task_context.artifact_dir)
                 except WorkerShutdownDuringTask:
                     shutdown_artifact_paths = [os.path.join('public', 'logs', log_file)
                                                for log_file in ['chain_of_trust.log', 'live_backing.log']]
                     artifacts_paths = [path for path in shutdown_artifact_paths
-                                       if os.path.isfile(os.path.join(context.config['artifact_dir'], path))]
+                                       if os.path.isfile(os.path.join(task_context.artifact_dir, path))]
                     status = STATUSES['worker-shutdown']
-                status = worst_level(status, await do_upload(context, artifacts_paths))
-                await complete_task(context, status)
-                reclaim_fut.cancel()
+                status = worst_level(status, await do_upload(task_context, artifacts_paths))
+                await complete_task(task_context, status)
+                task_context.reclaim_fut.cancel()
                 cleanup(context)
 
             return status

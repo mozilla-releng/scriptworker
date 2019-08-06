@@ -675,7 +675,7 @@ async def reclaim_task(task_context):
             return
         log.debug("Reclaiming task...")
         try:
-            task_context.reclaim_task = await context.queue.reclaimTask(
+            task_context.reclaim_task = await task_context.queue.reclaimTask(
                 get_task_id(task_context.claim_task),
                 get_run_id(task_context.claim_task),
             )

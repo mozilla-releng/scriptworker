@@ -181,8 +181,7 @@ def rm(path):
 
 # cleanup {{{1
 def cleanup(context):
-    """Clean up the base_work_dir and base_artifact_dir between task runs,
-    then recreate.
+    """Clean up ``base_work_dir`` and ``base_artifact_dir``, then recreate.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
