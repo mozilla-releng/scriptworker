@@ -24,10 +24,10 @@ from scriptworker.utils import (
     read_from_file,
     write_to_file,
 )
-from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
+from . import noop_async, noop_sync, rw_context, mobile_rw_context, touch
 
 
-assert rw_context, tmpdir  # silence pyflakes
+assert rw_context  # silence pyflakes
 
 log = logging.getLogger(__name__)
 

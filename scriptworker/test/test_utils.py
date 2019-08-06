@@ -17,12 +17,11 @@ from . import (
     fake_session_404,
     fake_session_500,
     noop_async,
-    tmpdir,
     touch,
 )
 from . import rw_context as context
 
-assert tmpdir, context  # silence flake8
+assert context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert fake_session_404  # silence flake8
 
@@ -269,7 +268,7 @@ def test_filepaths_in_dir(tmpdir):
         parent_dir = os.path.join(tmpdir, os.path.dirname(path))
         os.makedirs(parent_dir)
         touch(os.path.join(tmpdir, path))
-    assert sorted(utils.filepaths_in_dir(tmpdir)) == filepaths
+    assert sorted(utils.filepaths_in_dir(str(tmpdir))) == filepaths
 
 
 # get_hash {{{1

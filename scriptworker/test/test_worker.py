@@ -20,9 +20,9 @@ from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringT
 import scriptworker.worker as worker
 from scriptworker.worker import RunTasks, do_run_task
 from . import noop_async, noop_sync, rw_context, successful_queue, \
-    tmpdir, TIMEOUT_SCRIPT, create_async, create_slow_async, create_finished_future, create_sync
+    TIMEOUT_SCRIPT, create_async, create_slow_async, create_finished_future, create_sync
 
-assert rw_context, tmpdir  # silence flake8
+assert rw_context  # silence flake8
 assert successful_queue  # silence flake8
 
 
@@ -126,7 +126,7 @@ def test_main_running_sigusr1(mocker, context, event_loop, running):
 
 # async_main {{{1
 @pytest.mark.asyncio
-async def test_async_main(context, mocker, tmpdir):
+async def test_async_main(context, mocker):
     mocker.patch.object(worker, 'run_tasks', new=noop_async)
     await worker.async_main(context, {})
 

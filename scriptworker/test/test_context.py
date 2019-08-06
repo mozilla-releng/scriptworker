@@ -10,10 +10,9 @@ import pytest
 import taskcluster
 import scriptworker.context as swcontext
 from copy import deepcopy
-from . import tmpdir
 from . import rw_context as context
 
-assert tmpdir, context  # silence pyflakes
+assert context  # silence pyflakes
 
 
 # constants helpers and fixtures {{{1

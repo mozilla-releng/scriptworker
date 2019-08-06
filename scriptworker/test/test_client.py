@@ -24,9 +24,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 
-from . import tmpdir, noop_sync
-
-assert tmpdir  # silence pyflakes
+from . import noop_sync
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")

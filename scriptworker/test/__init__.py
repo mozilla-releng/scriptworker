@@ -219,28 +219,6 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
     }
 
 
-@pytest.yield_fixture(scope='function')
-def tmpdir():
-    """Yield a tmpdir that gets cleaned up afterwards.
-
-    This is because various pytest tmpdir implementations either don't return
-    a string, or don't clean up properly.
-    """
-    with tempfile.TemporaryDirectory() as tmp:
-        yield tmp
-
-
-@pytest.yield_fixture(scope='function')
-def tmpdir2():
-    """Yield a tmpdir that gets cleaned up afterwards.
-
-    Sometimes I need 2 tmpdirs in a test.
-    a string, or don't clean up properly.
-    """
-    with tempfile.TemporaryDirectory() as tmp:
-        yield tmp
-
-
 async def _close_session(obj):
     """Get rid of all the unclosed session warnings.
 
