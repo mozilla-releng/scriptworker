@@ -27,7 +27,7 @@ from scriptworker.artifacts import (
 )
 from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import WorkerContext
+from scriptworker.context import TaskContext
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerEd25519Error
 from scriptworker.github import (
@@ -88,7 +88,7 @@ class ChainOfTrust(object):
     """The master Chain of Trust, tracking all the various ``LinkOfTrust``s.
 
     Attributes:
-        context (scriptworker.context.WorkerContext): the scriptworker context
+        task_context (TaskContext): the task context
         decision_task_id (str): the task_id of self.task's decision task
         parent_task_id (str): the task_id of self.task's parent task
         links (list): the list of ``LinkOfTrust``s
@@ -99,11 +99,11 @@ class ChainOfTrust(object):
 
     """
 
-    def __init__(self, context, name, task_id=None):
+    def __init__(self, task_context: TaskContext, name: str, task_id=None):
         """Initialize ChainOfTrust.
 
         Args:
-            context (scriptworker.context.WorkerContext): the scriptworker context
+            context (TaskContext): the scriptworker context
             name (str): the name of the task (e.g., signing)
             task_id (str, optional): the task_id of the task.  If None, use
                 ``get_task_id(context.claim_task)``.  Defaults to None.
@@ -203,7 +203,7 @@ class LinkOfTrust(object):
     """Each LinkOfTrust represents a task in the Chain of Trust and its status.
 
     Attributes:
-        context (scriptworker.context.WorkerContext): the scriptworker context
+        context (TaskContext): the scriptworker context
         decision_task_id (str): the task_id of self.task's decision task
         parent_task_id (str): the task_id of self.task's parent task
         is_try_or_pull_request (bool): whether the task is a try or a pull request task
@@ -224,7 +224,7 @@ class LinkOfTrust(object):
         """Initialize ChainOfTrust.
 
         Args:
-            context (scriptworker.context.WorkerContext): the scriptworker context
+            context (TaskContext): the scriptworker context
             name (str): the name of the task (e.g., signing)
             task_id (str): the task_id of the task
 
@@ -1006,7 +1006,7 @@ async def get_scm_level(context, project):
     https://www.mozilla.org/en-US/about/governance/policies/commit/access-policy/
 
     Args:
-        context (scriptworker.context.WorkerContext): the scriptworker context
+        context (TaskContext): the scriptworker context
         project (str): the project to get the scm level for.
 
     Returns:
@@ -2070,7 +2070,7 @@ async def verify_chain_of_trust(chain):
 # verify_cot_cmdln {{{1
 async def _async_verify_cot_cmdln(opts, tmp):
     async with aiohttp.ClientSession() as session:
-        context = WorkerContext()
+        context = TaskContext()
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
@@ -2144,7 +2144,7 @@ or in the CREDS_FILES http://bit.ly/2fVMu0A""")
 # create_test_workdir {{{1
 async def _async_create_test_workdir(task_id, path, queue=None):
     async with aiohttp.ClientSession() as session:
-        context = WorkerContext()
+        context = TaskContext()
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
