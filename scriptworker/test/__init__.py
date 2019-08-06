@@ -250,7 +250,7 @@ async def mobile_rw_context(event_loop):
 def _craft_rw_context(tmp, event_loop, cot_product, session):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config['cot_product'] = cot_product
-    context = WorkerContext()
+    context = TaskContext()
     context.session = session
     context.config = apply_product_config(config)
     context.config['cot_job_type'] = "scriptworker"

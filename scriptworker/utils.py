@@ -783,3 +783,19 @@ def get_single_item_from_sequence(
     if append_sequence_to_error_message:
         error_message = '{}. Given: {}'.format(error_message, sequence)
     raise ErrorClass(error_message)
+
+
+# write_json {{{1
+def write_json(path, contents, message="Writing json to {path}..."):
+    """Write json to disk.
+
+    Args:
+        path (str): the path to write to
+        contents (dict): the contents of the json blob
+        message (str, optional): the message to log. This expands ``{path}``
+
+    """
+    log.debug(message.format(path=path))
+    makedirs(os.path.dirname(path))
+    with open(path, "w") as fh:
+        print(format_json(contents), file=fh)

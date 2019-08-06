@@ -203,41 +203,30 @@ class TaskContext(BaseWorkerContext):
 
     """
 
+    artifact_dir = None
     proc = None
-    process = None
+    projects = None
+    run_id = None
     stopped_due_to_worker_shutdown = False
+    task = None
+    task_id = None
+    task_log_dir = None
+    task_num = None
+    work_dir = None
+    _claim_task = None
     _reclaim_task = None
 
-    def __init__(self, context, claim_task, task_num):
-        """Context for an invidual task running in a scriptworker.
+    @property
+    def task_id(self):
+        """string: The running task's taskId."""
+        if self.claim_task:
+            return self.claim_task['status']['taskId']
 
-        This is separate from the worker context because there can be
-        multiple tasks running concurrently in a single worker.
-
-        """
-        self._task_num = task_num
-        self.config = context.config
-        self.event_loop = context.event_loop
-        self.session = context.session
-        self.work_dir = os.path.join(
-            self.config["base_work_dir"],
-            str(self._task_num)
-        )
-        self.artifact_dir = os.path.join(
-            self.config["base_artifact_dir"],
-            str(self._task_num)
-        )
-        self.task_log_dir = self.config["task_log_dir"] % {
-            "artifact_dir": self.artifact_dir,
-        }
-        makedirs(self.work_dir)
-        makedirs(self.artifact_dir)
-        makedirs(self.task_log_dir)
-        self.claim_task = claim_task
-        self.task = claim_task['task']
-        self.credentials = claim_task['credentials']
-        self.task_id = self.claim_task['status']['taskId']
-        self.run_id = self.claim_task['runId']
+    @property
+    def run_id(self):
+        """string: The running task's runId."""
+        if self.claim_task:
+            return self.claim_task['runId']
 
     async def worker_shutdown_stop(self):
         """Invoke on worker shutdown to stop task process."""
@@ -259,6 +248,28 @@ class TaskContext(BaseWorkerContext):
             self.running = False
         except (OSError, ProcessLookupError):
             return
+
+     @property
+    def claim_task(self):
+        """dict: The current or most recent claimTask definition json from the queue.
+
+        This contains the task definition, as well as other task-specific
+        info.
+
+        When setting ``claim_task``, we also set ``self.task`` and
+        ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``.
+
+         """
+        return self._claim_task
+
+    @claim_task.setter
+    def claim_task(self, claim_task):
+        self._claim_task = claim_task
+        self.reclaim_task = None
+        self.proc = None
+        self.task = claim_task['task']
+        self.credentials = claim_task['credentials']
+
 
     @property
     def reclaim_task(self):
@@ -294,3 +305,38 @@ class TaskContext(BaseWorkerContext):
         makedirs(os.path.dirname(path))
         with open(path, "w") as fh:
             json.dump(contents, fh, indent=2, sort_keys=True)
+
+
+def create_task_context(config: dict, claim_task: dict, task_num: int,
+                        event_loop=None, session=None, projects=None):
+    """Create a TaskContext from a WorkerContext, claim_task, and task_num.
+
+    Args:
+        worker_context: the scriptworker WorkerContext
+        claim_task: the claimTask response
+        task_num: the task number. This should be unique per concurrent task,
+            so if we can claim 3 concurrent tasks, these should be 0, 1, and 2.
+
+    Returns:
+        TaskContext: the task context.
+
+    """
+        task_context = TaskContext()
+        task_context._task_num = task_num
+        task_context.config = config
+        task_context.event_loop = event_loop
+        task_context.session = session
+        task_context.projects = projects
+        task_context.work_dir = os.path.join(
+            task_context.config["base_work_dir"],
+            str(task_context._task_num)
+        )
+        task_context.artifact_dir = os.path.join(
+            task_context.config["base_artifact_dir"],
+            str(task_context._task_num)
+        )
+        task_context.task_log_dir = task_context.config["task_log_dir"] % {
+            "artifact_dir": task_context.artifact_dir,
+        }
+        task_context.claim_task = claim_task
+        return task_context

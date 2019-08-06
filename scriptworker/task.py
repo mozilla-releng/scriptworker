@@ -32,6 +32,7 @@ from scriptworker.github import (
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.utils import (
     get_parts_of_url_path,
+    write_json
 )
 
 log = logging.getLogger(__name__)
@@ -573,11 +574,11 @@ def prepare_to_run_task(context, claim_task, task_num):
     log.info("Going to run taskId {taskId} runId {runId}!".format(
         **current_task_info
     ))
-    task_context.write_json(
+    write_json(
         os.path.join(task_context.config['work_dir'], 'current_task_info.json'),
         current_task_info, "Writing current task info to {path}..."
     )
-    task_context.write_json(
+    write_json(
         os.path.join(task_context.config['work_dir'], 'task.json'),
         task_context.task, "Writing current task info to {path}..."
     )
