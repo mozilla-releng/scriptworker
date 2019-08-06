@@ -546,24 +546,30 @@ def is_action(task):
 
 
 # prepare_to_run_task {{{1
-def prepare_to_run_task(context, claim_task):
+def prepare_to_run_task(context, claim_task, task_num):
     """Given a `claim_task` json dict, prepare the `context` and `work_dir`.
 
-    Set `context.claim_task`, and write a `work_dir/current_task_info.json`
+    Create a ``TaskContext`` object, and write the
+    ``work_dir/current_task_info.json`` and ``work_dir/task.json``
+    breadcrumb files.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         claim_task (dict): the claim_task dict.
+        task_num (int): the number of the task, in terms of concurrent
+            tasks running on this scriptworker. Many scriptworkers will
+            only run a single task, in which case this will be ``0``.
+            In a scriptworker running 3 concurrent tasks, we'll have
+            ``task_num``s 0, 1, and 2.
 
     Returns:
         TaskContext: the context for the task
 
     """
     current_task_info = {}
-    task_context = TaskContext()
-    task_context.claim_task = claim_task
+    task_context = TaskContext(context, claim_task, task_num)
     current_task_info['taskId'] = task_context.task_id
-    current_task_info['runId'] = get_run_id(claim_task)
+    current_task_info['runId'] = task_context.run_id
     log.info("Going to run taskId {taskId} runId {runId}!".format(
         **current_task_info
     ))
@@ -572,7 +578,7 @@ def prepare_to_run_task(context, claim_task):
         current_task_info, "Writing current task info to {path}..."
     )
     task_context.write_json(
-        os.path.join(task_context.config['work_dir'], 'current_task_info.json'),
+        os.path.join(task_context.config['work_dir'], 'task.json'),
         task_context.task, "Writing current task info to {path}..."
     )
     return task_context
@@ -585,7 +591,7 @@ async def run_task(context, to_cancellable_process):
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.TaskContext): the task context.
         to_cancellable_process (types.Callable): tracks the process so that it can be stopped if the worker is shut down
 
     Returns:
@@ -646,7 +652,7 @@ async def run_task(context, to_cancellable_process):
 
 
 # reclaim_task {{{1
-async def reclaim_task(context, task):
+async def reclaim_task(task_context):
     """Try to reclaim a task from the queue.
 
     This is a keepalive / heartbeat.  Without it the job will expire and
@@ -655,7 +661,7 @@ async def reclaim_task(context, task):
     time we reclaim.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context
+        task_context (scriptworker.context.TaskContext): the task context
 
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 status_code
@@ -663,34 +669,34 @@ async def reclaim_task(context, task):
 
     """
     while True:
-        log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
-        await asyncio.sleep(context.config['reclaim_interval'])
-        if task != context.task:
+        log.debug("waiting %s seconds before reclaiming..." % task_context.config['reclaim_interval'])
+        await asyncio.sleep(task_context.config['reclaim_interval'])
+        if task_context.proc is None:
             return
         log.debug("Reclaiming task...")
         try:
-            context.reclaim_task = await context.temp_queue.reclaimTask(
-                get_task_id(context.claim_task),
-                get_run_id(context.claim_task),
+            task_context.reclaim_task = await context.queue.reclaimTask(
+                get_task_id(task_context.claim_task),
+                get_run_id(task_context.claim_task),
             )
-            clean_response = deepcopy(context.reclaim_task)
+            clean_response = deepcopy(task_context.reclaim_task)
             clean_response['credentials'] = "{********}"
             log.debug("Reclaim task response:\n{}".format(pprint.pformat(clean_response)))
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
-                if context.proc and task == context.task:
+                if task_context.proc:
                     message = "Killing task after receiving 409 status in reclaim_task"
                     log.warning(message)
-                    await context.proc.stop()
-                    raise ScriptWorkerTaskException(message, exit_code=context.config['invalid_reclaim_status'])
+                    await task_context.stop()
+                    raise ScriptWorkerTaskException(message, exit_code=task_context.config['invalid_reclaim_status'])
                 break
             else:
                 raise
 
 
 # complete_task {{{1
-async def complete_task(context, result):
+async def complete_task(task_context, result):
     """Mark the task as completed in the queue.
 
     Decide whether to call reportCompleted, reportFailed, or reportException
@@ -699,26 +705,26 @@ async def complete_task(context, result):
     If the task has expired or been cancelled, we'll get a 409 status.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        task_context (scriptworker.context.TaskContext): the task context.
 
     Raises:
         taskcluster.exceptions.TaskclusterRestFailure: on non-409 error.
 
     """
-    args = [get_task_id(context.claim_task), get_run_id(context.claim_task)]
-    reversed_statuses = get_reversed_statuses(context)
+    args = [task_context.task_id, task_context.run_id]
+    reversed_statuses = get_reversed_statuses(task_context)
     try:
         if result == 0:
             log.info("Reporting task complete...")
-            response = await context.temp_queue.reportCompleted(*args)
+            response = await task_context.queue.reportCompleted(*args)
         elif result != 1 and result in reversed_statuses:
             reason = reversed_statuses[result]
             log.info("Reporting task exception {}...".format(reason))
             payload = {"reason": reason}
-            response = await context.temp_queue.reportException(*args, payload)
+            response = await task_context.queue.reportException(*args, payload)
         else:
             log.info("Reporting task failed...")
-            response = await context.temp_queue.reportFailed(*args)
+            response = await task_context.queue.reportFailed(*args)
         log.debug("Task status response:\n{}".format(pprint.pformat(response)))
     except taskcluster.exceptions.TaskclusterRestFailure as exc:
         if exc.status_code == 409:
@@ -745,7 +751,7 @@ async def claim_work(context):
         'workerId': context.config['worker_id'],
         # Hardcode one task at a time.  Make this a pref if we allow for
         # parallel tasks in multiple `work_dir`s.
-        'tasks': 1,
+        'tasks': context.config['num_concurrent_tasks'],
     }
     try:
         return await context.queue.claimWork(

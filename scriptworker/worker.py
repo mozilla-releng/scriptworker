@@ -107,6 +107,7 @@ class RunTasks:
         self.future = None
         self.task_process = None
         self.is_cancelled = False
+        self.task_contexts = []
 
     async def invoke(self, context):
         """Claims and processes Taskcluster work.
@@ -125,11 +126,12 @@ class RunTasks:
                 await self._run_cancellable(asyncio.sleep(context.config['poll_interval']))
                 return None
 
-            # TODO run tasks concurrently.
             status = None
-            for task_defn in tasks.get('tasks', []):
-                prepare_to_run_task(context, task_defn)
-                reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
+            for task_num, task_defn in enumerate(tasks.get('tasks', [])):
+                task_context = prepare_to_run_task(context, task_defn, task_num=task_num)
+                task_context.reclaim_fut = context.event_loop.create_task(reclaim_task(task_context))
+                self.task_contexts.append(task_context)
+            # TODO run tasks concurrently.
                 try:
                     status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
                     artifacts_paths = filepaths_in_dir(context.config['artifact_dir'])

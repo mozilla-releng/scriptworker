@@ -203,27 +203,31 @@ class TaskContext(BaseWorkerContext):
 
     """
 
+    proc = None
     process = None
     stopped_due_to_worker_shutdown = False
     _reclaim_task = None
 
-    def __init__(self, context, claim_task):
+    def __init__(self, context, claim_task, task_num):
         """Context for an invidual task running in a scriptworker.
 
         This is separate from the worker context because there can be
         multiple tasks running concurrently in a single worker.
 
         """
-        self._task_num = len(context.running_tasks + 1)
+        self._task_num = task_num
+        self.config = context.config
+        self.event_loop = context.event_loop
+        self.session = context.session
         self.work_dir = os.path.join(
-            context.config["base_work_dir"],
+            self.config["base_work_dir"],
             str(self._task_num)
         )
         self.artifact_dir = os.path.join(
-            context.config["base_artifact_dir"],
+            self.config["base_artifact_dir"],
             str(self._task_num)
         )
-        self.task_log_dir = context.config["task_log_dir"] % {
+        self.task_log_dir = self.config["task_log_dir"] % {
             "artifact_dir": self.artifact_dir,
         }
         makedirs(self.work_dir)
@@ -232,6 +236,8 @@ class TaskContext(BaseWorkerContext):
         self.claim_task = claim_task
         self.task = claim_task['task']
         self.credentials = claim_task['credentials']
+        self.task_id = self.claim_task['status']['taskId']
+        self.run_id = self.claim_task['runId']
 
     async def worker_shutdown_stop(self):
         """Invoke on worker shutdown to stop task process."""
@@ -250,20 +256,9 @@ class TaskContext(BaseWorkerContext):
             os.kill(pgid, signal.SIGTERM)
             await asyncio.sleep(1)
             os.kill(pgid, signal.SIGKILL)
+            self.running = False
         except (OSError, ProcessLookupError):
             return
-
-    @property
-    def task_id(self):
-        """string: The running task's taskId."""
-        if self.claim_task:
-            return self.claim_task['status']['taskId']
-
-    @property
-    def run_id(self):
-        """string: The running task's runId."""
-        if self.claim_task:
-            return self.claim_task['runId']
 
     @property
     def reclaim_task(self):
