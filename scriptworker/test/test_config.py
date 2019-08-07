@@ -105,9 +105,9 @@ def test_check_config_none_key(t_config):
 def test_check_config_missing_key(t_config):
     t_config = _fill_missing_values(t_config)
 
-    del t_config['work_dir']
+    del t_config['base_work_dir']
     messages = config.check_config(t_config, "test_path")
-    assert "Missing config keys {'work_dir'}" in "\n".join(messages)
+    assert "Missing config keys {'base_work_dir'}" in "\n".join(messages)
 
 
 def _fill_missing_values(config):

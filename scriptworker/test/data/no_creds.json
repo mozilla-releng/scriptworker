@@ -1,7 +1,7 @@
 {
-    "work_dir": ".test/work",
+    "base_work_dir": ".test/work",
     "log_dir": ".test/log",
-    "artifact_dir": ".test/artifact",
-    "task_log_dir": ".test/artifact/public/logs",
+    "base_artifact_dir": ".test/artifact",
+    "task_log_dir_template": ".test/artifact/public/logs",
     "ed25519_private_key_path": ".test/ed25519_privkey",
 }
