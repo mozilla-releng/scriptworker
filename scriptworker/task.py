@@ -438,7 +438,7 @@ async def is_pull_request(context, task):
         * The last 2 items are landed on the official repo
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.TaskContext): the task context.
         task (dict): the task definition to check.
 
     Returns:
@@ -483,7 +483,7 @@ async def is_try_or_pull_request(context, task):
     Checks are the ones done in ``is_try`` and ``is_pull_request``
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.TaskContext): the task context.
         task (dict): the task definition to check.
 
     Returns:
@@ -556,7 +556,7 @@ def prepare_to_run_task(context, claim_task, task_num):
     breadcrumb files.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.WorkerContext): the worker context.
         claim_task (dict): the claim_task dict.
         task_num (int): the number of the task, in terms of concurrent
             tasks running on this scriptworker. Many scriptworkers will
