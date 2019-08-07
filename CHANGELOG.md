@@ -2,6 +2,22 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [24.0.0] - 2019-08-07
+### Added
+- Added `scripts/pin.sh` and `scripts/pin-helper.sh`
+- Added `scriptworker_worker_pools`, `valid_decision_worker_pools`, and `valid_docker_image_pools`
+- Added `get_worker_pool_id` and `get_provisioner_id`
+
+### Changed
+- We now pin dependencies via `scripts/pin.sh`
+- Our scriptworker, decision, and docker-image workerType allowlisting now goes by worker-pool-id, constrained by `cot_product`
+- Our integration tasks use workerTypes that follow the new workerType name restrictions.
+
+### Removed
+- Removed `scripts/pip` and `scripts/Dockerfile` in favor of the new `pin.sh`
+- Removed `scriptworker_worker_types`, `valid_decision_worker_types`, and `valid_docker_image_types`
+- Removed `taskcluster-images` as a valid docker-image workerType
+
 ## [23.6.2] - 2019-07-26
 
 ### Added
