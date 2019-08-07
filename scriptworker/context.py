@@ -192,10 +192,8 @@ class TaskContext(BaseWorkerContext):
     Attributes:
         claim_task (dict): the claim_task definition for the current task.
         credentials (dict): the temporary credentials for the current task.
-        process (task_process.TaskProcess): when launching the script, this
-            is the process object.
-        stopped_due_to_worker_shutdown (bool): whether this task has stopped
-            due to worker shutdown.
+        task_process (task_process.TaskProcess): when launching the script,
+            this is the process object.
         task (dict): the task definition for the current task.
         work_dir (str): the path to the working directory
         artifact_dir (str): the path to the artifact directory
@@ -204,13 +202,12 @@ class TaskContext(BaseWorkerContext):
     """
 
     artifact_dir = None
-    proc = None
     projects = None
     run_id = None
-    stopped_due_to_worker_shutdown = False
     task = None
     task_id = None
     task_log_dir = None
+    task_process = None
     work_dir = None
     _claim_task = None
     _reclaim_task = None
@@ -227,27 +224,6 @@ class TaskContext(BaseWorkerContext):
         """string: The running task's runId."""
         if self.claim_task:
             return self.claim_task['runId']
-
-    async def worker_shutdown_stop(self):
-        """Invoke on worker shutdown to stop task process."""
-        self.stopped_due_to_worker_shutdown = True
-        await self.stop()
-
-    async def stop(self):
-        """Stop the current task process.
-
-        Starts with SIGTERM, gives the process 1 second to terminate, then kills it
-
-        """
-        # negate pid so that signals apply to process group
-        pgid = -self.process.pid
-        try:
-            os.kill(pgid, signal.SIGTERM)
-            await asyncio.sleep(1)
-            os.kill(pgid, signal.SIGKILL)
-            self.running = False
-        except (OSError, ProcessLookupError):
-            return
 
     @property
     def claim_task(self):
@@ -266,7 +242,7 @@ class TaskContext(BaseWorkerContext):
     def claim_task(self, claim_task):
         self._claim_task = claim_task
         self.reclaim_task = None
-        self.proc = None
+        self.task_process = None
         self.task = claim_task['task']
         self.credentials = claim_task['credentials']
 
@@ -290,20 +266,6 @@ class TaskContext(BaseWorkerContext):
         self._reclaim_task = value
         if value is not None:
             self.credentials = value['credentials']
-
-    def write_json(self, path, contents, message):
-        """Write json to disk.
-
-        Args:
-            path (str): the path to write to
-            contents (dict): the contents of the json blob
-            message (str): the message to log
-
-        """
-        log.debug(message.format(path=path))
-        makedirs(os.path.dirname(path))
-        with open(path, "w") as fh:
-            json.dump(contents, fh, indent=2, sort_keys=True)
 
 
 def set_task_context_paths(task_context, task_num=None):

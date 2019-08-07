@@ -18,12 +18,12 @@ import typing
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
-from scriptworker.context import TaskContext
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
     reclaim_task, run_task, worst_level
+from scriptworker.task_process import TaskProcess
 from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
     args:
         context (scriptworker.context.WorkerContext): the scriptworker context.
         run_cancellable (typing.Callable): wraps future such that it'll cancel upon worker shutdown
-        to_cancellable_process (typing.Callable): wraps ``TaskContext`` such that it will stop if the worker is shutting
+        to_cancellable_process (typing.Callable): wraps ``TaskProcess`` such that it will stop if the worker is shutting
             down
 
     Raises:
@@ -159,7 +159,7 @@ class RunTasks:
         self.future = None
         return result
 
-    async def _to_cancellable_process(self, task_process: TaskContext):
+    async def _to_cancellable_process(self, task_process: TaskProcess):
         self.task_process = task_process
 
         if self.is_cancelled:

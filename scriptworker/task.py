@@ -20,7 +20,7 @@ import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
-from scriptworker.context import create_task_context, TaskContext
+from scriptworker.context import create_task_context
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
     GitHubRepository,
@@ -30,6 +30,7 @@ from scriptworker.github import (
     is_github_url,
 )
 from scriptworker.log import get_log_filehandle, pipe_to_log
+from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     get_parts_of_url_path,
     write_json
@@ -615,15 +616,15 @@ async def run_task(context, to_cancellable_process):
     }
 
     subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
-    context.proc = await to_cancellable_process(TaskContext(subprocess))
+    context.task_process = await to_cancellable_process(TaskProcess(subprocess))
     timeout = context.config['task_max_timeout']
 
     with get_log_filehandle(context) as log_filehandle:
         stderr_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle])
+            pipe_to_log(context.task_process.process.stderr, filehandles=[log_filehandle])
         )
         stdout_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.process.stdout, filehandles=[log_filehandle])
+            pipe_to_log(context.task_process.process.stdout, filehandles=[log_filehandle])
         )
         try:
             _, pending = await asyncio.wait(
@@ -632,13 +633,13 @@ async def run_task(context, to_cancellable_process):
             if pending:
                 message = "Exceeded task_max_timeout of {} seconds".format(timeout)
                 log.warning(message)
-                await context.proc.stop()
+                await context.task_process.stop()
                 raise ScriptWorkerTaskException(message, exit_code=context.config['task_max_timeout_status'])
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
             # log lines.
-            exitcode = await context.proc.process.wait()
+            exitcode = await context.task_process.process.wait()
             # make sure we haven't lost any of the logs
             await asyncio.wait([stdout_future, stderr_future])
             # add an exit code line at the end of the log
@@ -647,8 +648,8 @@ async def run_task(context, to_cancellable_process):
                 status_line = "Automation Error: python exited with signal {}".format(exitcode)
             log.info(status_line)
             print(status_line, file=log_filehandle)
-            stopped_due_to_worker_shutdown = context.proc.stopped_due_to_worker_shutdown
-            context.proc = None
+            stopped_due_to_worker_shutdown = context.task_process.stopped_due_to_worker_shutdown
+            context.task_process = None
 
     if stopped_due_to_worker_shutdown:
         raise WorkerShutdownDuringTask
@@ -676,7 +677,7 @@ async def reclaim_task(task_context):
     while True:
         log.debug("waiting %s seconds before reclaiming..." % task_context.config['reclaim_interval'])
         await asyncio.sleep(task_context.config['reclaim_interval'])
-        if task_context.proc is None:
+        if task_context.task_process is None:
             return
         log.debug("Reclaiming task...")
         try:
@@ -690,7 +691,7 @@ async def reclaim_task(task_context):
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
-                if task_context.proc:
+                if task_context.task_process:
                     message = "Killing task after receiving 409 status in reclaim_task"
                     log.warning(message)
                     await task_context.stop()
