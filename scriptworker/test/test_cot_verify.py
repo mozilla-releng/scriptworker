@@ -516,6 +516,9 @@ def test_raise_on_errors(errors, raises):
     {'payload': {}, 'provisionerId': 'test-dummy-provisioner', 'workerType': 'test-dummy-myname', 'scopes': ["x"]},
     'scriptworker', False
 ), (
+    {'payload': {}, 'provisionerId': 'scriptworker-prov-v1', 'workerType': 'signing-linux-v1', 'scopes': ["x"]},
+    'scriptworker', False
+), (
     {'payload': {'mounts': [], 'osGroups': []}, 'provisionerId': '', 'workerType': '', 'scopes': []},
     'generic-worker', False
 ), (
@@ -2080,7 +2083,8 @@ async def test_verify_parent_task(chain, action_link, cron_link,
             makedirs(os.path.dirname(path))
             touch(path)
         chain.links = [parent_link, build_link]
-        parent_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+        parent_link.task['provisionerId'] = chain.context.config['valid_decision_worker_pools'][0].split("/")[0]
+        parent_link.task['workerType'] = chain.context.config['valid_decision_worker_pools'][0].split("/")[1]
         mocker.patch.object(cotverify, 'load_json_or_yaml', new=task_graph)
         mocker.patch.object(cotverify, 'verify_parent_task_definition', new=defn_fn)
         if raises:
@@ -2123,7 +2127,8 @@ async def test_verify_parent_task_worker_type(chain, decision_link, build_link, 
 @pytest.mark.asyncio
 async def test_verify_parent_task_missing_graph(chain, decision_link, build_link, mocker):
     chain.links = [decision_link, build_link]
-    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_types'][0]
+    decision_link.task['provisionerId'] = chain.context.config['valid_decision_worker_pools'][0].split("/")[0]
+    decision_link.task['workerType'] = chain.context.config['valid_decision_worker_pools'][0].split("/")[1]
     with pytest.raises(CoTError):
         await cotverify.verify_parent_task(chain, decision_link)
 
@@ -2155,7 +2160,8 @@ async def test_verify_partials_task_noop(chain, build_link):
 # verify_docker_image_task {{{1
 @pytest.mark.asyncio
 async def test_verify_docker_image_task(chain, docker_image_link):
-    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_types'][0]
+    docker_image_link.task['provisionerId'] = chain.context.config['valid_docker_image_worker_pools'][0].split("/")[0]
+    docker_image_link.task['workerType'] = chain.context.config['valid_docker_image_worker_pools'][0].split("/")[1]
     await cotverify.verify_docker_image_task(chain, docker_image_link)
 
 
