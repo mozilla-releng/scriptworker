@@ -117,12 +117,12 @@ DEFAULT_CONFIG = frozendict({
     }), ),
 
     # scriptworker identification
-    "scriptworker_worker_types": (
-        "balrogworker-v1",
-        "beetmoverworker-v1",
-        "pushapk-v1",
-        "signing-linux-v1",
-        "treescriptworker-v1"
+    "scriptworker_worker_pools": (
+        "scriptworker-prov-v1/balrogworker-v1",
+        "scriptworker-prov-v1/beetmoverworker-v1",
+        "scriptworker-prov-v1/pushapk-v1",
+        "scriptworker-prov-v1/signing-linux-v1",
+        "scriptworker-prov-v1/treescriptworker-v1"
     ),
     "scriptworker_provisioners": (
         "scriptworker-prov-v1",
@@ -135,34 +135,57 @@ DEFAULT_CONFIG = frozendict({
     ),
 
     # decision task cot
-    "valid_decision_worker_types": (
-        "gecko-1-decision",
-        "gecko-2-decision",
-        "gecko-3-decision",
-        # gecko-focus was for mozilla-mobile releases (bug 1455290) for more details.
-        # TODO: Remove it once not used anymore
-        "gecko-focus",
-        "mobile-1-decision",
-        # We haven't had the need for mobile-2-decision yet
-        # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
-        "mobile-3-decision",
-        "app-services-1-decision",
-        "app-services-3-decision",
-    ),
+    "valid_decision_worker_pools": frozendict({
+        "by-cot-product": frozendict({
+            "firefox": (
+                "aws-provisioner-v1/gecko-1-decision",
+                "aws-provisioner-v1/gecko-2-decision",
+                "aws-provisioner-v1/gecko-3-decision",
+            ),
+            "thunderbird": (
+                "aws-provisioner-v1/gecko-1-decision",
+                "aws-provisioner-v1/gecko-2-decision",
+                "aws-provisioner-v1/gecko-3-decision",
+            ),
+            "mobile": (
+                # gecko-focus was for mozilla-mobile releases (bug 1455290) for more details.
+                # TODO: Remove it once not used anymore
+                "aws-provisioner-v1/gecko-focus",
+                "aws-provisioner-v1/mobile-1-decision",
+                # We haven't had the need for mobile-2-decision yet
+                # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
+                "aws-provisioner-v1/mobile-3-decision",
+            ),
+            "application-services": (
+                "aws-provisioner-v1/app-services-1-decision",
+                "aws-provisioner-v1/app-services-3-decision",
+            ),
+        }),
+    }),
 
     # docker-image cot
-    "valid_docker_image_worker_types": (
-        "taskcluster-images",   # TODO: Remove this image once docker-images is the only valid worker type
-        "gecko-images",  # legacy
-        "gecko-1-images",
-        "gecko-2-images",
-        "gecko-3-images",
-
-        "mobile-1-images",  # there is no mobile level 2.
-        "mobile-3-images",
-        "app-services-1-images",
-        "app-services-3-images",
-    ),
+    "valid_docker_image_worker_pools": frozendict({
+        "by-cot-product": frozendict({
+            "firefox": (
+                "aws-provisioner-v1/gecko-1-images",
+                "aws-provisioner-v1/gecko-2-images",
+                "aws-provisioner-v1/gecko-3-images",
+            ),
+            "thunderbird": (
+                "aws-provisioner-v1/gecko-1-images",
+                "aws-provisioner-v1/gecko-2-images",
+                "aws-provisioner-v1/gecko-3-images",
+            ),
+            "mobile": (
+                "aws-provisioner-v1/mobile-1-images",  # there is no mobile level 2.
+                "aws-provisioner-v1/mobile-3-images",
+            ),
+            "application-services": (
+                "aws-provisioner-v1/app-services-1-images",
+                "aws-provisioner-v1/app-services-3-images",
+            ),
+        }),
+    }),
 
 
     # for trace_back_to_*_tree.  These repos have access to restricted scopes;

@@ -51,7 +51,7 @@ from scriptworker.task import (
     get_branch,
     get_triggered_by,
     get_task_id,
-    get_worker_type,
+    get_worker_pool_id,
     is_try_or_pull_request,
     is_action,
 )
@@ -343,7 +343,7 @@ def guess_worker_impl(link):
         worker_impls.append("docker-worker")
     if task['provisionerId'] in link.context.config['scriptworker_provisioners']:
         worker_impls.append("scriptworker")
-    if task['workerType'] in link.context.config['scriptworker_worker_types']:
+    if get_worker_pool_id(task) in link.context.config['scriptworker_worker_pools']:
         worker_impls.append("scriptworker")
     if task['payload'].get("mounts") is not None:
         worker_impls.append("generic-worker")
@@ -1656,9 +1656,9 @@ async def verify_parent_task(chain, link):
         CoTError: on chain of trust verification error.
 
     """
-    worker_type = get_worker_type(link.task)
-    if worker_type not in chain.context.config['valid_decision_worker_types']:
-        raise CoTError("{} is not a valid decision workerType!".format(worker_type))
+    pool = get_worker_pool_id(link.task)
+    if pool not in chain.context.config['valid_decision_worker_pools']:
+        raise CoTError("{} is not a valid decision workerPoolId!".format(pool))
     if chain is not link:
         # make sure all tasks generated from this parent task match the published
         # task-graph.json. Not applicable if this link is the ChainOfTrust object,
@@ -1713,9 +1713,9 @@ async def verify_docker_image_task(chain, link):
     """
     errors = []
     # workerType
-    worker_type = get_worker_type(link.task)
-    if worker_type not in chain.context.config['valid_docker_image_worker_types']:
-        errors.append("{} is not a valid docker-image workerType!".format(worker_type))
+    worker_pool = get_worker_pool_id(link.task)
+    if worker_pool not in chain.context.config['valid_docker_image_worker_pools']:
+        errors.append("{} is not a valid docker-image workerPoolId!".format(worker_pool))
     raise_on_errors(errors)
 
 

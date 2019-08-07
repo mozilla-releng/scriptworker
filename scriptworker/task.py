@@ -273,6 +273,38 @@ def get_worker_type(task):
     return task['workerType']
 
 
+# get_provisioner_id {{{1
+def get_provisioner_id(task):
+    """Given a task dict, return the provisionerId.
+
+    Args:
+        task (dict): the task dict.
+
+    Returns:
+        str: the provisionerId.
+
+    """
+    return task['provisionerId']
+
+
+# get_worker_pool_id {{{1
+def get_worker_pool_id(task):
+    """Given a task dict, return the worker pool id.
+
+    This corresponds to `{provisioner_id}/{workerType}`.
+
+    Args:
+        task (dict): the task dict.
+
+    Returns:
+        str: the workerPoolId.
+
+    """
+    return "{}/{}".format(
+        get_provisioner_id(task), get_worker_type(task)
+    )
+
+
 # get_project {{{1
 def get_project(valid_vcs_rules, source_url):
     """Given vcs rules and a source_url, return the project.
