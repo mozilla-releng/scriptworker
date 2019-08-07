@@ -64,7 +64,7 @@ To skip integration tests, set the environment variable NO_CREDENTIALS_TESTS""".
 
 
 def build_config(override, basedir):
-    randstring = slugid.nice()[0:6]
+    randstring = slugid.nice().lower().replace('_', '').replace('-', '')[:6]
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
     config.update({
