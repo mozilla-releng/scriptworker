@@ -468,15 +468,11 @@ def test_is_action(task, expected):
 # prepare_to_run_task {{{1
 def test_prepare_to_run_task(context):
     claim_task = context.claim_task
-    context.claim_task = None
-    expected = {'taskId': 'taskId', 'runId': 'runId'}
-    path = os.path.join(context.work_dir, 'current_task_info.json')
-    assert swtask.prepare_to_run_task(context, claim_task) == expected
-    assert os.path.exists(path)
-    with open(path) as fh:
-        contents = json.load(fh)
-    assert contents == expected
-
+    new_context = swtask.prepare_to_run_task(context, claim_task, None)
+    assert context.claim_task == new_context.claim_task
+    assert context.task == new_context.task
+    assert context.task_id == new_context.task_id
+    assert context.run_id == new_context.run_id
 
 # run_task {{{1
 @pytest.mark.asyncio
@@ -551,27 +547,27 @@ async def test_run_task_timeout(context):
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(list(files.keys())) == 6
     # Did we clean up?
-    assert context.proc is None
+    assert context.task_process is None
 
 
 # report* {{{1
 @pytest.mark.asyncio
 async def test_reportCompleted(context, successful_queue):
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await swtask.complete_task(context, 0)
     assert successful_queue.info == ["reportCompleted", ('taskId', 'runId'), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportFailed(context, successful_queue):
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await swtask.complete_task(context, 1)
     assert successful_queue.info == ["reportFailed", ('taskId', 'runId'), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportException(context, successful_queue):
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await swtask.complete_task(context, 2)
     assert successful_queue.info == ["reportException", ('taskId', 'runId', {'reason': 'worker-shutdown'}), {}]
 
@@ -579,14 +575,14 @@ async def test_reportException(context, successful_queue):
 # complete_task {{{1
 @pytest.mark.asyncio
 async def test_complete_task_409(context, unsuccessful_queue):
-    context.temp_queue = unsuccessful_queue
+    context.queue = unsuccessful_queue
     await swtask.complete_task(context, 0)
 
 
 @pytest.mark.asyncio
 async def test_complete_task_non_409(context, unsuccessful_queue):
     unsuccessful_queue.status = 500
-    context.temp_queue = unsuccessful_queue
+    context.queue = unsuccessful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
         await swtask.complete_task(context, 0)
 
@@ -594,20 +590,28 @@ async def test_complete_task_non_409(context, unsuccessful_queue):
 # reclaim_task {{{1
 @pytest.mark.asyncio
 async def test_reclaim_task(context, successful_queue):
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await swtask.reclaim_task(context)
 
 
 @pytest.mark.asyncio
 async def test_skip_reclaim_task(context, successful_queue):
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await swtask.reclaim_task(context)
 
 
 @pytest.mark.asyncio
 async def test_reclaim_task_non_409(context, successful_queue):
     successful_queue.status = 500
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
+
+    def fake_create_queue(*args):
+        return successful_queue
+
+    context.task_process = mock.MagicMock()
+    context.create_queue = fake_create_queue
+    context.queue = successful_queue
+
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
         await swtask.reclaim_task(context)
 
@@ -625,7 +629,7 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
 
     kill_count = 0
     reclaim_count = []
-    temp_queue = mock.MagicMock()
+    queue = mock.MagicMock()
 
     def die(*args):
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
@@ -642,12 +646,12 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
             kill_count += 1
 
     def fake_create_queue(*args):
-        return temp_queue
+        return queue
 
-    context.proc = None if no_proc else MockTaskProcess()
+    context.task_process = None if no_proc else MockTaskProcess()
     context.create_queue = fake_create_queue
-    temp_queue.reclaimTask = fake_reclaim
-    context.temp_queue = temp_queue
+    queue.reclaimTask = fake_reclaim
+    context.queue = queue
     try:
         await swtask.reclaim_task(context)
     except ScriptWorkerTaskException:

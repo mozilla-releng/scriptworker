@@ -694,7 +694,7 @@ async def reclaim_task(task_context):
                 if task_context.task_process:
                     message = "Killing task after receiving 409 status in reclaim_task"
                     log.warning(message)
-                    await task_context.stop()
+                    await task_context.task_process.stop()
                     raise ScriptWorkerTaskException(message, exit_code=task_context.config['invalid_reclaim_status'])
                 break
             else:

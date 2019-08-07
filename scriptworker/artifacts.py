@@ -185,7 +185,7 @@ async def create_artifact(task_context: TaskContext, path: str,
     args = [get_task_id(task_context.claim_task), get_run_id(task_context.claim_task),
             target_path, payload]
 
-    tc_response = await task_context.temp_queue.createArtifact(*args)
+    tc_response = await task_context.queue.createArtifact(*args)
     skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
     loggable_url = get_loggable_url(tc_response['putUrl'])
     log.info("uploading {path} to {url}...".format(path=path, url=loggable_url))

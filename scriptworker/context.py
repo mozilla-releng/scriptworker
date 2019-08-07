@@ -231,7 +231,7 @@ class TaskContext(BaseWorkerContext):
         info.
 
         When setting ``claim_task``, we also set ``self.task`` and
-        ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``.
+        ``self.credentials``, zero out ``self.reclaim_task`` and ``self.proc``.
 
         """
         return self._claim_task
