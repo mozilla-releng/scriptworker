@@ -37,7 +37,7 @@ def close_handlers(log_name=None):
 # tests {{{1
 def test_get_log_filename(context):
     log_file = swlog.get_log_filename(context)
-    assert log_file == os.path.join(context.config['task_log_dir'], 'live_backing.log')
+    assert log_file == os.path.join(context.task_log_dir, 'live_backing.log')
 
 
 def test_get_log_filehandle(context, text):
@@ -95,7 +95,7 @@ def test_update_logging_config_not_verbose(context):
 
 
 def test_contextual_log_handler(context, mocker):
-    contextual_path = os.path.join(context.config['artifact_dir'], "test.log")
+    contextual_path = os.path.join(context.artifact_dir, "test.log")
     swlog.log.setLevel(logging.DEBUG)
     with swlog.contextual_log_handler(context, path=contextual_path):
         swlog.log.info("foo")
