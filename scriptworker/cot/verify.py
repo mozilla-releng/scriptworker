@@ -110,7 +110,7 @@ class ChainOfTrust(object):
 
         """
         self.name = name
-        self.context = context
+        self.context = task_context
         self.task_id = task_id or get_task_id(task_context.claim_task)
         self.task = task_context.task
         self.task_type = guess_task_type(name, self.task)
