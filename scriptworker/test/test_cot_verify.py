@@ -2432,7 +2432,7 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
 
     mocker.patch.object(tempfile, 'mkdtemp', new=mkdtemp)
     mocker.patch.object(cotverify, 'read_worker_creds', new=noop_sync)
-    mocker.patch.object(cotverify, 'WorkerContext', new=get_context)
+    mocker.patch.object(cotverify, 'TaskContext', new=get_context)
     mocker.patch.object(cotverify, 'ChainOfTrust', new=cot)
     mocker.patch.object(cotverify, 'verify_chain_of_trust', new=noop_async)
 

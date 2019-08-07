@@ -82,19 +82,19 @@ def test_generate_cot_body_exception(artifacts, context):
 
 
 def test_generate_cot(artifacts, context):
-    path = os.path.join(context.config['work_dir'], "chain-of-trust.json")
-    body = cot.generate_cot(context, parent_path=context.config['work_dir'])
+    path = os.path.join(context.work_dir, "chain-of-trust.json")
+    body = cot.generate_cot(context, parent_path=context.work_dir)
     with open(path, "r") as fh:
         assert fh.read() == body
 
 
 def test_generate_cot_unsigned(artifacts, context):
     context.config['sign_chain_of_trust'] = False
-    body = cot.generate_cot(context, parent_path=context.config['work_dir'])
+    body = cot.generate_cot(context, parent_path=context.work_dir)
     assert body == cot.format_json(cot.generate_cot_body(context))
 
 
 def test_generate_cot_exception(artifacts, context):
-    context.config['cot_schema_path'] = os.path.join(context.config['work_dir'], "not_a_file")
+    context.config['cot_schema_path'] = os.path.join(context.work_dir, "not_a_file")
     with pytest.raises(ScriptWorkerException):
         cot.generate_cot(context)

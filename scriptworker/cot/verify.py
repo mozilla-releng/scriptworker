@@ -27,7 +27,7 @@ from scriptworker.artifacts import (
 )
 from scriptworker.config import read_worker_creds, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import TaskContext
+from scriptworker.context import TaskContext, set_task_context_paths
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import CoTError, BaseDownloadError, ScriptWorkerEd25519Error
 from scriptworker.github import (
@@ -2033,7 +2033,7 @@ async def verify_chain_of_trust(chain):
         CoTError: on failure
 
     """
-    log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
+    log_path = os.path.join(chain.context.task_log_dir, "chain_of_trust.log")
     scriptworker_log = logging.getLogger('scriptworker')
     with contextual_log_handler(
         chain.context, path=log_path, log_obj=scriptworker_log,
@@ -2159,9 +2159,10 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.config.update({
             'base_work_dir': work_dir,
             'base_artifact_dir': os.path.join(work_dir, 'artifacts'),
-            'task_log_dir': os.path.join(work_dir, 'artifacts', 'public', 'logs'),
+            'task_log_dir_template': os.path.join(work_dir, 'artifacts', 'public', 'logs'),
             'verify_cot_signature': False,
         })
+        set_task_context_paths(context)
         context.config = apply_product_config(context.config)
         write_to_file(os.path.join(work_dir, "task.json"), context.task, file_type='json')
         # we could add chain-of-trust.json and verify sha
