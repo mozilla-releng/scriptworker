@@ -78,8 +78,8 @@ async def test_upload_artifacts(context):
         await upload_artifacts(context, ['one', 'public/two'])
 
     assert create_artifact_paths == [
-        os.path.join(context.config['artifact_dir'], 'one'),
-        os.path.join(context.config['artifact_dir'], 'public/two'),
+        os.path.join(context.artifact_dir, 'one'),
+        os.path.join(context.artifact_dir, 'public/two'),
     ]
 
 
@@ -129,7 +129,7 @@ def _get_number_of_children_in_directory(directory):
 # create_artifact {{{1
 @pytest.mark.asyncio
 async def test_create_artifact(context, fake_session, successful_queue):
-    path = os.path.join(context.config['artifact_dir'], "one.txt")
+    path = os.path.join(context.artifact_dir, "one.txt")
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
@@ -152,7 +152,7 @@ async def test_create_artifact(context, fake_session, successful_queue):
 
 @pytest.mark.asyncio
 async def test_create_artifact_retry(context, fake_session_500, successful_queue):
-    path = os.path.join(context.config['artifact_dir'], "one.log")
+    path = os.path.join(context.artifact_dir, "one.log")
     touch(path)
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
@@ -203,8 +203,8 @@ async def test_download_artifacts(context):
         "https://queue.taskcluster.net/v1/task/dependency2/artifacts/baz",
     ]
     expected_paths = [
-        os.path.join(context.config['work_dir'], "foo", "bar"),
-        os.path.join(context.config['work_dir'], "baz"),
+        os.path.join(context.work_dir, "foo", "bar"),
+        os.path.join(context.work_dir, "baz"),
     ]
 
     async def foo(_, url, path, **kwargs):
@@ -230,7 +230,7 @@ async def test_download_artifacts_timeout(context):
         "https://queue.taskcluster.net/v1/task/dependency1/artifacts/foo/bar",
     ]
     expected_paths = [
-        os.path.join(context.config['work_dir'], "foo", "bar"),
+        os.path.join(context.work_dir, "foo", "bar"),
     ]
 
     async def foo(_, url, path, **kwargs):
@@ -280,7 +280,7 @@ def test_get_upstream_artifacts_full_paths_per_task_id(context):
 
     context.task['payload']['upstreamArtifacts'].extend(artifacts_to_succeed)
     for artifact in artifacts_to_succeed:
-        folder = os.path.join(context.config['work_dir'], 'cot', artifact['taskId'])
+        folder = os.path.join(context.work_dir, 'cot', artifact['taskId'])
 
         for path in artifact['paths']:
             try:
@@ -293,15 +293,15 @@ def test_get_upstream_artifacts_full_paths_per_task_id(context):
 
     assert succeeded_artifacts == {
         'dependency1': [
-            os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a1'),
-            os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a2'),
+            os.path.join(context.work_dir, 'cot', 'dependency1', 'public', 'file_a1'),
+            os.path.join(context.work_dir, 'cot', 'dependency1', 'public', 'file_a2'),
         ],
         'dependency2': [
-            os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b1'),
-            os.path.join(context.config['work_dir'], 'cot', 'dependency2', 'public', 'file_b2'),
+            os.path.join(context.work_dir, 'cot', 'dependency2', 'public', 'file_b1'),
+            os.path.join(context.work_dir, 'cot', 'dependency2', 'public', 'file_b2'),
         ],
         'dependency3': [
-            os.path.join(context.config['work_dir'], 'cot', 'dependency3', 'some_other_folder', 'file_c'),
+            os.path.join(context.work_dir, 'cot', 'dependency3', 'some_other_folder', 'file_c'),
         ],
     }
     assert failed_artifacts == {
@@ -323,12 +323,12 @@ def test_fail_get_upstream_artifacts_full_paths_per_task_id(context):
 
 
 def test_get_and_check_single_upstream_artifact_full_path(context):
-    folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
+    folder = os.path.join(context.work_dir, 'cot', 'dependency1')
     os.makedirs(os.path.join(folder, 'public'))
     touch(os.path.join(folder, 'public/file_a'))
 
     assert get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
+        os.path.join(context.work_dir, 'cot', 'dependency1', 'public', 'file_a')
 
     with pytest.raises(ScriptWorkerTaskException):
         get_and_check_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file')
@@ -338,16 +338,16 @@ def test_get_and_check_single_upstream_artifact_full_path(context):
 
 
 def test_get_single_upstream_artifact_full_path(context):
-    folder = os.path.join(context.config['work_dir'], 'cot', 'dependency1')
+    folder = os.path.join(context.work_dir, 'cot', 'dependency1')
 
     assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'file_a')
+        os.path.join(context.work_dir, 'cot', 'dependency1', 'public', 'file_a')
 
     assert get_single_upstream_artifact_full_path(context, 'dependency1', 'public/non_existing_file') == \
-        os.path.join(context.config['work_dir'], 'cot', 'dependency1', 'public', 'non_existing_file')
+        os.path.join(context.work_dir, 'cot', 'dependency1', 'public', 'non_existing_file')
 
     assert get_single_upstream_artifact_full_path(context, 'non-existing-dep', 'public/file_a') == \
-        os.path.join(context.config['work_dir'], 'cot', 'non-existing-dep', 'public', 'file_a')
+        os.path.join(context.work_dir, 'cot', 'non-existing-dep', 'public', 'file_a')
 
 
 @pytest.mark.parametrize('upstream_artifacts, expected', ((
