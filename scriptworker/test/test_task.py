@@ -470,7 +470,7 @@ def test_prepare_to_run_task(context):
     claim_task = context.claim_task
     context.claim_task = None
     expected = {'taskId': 'taskId', 'runId': 'runId'}
-    path = os.path.join(context.config['work_dir'], 'current_task_info.json')
+    path = os.path.join(context.work_dir, 'current_task_info.json')
     assert swtask.prepare_to_run_task(context, claim_task) == expected
     assert os.path.exists(path)
     with open(path) as fh:
@@ -521,7 +521,7 @@ async def test_run_task_timeout(context):
     """`run_task` raises `ScriptWorkerTaskException` and kills the process
     after exceeding `task_max_timeout`.
     """
-    temp_dir = os.path.join(context.config['work_dir'], "timeout")
+    temp_dir = os.path.join(context.work_dir, "timeout")
     context.config['task_script'] = (
         sys.executable, TIMEOUT_SCRIPT, temp_dir
     )
@@ -595,13 +595,13 @@ async def test_complete_task_non_409(context, unsuccessful_queue):
 @pytest.mark.asyncio
 async def test_reclaim_task(context, successful_queue):
     context.temp_queue = successful_queue
-    await swtask.reclaim_task(context, context.task)
+    await swtask.reclaim_task(context)
 
 
 @pytest.mark.asyncio
 async def test_skip_reclaim_task(context, successful_queue):
     context.temp_queue = successful_queue
-    await swtask.reclaim_task(context, {"unrelated": "task"})
+    await swtask.reclaim_task(context)
 
 
 @pytest.mark.asyncio
@@ -609,7 +609,7 @@ async def test_reclaim_task_non_409(context, successful_queue):
     successful_queue.status = 500
     context.temp_queue = successful_queue
     with pytest.raises(taskcluster.exceptions.TaskclusterRestFailure):
-        await swtask.reclaim_task(context, context.task)
+        await swtask.reclaim_task(context)
 
 
 @pytest.mark.parametrize("no_proc", (True, False))
@@ -649,7 +649,7 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
     temp_queue.reclaimTask = fake_reclaim
     context.temp_queue = temp_queue
     try:
-        await swtask.reclaim_task(context, context.task)
+        await swtask.reclaim_task(context)
     except ScriptWorkerTaskException:
         pass
     if no_proc:
