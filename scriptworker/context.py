@@ -24,13 +24,11 @@ Attributes:
 import aiohttp
 import asyncio
 from copy import deepcopy
-import json
 import logging
 import os
-import signal
 import tempfile
 
-from scriptworker.utils import makedirs, load_json_or_yaml_from_url
+from scriptworker.utils import load_json_or_yaml_from_url
 from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
@@ -138,7 +136,7 @@ class BaseWorkerContext(BaseContext):
 
 
 # WorkerContext {{{1
-class WorkerContext(object):
+class WorkerContext(BaseWorkerContext):
     """The context for the running scriptworker.
 
     Attributes:

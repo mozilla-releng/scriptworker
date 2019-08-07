@@ -39,32 +39,12 @@ def reclaim_task():
     }
 
 
-def get_task_file(context):
-    temp_dir = context.config['work_dir']
-    path = os.path.join(temp_dir, "task.json")
-    return path
-
-
-def get_json(path):
-    with open(path, "r") as fh:
-        return json.load(fh)
-
-
 # tests {{{1
 def test_empty_context(context):
     assert context.task is None
     assert context.claim_task is None
     assert context.reclaim_task is None
-    assert context.temp_credentials is None
-
-
-@pytest.mark.asyncio
-async def test_set_task(context, claim_task):
-    context.claim_task = claim_task
-    assert context.claim_task == claim_task
-    assert context.reclaim_task is None
-    assert context.temp_credentials == claim_task['credentials']
-    assert get_json(get_task_file(context)) == claim_task['task']
+    assert context.credentials is None
 
 
 @pytest.mark.asyncio
@@ -74,31 +54,17 @@ async def test_set_reclaim_task(context, claim_task, reclaim_task):
     assert context.claim_task == claim_task
     assert context.task == claim_task['task']
     assert context.reclaim_task == reclaim_task
-    assert context.temp_credentials == reclaim_task['credentials']
-    assert get_json(get_task_file(context)) == claim_task['task']
-
-
-@pytest.mark.asyncio
-async def test_set_reset_task(context, claim_task, reclaim_task):
-    context.claim_task = claim_task
-    context.reclaim_task = reclaim_task
-    context.claim_task = None
-    assert context.claim_task is None
-    assert context.task is None
-    assert context.reclaim_task is None
-    assert context.proc is None
-    assert context.temp_credentials is None
-    assert context.temp_queue is None
+    assert context.credentials == reclaim_task['credentials']
 
 
 def test_temp_queue(context, mocker):
     mocker.patch('taskcluster.aio.Queue')
     context.session = {'c': 'd'}
-    context.temp_credentials = {'a': 'b'}
+    context.credentials = {'a': 'b'}
     assert taskcluster.aio.Queue.called_once_with(
         options={
             'rootUrl': context.config['taskcluster_root_url'],
-            'credentials': context.temp_credentials,
+            'credentials': context.credentials,
         },
         session=context.session
     )
@@ -112,18 +78,21 @@ async def test_projects(context, mocker):
         fake_projects['count'] += 1
         return deepcopy(fake_projects)
 
+    worker_context = swcontext.WorkerContext()
+    worker_context.config = context.config
+
     mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=fake_load)
-    assert context.projects is None
-    await context.populate_projects()
-    assert context.projects == fake_projects
+    assert worker_context.projects is None
+    await worker_context.populate_projects()
+    assert worker_context.projects == fake_projects
     assert fake_projects['count'] == 1
 
-    await context.populate_projects(force=True)
-    assert context.projects == fake_projects
+    await worker_context.populate_projects(force=True)
+    assert worker_context.projects == fake_projects
     assert fake_projects['count'] == 2
 
-    await context.populate_projects()
-    assert context.projects == fake_projects
+    await worker_context.populate_projects()
+    assert worker_context.projects == fake_projects
     assert fake_projects['count'] == 2
 
 
@@ -137,7 +106,7 @@ def test_new_event_loop(mocker):
     """The default context.event_loop is from `asyncio.get_event_loop`"""
     fake_loop = mock.MagicMock()
     mocker.patch.object(asyncio, 'get_event_loop', return_value=fake_loop)
-    context = swcontext.Context()
+    context = swcontext.WorkerContext()
     assert context.event_loop is fake_loop
 
 
@@ -148,6 +117,6 @@ def test_set_event_loop(mocker):
 
     """
     fake_loop = mock.MagicMock()
-    context = swcontext.Context()
+    context = swcontext.WorkerContext()
     context.event_loop = fake_loop
     assert context.event_loop is fake_loop
