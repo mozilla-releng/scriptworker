@@ -183,6 +183,9 @@ def rm(path):
 def cleanup(context):
     """Clean up ``base_work_dir`` and ``base_artifact_dir``, then recreate.
 
+    This deletes *all* working directories, so we shouldn't run this if any
+    tasks are still running.
+
     Args:
         context (scriptworker.context.Context): the scriptworker context.
 

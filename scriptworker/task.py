@@ -20,7 +20,7 @@ import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
-from scriptworker.context import create_task_context
+from scriptworker.context import create_task_context, TaskContext
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
     GitHubRepository,

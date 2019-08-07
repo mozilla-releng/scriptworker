@@ -111,8 +111,8 @@ class ChainOfTrust(object):
         """
         self.name = name
         self.context = context
-        self.task_id = task_id or get_task_id(context.claim_task)
-        self.task = context.task
+        self.task_id = task_id or get_task_id(task_context.claim_task)
+        self.task = task_context.task
         self.task_type = guess_task_type(name, self.task)
         self.worker_impl = guess_worker_impl(self)  # this should be scriptworker
         self.decision_task_id = get_decision_task_id(self.task)

@@ -15,7 +15,7 @@ import tempfile
 import taskcluster.exceptions
 from scriptworker.config import get_unfrozen_copy, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import WorkerContext
+from scriptworker.context import TaskContext, set_task_context_paths
 from scriptworker.utils import makedirs
 try:
     import yarl
@@ -262,6 +262,10 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
             context.config[key] = os.path.join(tmp, key)
     context.config['verbose'] = VERBOSE
     context.event_loop = event_loop
+    set_task_context_paths(context)
+    makedirs(context.work_dir)
+    makedirs(context.artifact_dir)
+    makedirs(context.task_log_dir)
     return context
 
 

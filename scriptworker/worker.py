@@ -18,7 +18,7 @@ import typing
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
-from scriptworker.context import TaskContext, create_task_context
+from scriptworker.context import TaskContext
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask

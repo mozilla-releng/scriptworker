@@ -249,7 +249,7 @@ class TaskContext(BaseWorkerContext):
         except (OSError, ProcessLookupError):
             return
 
-     @property
+    @property
     def claim_task(self):
         """dict: The current or most recent claimTask definition json from the queue.
 
@@ -269,7 +269,6 @@ class TaskContext(BaseWorkerContext):
         self.proc = None
         self.task = claim_task['task']
         self.credentials = claim_task['credentials']
-
 
     @property
     def reclaim_task(self):
@@ -333,7 +332,7 @@ def set_task_context_paths(task_context, task_num=None):
     else:
         task_context.work_dir = task_context.config["base_work_dir"]
         task_context.artifact_dir = task_context.config["base_artifact_dir"]
-    task_context.task_log_dir = task_context.config["task_log_dir"] % {
+    task_context.task_log_dir = task_context.config["task_log_dir_template"] % {
         "artifact_dir": task_context.artifact_dir,
     }
 
@@ -356,11 +355,11 @@ def create_task_context(config, claim_task, task_num=None,
         TaskContext: the task context.
 
     """
-        task_context = TaskContext()
-        task_context.config = config
-        set_task_context_paths(task_context, task_num=task_num)
-        task_context.event_loop = event_loop
-        task_context.session = session
-        task_context.projects = projects
-        task_context.claim_task = claim_task
-        return task_context
+    task_context = TaskContext()
+    task_context.config = config
+    set_task_context_paths(task_context, task_num=task_num)
+    task_context.event_loop = event_loop
+    task_context.session = session
+    task_context.projects = projects
+    task_context.claim_task = claim_task
+    return task_context
