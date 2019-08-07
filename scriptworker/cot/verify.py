@@ -984,7 +984,7 @@ async def get_pushlog_info(decision_link):
         repo=repo, revision=rev
     )
     log.info("Pushlog url {}".format(pushlog_url))
-    file_path = os.path.join(context.config["work_dir"], "{}_push_log.json".format(decision_link.name))
+    file_path = os.path.join(context.work_dir, "{}_push_log.json".format(decision_link.name))
     pushlog_info = await load_json_or_yaml_from_url(
         context, pushlog_url, file_path, overwrite=False
     )
@@ -1367,7 +1367,7 @@ async def get_in_tree_template(link):
         ))
     tmpl = await load_json_or_yaml_from_url(
         context, source_url, os.path.join(
-            context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
+            context.work_dir, "{}_taskcluster.yml".format(link.name)
         )
     )
     return tmpl

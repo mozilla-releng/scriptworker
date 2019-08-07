@@ -20,7 +20,7 @@ import taskcluster
 import taskcluster.exceptions
 
 from scriptworker.constants import get_reversed_statuses
-from scriptworker.context import TaskContext
+from scriptworker.context import create_task_context
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
     GitHubRepository,
@@ -568,18 +568,22 @@ def prepare_to_run_task(context, claim_task, task_num):
 
     """
     current_task_info = {}
-    task_context = TaskContext(context, claim_task, task_num)
+    task_context = create_task_context(
+        context.config, claim_task, task_num,
+        event_loop=context.event_loop, session=context.session,
+        projects=context.projects,
+    )
     current_task_info['taskId'] = task_context.task_id
     current_task_info['runId'] = task_context.run_id
     log.info("Going to run taskId {taskId} runId {runId}!".format(
         **current_task_info
     ))
     write_json(
-        os.path.join(task_context.config['work_dir'], 'current_task_info.json'),
+        os.path.join(task_context.work_dir, 'current_task_info.json'),
         current_task_info, "Writing current task info to {path}..."
     )
     write_json(
-        os.path.join(task_context.config['work_dir'], 'task.json'),
+        os.path.join(task_context.work_dir, 'task.json'),
         task_context.task, "Writing current task info to {path}..."
     )
     return task_context

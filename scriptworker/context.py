@@ -211,10 +211,10 @@ class TaskContext(BaseWorkerContext):
     task = None
     task_id = None
     task_log_dir = None
-    task_num = None
     work_dir = None
     _claim_task = None
     _reclaim_task = None
+    _task_num = None
 
     @property
     def task_id(self):
@@ -307,26 +307,21 @@ class TaskContext(BaseWorkerContext):
             json.dump(contents, fh, indent=2, sort_keys=True)
 
 
-def create_task_context(config: dict, claim_task: dict, task_num: int,
-                        event_loop=None, session=None, projects=None):
-    """Create a TaskContext from a WorkerContext, claim_task, and task_num.
+def set_task_context_paths(task_context, task_num=None):
+    """Set the various task-specific directories in a given TaskContext.
+
+    If ``task_num`` is set, and we run more than 1 task concurrently,
+    we should include ``task_num`` in our directory paths to avoid
+    sharing work/artifact directories.
 
     Args:
-        worker_context: the scriptworker WorkerContext
-        claim_task: the claimTask response
-        task_num: the task number. This should be unique per concurrent task,
-            so if we can claim 3 concurrent tasks, these should be 0, 1, and 2.
-
-    Returns:
-        TaskContext: the task context.
+        task_context (TaskContext): the task context
+        task_num (int, optional): the unique number for this task. If
+            we're running 3 concurrent tasks, we'll have a 0, 1, and a 2.
 
     """
-        task_context = TaskContext()
+    if task_num is not None and task_context.config["num_concurrent_tasks"] > 1:
         task_context._task_num = task_num
-        task_context.config = config
-        task_context.event_loop = event_loop
-        task_context.session = session
-        task_context.projects = projects
         task_context.work_dir = os.path.join(
             task_context.config["base_work_dir"],
             str(task_context._task_num)
@@ -335,8 +330,37 @@ def create_task_context(config: dict, claim_task: dict, task_num: int,
             task_context.config["base_artifact_dir"],
             str(task_context._task_num)
         )
-        task_context.task_log_dir = task_context.config["task_log_dir"] % {
-            "artifact_dir": task_context.artifact_dir,
-        }
+    else:
+        task_context.work_dir = task_context.config["base_work_dir"]
+        task_context.artifact_dir = task_context.config["base_artifact_dir"]
+    task_context.task_log_dir = task_context.config["task_log_dir"] % {
+        "artifact_dir": task_context.artifact_dir,
+    }
+
+
+def create_task_context(config, claim_task, task_num=None,
+                        event_loop=None, session=None, projects=None):
+    """Create a TaskContext from a WorkerContext, claim_task, and task_num.
+
+    Args:
+        config (dict): the running config
+        claim_task (dict): the claimTask response
+        task_num (int, optional): the task number. This differentiates
+            concurrent tasks from each other. If we can claim 3 concurrent
+            tasks, the task contexts would have task_nums of 0, 1, and 2.
+        event_loop (asyncio.BaseEventLoop, optional): the event loop to use
+        session (aiohttp.ClientSession, optional): the session to use
+        projects (dict): the contents of ci-configuration/projects.yml
+
+    Returns:
+        TaskContext: the task context.
+
+    """
+        task_context = TaskContext()
+        task_context.config = config
+        set_task_context_paths(task_context, task_num=task_num)
+        task_context.event_loop = event_loop
+        task_context.session = session
+        task_context.projects = projects
         task_context.claim_task = claim_task
         return task_context
