@@ -651,7 +651,7 @@ async def run_task(task_context):
             stopped_due_to_worker_shutdown = task_context.task_process.stopped_due_to_worker_shutdown
 
     if stopped_due_to_worker_shutdown:
-        raise WorkerShutdownDuringTask
+        raise WorkerShutdownDuringTask("Task {} stopped due to worker shutdown.".format(task_context.task_id))
 
     return exitcode
 

@@ -23,14 +23,13 @@ from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
     reclaim_task, run_task, worst_level
-from scriptworker.task_process import TaskProcess
 from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
 
 
 # do_run_task {{{1
-async def do_run_task(context, run_cancellable, to_cancellable_process):
+async def do_run_task(context, run_cancellable):
     """Run the task logic.
 
     Returns the integer status of the task.
@@ -38,8 +37,6 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
     args:
         context (scriptworker.context.WorkerContext): the scriptworker context.
         run_cancellable (typing.Callable): wraps future such that it'll cancel upon worker shutdown
-        to_cancellable_process (typing.Callable): wraps ``TaskProcess`` such that it will stop if the worker is shutting
-            down
 
     Raises:
         Exception: on unexpected exception.
@@ -53,11 +50,10 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
         if context.config['verify_chain_of_trust']:
             chain = ChainOfTrust(context, context.config['cot_job_type'])
             await run_cancellable(verify_chain_of_trust(chain))
-        status = await run_task(context, to_cancellable_process)
+        status = await run_task(context)
         generate_cot(context)
     except asyncio.CancelledError:
-        log.info("CoT cancelled asynchronously")
-        raise WorkerShutdownDuringTask
+        raise WorkerShutdownDuringTask("CoT cancelled asynchronously")
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
@@ -133,7 +129,7 @@ class RunTasks:
                 self.task_contexts.append(task_context)
             # TODO run tasks concurrently.
                 try:
-                    status = await do_run_task(task_context, self._run_cancellable, self._to_cancellable_process)
+                    status = await do_run_task(task_context, self._run_cancellable)
                     artifacts_paths = filepaths_in_dir(task_context.artifact_dir)
                 except WorkerShutdownDuringTask:
                     shutdown_artifact_paths = [os.path.join('public', 'logs', log_file)
@@ -158,14 +154,6 @@ class RunTasks:
         result = await self.future
         self.future = None
         return result
-
-    async def _to_cancellable_process(self, task_process: TaskProcess):
-        self.task_process = task_process
-
-        if self.is_cancelled:
-            await task_process.worker_shutdown_stop()
-
-        return task_process
 
     async def cancel(self):
         """Cancel current work."""

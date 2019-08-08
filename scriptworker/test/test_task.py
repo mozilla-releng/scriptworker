@@ -20,7 +20,7 @@ import time
 from unittest.mock import MagicMock
 
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import raise_future_exceptions
+from scriptworker.utils import get_results_and_future_exceptions
 from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
@@ -483,19 +483,22 @@ async def test_run_task(context):
 
 @pytest.mark.asyncio
 async def test_run_task_shutdown(context):
-    context.config['task_script'] = ('bash', '-c', 'sleep 1')
+    context.config['task_script'] = ('bash', '-c', 'sleep 5')
 
     async def stop_task_process(context):
         while not context.task_process:
             await asyncio.sleep(.01)
         await context.task_process.worker_shutdown_stop()
+        return 1
 
-    with pytest.raises(WorkerShutdownDuringTask):
-        futures = [
-            asyncio.ensure_future(swtask.run_task(context)),
-            asyncio.ensure_future(stop_task_process(context)),
-        ]
-        await raise_future_exceptions(futures)
+    futures = [
+        asyncio.ensure_future(stop_task_process(context)),
+        asyncio.ensure_future(swtask.run_task(context)),
+    ]
+    results, errors = await get_results_and_future_exceptions(futures)
+    assert results == [1]
+    assert len(errors) == 1
+    assert isinstance(errors[0], WorkerShutdownDuringTask)
 
 
 @pytest.mark.asyncio

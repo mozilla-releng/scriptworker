@@ -162,5 +162,5 @@ class ConfigError(ScriptWorkerException):
     """
 
 
-class WorkerShutdownDuringTask(BaseException):
+class WorkerShutdownDuringTask(ScriptWorkerException):
     """Task cancelled because worker is shutting down."""
