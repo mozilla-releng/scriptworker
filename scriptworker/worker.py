@@ -145,10 +145,12 @@ class RunTasks:
                 err for err in errors if not isinstance(err, asyncio.CancelledError)
             ]
             if unexpected_errors:
-                log.critical("RunTasks.invoke: hit {} unexpected exception(s):\n{}".format(
-                    len(unexpected_errors), [" - {}\n".format(str(err)) for err in unexpected_errors]
-                ))
-                raise errors[0]
+                for err in unexpected_errors:
+                    log.exception(
+                        "SCRIPTWORKER_UNEXPECTED_EXCEPTION RunTasks.invoke: {}".format(str(err)),
+                        exc_info=(err.__class__, err, err.__traceback__)
+                    )
+                raise unexpected_errors[0]
             cleanup(worker_context)
 
             return results
