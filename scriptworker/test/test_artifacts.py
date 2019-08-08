@@ -133,7 +133,7 @@ async def test_create_artifact(context, fake_session, successful_queue):
     touch(path)
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
-    context.temp_queue = successful_queue
+    context.queue = successful_queue
     await create_artifact(
         context, path, "public/env/one.txt", content_type='text/plain',
         content_encoding=None, expires=expires
@@ -157,7 +157,7 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
     context.session = fake_session_500
     expires = arrow.utcnow().isoformat()
     with pytest.raises(ScriptWorkerRetryException):
-        context.temp_queue = successful_queue
+        context.queue = successful_queue
         await create_artifact(
             context, path, "public/env/one.log", content_type='text/plain',
             content_encoding=None, expires=expires
