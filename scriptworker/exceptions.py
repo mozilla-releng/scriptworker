@@ -164,3 +164,13 @@ class ConfigError(ScriptWorkerException):
 
 class WorkerShutdownDuringTask(ScriptWorkerException):
     """Task cancelled because worker is shutting down."""
+    def __init__(self,msg):
+        """Initialize WorkerShutdownDuringTask.
+
+        Args:
+            msg (string): the error message
+
+        """
+        super(WorkerShutdownDuringTask, self).__init__(
+            msg, exit_code=STATUSES['worker-shutdown']
+        )
