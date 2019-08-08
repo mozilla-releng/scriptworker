@@ -20,6 +20,7 @@ import time
 from unittest.mock import MagicMock
 
 from scriptworker.task_process import TaskProcess
+from scriptworker.utils import raise_future_exceptions
 from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
@@ -27,9 +28,6 @@ assert rw_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
-
-async def noop_to_cancellable_process(process):
-    return process
 
 
 # constants helpers and fixtures {{{1
@@ -477,7 +475,7 @@ def test_prepare_to_run_task(context):
 # run_task {{{1
 @pytest.mark.asyncio
 async def test_run_task(context):
-    status = await swtask.run_task(context, noop_to_cancellable_process)
+    status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
     assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
     assert status == 1
@@ -485,12 +483,19 @@ async def test_run_task(context):
 
 @pytest.mark.asyncio
 async def test_run_task_shutdown(context):
-    async def stop_task_process(task_process: TaskProcess):
-        await task_process.worker_shutdown_stop()
-        return task_process
+    context.config['task_script'] = ('bash', '-c', 'sleep 1')
+
+    async def stop_task_process(context):
+        while not context.task_process:
+            await asyncio.sleep(.01)
+        await context.task_process.worker_shutdown_stop()
 
     with pytest.raises(WorkerShutdownDuringTask):
-        await swtask.run_task(context, stop_task_process)
+        futures = [
+            asyncio.ensure_future(swtask.run_task(context)),
+            asyncio.ensure_future(stop_task_process(context)),
+        ]
+        await raise_future_exceptions(futures)
 
 
 @pytest.mark.asyncio
@@ -506,7 +511,7 @@ async def test_run_task_negative_11(context, mocker):
 
     mocker.patch.object(asyncio, 'create_subprocess_exec', new=fake_exec)
 
-    status = await swtask.run_task(context, noop_to_cancellable_process)
+    status = await swtask.run_task(context)
     log_file = log.get_log_filename(context)
     contents = read(log_file)
     assert contents == "Automation Error: python exited with signal -11\n"
@@ -527,7 +532,7 @@ async def test_run_task_timeout(context):
 
     pre = arrow.utcnow().timestamp
     with pytest.raises(ScriptWorkerTaskException):
-        await swtask.run_task(context, noop_to_cancellable_process)
+        await swtask.run_task(context)
     post = arrow.utcnow().timestamp
     # I don't love these checks, because timing issues may cause this test
     # to be flaky. However, I don't want a non- or long- running test to pass.
@@ -546,8 +551,6 @@ async def test_run_task_timeout(context):
         print("Checking {}...".format(path))
         assert files[path] == (time.ctime(os.path.getmtime(path)), os.stat(path).st_size)
     assert len(list(files.keys())) == 6
-    # Did we clean up?
-    assert context.task_process is None
 
 
 # report* {{{1

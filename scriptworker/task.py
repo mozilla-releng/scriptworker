@@ -591,13 +591,13 @@ def prepare_to_run_task(context, claim_task, task_num):
 
 
 # run_task {{{1
-async def run_task(context, to_cancellable_process):
+async def run_task(task_context):
     """Run the task, sending stdout+stderr to files.
 
     https://github.com/python/asyncio/blob/master/examples/subprocess_shell.py
 
     Args:
-        context (scriptworker.context.TaskContext): the task context.
+        task_context (scriptworker.context.TaskContext): the task context.
         to_cancellable_process (types.Callable): tracks the process so that it can be stopped if the worker is shut down
 
     Returns:
@@ -605,7 +605,7 @@ async def run_task(context, to_cancellable_process):
 
     """
     env = deepcopy(os.environ)
-    env['TASK_ID'] = context.task_id or 'None'
+    env['TASK_ID'] = task_context.task_id or 'None'
     kwargs = {  # pragma: no branch
         'stdout': PIPE,
         'stderr': PIPE,
@@ -615,16 +615,16 @@ async def run_task(context, to_cancellable_process):
         'env': env,
     }
 
-    subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
-    context.task_process = await to_cancellable_process(TaskProcess(subprocess))
-    timeout = context.config['task_max_timeout']
+    subprocess = await asyncio.create_subprocess_exec(*task_context.config['task_script'], **kwargs)
+    task_context.task_process = TaskProcess(subprocess)
+    timeout = task_context.config['task_max_timeout']
 
-    with get_log_filehandle(context) as log_filehandle:
+    with get_log_filehandle(task_context) as log_filehandle:
         stderr_future = asyncio.ensure_future(
-            pipe_to_log(context.task_process.process.stderr, filehandles=[log_filehandle])
+            pipe_to_log(task_context.task_process.process.stderr, filehandles=[log_filehandle])
         )
         stdout_future = asyncio.ensure_future(
-            pipe_to_log(context.task_process.process.stdout, filehandles=[log_filehandle])
+            pipe_to_log(task_context.task_process.process.stdout, filehandles=[log_filehandle])
         )
         try:
             _, pending = await asyncio.wait(
@@ -633,13 +633,13 @@ async def run_task(context, to_cancellable_process):
             if pending:
                 message = "Exceeded task_max_timeout of {} seconds".format(timeout)
                 log.warning(message)
-                await context.task_process.stop()
-                raise ScriptWorkerTaskException(message, exit_code=context.config['task_max_timeout_status'])
+                await task_context.task_process.stop()
+                raise ScriptWorkerTaskException(message, exit_code=task_context.config['task_max_timeout_status'])
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
             # log lines.
-            exitcode = await context.task_process.process.wait()
+            exitcode = await task_context.task_process.process.wait()
             # make sure we haven't lost any of the logs
             await asyncio.wait([stdout_future, stderr_future])
             # add an exit code line at the end of the log
@@ -648,8 +648,7 @@ async def run_task(context, to_cancellable_process):
                 status_line = "Automation Error: python exited with signal {}".format(exitcode)
             log.info(status_line)
             print(status_line, file=log_filehandle)
-            stopped_due_to_worker_shutdown = context.task_process.stopped_due_to_worker_shutdown
-            context.task_process = None
+            stopped_due_to_worker_shutdown = task_context.task_process.stopped_due_to_worker_shutdown
 
     if stopped_due_to_worker_shutdown:
         raise WorkerShutdownDuringTask
