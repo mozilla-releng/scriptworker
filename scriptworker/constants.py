@@ -122,7 +122,6 @@ DEFAULT_CONFIG = frozendict({
         "scriptworker-prov-v1/beetmoverworker-v1",
         "scriptworker-prov-v1/pushapk-v1",
         "scriptworker-prov-v1/signing-linux-v1",
-        "scriptworker-prov-v1/treescriptworker-v1"
         "scriptworker-prov-v1/treescriptworker-v1",
         "scriptworker-k8s/gecko-1-balrog",
         "scriptworker-k8s/gecko-3-balrog",
