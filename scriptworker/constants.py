@@ -122,10 +122,22 @@ DEFAULT_CONFIG = frozendict({
         "scriptworker-prov-v1/beetmoverworker-v1",
         "scriptworker-prov-v1/pushapk-v1",
         "scriptworker-prov-v1/signing-linux-v1",
-        "scriptworker-prov-v1/treescriptworker-v1"
+        "scriptworker-prov-v1/treescriptworker-v1",
+        "scriptworker-k8s/gecko-1-balrog",
+        "scriptworker-k8s/gecko-3-balrog",
+        "scriptworker-k8s/gecko-1-beetmover",
+        "scriptworker-k8s/gecko-3-beetmover",
+        "scriptworker-k8s/gecko-1-pushapk",
+        "scriptworker-k8s/gecko-3-pushapk",
+        "scriptworker-k8s/gecko-1-signing",
+        "scriptworker-k8s/gecko-3-signing",
+        "scriptworker-k8s/gecko-t-signing",
+        "scriptworker-k8s/gecko-1-tree",
+        "scriptworker-k8s/gecko-3-tree",
     ),
     "scriptworker_provisioners": (
         "scriptworker-prov-v1",
+        "scriptworker-k8s",
     ),
 
     # valid hash algorithms for chain of trust artifacts
