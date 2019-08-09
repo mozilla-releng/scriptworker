@@ -409,7 +409,7 @@ async def test_run_tasks_cancel_cot(task_context, mocker):
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_run_tasks(task_context, mocker):
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
-    mock_prepare_task.return_value = create_finished_future()
+    mock_prepare_task.return_value = task_context
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch('scriptworker.worker.reclaim_task', noop_async)
@@ -427,12 +427,13 @@ async def test_run_tasks_cancel_run_tasks(task_context, mocker):
     task_process = MockTaskProcess()
     run_task_called = asyncio.Future()
 
-    async def mock_run_task(_, to_cancellable_process):
+    async def mock_run_task(_):
         await to_cancellable_process(task_process)
         run_task_called.set_result(None)
         await task_process._wait()
         raise WorkerShutdownDuringTask
-    mocker.patch('scriptworker.worker.run_task', mock_run_task)
+
+    mocker.patch.object(worker, 'run_task', new=mock_run_task)
 
     run_tasks = RunTasks()
     run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
@@ -481,8 +482,9 @@ async def test_run_tasks_cancel_right_before_cot(task_context, mocker):
         return await do_run_task(*args, **kwargs)
 
     mocker.patch('scriptworker.worker.do_run_task', mock_do_run_task)
-    await run_tasks.invoke(task_context)
+    results = await run_tasks.invoke(task_context)
 
+    assert results == [5]
     assert verify_cot_future.cancelled()
     mock_run_task.assert_not_called()
     mock_prepare_task.assert_called_once()

@@ -143,7 +143,6 @@ class RunTasks:
                         do_run_task(task_context, self._run_cancellable)
                     )
                 )
-            # TODO run tasks concurrently via get_results...
             results, errors = await get_results_and_future_exceptions(futures)
             unexpected_errors = [
                 err for err in errors if not isinstance(err, asyncio.CancelledError)
