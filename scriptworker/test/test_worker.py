@@ -360,13 +360,7 @@ async def test_run_tasks_cancel_sleep(task_context, mocker):
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_NONE_RETURN))
 
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
-    mock_prepare_task.return_value = create_finished_future()
-
-    mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
-    mock_do_upload.return_value = create_finished_future(0)
-
-    mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
-    mock_complete_task.return_value = create_finished_future()
+    mock_prepare_task.return_value = task_context
 
     run_tasks = RunTasks()
     run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
@@ -375,8 +369,6 @@ async def test_run_tasks_cancel_sleep(task_context, mocker):
     await run_tasks_future
 
     mock_prepare_task.assert_not_called()
-    mock_do_upload.assert_not_called()
-    mock_complete_task.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -387,7 +379,7 @@ async def test_run_tasks_cancel_cot(task_context, mocker):
     mocker.patch('scriptworker.worker.verify_chain_of_trust', slow_function)
 
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
-    mock_prepare_task.return_value = create_finished_future()
+    mock_prepare_task.return_value = task_context
 
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch('scriptworker.worker.ChainOfTrust', MockChainOfTrust)
