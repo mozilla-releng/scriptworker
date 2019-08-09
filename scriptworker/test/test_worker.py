@@ -17,6 +17,7 @@ import signal
 
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
+from scriptworker.utils import makedirs
 import scriptworker.worker as worker
 from scriptworker.worker import RunTasks, do_run_task
 from . import noop_async, noop_sync, rw_context, successful_queue, \
@@ -28,13 +29,43 @@ assert successful_queue  # silence flake8
 
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope='function')
-def context(rw_context):
+def task_context(rw_context):
     yield rw_context
 
 
+def _mocker_run_tasks_helper(mocker, exc, func_to_raise, task_context):
+    """Mock run_tasks for the test_mocker_run_tasks_* tests.
+
+    """
+    task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
+
+    async def claim_work(*args, **kwargs):
+        return {'tasks': [task]}
+
+    async def fail(*args, **kwargs):
+        raise exc("foo")
+
+    async def run_task(*args, **kwargs):
+        return 0
+
+    mocker.patch.object(worker, "claim_work", new=claim_work)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "prepare_to_run_task", return_value=task_context)
+    if func_to_raise == "run_task":
+        mocker.patch.object(worker, "run_task", new=fail)
+    else:
+        mocker.patch.object(worker, "run_task", new=run_task)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
+    if func_to_raise == "upload_artifacts":
+        mocker.patch.object(worker, "upload_artifacts", new=fail)
+    else:
+        mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
+
+
 # main {{{1
-def test_main(mocker, context, event_loop):
-    config = dict(context.config)
+def test_main(mocker, task_context, event_loop):
+    config = dict(task_context.config)
     config['poll_interval'] = 1
     creds = {'fake_creds': True}
     config['credentials'] = deepcopy(creds)
@@ -58,7 +89,7 @@ def test_main(mocker, context, event_loop):
 
 
 @pytest.mark.parametrize('running', (True, False))
-def test_main_running_sigterm(mocker, context, event_loop, running):
+def test_main_running_sigterm(mocker, task_context, event_loop, running):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
     run_tasks_cancelled = event_loop.create_future()
@@ -68,18 +99,18 @@ def test_main_running_sigterm(mocker, context, event_loop, running):
         def cancel():
             run_tasks_cancelled.set_result(True)
 
-    async def async_main(internal_context, _):
-        # scriptworker reads context from a file, so we have to modify the context given here instead of the variable
+    async def async_main(internal_task_context, _):
+        # scriptworker reads task_context from a file, so we have to modify the task_context given here instead of the variable
         # from the fixture
         if running:
-            internal_context.running_tasks = MockRunTasks()
+            internal_task_context.running_tasks = MockRunTasks()
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
 
     _, tmp = tempfile.mkstemp()
     try:
         with open(tmp, "w") as fh:
-            json.dump(context.config, fh)
+            json.dump(task_context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         worker.main(event_loop=event_loop)
@@ -92,7 +123,7 @@ def test_main_running_sigterm(mocker, context, event_loop, running):
 
 
 @pytest.mark.parametrize('running', (True, False))
-def test_main_running_sigusr1(mocker, context, event_loop, running):
+def test_main_running_sigusr1(mocker, task_context, event_loop, running):
     """Test that sending SIGUSR1 causes the main loop to stop after the next
     call to async_main without cancelling the task."""
     run_tasks_cancelled = event_loop.create_future()
@@ -102,18 +133,18 @@ def test_main_running_sigusr1(mocker, context, event_loop, running):
         def cancel():
             run_tasks_cancelled.set_result(True)
 
-    async def async_main(internal_context, _):
-        # scriptworker reads context from a file, so we have to modify the
-        # context given here instead of the variable from the fixture
+    async def async_main(internal_task_context, _):
+        # scriptworker reads task_context from a file, so we have to modify the
+        # task_context given here instead of the variable from the fixture
         if running:
-            internal_context.running_tasks = MockRunTasks()
+            internal_task_context.running_tasks = MockRunTasks()
         # Send SIGUSR1 to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGUSR1)
 
     _, tmp = tempfile.mkstemp()
     try:
         with open(tmp, "w") as fh:
-            json.dump(context.config, fh)
+            json.dump(task_context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         worker.main(event_loop=event_loop)
@@ -125,15 +156,15 @@ def test_main_running_sigusr1(mocker, context, event_loop, running):
 
 # async_main {{{1
 @pytest.mark.asyncio
-async def test_async_main(context, mocker):
+async def test_async_main(task_context, mocker):
     mocker.patch.object(worker, 'run_tasks', new=noop_async)
-    await worker.async_main(context, {})
+    await worker.async_main(task_context, {})
 
 
 # run_tasks {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("verify_cot", (True, False))
-async def test_mocker_run_tasks(context, successful_queue, verify_cot, mocker):
+async def test_mocker_run_tasks(task_context, successful_queue, verify_cot, mocker):
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
 
     successful_queue.task = task
@@ -146,25 +177,25 @@ async def test_mocker_run_tasks(context, successful_queue, verify_cot, mocker):
 
     fake_cot = mock.MagicMock
 
-    context.config['verify_chain_of_trust'] = verify_cot
+    task_context.config['verify_chain_of_trust'] = verify_cot
 
-    context.queue = successful_queue
+    task_context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
-    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch.object(worker, "prepare_to_run_task", return_value=task_context)
     mocker.patch.object(worker, "run_task", new=run_task)
     mocker.patch.object(worker, "ChainOfTrust", new=fake_cot)
     mocker.patch.object(worker, "verify_chain_of_trust", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = await worker.run_tasks(context)
-    assert status == 19
+    status = await worker.run_tasks(task_context)
+    assert status == [19]
 
 
 @pytest.mark.asyncio
-async def test_mocker_run_tasks_noop(context, successful_queue, mocker):
-    context.queue = successful_queue
+async def test_mocker_run_tasks_noop(task_context, successful_queue, mocker):
+    task_context.queue = successful_queue
     mocker.patch.object(worker, "claim_work", new=noop_async)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
@@ -173,39 +204,10 @@ async def test_mocker_run_tasks_noop(context, successful_queue, mocker):
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     mocker.patch.object(asyncio, "sleep", new=noop_async)
-    status = await worker.run_tasks(context)
-    assert context.credentials is None
+    status = await worker.run_tasks(task_context)
+    assert task_context.credentials is None
     assert status is None
 
-
-def _mocker_run_tasks_helper(mocker, exc, func_to_raise):
-    """Mock run_tasks for the test_mocker_run_tasks_* tests.
-
-    """
-    task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
-
-    async def claim_work(*args, **kwargs):
-        return {'tasks': [task]}
-
-    async def fail(*args, **kwargs):
-        raise exc("foo")
-
-    async def run_task(*args, **kwargs):
-        return 0
-
-    mocker.patch.object(worker, "claim_work", new=claim_work)
-    mocker.patch.object(worker, "reclaim_task", new=noop_async)
-    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
-    if func_to_raise == "run_task":
-        mocker.patch.object(worker, "run_task", new=fail)
-    else:
-        mocker.patch.object(worker, "run_task", new=run_task)
-    mocker.patch.object(worker, "generate_cot", new=noop_sync)
-    if func_to_raise == "upload_artifacts":
-        mocker.patch.object(worker, "upload_artifacts", new=fail)
-    else:
-        mocker.patch.object(worker, "upload_artifacts", new=noop_async)
-    mocker.patch.object(worker, "complete_task", new=noop_async)
 
 
 @pytest.mark.parametrize("func_to_raise,exc,expected", ((
@@ -216,32 +218,32 @@ def _mocker_run_tasks_helper(mocker, exc, func_to_raise):
     'upload_artifacts', aiohttp.ClientError, STATUSES['intermittent-task']
 )))
 @pytest.mark.asyncio
-async def test_mocker_run_tasks_caught_exception(context, successful_queue, mocker,
+async def test_mocker_run_tasks_caught_exception(task_context, successful_queue, mocker,
                                                  func_to_raise, exc, expected):
     """Raise an exception within the run_tasks try/excepts and return status.
 
     """
-    _mocker_run_tasks_helper(mocker, exc, func_to_raise)
+    _mocker_run_tasks_helper(mocker, exc, func_to_raise, task_context)
 
-    context.queue = successful_queue
-    status = await worker.run_tasks(context)
-    assert status == expected
+    task_context.queue = successful_queue
+    status = await worker.run_tasks(task_context)
+    assert status == [expected]
 
 
 @pytest.mark.asyncio
-async def test_mocker_upload_artifacts_uncaught_exception(context, successful_queue, mocker):
+async def test_mocker_upload_artifacts_uncaught_exception(task_context, successful_queue, mocker):
     """Raise an uncaught exception within the run_tasks try/excepts.
 
     """
-    _mocker_run_tasks_helper(mocker, OSError, 'upload_artifacts')
+    _mocker_run_tasks_helper(mocker, OSError, 'upload_artifacts', task_context)
 
-    context.queue = successful_queue
+    task_context.queue = successful_queue
     with pytest.raises(OSError):
-        await worker.run_tasks(context)
+        await worker.run_tasks(task_context)
 
 
 @pytest.mark.asyncio
-async def test_unexpected_exception_catch_and_tell_taskcluster(context, successful_queue, mocker):
+async def test_unexpected_exception_catch_and_tell_taskcluster(task_context, successful_queue, mocker):
     def fail():
         raise Exception()
 
@@ -249,19 +251,19 @@ async def test_unexpected_exception_catch_and_tell_taskcluster(context, successf
         await coroutine
 
     mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
-    status = await do_run_task(context, run, lambda x: x)
-    assert status == STATUSES['internal-error']
+    status = await do_run_task(task_context, run, lambda x: x)
+    assert status == [STATUSES['internal-error']]
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_timeout(context, successful_queue, mocker):
-    temp_dir = os.path.join(context.config['work_dir'], "timeout")
+async def test_run_tasks_timeout(task_context, successful_queue, mocker):
+    temp_dir = os.path.join(task_context.config['work_dir'], "timeout")
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
-    context.config['task_script'] = (
+    task_context.config['task_script'] = (
         sys.executable, TIMEOUT_SCRIPT, temp_dir
     )
-    context.config['task_max_timeout'] = 1
-    context.queue = successful_queue
+    task_context.config['task_max_timeout'] = 1
+    task_context.queue = successful_queue
 
     async def claim_work(*args, **kwargs):
         return {'tasks': [task]}
@@ -272,8 +274,8 @@ async def test_run_tasks_timeout(context, successful_queue, mocker):
     mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
-    status = await worker.run_tasks(context)
-    assert status == context.config['task_max_timeout_status']
+    status = await worker.run_tasks(task_context)
+    assert status == task_context.config['task_max_timeout_status']
 
 
 _MOCK_CLAIM_WORK_RETURN = {
@@ -288,7 +290,7 @@ _MOCK_CLAIM_WORK_NONE_RETURN = {
 
 
 class MockChainOfTrust:
-    def __init__(self, context, cot_job_type):
+    def __init__(self, task_context, cot_job_type):
         pass
 
 
@@ -306,7 +308,7 @@ class MockTaskProcess:
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_no_cancel(context, mocker):
+async def test_run_tasks_no_cancel(task_context, mocker):
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch.object(asyncio, 'sleep', noop_async)
     mocker.patch('scriptworker.worker.prepare_to_run_task', noop_sync)
@@ -323,13 +325,13 @@ async def test_run_tasks_no_cancel(context, mocker):
     mock_complete_task.return_value = future
 
     run_tasks = RunTasks()
-    await run_tasks.invoke(context)
+    await run_tasks.invoke(task_context)
     mock_complete_task.assert_called_once_with(mock.ANY, 0)
-    mock_do_upload.assert_called_once_with(context, ['one', 'public/two'])
+    mock_do_upload.assert_called_once_with(task_context, ['one', 'public/two'])
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_claim_work(context, mocker):
+async def test_run_tasks_cancel_claim_work(task_context, mocker):
     slow_function_called, slow_function = create_slow_async()
     mocker.patch('scriptworker.worker.claim_work', slow_function)
 
@@ -346,7 +348,7 @@ async def test_run_tasks_cancel_claim_work(context, mocker):
     mock_complete_task.return_value = create_finished_future()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -358,7 +360,7 @@ async def test_run_tasks_cancel_claim_work(context, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_sleep(context, mocker):
+async def test_run_tasks_cancel_sleep(task_context, mocker):
     slow_function_called, slow_function = create_slow_async()
     mocker.patch.object(asyncio, 'sleep', slow_function)
 
@@ -374,7 +376,7 @@ async def test_run_tasks_cancel_sleep(context, mocker):
     mock_complete_task.return_value = create_finished_future()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -385,8 +387,8 @@ async def test_run_tasks_cancel_sleep(context, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_cot(context, mocker):
-    context.config['verify_chain_of_trust'] = True
+async def test_run_tasks_cancel_cot(task_context, mocker):
+    task_context.config['verify_chain_of_trust'] = True
 
     slow_function_called, slow_function = create_slow_async()
     mocker.patch('scriptworker.worker.verify_chain_of_trust', slow_function)
@@ -409,18 +411,18 @@ async def test_run_tasks_cancel_cot(context, mocker):
     mock_complete_task.return_value = create_finished_future()
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
 
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
-    mock_do_upload.assert_called_once_with(context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
+    mock_do_upload.assert_called_once_with(task_context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_run_tasks(context, mocker):
+async def test_run_tasks_cancel_run_tasks(task_context, mocker):
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
     mock_prepare_task.return_value = create_finished_future()
 
@@ -448,7 +450,7 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     mocker.patch('scriptworker.worker.run_task', mock_run_task)
 
     run_tasks = RunTasks()
-    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
+    run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
     await run_task_called
     await run_tasks.cancel()
     await run_tasks_future
@@ -456,12 +458,12 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     assert task_process.stopped_due_to_worker_shutdown
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
-    mock_do_upload.assert_called_once_with(context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
+    mock_do_upload.assert_called_once_with(task_context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_right_before_cot(context, mocker):
-    context.config['verify_chain_of_trust'] = True
+async def test_run_tasks_cancel_right_before_cot(task_context, mocker):
+    task_context.config['verify_chain_of_trust'] = True
 
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
     mock_prepare_task.return_value = create_finished_future()
@@ -494,17 +496,17 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
         return await do_run_task(*args, **kwargs)
 
     mocker.patch('scriptworker.worker.do_run_task', mock_do_run_task)
-    await run_tasks.invoke(context)
+    await run_tasks.invoke(task_context)
 
     assert verify_cot_future.cancelled()
     mock_run_task.assert_not_called()
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
-    mock_do_upload.assert_called_once_with(context, [])
+    mock_do_upload.assert_called_once_with(task_context, [])
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_right_before_proc_created(context, mocker):
+async def test_run_tasks_cancel_right_before_proc_created(task_context, mocker):
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
     mock_prepare_task.return_value = create_finished_future()
 
@@ -534,15 +536,15 @@ async def test_run_tasks_cancel_right_before_proc_created(context, mocker):
         raise WorkerShutdownDuringTask
 
     mocker.patch('scriptworker.worker.do_run_task', mock_do_run_task)
-    await run_tasks.invoke(context)
+    await run_tasks.invoke(task_context)
 
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
-    mock_do_upload.assert_called_once_with(context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
+    mock_do_upload.assert_called_once_with(task_context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_cancel_right_before_claim_work(context, mocker):
+async def test_run_tasks_cancel_right_before_claim_work(task_context, mocker):
     claim_work_called = False
 
     async def mock_claim_work(_):
@@ -562,7 +564,7 @@ async def test_run_tasks_cancel_right_before_claim_work(context, mocker):
 
     run_tasks = RunTasks()
     await run_tasks.cancel()
-    await run_tasks.invoke(context)
+    await run_tasks.invoke(task_context)
 
     assert not claim_work_called
     mock_prepare_task.assert_not_called()

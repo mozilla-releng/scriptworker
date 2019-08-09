@@ -138,7 +138,11 @@ class RunTasks:
                 task_context = prepare_to_run_task(worker_context, task_defn, task_num=task_num)
                 task_context.reclaim_fut = worker_context.event_loop.create_task(reclaim_task(task_context))
                 self.task_contexts.append(task_context)
-                futures.append(do_run_task(task_context, self._run_cancellable))
+                futures.append(
+                    asyncio.ensure_future(
+                        do_run_task(task_context, self._run_cancellable)
+                    )
+                )
             # TODO run tasks concurrently via get_results...
             results, errors = await get_results_and_future_exceptions(futures)
             unexpected_errors = [
