@@ -9,7 +9,7 @@ import os
 import pytest
 import scriptworker.log as swlog
 from . import read
-from . import rw_context as context
+from . import task_context as context
 
 assert context  # silence pyflakes
 

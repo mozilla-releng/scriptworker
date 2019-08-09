@@ -12,7 +12,7 @@ import signal
 import taskcluster
 import scriptworker.context as swcontext
 from copy import deepcopy
-from . import rw_context as context
+from . import task_context as context
 
 assert context  # silence pyflakes
 

@@ -23,6 +23,7 @@ class TaskProcess:
 
         Args:
             process (Process): task process
+
         """
         self.process = process
         self.stopped_due_to_worker_shutdown = False
@@ -36,6 +37,7 @@ class TaskProcess:
         """Stop the current task process.
 
         Starts with SIGTERM, gives the process 1 second to terminate, then kills it
+
         """
         # negate pid so that signals apply to process group
         pgid = -self.process.pid

@@ -21,10 +21,10 @@ from unittest.mock import MagicMock
 
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import get_results_and_future_exceptions
-from . import fake_session, fake_session_500, noop_async, rw_context, mobile_rw_context, \
+from . import fake_session, fake_session_500, noop_async, task_context, mobile_task_context, \
     successful_queue, unsuccessful_queue, read, TIMEOUT_SCRIPT
 
-assert rw_context  # silence flake8
+assert task_context  # silence flake8
 assert fake_session, fake_session_500  # silence flake8
 assert successful_queue, unsuccessful_queue  # silence flake8
 
@@ -32,26 +32,26 @@ assert successful_queue, unsuccessful_queue  # silence flake8
 
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope='function')
-def context(rw_context):
-    yield _craft_context(rw_context)
+def context(task_context):
+    yield _craft_context(task_context)
 
 
 @pytest.yield_fixture(scope='function')
-def mobile_context(mobile_rw_context):
-    yield _craft_context(mobile_rw_context)
+def mobile_context(mobile_task_context):
+    yield _craft_context(mobile_task_context)
 
 
-def _craft_context(rw_context):
-    rw_context.config['reclaim_interval'] = 0.001
-    rw_context.config['task_max_timeout'] = 1
-    rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
-    rw_context.claim_task = {
+def _craft_context(task_context):
+    task_context.config['reclaim_interval'] = 0.001
+    task_context.config['task_max_timeout'] = 1
+    task_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
+    task_context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
         'task': {'dependencies': ['dependency1', 'dependency2'], 'taskGroupId': 'dependency0'},
         'runId': 'runId',
     }
-    return rw_context
+    return task_context
 
 
 # worst_level {{{1

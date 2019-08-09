@@ -15,7 +15,7 @@ import tempfile
 import taskcluster.exceptions
 from scriptworker.config import get_unfrozen_copy, apply_product_config
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import TaskContext, set_task_context_paths
+from scriptworker.context import TaskContext, WorkerContext, set_task_context_paths
 from scriptworker.utils import makedirs
 try:
     import yarl
@@ -231,23 +231,21 @@ async def _close_session(obj):
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function')
-async def rw_context(event_loop):
+async def task_context(event_loop, tmpdir):
     async with aiohttp.ClientSession() as session:
-        with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product='firefox', session=session)
-            yield context
+        context = _craft_task_context(tmpdir, event_loop, cot_product='firefox', session=session)
+        yield context
 
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope='function')
-async def mobile_rw_context(event_loop):
+async def mobile_task_context(event_loop, tmpdir):
     async with aiohttp.ClientSession() as session:
-        with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product='mobile', session=session)
-            yield context
+        context = _craft_task_context(tmpdir, event_loop, cot_product='mobile', session=session)
+        yield context
 
 
-def _craft_rw_context(tmp, event_loop, cot_product, session):
+def _craft_task_context(tmp, event_loop, cot_product, session):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config['cot_product'] = cot_product
     context = TaskContext()
@@ -268,6 +266,40 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
     makedirs(context.artifact_dir)
     makedirs(context.task_log_dir)
     return context
+
+
+@pytest.mark.asyncio
+@pytest.yield_fixture(scope='function')
+async def worker_context(event_loop, tmpdir):
+    async with aiohttp.ClientSession() as session:
+        context = _craft_worker_context(tmpdir, event_loop, cot_product='firefox', session=session)
+        yield context
+
+
+@pytest.mark.asyncio
+@pytest.yield_fixture(scope='function')
+async def mobile_worker_context(event_loop, tmpdir):
+    async with aiohttp.ClientSession() as session:
+        context = _craft_worker_context(tmpdir, event_loop, cot_product='mobile', session=session)
+        yield context
+
+
+def _craft_worker_context(tmp, event_loop, cot_product, session):
+    config = get_unfrozen_copy(DEFAULT_CONFIG)
+    config['cot_product'] = cot_product
+    worker_context = WorkerContext()
+    worker_context.session = session
+    worker_context.config = apply_product_config(config)
+    worker_context.config['cot_job_type'] = "signing"
+    for key, value in worker_context.config.items():
+        if key.endswith("_dir"):
+            worker_context.config[key] = os.path.join(tmp, key)
+            makedirs(worker_context.config[key])
+        if key.endswith("key_path"):
+            worker_context.config[key] = os.path.join(tmp, key)
+    worker_context.config['verbose'] = VERBOSE
+    worker_context.event_loop = event_loop
+    return worker_context
 
 
 async def noop_async(*args, **kwargs):

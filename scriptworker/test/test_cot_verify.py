@@ -24,10 +24,10 @@ from scriptworker.utils import (
     read_from_file,
     write_to_file,
 )
-from . import noop_async, noop_sync, rw_context, mobile_rw_context, touch
+from . import noop_async, noop_sync, task_context, mobile_task_context, touch
 
 
-assert rw_context  # silence pyflakes
+assert task_context  # silence pyflakes
 
 log = logging.getLogger(__name__)
 
@@ -61,18 +61,18 @@ def die_sync(*args, **kwargs):
 
 
 @pytest.yield_fixture(scope='function')
-def chain(rw_context):
-    yield _craft_chain(rw_context, scopes=['project:releng:signing:cert:nightly-signing', 'ignoreme'])
+def chain(task_context):
+    yield _craft_chain(task_context, scopes=['project:releng:signing:cert:nightly-signing', 'ignoreme'])
 
 @pytest.yield_fixture(scope='function')
-def try_chain(rw_context):
-    yield _craft_chain(rw_context, scopes=['project:releng:signing:cert:dep-signing', 'ignoreme'])
+def try_chain(task_context):
+    yield _craft_chain(task_context, scopes=['project:releng:signing:cert:dep-signing', 'ignoreme'])
 
 
 @pytest.yield_fixture(scope='function')
-def mobile_chain(mobile_rw_context):
+def mobile_chain(mobile_task_context):
     chain = _craft_chain(
-        mobile_rw_context,
+        mobile_task_context,
         scopes=['project:mobile:focus:releng:signing:cert:release-signing', 'ignoreme'],
         source_url='https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml'
     )
@@ -84,9 +84,9 @@ def mobile_chain(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope='function')
-def mobile_chain_pull_request(mobile_rw_context):
+def mobile_chain_pull_request(mobile_task_context):
     chain = _craft_chain(
-        mobile_rw_context,
+        mobile_task_context,
         scopes=['project:mobile:focus:releng:signing:cert:dep-signing', 'ignoreme'],
         source_url='https://github.com/JohanLorenzo/focus-android/raw/somerevision/.taskcluster.yml'
     )

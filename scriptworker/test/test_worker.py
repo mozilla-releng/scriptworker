@@ -20,17 +20,17 @@ from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringT
 from scriptworker.utils import makedirs
 import scriptworker.worker as worker
 from scriptworker.worker import RunTasks, do_run_task
-from . import noop_async, noop_sync, rw_context, successful_queue, \
+from . import noop_async, noop_sync, task_context, successful_queue, \
     TIMEOUT_SCRIPT, create_async, create_slow_async, create_finished_future, create_sync
 
-assert rw_context  # silence flake8
+assert task_context  # silence flake8
 assert successful_queue  # silence flake8
 
 
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope='function')
-def task_context(rw_context):
-    yield rw_context
+def task_context(task_context):
+    yield task_context
 
 
 def _mocker_run_tasks_helper(mocker, exc, func_to_raise, task_context):
@@ -245,6 +245,7 @@ async def test_mocker_upload_artifacts_uncaught_exception(task_context, successf
 @pytest.mark.asyncio
 async def test_unexpected_exception_catch_and_tell_taskcluster(task_context, successful_queue, mocker):
     calls = {'upload': [], 'complete': []}
+    task_context.config['verify_chain_of_trust'] = True
 
     def fail():
         raise Exception()
@@ -269,8 +270,8 @@ async def test_unexpected_exception_catch_and_tell_taskcluster(task_context, suc
 
 
 @pytest.mark.asyncio
-async def test_run_tasks_timeout(task_context, successful_queue, mocker):
-    temp_dir = os.path.join(task_context.config['work_dir'], "timeout")
+async def test_run_tasks_timeout(worker_context, task_context, successful_queue, mocker):
+    temp_dir = os.path.join(task_context.work_dir, "timeout")
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {'task_defn': True}}
     task_context.config['task_script'] = (
         sys.executable, TIMEOUT_SCRIPT, temp_dir
@@ -284,7 +285,7 @@ async def test_run_tasks_timeout(task_context, successful_queue, mocker):
     mocker.patch.object(worker, "claim_work", new=claim_work)
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
-    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch.object(worker, "prepare_to_run_task", return_value=task_context)
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = await worker.run_tasks(task_context)

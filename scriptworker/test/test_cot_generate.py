@@ -7,9 +7,9 @@ import os
 import pytest
 from scriptworker.exceptions import ScriptWorkerException
 import scriptworker.cot.generate as cot
-from . import ARTIFACT_SHAS, rw_context
+from . import ARTIFACT_SHAS, task_context
 
-assert rw_context  # silence pyflakes
+assert task_context  # silence pyflakes
 
 log = logging.getLogger(__name__)
 
@@ -19,13 +19,13 @@ ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "data", "artifacts")
 
 
 @pytest.yield_fixture(scope='function')
-def context(rw_context):
+def context(task_context):
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
-    rw_context.config['artifact_dir'] = ARTIFACT_DIR
-    rw_context.config['sign_chain_of_trust'] = True
-    rw_context.config['ed25519_private_key_path'] = os.path.join(ED25519_DIR, 'scriptworker_private_key')
+    task_context.config['artifact_dir'] = ARTIFACT_DIR
+    task_context.config['sign_chain_of_trust'] = True
+    task_context.config['ed25519_private_key_path'] = os.path.join(ED25519_DIR, 'scriptworker_private_key')
 
-    rw_context.claim_task = {
+    task_context.claim_task = {
         "runId": 2,
         "status": {
             "taskId": "taskId",
@@ -40,7 +40,7 @@ def context(rw_context):
         "workerGroup": "worker_group",
         "credentials": {'c': 'd'},
     }
-    yield rw_context
+    yield task_context
 
 
 def expected_cot_body(context_, artifacts):

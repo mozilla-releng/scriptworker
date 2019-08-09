@@ -17,16 +17,16 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.test import create_finished_future, create_rejected_future
 
-from . import touch, rw_context, fake_session, fake_session_500, successful_queue
+from . import touch, task_context, fake_session, fake_session_500, successful_queue
 
 
 @pytest.yield_fixture(scope='function')
-def context(rw_context):
+def context(task_context):
     now = arrow.utcnow()
-    rw_context.config['reclaim_interval'] = 0.001
-    rw_context.config['task_max_timeout'] = .1
-    rw_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
-    rw_context.claim_task = {
+    task_context.config['reclaim_interval'] = 0.001
+    task_context.config['task_max_timeout'] = .1
+    task_context.config['task_script'] = ('bash', '-c', '>&2 echo bar && echo foo && exit 1')
+    task_context.claim_task = {
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
         'task': {
@@ -37,7 +37,7 @@ def context(rw_context):
         },
         'runId': 'runId',
     }
-    yield rw_context
+    yield task_context
 
 
 MIME_TYPES = {

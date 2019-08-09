@@ -7,7 +7,7 @@ import scriptworker.ed25519 as swed25519
 from scriptworker.exceptions import ScriptWorkerEd25519Error
 from scriptworker.utils import load_json_or_yaml, read_from_file
 
-from . import touch, rw_context, fake_session, fake_session_500, successful_queue
+from . import touch, task_context, fake_session, fake_session_500, successful_queue
 
 ED25519_DIR = os.path.join(os.path.dirname(__file__), 'data', 'ed25519')
 
