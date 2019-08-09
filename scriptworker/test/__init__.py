@@ -254,6 +254,7 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
     context.session = session
     context.config = apply_product_config(config)
     context.config['cot_job_type'] = "scriptworker"
+    context.reclaim_fut = mock.MagicMock()
     for key, value in context.config.items():
         if key.endswith("_dir"):
             context.config[key] = os.path.join(tmp, key)

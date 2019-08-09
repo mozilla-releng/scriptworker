@@ -201,6 +201,7 @@ class TaskContext(BaseWorkerContext):
 
     artifact_dir = None
     projects = None
+    reclaim_fut = None
     run_id = None
     task = None
     task_id = None

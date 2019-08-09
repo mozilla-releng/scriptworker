@@ -244,15 +244,28 @@ async def test_mocker_upload_artifacts_uncaught_exception(task_context, successf
 
 @pytest.mark.asyncio
 async def test_unexpected_exception_catch_and_tell_taskcluster(task_context, successful_queue, mocker):
+    calls = {'upload': [], 'complete': []}
+
     def fail():
         raise Exception()
 
     async def run(coroutine):
         await coroutine
 
+    async def fake_do_upload(*args, **kwargs):
+        calls['upload'].append((args, kwargs))
+        return 0
+
+    async def fake_complete_task(*args, **kwargs):
+        calls['complete'].append((args, kwargs))
+
     mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
-    status = await do_run_task(task_context, run, lambda x: x)
-    assert status == [STATUSES['internal-error']]
+    mocker.patch.object(worker, "do_upload", new=fake_do_upload)
+    mocker.patch.object(worker, "complete_task", new=fake_complete_task)
+    status = await do_run_task(task_context, run)
+    assert status == STATUSES['internal-error']
+    assert len(calls['upload']) == 1
+    assert len(calls['complete']) == 1
 
 
 @pytest.mark.asyncio
