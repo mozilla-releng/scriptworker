@@ -143,15 +143,6 @@ class ScriptWorkerEd25519Error(CoTError):
 
     """
 
-    def __init__(self, msg):
-        """Initialize ScriptWorkerEd25519Error.
-
-        Args:
-            msg (string): the error message
-
-        """
-        super(ScriptWorkerEd25519Error, self).__init__(msg)
-
 
 class ConfigError(ScriptWorkerException):
     """Invalid configuration provided to scriptworker.
@@ -165,13 +156,4 @@ class ConfigError(ScriptWorkerException):
 class WorkerShutdownDuringTask(ScriptWorkerException):
     """Task cancelled because worker is shutting down."""
 
-    def __init__(self, msg):
-        """Initialize WorkerShutdownDuringTask.
-
-        Args:
-            msg (string): the error message
-
-        """
-        super(WorkerShutdownDuringTask, self).__init__(
-            msg, exit_code=STATUSES['worker-shutdown']
-        )
+    exit_code = STATUSES['worker-shutdown']
