@@ -20,17 +20,44 @@ from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringT
 from scriptworker.utils import makedirs
 import scriptworker.worker as worker
 from scriptworker.worker import RunTasks, do_run_task
-from . import noop_async, noop_sync, task_context, successful_queue, \
-    TIMEOUT_SCRIPT, create_async, create_slow_async, create_finished_future, create_sync
+from . import (
+    noop_async, noop_sync, task_context, worker_context,
+    successful_queue, TIMEOUT_SCRIPT, create_async, create_slow_async,
+    create_finished_future, create_sync,
+)
 
 assert task_context  # silence flake8
 assert successful_queue  # silence flake8
 
 
 # constants helpers and fixtures {{{1
-@pytest.yield_fixture(scope='function')
-def task_context(task_context):
-    yield task_context
+_MOCK_CLAIM_WORK_RETURN = {
+    'tasks': [{
+        # don't need to worry about the contents of each task for these tests
+    }]
+}
+
+_MOCK_CLAIM_WORK_NONE_RETURN = {
+    'tasks': []
+}
+
+
+class MockChainOfTrust:
+    def __init__(self, task_context, cot_job_type):
+        pass
+
+
+class MockTaskProcess:
+    def __init__(self):
+        self.stopped_due_to_worker_shutdown = False
+        self.worker_stop_future = asyncio.Future()
+
+    async def worker_shutdown_stop(self):
+        self.stopped_due_to_worker_shutdown = True
+        self.worker_stop_future.set_result(None)
+
+    async def _wait(self):
+        await self.worker_stop_future
 
 
 def _mocker_run_tasks_helper(mocker, exc, func_to_raise, task_context):
@@ -292,56 +319,17 @@ async def test_run_tasks_timeout(worker_context, task_context, successful_queue,
     assert status == task_context.config['task_max_timeout_status']
 
 
-_MOCK_CLAIM_WORK_RETURN = {
-    'tasks': [{
-        # don't need to worry about the contents of each task for these tests
-    }]
-}
-
-_MOCK_CLAIM_WORK_NONE_RETURN = {
-    'tasks': []
-}
-
-
-class MockChainOfTrust:
-    def __init__(self, task_context, cot_job_type):
-        pass
-
-
-class MockTaskProcess:
-    def __init__(self):
-        self.stopped_due_to_worker_shutdown = False
-        self.worker_stop_future = asyncio.Future()
-
-    async def worker_shutdown_stop(self):
-        self.stopped_due_to_worker_shutdown = True
-        self.worker_stop_future.set_result(None)
-
-    async def _wait(self):
-        await self.worker_stop_future
-
-
 @pytest.mark.asyncio
 async def test_run_tasks_no_cancel(task_context, mocker):
     mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch.object(asyncio, 'sleep', noop_async)
-    mocker.patch('scriptworker.worker.prepare_to_run_task', noop_sync)
+    mocker.patch('scriptworker.worker.prepare_to_run_task', return_value=task_context)
     mocker.patch('scriptworker.worker.reclaim_task', noop_async)
     mocker.patch('scriptworker.worker.do_run_task', create_async(0))
     mocker.patch('scriptworker.worker.cleanup', noop_sync)
-    mocker.patch('scriptworker.worker.filepaths_in_dir', create_sync(['one', 'public/two']))
-    mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
-    mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
-    mock_do_upload.return_value = create_finished_future(0)
-
-    future = asyncio.Future()
-    future.set_result(None)
-    mock_complete_task.return_value = future
 
     run_tasks = RunTasks()
     await run_tasks.invoke(task_context)
-    mock_complete_task.assert_called_once_with(mock.ANY, 0)
-    mock_do_upload.assert_called_once_with(task_context, ['one', 'public/two'])
 
 
 @pytest.mark.asyncio
@@ -353,13 +341,7 @@ async def test_run_tasks_cancel_claim_work(task_context, mocker):
     mock_sleep.return_value = create_finished_future()
 
     mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
-    mock_prepare_task.return_value = create_finished_future()
-
-    mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
-    mock_do_upload.return_value = create_finished_future(0)
-
-    mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
-    mock_complete_task.return_value = create_finished_future()
+    mock_prepare_task.return_value = task_context
 
     run_tasks = RunTasks()
     run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(task_context))
@@ -368,9 +350,6 @@ async def test_run_tasks_cancel_claim_work(task_context, mocker):
     await run_tasks_future
 
     mock_sleep.assert_not_called()
-    mock_prepare_task.assert_not_called()
-    mock_do_upload.assert_not_called()
-    mock_complete_task.assert_not_called()
 
 
 @pytest.mark.asyncio
