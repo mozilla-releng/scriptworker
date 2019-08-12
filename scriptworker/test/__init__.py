@@ -275,7 +275,7 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
     context = Context()
     context.session = session
     context.config = apply_product_config(config)
-    context.config['cot_job_type'] = "signing"
+    context.config['cot_job_type'] = "scriptworker"
     for key, value in context.config.items():
         if key.endswith("_dir"):
             context.config[key] = os.path.join(tmp, key)
