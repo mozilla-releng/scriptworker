@@ -408,14 +408,12 @@ async def test_run_tasks_cancel_cot(task_context, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_run_tasks(task_context, mocker):
-    mock_prepare_task = mocker.patch('scriptworker.worker.prepare_to_run_task')
-    mock_prepare_task.return_value = task_context
-
-    mocker.patch('scriptworker.worker.claim_work', create_async(_MOCK_CLAIM_WORK_RETURN))
-    mocker.patch('scriptworker.worker.reclaim_task', noop_async)
-    mocker.patch('scriptworker.worker.run_task', noop_async)
-    mocker.patch('scriptworker.worker.generate_cot', noop_sync)
-    mocker.patch('scriptworker.worker.cleanup', noop_sync)
+    task_context.task_process = MockTaskProcess()
+    mocker.patch.object(worker, 'claim_work', new=create_async(_MOCK_CLAIM_WORK_RETURN))
+    mocker.patch.object(worker, "prepare_to_run_task", return_value=task_context)
+    mocker.patch.object(worker, 'reclaim_task', new=noop_async)
+    mocker.patch.object(worker, 'run_task', new=noop_async)
+    mocker.patch.object(worker, 'cleanup', noop_sync)
     mocker.patch('os.path.isfile', create_sync(True))
 
     mock_do_upload = mocker.patch('scriptworker.worker.do_upload')
@@ -424,13 +422,11 @@ async def test_run_tasks_cancel_run_tasks(task_context, mocker):
     mock_complete_task = mocker.patch('scriptworker.worker.complete_task')
     mock_complete_task.return_value = create_finished_future()
 
-    task_process = MockTaskProcess()
     run_task_called = asyncio.Future()
 
-    async def mock_run_task(_):
-        await to_cancellable_process(task_process)
+    async def mock_run_task(task_context):
         run_task_called.set_result(None)
-        await task_process._wait()
+        await task_context.task_process._wait()
         raise WorkerShutdownDuringTask
 
     mocker.patch.object(worker, 'run_task', new=mock_run_task)
@@ -441,8 +437,7 @@ async def test_run_tasks_cancel_run_tasks(task_context, mocker):
     await run_tasks.cancel()
     await run_tasks_future
 
-    assert task_process.stopped_due_to_worker_shutdown
-    mock_prepare_task.assert_called_once()
+    assert task_context.task_process.stopped_due_to_worker_shutdown
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES['worker-shutdown'])
     mock_do_upload.assert_called_once_with(task_context, ['public/logs/chain_of_trust.log', 'public/logs/live_backing.log'])
 

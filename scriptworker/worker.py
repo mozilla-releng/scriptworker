@@ -20,7 +20,7 @@ from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
-from scriptworker.exceptions import ScriptWorkerException
+from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
     reclaim_task, run_task, worst_level
 from scriptworker.utils import cleanup, filepaths_in_dir, get_results_and_future_exceptions
@@ -47,6 +47,7 @@ async def do_run_task(task_context, run_cancellable):
     """
     status = 0
     artifacts_paths = None
+    shutdown = False
     try:
         if task_context.config['verify_chain_of_trust']:
             chain = ChainOfTrust(task_context, task_context.config['cot_job_type'])
@@ -54,9 +55,10 @@ async def do_run_task(task_context, run_cancellable):
         status = await run_task(task_context)
         generate_cot(task_context)
         artifacts_paths = filepaths_in_dir(task_context.artifact_dir)
-    except asyncio.CancelledError:
+    except (asyncio.CancelledError, WorkerShutdownDuringTask):
         status = worst_level(status, STATUSES['worker-shutdown'])
         log.error("CoT cancelled asynchronously")
+        shutdown=True
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
@@ -64,10 +66,11 @@ async def do_run_task(task_context, run_cancellable):
         log.exception("SCRIPTWORKER_UNEXPECTED_EXCEPTION task {}".format(e))
         status = STATUSES['internal-error']
     finally:
-        shutdown_artifact_paths = [os.path.join('public', 'logs', log_file)
+        if shutdown:
+            shutdown_artifact_paths = [os.path.join('public', 'logs', log_file)
                                    for log_file in ['chain_of_trust.log', 'live_backing.log']]
-        artifacts_paths = [path for path in shutdown_artifact_paths
-                           if os.path.isfile(os.path.join(task_context.artifact_dir, path))]
+            artifacts_paths = [path for path in shutdown_artifact_paths
+                               if os.path.isfile(os.path.join(task_context.artifact_dir, path))]
         status = worst_level(status, await do_upload(task_context, artifacts_paths))
         await complete_task(task_context, status)
         task_context.reclaim_fut.cancel()
