@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [24.0.2] - 2019-08-12
+### Changed
+- Use `verify_scriptworker_task` for workers indirectly using it
+
 ## [24.0.1] - 2019-08-08
 ### Added
 - Added new scriptworker names to CoT

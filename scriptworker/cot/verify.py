@@ -424,19 +424,19 @@ def get_valid_task_types():
     """
     return frozendict({
         'scriptworker': verify_scriptworker_task,
-        'balrog': verify_balrog_task,
-        'beetmover': verify_beetmover_task,
-        'bouncer': verify_bouncer_task,
+        'balrog': verify_scriptworker_task,
+        'beetmover': verify_scriptworker_task,
+        'bouncer': verify_scriptworker_task,
         'build': verify_build_task,
         'l10n': verify_build_task,
         'repackage': verify_build_task,
         'action': verify_parent_task,
         'decision': verify_parent_task,
         'docker-image': verify_docker_image_task,
-        'pushapk': verify_pushapk_task,
-        'pushsnap': verify_pushsnap_task,
-        'shipit': verify_shipit_task,
-        'signing': verify_signing_task,
+        'pushapk': verify_scriptworker_task,
+        'pushsnap': verify_scriptworker_task,
+        'shipit': verify_scriptworker_task,
+        'signing': verify_scriptworker_task,
         'partials': verify_partials_task,
     })
 
@@ -1719,23 +1719,6 @@ async def verify_docker_image_task(chain, link):
     raise_on_errors(errors)
 
 
-# verify_balrog_task {{{1
-async def verify_balrog_task(chain, obj):
-    """Verify the balrog trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the balrog task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
 # verify_partials_task {{{1
 async def verify_partials_task(chain, obj):
     """Verify the partials trust object.
@@ -1752,105 +1735,6 @@ async def verify_partials_task(chain, obj):
 
     """
     pass
-
-
-# verify_beetmover_task {{{1
-async def verify_beetmover_task(chain, obj):
-    """Verify the beetmover trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
-async def verify_bouncer_task(chain, obj):
-    """Verify the bouncer trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the beetmover task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
-# verify_pushapk_task {{{1
-async def verify_pushapk_task(chain, obj):
-    """Verify the pushapk trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the pushapk task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
-async def verify_pushsnap_task(chain, obj):
-    """Verify the pushsnap trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the pushsnap task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
-async def verify_shipit_task(chain, obj):
-    """Verify the ship-it trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the ship-it task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
-
-
-# verify_signing_task {{{1
-async def verify_signing_task(chain, obj):
-    """Verify the signing trust object.
-
-    Currently the only check is to make sure it was run on a scriptworker.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        obj (ChainOfTrust or LinkOfTrust): the trust object for the signing task.
-
-    Raises:
-        CoTError: on error.
-
-    """
-    return await verify_scriptworker_task(chain, obj)
 
 
 # check_num_tasks {{{1
