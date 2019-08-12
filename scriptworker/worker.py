@@ -58,7 +58,7 @@ async def do_run_task(task_context, run_cancellable):
     except (asyncio.CancelledError, WorkerShutdownDuringTask):
         status = worst_level(status, STATUSES['worker-shutdown'])
         log.error("CoT cancelled asynchronously")
-        shutdown=True
+        shutdown = True
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
@@ -67,10 +67,14 @@ async def do_run_task(task_context, run_cancellable):
         status = STATUSES['internal-error']
     finally:
         if shutdown:
-            shutdown_artifact_paths = [os.path.join('public', 'logs', log_file)
-                                   for log_file in ['chain_of_trust.log', 'live_backing.log']]
-            artifacts_paths = [path for path in shutdown_artifact_paths
-                               if os.path.isfile(os.path.join(task_context.artifact_dir, path))]
+            shutdown_artifact_paths = [
+                os.path.join('public', 'logs', log_file) for log_file in
+                ['chain_of_trust.log', 'live_backing.log']
+            ]
+            artifacts_paths = [
+                path for path in shutdown_artifact_paths if
+                os.path.isfile(os.path.join(task_context.artifact_dir, path))
+            ]
         status = worst_level(status, await do_upload(task_context, artifacts_paths))
         await complete_task(task_context, status)
         task_context.reclaim_fut.cancel()
