@@ -290,9 +290,9 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
         dict: the temporary taskcluster credentials.
 
     """
-    now = arrow.utcnow().replace(minutes=-10)
+    now = arrow.utcnow().shift(minutes=-10)
     start = start or now.datetime
-    expires = expires or now.replace(days=31).datetime
+    expires = expires or now.shift(days=31).datetime
     scopes = scopes or ['assume:project:taskcluster:worker-test-scopes', ]
     creds = createTemporaryCredentials(client_id, access_token, start, expires,
                                        scopes, name=name)

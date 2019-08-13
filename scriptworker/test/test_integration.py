@@ -116,7 +116,7 @@ def get_temp_creds(context):
     temp_creds = utils.create_temp_creds(
         context.credentials['clientId'],
         context.credentials['accessToken'],
-        expires=arrow.utcnow().replace(minutes=10).datetime,
+        expires=arrow.utcnow().shift(minutes=10).datetime,
     )
     if temp_creds:
         context.credentials = temp_creds
@@ -320,7 +320,7 @@ async def test_temp_creds(context_function):
             os.chdir(os.path.dirname(context.config['work_dir']))
             context.temp_credentials = utils.create_temp_creds(
                 context.credentials['clientId'], context.credentials['accessToken'],
-                expires=arrow.utcnow().replace(minutes=10).datetime
+                expires=arrow.utcnow().shift(minutes=10).datetime
             )
             result = await context.temp_queue.ping()
             assert result['alive']

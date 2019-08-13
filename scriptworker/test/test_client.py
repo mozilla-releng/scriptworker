@@ -107,9 +107,9 @@ def schema():
 
 
 def populate_credentials(config, sources, start=None):
-    start = start or arrow.utcnow().replace(minutes=-20)
+    start = start or arrow.utcnow().shift(minutes=-20)
     for count, path in enumerate(sources):
-        new_time = start.replace(minutes=count)
+        new_time = start.shift(minutes=count)
         copyfile(path, os.path.join(config['work_dir'], "credentials.{}.json".format(new_time.timestamp)))
 
 

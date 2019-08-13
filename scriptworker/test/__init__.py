@@ -188,8 +188,8 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
     This function creates a dummy payload for those createTask calls.
     """
     now = arrow.utcnow()
-    deadline = now.replace(hours=1)
-    expires = now.replace(days=3)
+    deadline = now.shift(hours=1)
+    expires = now.shift(days=3)
     scopes = scopes or []
     task_payload = task_payload or {}
     task_extra = task_extra or {}
