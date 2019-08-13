@@ -1,5 +1,5 @@
 aiohttp
-arrow
+arrow<=0.14.4
 cryptography>=2.6.1
 dictdiffer
 frozendict

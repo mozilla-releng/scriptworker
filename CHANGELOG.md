@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [25.0.0] - 2019-08-12
+### Removed
+- Removed the following stub functions:
+  - verify_balrog_task
+  - verify_bouncer_task
+  - verify_pushapk_task
+  - verify_pushsnap_task
+  - verify_shipit_task
+  - verify_signing_task
+### Changed
+- Use `verify_scriptworker_task` for workers indirectly using it
+
 ## [24.0.1] - 2019-08-08
 ### Added
 - Added new scriptworker names to CoT
