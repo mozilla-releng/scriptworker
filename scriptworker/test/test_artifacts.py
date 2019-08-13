@@ -30,7 +30,7 @@ def context(rw_context):
         'credentials': {'a': 'b'},
         'status': {'taskId': 'taskId'},
         'task': {
-            'expires': now.replace(days=2).isoformat(),
+            'expires': now.shift(days=2).isoformat(),
             'dependencies': ['dependency1', 'dependency2'],
             'taskGroupId': 'dependency0',
             'payload': {},
