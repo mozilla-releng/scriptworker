@@ -266,36 +266,34 @@ class TaskContext(BaseWorkerContext):
         if value is not None:
             self.credentials = value['credentials']
 
+    def set_paths(self, task_num=None):
+        """Set the various task-specific directories.
 
-def set_task_context_paths(task_context, task_num=None):
-    """Set the various task-specific directories in a given TaskContext.
+        If ``task_num`` is set, and we run more than 1 task concurrently,
+        we should include ``task_num`` in our directory paths to avoid
+        sharing work/artifact directories.
 
-    If ``task_num`` is set, and we run more than 1 task concurrently,
-    we should include ``task_num`` in our directory paths to avoid
-    sharing work/artifact directories.
+        Args:
+            task_num (int, optional): the unique number for this task. If
+                we're running 3 concurrent tasks, we'll have a 0, 1, and a 2.
 
-    Args:
-        task_context (TaskContext): the task context
-        task_num (int, optional): the unique number for this task. If
-            we're running 3 concurrent tasks, we'll have a 0, 1, and a 2.
-
-    """
-    if task_num is not None and task_context.config["num_concurrent_tasks"] > 1:
-        task_context._task_num = task_num
-        task_context.work_dir = os.path.join(
-            task_context.config["base_work_dir"],
-            str(task_context._task_num)
-        )
-        task_context.artifact_dir = os.path.join(
-            task_context.config["base_artifact_dir"],
-            str(task_context._task_num)
-        )
-    else:
-        task_context.work_dir = task_context.config["base_work_dir"]
-        task_context.artifact_dir = task_context.config["base_artifact_dir"]
-    task_context.task_log_dir = task_context.config["task_log_dir_template"] % {
-        "artifact_dir": task_context.artifact_dir,
-    }
+        """
+        if task_num is not None and self.config["num_concurrent_tasks"] > 1:
+            self._task_num = task_num
+            self.work_dir = os.path.join(
+                self.config["base_work_dir"],
+                str(self._task_num)
+            )
+            self.artifact_dir = os.path.join(
+                self.config["base_artifact_dir"],
+                str(self._task_num)
+            )
+        else:
+            self.work_dir = self.config["base_work_dir"]
+            self.artifact_dir = self.config["base_artifact_dir"]
+        self.task_log_dir = self.config["task_log_dir_template"] % {
+            "artifact_dir": self.artifact_dir,
+        }
 
 
 def create_task_context(config, claim_task, task_num=None,
@@ -318,7 +316,7 @@ def create_task_context(config, claim_task, task_num=None,
     """
     task_context = TaskContext()
     task_context.config = config
-    set_task_context_paths(task_context, task_num=task_num)
+    task_context.set_paths(task_num=task_num)
     task_context.event_loop = event_loop
     task_context.session = session
     task_context.projects = projects
