@@ -72,6 +72,7 @@ from scriptworker.utils import (
     rm,
     write_to_file,
 )
+from scriptworker.version import __version_string__
 from taskcluster.exceptions import TaskclusterFailure
 from taskcluster.aio import Queue
 
@@ -2021,6 +2022,7 @@ async def verify_chain_of_trust(chain):
             datefmt=chain.context.config['log_datefmt'],
         )
     ):
+        log.info("Running scriptworker version {}".format(__version_string__))
         try:
             # build LinkOfTrust objects
             await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
