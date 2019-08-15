@@ -190,7 +190,7 @@ async def test_run_successful_task(context_function):
 
 
 # run_maxtimeout {{{1
-@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
+@pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
 @pytest.mark.asyncio
 async def test_run_maxtimeout(context_function):
     task_id = slugid.nice()
@@ -202,9 +202,9 @@ async def test_run_maxtimeout(context_function):
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.work_dir))
+            os.chdir(os.path.dirname(context.config["base_work_dir"]))
             status = await worker.run_tasks(context)
-            assert status == context.config['task_max_timeout_status']
+            assert status == [context.config['task_max_timeout_status']]
 
 
 # cancel task {{{1

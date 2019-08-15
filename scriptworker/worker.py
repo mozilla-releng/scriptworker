@@ -54,7 +54,6 @@ async def do_run_task(task_context, run_cancellable):
             await run_cancellable(verify_chain_of_trust(chain))
         status = await run_task(task_context)
         generate_cot(task_context)
-        artifacts_paths = filepaths_in_dir(task_context.artifact_dir)
     except (asyncio.CancelledError, WorkerShutdownDuringTask):
         status = worst_level(status, STATUSES['worker-shutdown'])
         log.error("CoT cancelled asynchronously")
@@ -75,6 +74,8 @@ async def do_run_task(task_context, run_cancellable):
                 path for path in shutdown_artifact_paths if
                 os.path.isfile(os.path.join(task_context.artifact_dir, path))
             ]
+        else:
+            artifacts_paths = filepaths_in_dir(task_context.artifact_dir)
         status = worst_level(status, await do_upload(task_context, artifacts_paths))
         await complete_task(task_context, status)
         task_context.reclaim_fut.cancel()
