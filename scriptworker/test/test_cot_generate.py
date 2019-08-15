@@ -21,7 +21,8 @@ ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "data", "artifacts")
 @pytest.yield_fixture(scope='function')
 def context(task_context):
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
-    task_context.config['artifact_dir'] = ARTIFACT_DIR
+    task_context.set_paths()
+    task_context.artifact_dir = ARTIFACT_DIR
     task_context.config['sign_chain_of_trust'] = True
     task_context.config['ed25519_private_key_path'] = os.path.join(ED25519_DIR, 'scriptworker_private_key')
 
