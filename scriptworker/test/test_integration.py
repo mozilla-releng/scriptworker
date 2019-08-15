@@ -214,7 +214,7 @@ async def do_cancel(context, task_id):
         await asyncio.sleep(1)
         count += 1
         assert count < 30, "do_cancel Timeout!"
-        if not context.task or not context.proc:
+        if not context.running_tasks:
             continue
         await context.queue.cancelTask(task_id)
         break
@@ -236,7 +236,7 @@ async def test_cancel_task():
     }
     # Don't use temporary credentials from claimTask, since they don't allow us
     # to cancel the created task.
-    async with get_task_context(partial_config) as context:
+    async with get_worker_context(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         cancel_fut = asyncio.ensure_future(do_cancel(context, task_id))
@@ -256,7 +256,7 @@ async def test_cancel_task():
         assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
 
 
-# cancel task {{{1
+# shutdown {{{1
 async def do_shutdown(context):
     count = 0
     while True:
