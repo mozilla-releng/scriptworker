@@ -263,7 +263,7 @@ async def do_shutdown(context):
         await asyncio.sleep(1)
         count += 1
         assert count < 30, "do_shutdown Timeout!"
-        if not context.running_tasks or not context.task or not context.proc:
+        if not context.running_tasks:
             continue
         await context.running_tasks.cancel()
         break
@@ -282,6 +282,7 @@ async def test_shutdown():
         assert result['status']['state'] == 'pending'
         fake_cot_log = os.path.join(context.config['base_artifact_dir'], 'public', 'logs', 'chain_of_trust.log')
         fake_other_artifact = os.path.join(context.config['base_artifact_dir'], 'public', 'artifact.apk')
+        utils.makedirs(os.path.dirname(fake_cot_log))
 
         with open(fake_cot_log, 'w') as file:
             file.write('CoT logs')
