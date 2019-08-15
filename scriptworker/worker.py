@@ -208,8 +208,7 @@ async def run_tasks(worker_context):
         Exception: on unexpected exception.
 
     Returns:
-        int: exit status
-        None: if no task run.
+        list: exit statuses
 
     """
     running_tasks = RunTasks()

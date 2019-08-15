@@ -33,10 +33,10 @@ def get_cot_artifacts(context):
 
     """
     artifacts = {}
-    filepaths = filepaths_in_dir(context.config['artifact_dir'])
+    filepaths = filepaths_in_dir(context.artifact_dir)
     hash_alg = context.config['chain_of_trust_hash_algorithm']
     for filepath in sorted(filepaths):
-        path = os.path.join(context.config['artifact_dir'], filepath)
+        path = os.path.join(context.artifact_dir, filepath)
         sha = get_hash(path, hash_alg=hash_alg)
         artifacts[filepath] = {hash_alg: sha}
     return artifacts
@@ -117,7 +117,7 @@ def generate_cot(context, parent_path=None):
     )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
-    parent_path = parent_path or os.path.join(context.config['artifact_dir'], 'public')
+    parent_path = parent_path or os.path.join(context.artifact_dir, 'public')
     unsigned_path = os.path.join(parent_path, 'chain-of-trust.json')
     write_to_file(unsigned_path, body)
     if context.config['sign_chain_of_trust']:

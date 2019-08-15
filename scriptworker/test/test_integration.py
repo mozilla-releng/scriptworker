@@ -21,7 +21,7 @@ from scriptworker.config import (
     read_worker_creds,
 )
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.context import WorkerContext
+from scriptworker.context import TaskContext, WorkerContext
 import scriptworker.log as swlog
 import scriptworker.artifacts as artifacts
 import scriptworker.worker as worker
@@ -69,9 +69,9 @@ def build_config(override, basedir):
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
     config.update({
         'log_dir': os.path.join(basedir, "log"),
-        'artifact_dir': os.path.join(basedir, "artifact"),
-        'task_log_dir': os.path.join(basedir, "artifact", "public", "logs"),
-        'work_dir': os.path.join(basedir, "work"),
+        'base_artifact_dir': os.path.join(basedir, "artifact"),
+        'task_log_dir_template': os.path.join(basedir, "artifact", "public", "logs"),
+        'base_work_dir': os.path.join(basedir, "work"),
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),
         'artifact_upload_timeout': 60 * 2,
@@ -98,11 +98,24 @@ def build_config(override, basedir):
 
 
 @async_contextmanager
-async def get_context(config_override=None):
+async def get_worker_context(config_override=None):
     context = WorkerContext()
     with tempfile.TemporaryDirectory() as tmp:
         context.config, credentials = build_config(config_override, basedir=tmp)
         swlog.update_logging_config(context)
+        async with aiohttp.ClientSession() as session:
+            context.session = session
+            context.credentials = credentials
+            yield context
+
+
+@async_contextmanager
+async def get_task_context(config_override=None):
+    context = TaskContext()
+    with tempfile.TemporaryDirectory() as tmp:
+        context.config, credentials = build_config(config_override, basedir=tmp)
+        swlog.update_logging_config(context)
+        context.set_paths()
         utils.cleanup(context)
         async with aiohttp.ClientSession() as session:
             context.session = session
@@ -126,8 +139,15 @@ def get_temp_creds(context):
 
 
 @async_contextmanager
-async def get_temp_creds_context(config_override=None):
-    async with get_context(config_override) as context:
+async def temp_creds_task_context(config_override=None):
+    async with get_task_context(config_override) as context:
+        get_temp_creds(context)
+        yield context
+
+
+@async_contextmanager
+async def temp_creds_worker_context(config_override=None):
+    async with get_worker_context(config_override) as context:
         get_temp_creds(context)
         yield context
 
@@ -153,7 +173,7 @@ async def remember_cwd():
 
 
 # run_successful_task {{{1
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
 @pytest.mark.asyncio
 async def test_run_successful_task(context_function):
     task_id = slugid.nice()
@@ -162,15 +182,15 @@ async def test_run_successful_task(context_function):
         result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.config['work_dir']))
+            os.chdir(os.path.dirname(context.config['base_work_dir']))
             status = await worker.run_tasks(context)
-        assert status == 1
+        assert status == [1]
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'failed'
 
 
 # run_maxtimeout {{{1
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
 @pytest.mark.asyncio
 async def test_run_maxtimeout(context_function):
     task_id = slugid.nice()
@@ -182,7 +202,7 @@ async def test_run_maxtimeout(context_function):
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.config['work_dir']))
+            os.chdir(os.path.dirname(context.work_dir))
             status = await worker.run_tasks(context)
             assert status == context.config['task_max_timeout_status']
 
@@ -202,7 +222,7 @@ async def do_cancel(context, task_id):
 
 async def run_task_until_stopped(context):
     async with remember_cwd():
-        os.chdir(os.path.dirname(context.config['work_dir']))
+        os.chdir(os.path.dirname(context.config['base_work_dir']))
         status = await worker.run_tasks(context)
         return status
 
@@ -216,7 +236,7 @@ async def test_cancel_task():
     }
     # Don't use temporary credentials from claimTask, since they don't allow us
     # to cancel the created task.
-    async with get_context(partial_config) as context:
+    async with get_task_context(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
         cancel_fut = asyncio.ensure_future(do_cancel(context, task_id))
@@ -229,7 +249,7 @@ async def test_cancel_task():
         log_url = context.queue.buildUrl(
             'getLatestArtifact', task_id, 'public/logs/live_backing.log'
         )
-        log_path = os.path.join(context.config['work_dir'], 'log')
+        log_path = os.path.join(context.config['base_work_dir'], 'log')
         await utils.download_file(context, log_url, log_path)
         with open(log_path) as fh:
             contents = fh.read()
@@ -257,11 +277,11 @@ async def test_shutdown():
     }
     # Don't use temporary credentials from claimTask, since they don't allow us
     # to cancel the created task.
-    async with get_context(partial_config) as context:
+    async with get_worker_context(partial_config) as context:
         result = await create_task(context, task_id, task_id)
         assert result['status']['state'] == 'pending'
-        fake_cot_log = os.path.join(context.config['artifact_dir'], 'public', 'logs', 'chain_of_trust.log')
-        fake_other_artifact = os.path.join(context.config['artifact_dir'], 'public', 'artifact.apk')
+        fake_cot_log = os.path.join(context.config['base_artifact_dir'], 'public', 'logs', 'chain_of_trust.log')
+        fake_other_artifact = os.path.join(context.config['base_artifact_dir'], 'public', 'artifact.apk')
 
         with open(fake_cot_log, 'w') as file:
             file.write('CoT logs')
@@ -283,9 +303,9 @@ async def test_shutdown():
         other_artifact_url = context.queue.buildUrl(
             'getArtifact', task_id, 0, 'public/artifact.apk'
         )
-        log_path = os.path.join(context.config['work_dir'], 'log')
-        cot_log_path = os.path.join(context.config['work_dir'], 'cot_log')
-        other_artifact_path = os.path.join(context.config['work_dir'], 'artifact.apk')
+        log_path = os.path.join(context.config['base_work_dir'], 'log')
+        cot_log_path = os.path.join(context.config['bae_work_dir'], 'cot_log')
+        other_artifact_path = os.path.join(context.config['base_work_dir'], 'artifact.apk')
         await utils.download_file(context, log_url, log_path)
         await utils.download_file(context, cot_log_url, cot_log_path)
         with pytest.raises(Download404):
@@ -301,23 +321,23 @@ async def test_shutdown():
 
 
 # empty_queue {{{1
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
 @pytest.mark.asyncio
 async def test_empty_queue(context_function):
     async with context_function(None) as context:
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.config['work_dir']))
+            os.chdir(os.path.dirname(context.config['base_work_dir']))
             status = await worker.run_tasks(context)
         assert status is None
 
 
 # temp_creds {{{1
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
 @pytest.mark.asyncio
 async def test_temp_creds(context_function):
     async with context_function(None) as context:
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.config['work_dir']))
+            os.chdir(os.path.dirname(context.config['base_work_dir']))
             context.temp_credentials = utils.create_temp_creds(
                 context.credentials['clientId'], context.credentials['accessToken'],
                 expires=arrow.utcnow().shift(minutes=10).datetime
@@ -327,7 +347,7 @@ async def test_temp_creds(context_function):
 
 
 # private artifacts {{{1
-@pytest.mark.parametrize("context_function", [get_context, get_temp_creds_context])
+@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
 @pytest.mark.asyncio
 async def test_private_artifacts(context_function):
     task_group_id = task_id = slugid.nice()
@@ -340,18 +360,18 @@ async def test_private_artifacts(context_function):
     async with context_function(override) as context:
         result = await create_task(context, task_id, task_group_id)
         assert result['status']['state'] == 'pending'
-        path = os.path.join(context.config['artifact_dir'], 'SampleArtifacts/_/X.txt')
+        path = os.path.join(context.config['base_artifact_dir'], 'SampleArtifacts/_/X.txt')
         utils.makedirs(os.path.dirname(path))
         with open(path, "w") as fh:
             fh.write("bar")
         async with remember_cwd():
-            os.chdir(os.path.dirname(context.config['work_dir']))
+            os.chdir(os.path.dirname(context.config['base_work_dir']))
             status = await worker.run_tasks(context)
         assert status == 0
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'completed'
         url = artifacts.get_artifact_url(context, task_id, 'SampleArtifacts/_/X.txt')
-        path2 = os.path.join(context.config['work_dir'], 'downloaded_file')
+        path2 = os.path.join(context.config['base_work_dir'], 'downloaded_file')
         await utils.download_file(context, url, path2)
         with open(path2, "r") as fh:
             contents = fh.read().strip()
