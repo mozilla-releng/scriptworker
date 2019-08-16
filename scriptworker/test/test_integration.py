@@ -263,7 +263,7 @@ async def do_shutdown(context):
         await asyncio.sleep(1)
         count += 1
         assert count < 30, "do_shutdown Timeout!"
-        if not context.running_tasks:
+        if not context.running_tasks or not context.running_tasks.task_contexts:
             continue
         await context.running_tasks.cancel()
         break
@@ -290,7 +290,7 @@ async def test_shutdown():
             file.write('unrelated artifact')
         cancel_fut = asyncio.ensure_future(do_shutdown(context))
         task_fut = asyncio.ensure_future(run_task_until_stopped(context))
-        await utils.raise_future_exceptions([cancel_fut, task_fut])
+        await utils.get_results_and_future_exceptions([cancel_fut, task_fut])
         status = await context.queue.status(task_id)
         assert len(status['status']['runs']) == 2  # Taskcluster should create a replacement task
         assert status['status']['runs'][0]['state'] == 'exception'
@@ -305,7 +305,7 @@ async def test_shutdown():
             'getArtifact', task_id, 0, 'public/artifact.apk'
         )
         log_path = os.path.join(context.config['base_work_dir'], 'log')
-        cot_log_path = os.path.join(context.config['bae_work_dir'], 'cot_log')
+        cot_log_path = os.path.join(context.config['base_work_dir'], 'cot_log')
         other_artifact_path = os.path.join(context.config['base_work_dir'], 'artifact.apk')
         await utils.download_file(context, log_url, log_path)
         await utils.download_file(context, cot_log_url, cot_log_path)
