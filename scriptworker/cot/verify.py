@@ -1112,10 +1112,13 @@ async def _get_additional_github_releases_jsone_context(decision_link):
     }
 
 
-def _get_additional_git_cron_jsone_context(decision_link):
+async def _get_additional_git_cron_jsone_context(decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     task = decision_link.task
     repo = get_repo(task, source_env_prefix)
+    project = await get_project(decision_link.context, repo)
+    revision = get_revision(task, source_env_prefix)
+    branch = get_branch(task, source_env_prefix)
 
     # TODO remove the call to get_triggered_by() once Github repos don't define it anymore.
     user = get_triggered_by(task, source_env_prefix)
@@ -1123,10 +1126,12 @@ def _get_additional_git_cron_jsone_context(decision_link):
         # We can't default to 'cron' (like in hg) because https://github.com/cron is already taken
         user = 'TaskclusterHook'
 
-    # Cron context mocks a GitHub release one. However, there is no GitHub API to call since this
-    # is built on Taskcluster.
+    # Different projects have different cron contexts. We provide the union of the two
+    # contexts to handle both cases.
     return {
         'cron': load_json_or_yaml(decision_link.task['extra']['cron']),
+        # Non-taskgraph Cron context mocks a GitHub release one. However, there
+        # is no GitHub API to call since this is built on Taskcluster.
         'event': {
             'repository': {
                 # TODO: Append ".git" to clone_url in order to match what GitHub actually provide.
@@ -1137,14 +1142,24 @@ def _get_additional_git_cron_jsone_context(decision_link):
                 'html_url': repo,
             },
             'release': {
-                'tag_name': get_revision(task, source_env_prefix),
-                'target_commitish': get_branch(task, source_env_prefix),
+                'tag_name': revision,
+                'target_commitish': branch,
                 'published_at': get_push_date_time(task, source_env_prefix),
             },
             'sender': {
                 'login': user,
             },
         },
+        # Taskgraph cron contexts mirror hg-push contexts
+        'repository': {
+            'url': repo,
+            'project': project,
+            'level': await get_scm_level(decision_link.context, project)
+        },
+        'push': {
+            'revision': revision,
+            'branch': branch,
+        }
     }
 
 
@@ -1286,7 +1301,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
                 await _get_additional_github_releases_jsone_context(decision_link)
             )
         elif tasks_for == 'cron':
-            jsone_context.update(_get_additional_git_cron_jsone_context(decision_link))
+            jsone_context.update(await _get_additional_git_cron_jsone_context(decision_link))
         elif tasks_for == 'github-pull-request':
             jsone_context.update(
                 await _get_additional_github_pull_request_jsone_context(decision_link)

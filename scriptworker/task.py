@@ -195,7 +195,10 @@ def get_branch(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    return _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_BRANCH')
+    return _extract_from_env_in_payload(
+        task, source_env_prefix + '_HEAD_BRANCH',
+        _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REF')
+    )
 
 
 def get_triggered_by(task, source_env_prefix):

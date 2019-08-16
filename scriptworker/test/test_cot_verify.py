@@ -1415,6 +1415,15 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         'ownTaskId': 'decision_task_id',
         'taskId': None,
         'tasks_for': 'cron',
+        'repository': {
+            'url': 'https://github.com/mozilla-mobile/focus-android',
+            'project': 'focus-android',
+            'level': '3',
+        },
+        'push': {
+            'branch': 'master',
+            'revision': 'somerevision',
+        },
     }
 
 
