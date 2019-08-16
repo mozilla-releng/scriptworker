@@ -2510,8 +2510,8 @@ def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, rais
     "redo", None, True,
 )))
 @pytest.mark.asyncio
-async def test_get_scm_level(rw_context, project, level, raises):
-    rw_context.projects = {
+async def test_get_scm_level(task_context, project, level, raises):
+    task_context.projects = {
         "mozilla-central": {"access": "scm_level_3"},
         "fenix": {"level": 3},
         "redo": {},
@@ -2519,6 +2519,6 @@ async def test_get_scm_level(rw_context, project, level, raises):
 
     if raises:
         with pytest.raises(Exception):
-            await cotverify.get_scm_level(rw_context, project)
+            await cotverify.get_scm_level(task_context, project)
     else:
-        assert await cotverify.get_scm_level(rw_context, project) == level
+        assert await cotverify.get_scm_level(task_context, project) == level
