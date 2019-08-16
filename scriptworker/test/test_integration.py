@@ -350,7 +350,7 @@ async def test_temp_creds(context_function):
 
 
 # private artifacts {{{1
-@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
+@pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
 @pytest.mark.asyncio
 async def test_private_artifacts(context_function):
     task_group_id = task_id = slugid.nice()
@@ -370,7 +370,7 @@ async def test_private_artifacts(context_function):
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['base_work_dir']))
             status = await worker.run_tasks(context)
-        assert status == 0
+        assert status == [0]
         result = await task_status(context, task_id)
         assert result['status']['state'] == 'completed'
         url = artifacts.get_artifact_url(context, task_id, 'SampleArtifacts/_/X.txt')
