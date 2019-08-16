@@ -52,7 +52,7 @@ def get_version_string(version):
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (24, 0, 0)
+__version__ = (26, 0, 0)
 __version_string__ = get_version_string(__version__)
 
 
@@ -79,7 +79,7 @@ def write_version(name=None, path=None):
             'version_string': __version_string__,
         }
         with open(path, 'w') as filehandle:
-            print(json.dumps(contents, sort_keys=True, indent=4), file=filehandle)
+            print(json.dumps(contents, sort_keys=True, indent=4, separators=(',', ':')), file=filehandle)
 
 
 write_version(name=__name__)

@@ -1415,6 +1415,15 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         'ownTaskId': 'decision_task_id',
         'taskId': None,
         'tasks_for': 'cron',
+        'repository': {
+            'url': 'https://github.com/mozilla-mobile/focus-android',
+            'project': 'focus-android',
+            'level': '3',
+        },
+        'push': {
+            'branch': 'master',
+            'revision': 'somerevision',
+        },
     }
 
 
@@ -2489,3 +2498,27 @@ def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, rais
             cotverify.create_test_workdir(args=args, event_loop=event_loop)
     else:
         cotverify.create_test_workdir(args=args, event_loop=event_loop)
+
+
+@pytest.mark.parametrize("project,level,raises", ((
+    "mozilla-central", '3', False,
+), (
+    "no-such-project", None, True,
+), (
+    "fenix", '3', False,
+), (
+    "redo", None, True,
+)))
+@pytest.mark.asyncio
+async def test_get_scm_level(rw_context, project, level, raises):
+    rw_context.projects = {
+        "mozilla-central": {"access": "scm_level_3"},
+        "fenix": {"level": 3},
+        "redo": {},
+    }
+
+    if raises:
+        with pytest.raises(Exception):
+            await cotverify.get_scm_level(rw_context, project)
+    else:
+        assert await cotverify.get_scm_level(rw_context, project) == level
