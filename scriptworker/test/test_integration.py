@@ -339,11 +339,13 @@ async def test_temp_creds(context_function):
     async with context_function(None) as context:
         async with remember_cwd():
             os.chdir(os.path.dirname(context.config['base_work_dir']))
-            context.temp_credentials = utils.create_temp_creds(
+            old_queue = context.queue
+            context.credentials = utils.create_temp_creds(
                 context.credentials['clientId'], context.credentials['accessToken'],
                 expires=arrow.utcnow().shift(minutes=10).datetime
             )
-            result = await context.temp_queue.ping()
+            assert context.queue is not old_queue
+            result = await context.queue.ping()
             assert result['alive']
 
 
