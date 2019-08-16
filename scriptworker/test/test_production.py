@@ -37,6 +37,12 @@ def read_integration_creds():
 
 def build_config(override, basedir):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
+    config.update({
+        'log_dir': os.path.join(basedir, "log"),
+        'base_artifact_dir': os.path.join(basedir, "artifact"),
+        'task_log_dir_template': os.path.join(basedir, "artifact", "public", "logs"),
+        'base_work_dir': os.path.join(basedir, "work"),
+    })
     del(config['credentials'])
     if isinstance(override, dict):
         config.update(override)
