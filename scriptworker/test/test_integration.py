@@ -322,7 +322,7 @@ async def test_shutdown():
 
 
 # empty_queue {{{1
-@pytest.mark.parametrize("context_function", [get_task_context, temp_creds_task_context])
+@pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
 @pytest.mark.asyncio
 async def test_empty_queue(context_function):
     async with context_function(None) as context:
