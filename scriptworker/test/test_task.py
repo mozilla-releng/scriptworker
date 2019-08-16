@@ -196,9 +196,9 @@ def test_get_worker_type(task, result):
 @pytest.mark.parametrize("source_url, expected, raises, context_type", ((
     "https://hg.mozilla.org/mozilla-central", "mozilla-central", False, "firefox"
 ), (
-    "ssh://hg.mozilla.org/projects/foo", "foo", False, "firefox"
+    "https://hg.mozilla.org/projects/foo", "foo", True, "firefox"
 ), (
-    "ssh://hg.mozilla.org/releases/mozilla-esr60", "mozilla-esr60", False, "firefox"
+    "https://hg.mozilla.org/releases/mozilla-esr60", "mozilla-esr60", False, "firefox"
 ), (
     "https://hg.mozilla.org/try", "try", False, "firefox"
 ), (
@@ -206,15 +206,16 @@ def test_get_worker_type(task, result):
 ), (
     "https://hg.mozilla.org/users/mozilla_hocat.ca/esr60-stage/", "", True, "firefox"
 )))
-def test_get_project(context, mobile_context, source_url, expected, raises, context_type):
+@pytest.mark.asyncio
+async def test_get_project(context, mobile_context, source_url, expected, raises, context_type):
     context_ = mobile_context if context_type == 'mobile' else context
 
     if raises:
         with pytest.raises(ValueError):
-            swtask.get_project(context_.config['valid_vcs_rules'], source_url)
+            await swtask.get_project(context_, source_url)
     else:
         assert expected == \
-            swtask.get_project(context_.config['valid_vcs_rules'], source_url)
+            await swtask.get_project(context_, source_url)
 
 
 # get_and_check_tasks_for {{{1

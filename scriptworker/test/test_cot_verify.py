@@ -2489,3 +2489,27 @@ def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, rais
             cotverify.create_test_workdir(args=args, event_loop=event_loop)
     else:
         cotverify.create_test_workdir(args=args, event_loop=event_loop)
+
+
+@pytest.mark.parametrize("project,level,raises", ((
+    "mozilla-central", '3', False,
+), (
+    "no-such-project", None, True,
+), (
+    "fenix", '3', False,
+), (
+    "redo", None, True,
+)))
+@pytest.mark.asyncio
+async def test_get_scm_level(rw_context, project, level, raises):
+    rw_context.projects = {
+        "mozilla-central": {"access": "scm_level_3"},
+        "fenix": {"level": 3},
+        "redo": {},
+    }
+
+    if raises:
+        with pytest.raises(Exception):
+            await cotverify.get_scm_level(rw_context, project)
+    else:
+        assert await cotverify.get_scm_level(rw_context, project) == level

@@ -32,7 +32,6 @@ from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     get_parts_of_url_path,
-    match_url_regex,
 )
 
 log = logging.getLogger(__name__)
@@ -306,15 +305,13 @@ def get_worker_pool_id(task):
 
 
 # get_project {{{1
-def get_project(valid_vcs_rules, source_url):
-    """Given vcs rules and a source_url, return the project.
+async def get_project(context, source_url):
+    """Given a source_url, return the project.
 
     The project is in the path, but is the repo name.
     `releases/mozilla-beta` is the path; `mozilla-beta` is the project.
 
     Args:
-        valid_vcs_rules (tuple of frozendicts): the valid vcs rules, per
-            ``match_url_regex``.
         source_url (str): the source url to find the project for.
 
     Raises:
@@ -324,13 +321,11 @@ def get_project(valid_vcs_rules, source_url):
         str: the project.
 
     """
-    def match_url_project_callback(match):
-        path_info = match.groupdict()
-        return path_info['project']
-    project = match_url_regex(valid_vcs_rules, source_url, match_url_project_callback)
-    if project is None:
-        raise ValueError("Unknown repo for source url {}!".format(source_url))
-    return project
+    await context.populate_projects()
+    for project, config in context.projects.items():
+        if source_url == config['repo'] or source_url.startswith(config['repo'] + '/'):
+            return project
+    raise ValueError("Unknown repo for source url {}!".format(source_url))
 
 
 # get_and_check_tasks_for {{{1

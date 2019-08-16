@@ -1014,8 +1014,13 @@ async def get_scm_level(context, project):
 
     """
     await context.populate_projects()
-    level = context.projects[project]['access'].replace("scm_level_", "")
-    return level
+    config = context.projects[project]
+    if 'access' in config:
+        return config['access'].replace("scm_level_", "")
+    elif 'level' in config:
+        return str(config['level'])
+    else:
+        raise ValueError("Can't find level for project {}".format(project))
 
 
 async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
@@ -1294,7 +1299,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             raise CoTError('Unknown tasks_for "{}" for cot_product "{}"!'.format(tasks_for, chain.context.config['cot_product']))
     else:
         source_url = get_source_url(decision_link)
-        project = get_project(chain.context.config['valid_vcs_rules'], source_url)
+        project = await get_project(chain.context, source_url)
         jsone_context['repository'] = {
             'url': get_repo(decision_link.task, decision_link.context.config['source_env_prefix']),
             'level': await get_scm_level(chain.context, project),

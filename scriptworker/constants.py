@@ -240,22 +240,6 @@ DEFAULT_CONFIG = frozendict({
         }),
     },
 
-    # The project can't be unambigously parsed from a path on hg.mozilla.org.
-    # This contains a list of known projects to help extract it.
-    "valid_vcs_rules": (frozendict({
-        "schemes": ("https", "ssh", ),
-        "netlocs": ("hg.mozilla.org", ),
-        "path_regexes": (
-            r"^/(?P<project>mozilla-(central|unified))(/|$)",
-            r"^/(?P<project>comm-central)(/|$)",
-            r"^/integration/(?P<project>([A-Za-z0-9-]+))(/|$)",
-            r"^/releases/(?P<project>(comm|mozilla)-([A-Za-z0-9-]+))(/|$)",
-            r"^/projects/(?P<project>([A-Za-z0-9-]+))(/|$)",
-            r"^/ci/(?P<project>([A-Za-z0-9-]+))(/|$)",
-            r"^/(?P<project>(try|try-comm-central))(/|$)",
-        ),
-    }),),
-
     'valid_tasks_for': {
         'by-cot-product': frozendict({
             'firefox': ('hg-push', 'cron', 'action',),
