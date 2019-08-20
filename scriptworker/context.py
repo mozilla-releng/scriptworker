@@ -173,11 +173,11 @@ class WorkerContext(BaseWorkerContext):
     """The context for the running scriptworker.
 
     Attributes:
-        running_tasks (list): a list of running TaskContext objects.
+        running_tasks (scriptworker.worker.RunTasks or None): a RunTasks object.
 
     """
 
-    running_tasks = []
+    running_tasks = None
 
 
 # TaskContext {{{1

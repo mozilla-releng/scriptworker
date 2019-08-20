@@ -90,6 +90,19 @@ def _mocker_run_tasks_helper(mocker, exc, func_to_raise, task_context):
     mocker.patch.object(worker, "complete_task", new=noop_async)
 
 
+# RunTasks {{{1
+@pytest.mark.asyncio
+async def test_RunTasks_run_cancellable():
+    r = worker.RunTasks()
+    r.is_cancelled = True
+    assert len(r.futures) == 0
+    with pytest.raises(asyncio.CancelledError):
+        await r._run_cancellable(noop_async())
+        assert len(r.futures) == 1
+        await r.futures[0]
+    assert r.futures[0].cancelled()
+
+
 # main {{{1
 def test_main(mocker, task_context, event_loop):
     config = dict(task_context.config)
@@ -116,7 +129,7 @@ def test_main(mocker, task_context, event_loop):
 
 
 @pytest.mark.parametrize('running', (True, False))
-def test_main_running_sigterm(mocker, task_context, event_loop, running):
+def test_main_running_sigterm(mocker, worker_context, event_loop, running):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
     run_tasks_cancelled = event_loop.create_future()
@@ -126,18 +139,18 @@ def test_main_running_sigterm(mocker, task_context, event_loop, running):
         def cancel():
             run_tasks_cancelled.set_result(True)
 
-    async def async_main(internal_task_context, _):
+    async def async_main(internal_worker_context, _):
         # scriptworker reads task_context from a file, so we have to modify the task_context given here instead of the variable
         # from the fixture
         if running:
-            internal_task_context.running_tasks = MockRunTasks()
+            internal_worker_context.running_tasks = MockRunTasks()
         # Send SIGTERM to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGTERM)
 
     _, tmp = tempfile.mkstemp()
     try:
         with open(tmp, "w") as fh:
-            json.dump(task_context.config, fh)
+            json.dump(worker_context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         worker.main(event_loop=event_loop)
@@ -150,7 +163,7 @@ def test_main_running_sigterm(mocker, task_context, event_loop, running):
 
 
 @pytest.mark.parametrize('running', (True, False))
-def test_main_running_sigusr1(mocker, task_context, event_loop, running):
+def test_main_running_sigusr1(mocker, worker_context, event_loop, running):
     """Test that sending SIGUSR1 causes the main loop to stop after the next
     call to async_main without cancelling the task."""
     run_tasks_cancelled = event_loop.create_future()
@@ -160,18 +173,18 @@ def test_main_running_sigusr1(mocker, task_context, event_loop, running):
         def cancel():
             run_tasks_cancelled.set_result(True)
 
-    async def async_main(internal_task_context, _):
-        # scriptworker reads task_context from a file, so we have to modify the
-        # task_context given here instead of the variable from the fixture
+    async def async_main(internal_worker_context, _):
+        # scriptworker reads worker_context from a file, so we have to modify the
+        # worker_context given here instead of the variable from the fixture
         if running:
-            internal_task_context.running_tasks = MockRunTasks()
+            internal_worker_context.running_tasks = MockRunTasks()
         # Send SIGUSR1 to ourselves so that we stop
         os.kill(os.getpid(), signal.SIGUSR1)
 
     _, tmp = tempfile.mkstemp()
     try:
         with open(tmp, "w") as fh:
-            json.dump(task_context.config, fh)
+            json.dump(worker_context.config, fh)
         mocker.patch.object(worker, 'async_main', new=async_main)
         mocker.patch.object(sys, 'argv', new=['x', tmp])
         worker.main(event_loop=event_loop)

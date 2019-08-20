@@ -622,9 +622,13 @@ async def test_reclaim_task_non_409(context, successful_queue):
         await swtask.reclaim_task(context)
 
 
-@pytest.mark.parametrize("no_proc", (True, False))
+@pytest.mark.parametrize("proc, raises, expected_kill_count", (
+    ("before", False, 0),
+    ("both", True, 1),
+    (None, False, 0),
+))
 @pytest.mark.asyncio
-async def test_reclaim_task_mock(context, mocker, no_proc):
+async def test_reclaim_task_mock(context, mocker, proc, raises, expected_kill_count):
     """When `queue.reclaim_task` raises an error with status 409, `reclaim_task`
     returns. If there is a running process, `reclaim_task` tries to kill it
     before returning.
@@ -638,6 +642,8 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
     queue = mock.MagicMock()
 
     def die(*args):
+        if proc == "before":
+            context.task_process = None
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
 
     async def fake_reclaim(*args, **kwargs):
@@ -654,18 +660,17 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
     def fake_create_queue(*args):
         return queue
 
-    context.task_process = None if no_proc else MockTaskProcess()
+    if proc:
+        context.task_process = MockTaskProcess()
     context.create_queue = fake_create_queue
     queue.reclaimTask = fake_reclaim
     context.queue = queue
-    try:
-        await swtask.reclaim_task(context)
-    except ScriptWorkerTaskException:
-        pass
-    if no_proc:
-        assert kill_count == 0
+    if raises:
+        with pytest.raises(ScriptWorkerTaskException):
+            await swtask.reclaim_task(context)
     else:
-        assert kill_count == 1
+        await swtask.reclaim_task(context)
+    assert kill_count == expected_kill_count
 
 
 # claim_work {{{1
