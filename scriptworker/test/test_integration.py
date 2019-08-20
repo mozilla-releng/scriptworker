@@ -207,7 +207,8 @@ async def test_run_maxtimeout(context_function):
 
 
 # cancel task {{{1
-async def do_cancel(context, task_id):
+async def do_cancel(context, task_id, wait_seconds=0):
+    # set wait_seconds to force a wait after seeing context.running_tasks
     count = 0
     while True:
         await asyncio.sleep(1)
@@ -215,8 +216,10 @@ async def do_cancel(context, task_id):
         assert count < 30, "do_cancel Timeout!"
         if not context.running_tasks:
             continue
-        await context.queue.cancelTask(task_id)
-        break
+        if wait_seconds < 1:
+            await context.queue.cancelTask(task_id)
+            break
+        wait_seconds = wait_seconds - 1
 
 
 async def run_task_until_stopped(context):
@@ -253,6 +256,43 @@ async def test_cancel_task():
         with open(log_path) as fh:
             contents = fh.read()
         assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
+
+
+@pytest.mark.asyncio
+async def test_cancel_concurrent_tasks():
+    task_ids = [slugid.nice(), slugid.nice(), slugid.nice()]
+    partial_config = {
+        'invalid_reclaim_status': 19,
+        'task_script': ('bash', '-c', '>&2 echo bar && echo foo && sleep 30 && exit 1'),
+        'num_concurrent_tasks': 3,
+    }
+    # Don't use temporary credentials from claimTask, since they don't allow us
+    # to cancel the created task.
+    cancel_futs = []
+    async with get_worker_context(partial_config) as context:
+        for i in range(0, 3):
+            result = await create_task(context, task_ids[i], task_ids[i])
+            assert result['status']['state'] == 'pending'
+            cancel_futs.append(
+                asyncio.ensure_future(
+                    do_cancel(context, task_ids[i], wait_seconds=2)
+                )
+            )
+        task_fut = asyncio.ensure_future(run_task_until_stopped(context))
+        await utils.get_results_and_future_exceptions(cancel_futs + [task_fut])
+        for i in range(0, 3):
+            status = await context.queue.status(task_ids[i])
+            assert len(status['status']['runs']) == 1
+            assert status['status']['state'] == 'exception'
+            assert status['status']['runs'][0]['reasonResolved'] == 'canceled'
+            log_url = context.queue.buildUrl(
+                'getLatestArtifact', task_ids[i], 'public/logs/live_backing.log'
+            )
+            log_path = os.path.join(context.config['base_work_dir'], 'log')
+            await utils.download_file(context, log_url, log_path)
+            with open(log_path) as fh:
+                contents = fh.read()
+            assert contents.rstrip() == "bar\nfoo\nAutomation Error: python exited with signal -15"
 
 
 # shutdown {{{1
@@ -380,7 +420,7 @@ async def test_private_artifacts(context_function):
         assert contents == 'bar'
 
 
-# concurrent tasks {{{1
+# successful concurrent tasks {{{1
 @pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
 @pytest.mark.asyncio
 async def test_run_successful_concurrent_tasks(context_function):
