@@ -10,6 +10,7 @@ Attributes:
 
 """
 import aiohttp
+import argparse
 import asyncio
 import jsonschema
 import logging
@@ -134,13 +135,13 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
 
 
 def sync_main(async_main, config_path=None, default_config=None,
+              parser=None, parser_desc=None, commandline_args=None,
               should_validate_task=True, loop_function=asyncio.get_event_loop):
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
         * it creates the scriptworker context and initializes it with the provided config
-        * the path to the config file is either taken from `config_path` or from `sys.argv[1]`.
-        * it verifies `sys.argv` doesn't have more arguments than the config path.
+        * config options are either taken from `commandline_args` or from `sys.argv[1:]`
         * it creates the asyncio event loop so that `async_main` can run
 
     Args:
@@ -155,8 +156,20 @@ def sync_main(async_main, config_path=None, default_config=None,
             event loop; here for testing purposes. Defaults to
             ``asyncio.get_event_loop``.
 
+    Raises:
+        ScriptWorkerException: if the deprecated `config_path` option is used
+            with `parser`, `parser_desc`, or `commandline_args`.
+
     """
-    context = _init_context(config_path, default_config)
+    if config_path:
+        if parser or parser_desc or commandline_args:
+            raise ScriptWorkerException("Deprecated `config_path` is incompatible with `parser`, `parser_desc`, and `commandline_args`!")
+        log.warning("`sync_main` `config_path` usage is deprecated!")
+        commandline_args = [config_path]
+    parser = parser or get_parser(parser_desc)
+    commandline_args = commandline_args or sys.argv[1:]
+    parsed_args = parser.parse_args(commandline_args)
+    context = _init_context(parsed_args, default_config)
     _init_logging(context)
     if should_validate_task:
         validate_task_schema(context)
@@ -164,25 +177,46 @@ def sync_main(async_main, config_path=None, default_config=None,
     loop.run_until_complete(_handle_asyncio_loop(async_main, context))
 
 
-def _init_context(config_path=None, default_config=None):
+def get_parser(desc=None):
+    """Create a default *script argparse parser.
+
+    Args:
+        desc (str, optional): the description for the parser.
+
+    Returns:
+        argparse.Namespace: the parsed args.
+
+    """
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument(
+        "--work-dir",
+        type=str,
+        required=False,
+        help="The path to use as the script working directory",
+    )
+    parser.add_argument(
+        "--artifact-dir",
+        type=str,
+        required=False,
+        help="The path to use as the artifact upload directory",
+    )
+    parser.add_argument("config_path", type=str)
+    return parser
+
+
+def _init_context(parsed_args, default_config=None):
     context = ScriptContext()
 
-    if config_path is None:
-        if len(sys.argv) != 2:
-            _usage()
-        config_path = sys.argv[1]
-
     context.config = {} if default_config is None else default_config
-    context.config.update(load_json_or_yaml(config_path, is_path=True))
+    context.config.update(load_json_or_yaml(parsed_args.config_path, is_path=True))
+    for var in ("work_dir", "artifact_dir"):
+        path = getattr(parsed_args, var, None)
+        if path:
+            context.config[var] = path
 
     context.task = get_task(context.config)
 
     return context
-
-
-def _usage():
-    print('Usage: {} CONFIG_FILE'.format(sys.argv[0]), file=sys.stderr)
-    sys.exit(1)
 
 
 def _init_logging(context):

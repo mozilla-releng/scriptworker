@@ -4,6 +4,7 @@
 """
 
 import aiohttp
+import argparse
 import asyncio
 import json
 import logging
@@ -23,6 +24,7 @@ import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import ScriptContext
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
+from scriptworker.utils import makedirs
 
 from . import noop_sync
 
@@ -246,65 +248,58 @@ async def test_sync_main_runs_fully(config, should_validate_task):
     assert len(async_main_calls) == 1  # async_main was called once
 
 
-@pytest.mark.parametrize('does_use_argv, default_config', (
-    (True, None),
-    (True, {'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}),
-    (False, None),
-    (True, {'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}),
+def test_get_parser():
+    """`get_parser` stores `config_path` and the optional `work_dir` and
+    `artifact_dir`, but raises `SystemExit` on unknown options.
+    """
+    parser = client.get_parser()
+    parsed = parser.parse_args(["foo"])
+    assert parsed.config_path == "foo"
+    assert parsed.work_dir is None
+    assert parsed.artifact_dir is None
+    parsed = parser.parse_args(
+        ["--work-dir", "work", "--artifact-dir", "artifact", "bar"]
+    )
+    assert parsed.config_path == "bar"
+    assert parsed.work_dir == "work"
+    assert parsed.artifact_dir == "artifact"
+    for args in ([], ["--illegal", "foo"]):
+        with pytest.raises(SystemExit):
+            parser.parse_args(args)
+
+
+@pytest.mark.parametrize('default_config, dirs_in_args', (
+    (None, False),
+    (None, True),
+    ({'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}, False),
+    ({'some_param_only_in_default': 'default_value', 'worker_type': 'default_value'}, True),
 ))
-def test_init_context(config, monkeypatch, mocker, does_use_argv, default_config):
-    copyfile(BASIC_TASK, os.path.join(config['work_dir'], "task.json"))
+def test_init_context(config, monkeypatch, mocker, dirs_in_args, default_config):
+    expected_config = deepcopy(config)
     with tempfile.NamedTemporaryFile('w+') as f:
         json.dump(config, f)
         f.seek(0)
 
         kwargs = {'default_config': default_config}
-
-        if does_use_argv:
-            monkeypatch.setattr(sys, 'argv', ['some_binary_name', f.name])
-        else:
-            kwargs['config_path'] = f.name
-
-        context = client._init_context(**kwargs)
+        parsed_args = argparse.Namespace()
+        parsed_args.config_path = f.name
+        if dirs_in_args:
+            expected_config["work_dir"] = "{}2".format(config["work_dir"])
+            parsed_args.work_dir = "{}2".format(config["work_dir"])
+            makedirs(expected_config["work_dir"])
+            expected_config["artifact_dir"] = "{}2".format(config["artifact_dir"])
+            parsed_args.artifact_dir = "{}2".format(config["artifact_dir"])
+        copyfile(BASIC_TASK, os.path.join(expected_config['work_dir'], "task.json"))
+        context = client._init_context(parsed_args, **kwargs)
 
     assert isinstance(context, ScriptContext)
     assert context.task['this_is_a_task'] is True
 
-    expected_config = deepcopy(config)
     if default_config:
         expected_config['some_param_only_in_default'] = 'default_value'
 
     assert context.config == expected_config
     assert context.config['worker_type'] != 'default_value'
-
-    mock_open = mocker.patch('builtins.open')
-    mock_open.assert_not_called()
-
-
-def test_fail_init_context(capsys, monkeypatch):
-    for i in range(1, 10):
-        if i == 2:
-            # expected working case
-            continue
-
-        argv = ['argv{}'.format(j) for j in range(i)]
-        monkeypatch.setattr(sys, 'argv', argv)
-        with pytest.raises(SystemExit):
-            context = client._init_context()
-
-        # XXX This prevents usage from being printed out when the test is passing. Assertions are
-        # done in test_usage
-        capsys.readouterr()
-
-
-def test_usage(capsys, monkeypatch):
-    monkeypatch.setattr(sys, 'argv', ['my_binary'])
-    with pytest.raises(SystemExit):
-        client._usage()
-
-    captured = capsys.readouterr()
-    assert captured.out == ''
-    assert captured.err == 'Usage: my_binary CONFIG_FILE\n'
 
 
 @pytest.mark.parametrize('is_verbose, log_level', (
