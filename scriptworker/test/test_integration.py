@@ -70,7 +70,6 @@ def build_config(override, basedir):
     config.update({
         'log_dir': os.path.join(basedir, "log"),
         'base_artifact_dir': os.path.join(basedir, "artifact"),
-        'task_log_dir_template': os.path.join(basedir, "artifact", "public", "logs"),
         'base_work_dir': os.path.join(basedir, "work"),
         "worker_type": "dummy-worker-{}".format(randstring),
         "worker_id": "dummy-worker-{}".format(randstring),
@@ -379,3 +378,23 @@ async def test_private_artifacts(context_function):
         with open(path2, "r") as fh:
             contents = fh.read().strip()
         assert contents == 'bar'
+
+
+# concurrent tasks {{{1
+@pytest.mark.parametrize("context_function", [get_worker_context, temp_creds_worker_context])
+@pytest.mark.asyncio
+async def test_run_successful_concurrent_tasks(context_function):
+    task_ids = [slugid.nice(), slugid.nice(), slugid.nice()]
+    task_group_ids = [slugid.nice(), slugid.nice(), slugid.nice()]
+    async with context_function(None) as context:
+        context.config["num_concurrent_tasks"] = 3
+        for i in range(0, 3):
+            result = await create_task(context, task_ids[i], task_group_ids[i])
+            assert result['status']['state'] == 'pending'
+        async with remember_cwd():
+            os.chdir(os.path.dirname(context.config['base_work_dir']))
+            status = await worker.run_tasks(context)
+        assert status == [1, 1, 1]
+        for i in range(0, 3):
+            result = await task_status(context, task_ids[i])
+            assert result['status']['state'] == 'failed'

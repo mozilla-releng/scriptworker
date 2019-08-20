@@ -249,7 +249,7 @@ def get_expiration_arrow(task_context: TaskContext):
     """Return an arrow matching `task_context.task['expires']`.
 
     Args:
-        context (TaskContext): the task context
+        task_context (TaskContext): the task context
 
     Returns:
         arrow: `task_context.task['expires']`.

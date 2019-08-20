@@ -33,7 +33,8 @@ from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import (
     get_parts_of_url_path,
-    write_json
+    makedirs,
+    write_json,
 )
 
 log = logging.getLogger(__name__)
@@ -574,6 +575,9 @@ def prepare_to_run_task(context, claim_task, task_num):
         event_loop=context.event_loop, session=context.session,
         projects=context.projects,
     )
+    makedirs(task_context.work_dir)
+    makedirs(task_context.artifact_dir)
+    makedirs(task_context.task_log_dir)
     current_task_info['taskId'] = task_context.task_id
     current_task_info['runId'] = task_context.run_id
     log.info("Going to run taskId {taskId} runId {runId}!".format(
