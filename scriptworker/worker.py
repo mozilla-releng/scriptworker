@@ -116,7 +116,14 @@ async def do_upload(task_context, files):
 
 # RunTasks {{{1
 class RunTasks:
-    """Manages processing of Taskcluster tasks."""
+    """Manage processing of Taskcluster tasks.
+
+    Attributes:
+        futures (list): a list of ``asyncio.Future``s associated with the tasks
+        is_cancelled (bool): whether the tasks have been cancelled by SIGTERM
+        task_contexts (list of ``scriptworker.context.TaskContext``s): the contexts for the running tasks
+
+    """
 
     def __init__(self):
         """Constructor."""
@@ -214,9 +221,9 @@ async def run_tasks(worker_context):
     """
     running_tasks = RunTasks()
     worker_context.running_tasks = running_tasks
-    status = await running_tasks.invoke(worker_context)
+    statuses = await running_tasks.invoke(worker_context)
     worker_context.running_tasks = None
-    return status
+    return statuses
 
 
 # async_main {{{1
@@ -227,6 +234,7 @@ async def async_main(worker_context, credentials):
 
     Args:
         worker_context (scriptworker.context.WorkerContext): the scriptworker context.
+        credentials (dict): the worker taskcluster credentials
 
     """
     conn = aiohttp.TCPConnector(limit=worker_context.config['aiohttp_max_connections'])

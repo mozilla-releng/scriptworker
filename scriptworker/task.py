@@ -311,13 +311,14 @@ def get_worker_pool_id(task):
 
 
 # get_project {{{1
-async def get_project(context, source_url):
+async def get_project(task_context, source_url):
     """Given a source_url, return the project.
 
     The project is in the path, but is the repo name.
     `releases/mozilla-beta` is the path; `mozilla-beta` is the project.
 
     Args:
+        task_context (scriptworker.context.TaskContext): the task context.
         source_url (str): the source url to find the project for.
 
     Raises:
@@ -327,21 +328,22 @@ async def get_project(context, source_url):
         str: the project.
 
     """
-    await context.populate_projects()
-    for project, config in context.projects.items():
+    await task_context.populate_projects()
+    for project, config in task_context.projects.items():
         if source_url == config['repo'] or source_url.startswith(config['repo'] + '/'):
             return project
     raise ValueError("Unknown repo for source url {}!".format(source_url))
 
 
 # get_and_check_tasks_for {{{1
-def get_and_check_tasks_for(context, task, msg_prefix=''):
+def get_and_check_tasks_for(task_context, task, msg_prefix=''):
     """Given a parent task, return the reason the parent task was spawned.
 
     ``.taskcluster.yml`` uses this to know whether to spawn an action,
     cron, or decision task definition.  ``tasks_for`` must be a valid one defined in the context.
 
     Args:
+        task_context (scriptworker.context.TaskContext): the task context.
         task (dict): the task definition.
         msg_prefix (str): the string prefix to use for an exception.
 
@@ -353,7 +355,7 @@ def get_and_check_tasks_for(context, task, msg_prefix=''):
 
     """
     tasks_for = task['extra']['tasks_for']
-    if tasks_for not in context.config['valid_tasks_for']:
+    if tasks_for not in task_context.config['valid_tasks_for']:
         raise ValueError(
             '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
         )
@@ -425,7 +427,7 @@ def is_try(task, source_env_prefix):
     ))
 
 
-async def is_pull_request(context, task):
+async def is_pull_request(task_context, task):
     """Determine if a task is a pull-request-like task (restricted privs).
 
     This goes further than checking ``tasks_for``. We may or may not want
@@ -439,7 +441,7 @@ async def is_pull_request(context, task):
         * The last 2 items are landed on the official repo
 
     Args:
-        context (scriptworker.context.TaskContext): the task context.
+        task_context (scriptworker.context.TaskContext): the task context.
         task (dict): the task definition to check.
 
     Returns:
@@ -449,8 +451,8 @@ async def is_pull_request(context, task):
 
     """
     tasks_for = task.get('extra', {}).get('tasks_for')
-    repo_url_from_payload = get_repo(task, context.config['source_env_prefix'])
-    revision_from_payload = get_revision(task, context.config['source_env_prefix'])
+    repo_url_from_payload = get_repo(task, task_context.config['source_env_prefix'])
+    revision_from_payload = get_revision(task, task_context.config['source_env_prefix'])
 
     metadata_source_url = task['metadata'].get('source', '')
     repo_from_source_url, revision_from_source_url = \
@@ -467,24 +469,24 @@ async def is_pull_request(context, task):
             continue
 
         repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
-        conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
+        conditions.append(not is_github_repo_owner_the_official_one(task_context, repo_owner))
 
         if not revision and can_skip:
             continue
 
-        github_repository = GitHubRepository(repo_owner, repo_name, context.config['github_oauth_token'])
-        conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision))
+        github_repository = GitHubRepository(repo_owner, repo_name, task_context.config['github_oauth_token'])
+        conditions.append(not await github_repository.has_commit_landed_on_repository(task_context, revision))
 
     return any(conditions)
 
 
-async def is_try_or_pull_request(context, task):
+async def is_try_or_pull_request(task_context, task):
     """Determine if a task is a try or a pull-request-like task (restricted privs).
 
     Checks are the ones done in ``is_try`` and ``is_pull_request``
 
     Args:
-        context (scriptworker.context.TaskContext): the task context.
+        task_context (scriptworker.context.TaskContext): the task context.
         task (dict): the task definition to check.
 
     Returns:
@@ -492,9 +494,9 @@ async def is_try_or_pull_request(context, task):
 
     """
     if is_github_task(task):
-        return await is_pull_request(context, task)
+        return await is_pull_request(task_context, task)
     else:
-        return is_try(task, context.config['source_env_prefix'])
+        return is_try(task, task_context.config['source_env_prefix'])
 
 
 def is_github_task(task):
@@ -549,15 +551,15 @@ def is_action(task):
 
 
 # prepare_to_run_task {{{1
-def prepare_to_run_task(context, claim_task, task_num):
-    """Given a `claim_task` json dict, prepare the `context` and `work_dir`.
+def prepare_to_run_task(worker_context, claim_task, task_num):
+    """Given a `claim_task` json dict, prepare the `task_context` and `work_dir`.
 
     Create a ``TaskContext`` object, and write the
     ``work_dir/current_task_info.json`` and ``work_dir/task.json``
     breadcrumb files.
 
     Args:
-        context (scriptworker.context.WorkerContext): the worker context.
+        worker_context (scriptworker.context.WorkerContext): the worker context.
         claim_task (dict): the claim_task dict.
         task_num (int): the number of the task, in terms of concurrent
             tasks running on this scriptworker. Many scriptworkers will
@@ -571,9 +573,9 @@ def prepare_to_run_task(context, claim_task, task_num):
     """
     current_task_info = {}
     task_context = create_task_context(
-        context.config, claim_task, task_num,
-        event_loop=context.event_loop, session=context.session,
-        projects=context.projects,
+        worker_context.config, claim_task, task_num,
+        event_loop=worker_context.event_loop, session=worker_context.session,
+        projects=worker_context.projects,
     )
     makedirs(task_context.work_dir)
     makedirs(task_context.artifact_dir)
@@ -743,29 +745,29 @@ async def complete_task(task_context, result):
 
 
 # claim_work {{{1
-async def claim_work(context):
+async def claim_work(worker_context):
     """Find and claim the next pending task in the queue, if any.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        worker_context (scriptworker.context.WorkerContext): the scriptworker context.
 
     Returns:
         dict: a dict containing a list of the task definitions of the tasks claimed.
 
     """
     log.debug("Calling claimWork for {}/{}...".format(
-        context.config['worker_group'], context.config['worker_id']))
+        worker_context.config['worker_group'], worker_context.config['worker_id']))
     payload = {
-        'workerGroup': context.config['worker_group'],
-        'workerId': context.config['worker_id'],
+        'workerGroup': worker_context.config['worker_group'],
+        'workerId': worker_context.config['worker_id'],
         # Hardcode one task at a time.  Make this a pref if we allow for
         # parallel tasks in multiple `work_dir`s.
-        'tasks': context.config['num_concurrent_tasks'],
+        'tasks': worker_context.config['num_concurrent_tasks'],
     }
     try:
-        return await context.queue.claimWork(
-            context.config['provisioner_id'],
-            context.config['worker_type'],
+        return await worker_context.queue.claimWork(
+            worker_context.config['provisioner_id'],
+            worker_context.config['worker_type'],
             payload
         )
     except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:

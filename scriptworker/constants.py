@@ -487,7 +487,7 @@ def get_reversed_statuses(context):
     """Return a mapping of exit codes to status strings.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context
+        context (scriptworker.context.BaseContext): the scriptworker context
 
     Returns:
         dict: the mapping of exit codes to status strings.

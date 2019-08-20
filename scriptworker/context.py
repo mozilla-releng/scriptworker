@@ -188,25 +188,21 @@ class TaskContext(BaseWorkerContext):
     multiple concurrent tasks per scriptworker.
 
     Attributes:
-        claim_task (dict): the claim_task definition for the current task.
-        credentials (dict): the temporary credentials for the current task.
+        reclaim_fut (asyncio.Task): the ``reclaim_task`` future
         task_process (task_process.TaskProcess): when launching the script,
             this is the process object.
         task (dict): the task definition for the current task.
-        work_dir (str): the path to the working directory
         artifact_dir (str): the path to the artifact directory
         task_log_dir (str): the path to the task logging directory
+        work_dir (str): the path to the working directory
 
     """
 
-    artifact_dir = None
-    projects = None
     reclaim_fut = None
-    run_id = None
     task = None
-    task_id = None
-    task_log_dir = None
     task_process = None
+    artifact_dir = None
+    task_log_dir = None
     work_dir = None
     _claim_task = None
     _reclaim_task = None

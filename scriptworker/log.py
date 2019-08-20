@@ -118,12 +118,12 @@ def get_log_filehandle(task_context):
 
 
 @contextmanager
-def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
-                           formatter=None):
+def contextual_log_handler(task_context, path, log_obj=None,
+                           level=logging.DEBUG, formatter=None):
     """Add a short-lived log with a contextmanager for cleanup.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context
+        task_context (scriptworker.context.TaskContext): the task context
         path (str): the path to the log file to create
         log_obj (logging.Logger): the log object to modify.  If None, use
             ``scriptworker.log.log``.  Defaults to None.
@@ -137,8 +137,8 @@ def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
     """
     log_obj = log_obj or log
     formatter = formatter or logging.Formatter(
-        fmt=context.config['log_fmt'],
-        datefmt=context.config['log_datefmt'],
+        fmt=task_context.config['log_fmt'],
+        datefmt=task_context.config['log_datefmt'],
     )
     parent_path = os.path.dirname(path)
     makedirs(parent_path)

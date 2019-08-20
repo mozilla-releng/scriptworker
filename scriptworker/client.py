@@ -69,11 +69,11 @@ def validate_json_schema(data, schema, name="task"):
         )
 
 
-def validate_task_schema(context, schema_key='schema_file'):
+def validate_task_schema(script_context, schema_key='schema_file'):
     """Validate the task definition.
 
     Args:
-        context (ScriptContext): the scriptworker context. It must contain a task and
+        script_context (ScriptContext): the script context. It must contain a task and
             the config pointing to the schema file
         schema_key: the key in `context.config` where the path to the schema file is. Key can contain
             dots (e.g.: 'schema_files.file_a'), in which case
@@ -82,7 +82,7 @@ def validate_task_schema(context, schema_key='schema_file'):
         TaskVerificationError: if the task doesn't match the schema
 
     """
-    schema_path = context.config
+    schema_path = script_context.config
     schema_keys = schema_key.split('.')
     for key in schema_keys:
         schema_path = schema_path[key]
@@ -91,9 +91,9 @@ def validate_task_schema(context, schema_key='schema_file'):
     log.debug('Task is validated against this schema: {}'.format(task_schema))
 
     try:
-        validate_json_schema(context.task, task_schema)
+        validate_json_schema(script_context.task, task_schema)
     except ScriptWorkerTaskException as e:
-        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(context.task)) from e
+        raise TaskVerificationError('Cannot validate task against schema. Task: {}.'.format(script_context.task)) from e
 
 
 def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
@@ -140,7 +140,7 @@ def sync_main(async_main, config_path=None, default_config=None,
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
-        * it creates the scriptworker context and initializes it with the provided config
+        * it creates the script context and initializes it with the provided config
         * config options are either taken from `commandline_args` or from `sys.argv[1:]`
         * it creates the asyncio event loop so that `async_main` can run
 
@@ -169,12 +169,12 @@ def sync_main(async_main, config_path=None, default_config=None,
     parser = parser or get_parser(parser_desc)
     commandline_args = commandline_args or sys.argv[1:]
     parsed_args = parser.parse_args(commandline_args)
-    context = _init_context(parsed_args, default_config)
-    _init_logging(context)
+    script_context = _init_context(parsed_args, default_config)
+    _init_logging(script_context)
     if should_validate_task:
-        validate_task_schema(context)
+        validate_task_schema(script_context)
     loop = loop_function()
-    loop.run_until_complete(_handle_asyncio_loop(async_main, context))
+    loop.run_until_complete(_handle_asyncio_loop(async_main, script_context))
 
 
 def get_parser(desc=None):
@@ -205,33 +205,33 @@ def get_parser(desc=None):
 
 
 def _init_context(parsed_args, default_config=None):
-    context = ScriptContext()
+    script_context = ScriptContext()
 
-    context.config = {} if default_config is None else default_config
-    context.config.update(load_json_or_yaml(parsed_args.config_path, is_path=True))
+    script_context.config = {} if default_config is None else default_config
+    script_context.config.update(load_json_or_yaml(parsed_args.config_path, is_path=True))
     for var in ("work_dir", "artifact_dir"):
         path = getattr(parsed_args, var, None)
         if path:
-            context.config[var] = path
+            script_context.config[var] = path
 
-    context.task = get_task(context.config)
+    script_context.task = get_task(script_context.config)
 
-    return context
+    return script_context
 
 
-def _init_logging(context):
+def _init_logging(script_context):
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.DEBUG if context.config.get('verbose') else logging.INFO
+        level=logging.DEBUG if script_context.config.get('verbose') else logging.INFO
     )
     logging.getLogger('taskcluster').setLevel(logging.WARNING)
 
 
-async def _handle_asyncio_loop(async_main, context):
+async def _handle_asyncio_loop(async_main, script_context):
     async with aiohttp.ClientSession() as session:
-        context.session = session
+        script_context.session = session
         try:
-            await async_main(context)
+            await async_main(script_context)
         except ScriptWorkerException as exc:
             log.exception("Failed to run async_main")
             sys.exit(exc.exit_code)

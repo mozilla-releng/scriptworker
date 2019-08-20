@@ -38,7 +38,7 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
     """Async aiohttp request wrapper.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.BaseContext): the context object.
         url (str): the url to request
         timeout (int, optional): timeout after this many seconds. Default is 60.
         method (str, optional): The request method to use.  Default is 'get'.
@@ -180,19 +180,19 @@ def rm(path):
 
 
 # cleanup {{{1
-def cleanup(context):
+def cleanup(worker_context):
     """Clean up ``base_work_dir`` and ``base_artifact_dir``, then recreate.
 
     This deletes *all* working directories, so we shouldn't run this if any
     tasks are still running.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        worker_context (scriptworker.context.WorkerContext): the scriptworker context.
 
     """
     paths = [
-        context.config['base_work_dir'],
-        context.config['base_artifact_dir'],
+        worker_context.config['base_work_dir'],
+        worker_context.config['base_artifact_dir'],
     ]
     for path in paths:
         if os.path.exists(path):
@@ -545,7 +545,7 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
     """Download a file, async.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.BaseContext): the context object.
         url (str): the url to download
         abs_filename (str): the path to download to
         session (aiohttp.ClientSession, optional): the session to use.  If
@@ -616,7 +616,7 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True):
     """Retry a json/yaml file download, load it, then return its data.
 
     Args:
-        context (scriptworker.context.Context): the scriptworker context.
+        context (scriptworker.context.BaseContext): the context object.
         url (str): the url to download
         path (str): the path to download to
         overwrite (bool, optional): if False and path exists, don't download.

@@ -226,13 +226,13 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
             and credentials frozendict
 
     """
-    context = WorkerContext()
+    worker_context = WorkerContext()
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument(
         "config_path", type=str, nargs="?", default="scriptworker.yaml",
         help="the path to the config file"
     )
     parsed_args = parser.parse_args(args)
-    context.config, credentials = create_config(config_path=parsed_args.config_path)
-    update_logging_config(context)
-    return context, credentials
+    worker_context.config, credentials = create_config(config_path=parsed_args.config_path)
+    update_logging_config(worker_context)
+    return worker_context, credentials
