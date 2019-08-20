@@ -26,7 +26,7 @@ from scriptworker.context import ScriptContext
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
 from scriptworker.utils import makedirs
 
-from . import noop_sync
+from . import noop_sync, noop_async
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
@@ -246,6 +246,38 @@ async def test_sync_main_runs_fully(config, should_validate_task):
         await i  # suppress coroutine not awaited warning
     assert len(run_until_complete_calls) == 1  # run_until_complete was called once
     assert len(async_main_calls) == 1  # async_main was called once
+
+
+def test_sync_config_path(config, mocker):
+    """`sync_main` raises if both `config_path` and a parser-oriented
+    kwarg are passed. Otherwise, `commandline_args` is set to `[config_path]`"""
+    for arg in ("parser", "parser_desc", "commandline_args"):
+        with pytest.raises(ScriptWorkerException):
+            client.sync_main(None, config_path="foo", **{arg: "bar"})
+
+    def die(*args, **kwargs):
+        raise ScriptWorkerException("x")
+
+    fake_parser = mocker.MagicMock()
+    mocker.patch.object(client, "get_parser", return_value=fake_parser)
+    mocker.patch.object(client, "_init_context", new=die)
+    with pytest.raises(ScriptWorkerException):
+        client.sync_main(None, config_path="foo")
+    fake_parser.parse_args.assert_called_once_with(["foo"])
+
+
+def test_sync_no_config_path(config, mocker):
+    """`sync_main` uses `commandline_args` if `config_path` is not set."""
+
+    def die(*args, **kwargs):
+        raise ScriptWorkerException("x")
+
+    fake_parser = mocker.MagicMock()
+    mocker.patch.object(client, "get_parser", return_value=fake_parser)
+    mocker.patch.object(client, "_init_context", new=die)
+    with pytest.raises(ScriptWorkerException):
+        client.sync_main(None, commandline_args=["foo"])
+    fake_parser.parse_args.assert_called_once_with(["foo"])
 
 
 def test_get_parser():
