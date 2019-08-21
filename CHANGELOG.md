@@ -2,6 +2,36 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased] - unreleased
+### Added
+- Added `num_concurrent_tasks` to allow for claiming and running more than one task at a time.
+- Added `client.get_parser` for commandline parsing
+- Added `BaseContext`, `ScriptContext` (for client scripts), `BaseWorkerContext`, `WorkerContext` (for the worker), and `TaskContext` (for each task running in the worker).
+- `client.sync_main` now takes `parser`, `parser_desc`, and `commandline_args` aguments. These are incompatible with the now-deprecated `config_path` arg.
+- `client.sync_main` will now take the `--work-dir` and `--artifact-dir` arguments (assuming we don't use the deprecated `config_path` argument).
+- The new `TaskContext` object has `work_dir`, `artifact_dir`, and `task_log_dir` attributes which are now used instead of the old `config["work_dir"]`, `config["artifact_dir"]`, and `config["task_log_dir"]`. This is to allow for concurrent tasks running in separate directories.
+- Added `create_task_context` to easily create a `TaskContext` from a `WorkerContext`.
+- Added integration tests for concurrent tasks.
+- Added `utils.write_json` (moved from `Context.write_json`).
+
+### Changed
+- `work_dir`, `artifact_dir`, and `task_log_dir` in `scriptworker.yaml` have been replaced with `base_work_dir`, `base_artifact_dir`, and `task_log_dir_template`.
+- `scriptworker.context.Context` has been replaced with `ScriptContext`, `WorkerContext`, and `TaskContext`.
+- `projects` used to be cached for the lifetime of the worker. Now it's cached for the lifetime of a task.
+- `client._init_context` now returns a `ScriptContext` object
+- `Context.temp_queue` and `Context.temp_credentials` are now `TaskContext.queue` and `TaskContext.credentials`.
+- `prepare_to_run_task` now takes a `task_num` arg to keep concurrent tasks in separate directories.
+- `prepare_to_run_task` returns a `TaskContext`, and writes the `task.json` instead of having that be a side effect of setting `claim_task` in the context object. It also creates the `work_dir`, `artifact_dir`, and `task_log_dir` for each task.
+- `cleanup` now nukes `base_work_dir` and `base_artifact_dir` after all tasks are completed.
+- `run_task` no longer takes `to_cancellable_process` as an arg.
+- `do_run_task` no longer takes `to_cancellable_process` as an arg.
+- `RunTasks` now has a list of `futures` and `task_contexts` rather than a single `future` and `task_process`
+- `RunTasks.invoke` returns a list of statuses rather than a single status int.
+
+### Removed
+
+- `Context`
+
 ## [26.0.0] - 2019-08-16
 ### Added
 - Support taskgraph-style github cron contexts.
@@ -10,12 +40,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [25.0.0] - 2019-08-12
 ### Removed
 - Removed the following stub functions:
-  - verify_balrog_task
-  - verify_bouncer_task
-  - verify_pushapk_task
-  - verify_pushsnap_task
-  - verify_shipit_task
-  - verify_signing_task
+  - `verify_balrog_task`
+  - `verify_bouncer_task`
+  - `verify_pushapk_task`
+  - `verify_pushsnap_task`
+  - `verify_shipit_task`
+  - `verify_signing_task`
+
 ### Changed
 - Use `verify_scriptworker_task` for workers indirectly using it
 
