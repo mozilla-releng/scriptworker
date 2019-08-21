@@ -584,7 +584,7 @@ async def run_task(context, to_cancellable_process):
         to_cancellable_process (types.Callable): tracks the process so that it can be stopped if the worker is shut down
 
     Returns:
-        int: exit code
+        int: 1 on failure, 0 on success
 
     """
     env = deepcopy(os.environ)
@@ -637,7 +637,7 @@ async def run_task(context, to_cancellable_process):
     if stopped_due_to_worker_shutdown:
         raise WorkerShutdownDuringTask
 
-    return exitcode
+    return 1 if exitcode != 0 else 0
 
 
 # reclaim_task {{{1
