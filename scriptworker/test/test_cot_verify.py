@@ -1428,14 +1428,22 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('committer_login, author_login', (
-    ('some-user', 'some-user'),
-    ('some-user', 'some-other-user'),
-    ('web-flow', 'some-user'),
+@pytest.mark.parametrize('committer_login, committer_email, author_login, author_email', (
+    ('some-user', 'some-user@email.tld', 'some-user', 'some-user@email.tld'),
+    ('some-user', 'some-user@email.tld', 'some-other-user', 'other@email.tld'),
+    ('web-flow', 'noreply@github.com', 'some-user', 'some-user@email.tld'),
 ))
-async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link, committer_login, author_login):
+async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link, committer_login, committer_email, author_login, author_email):
     github_repo_mock = MagicMock()
     github_repo_mock.get_commit.return_value = {
+        'commit': {
+            'author': {
+                'email': author_email,
+            },
+            'committer': {
+                'email': committer_email,
+            },
+        },
         'committer': {
             'login': committer_login,
         },
@@ -1454,13 +1462,17 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
     del context['as_slugid']
     assert context == {
         'event': {
+            'after': 'somerevision',
+            'pusher': {
+                'email': 'some-user@email.tld',
+            },
+            'ref': 'refs/heads/some-branch',
             'repository': {
                 'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'name': 'focus-android',
                 'pushed_at': '1549022400',
             },
-            'ref': 'refs/heads/some-branch',
-            'after': 'somerevision',
             'sender': {
                 'login': 'some-user',
             },
