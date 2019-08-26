@@ -1215,10 +1215,13 @@ async def _get_additional_github_push_jsone_context(decision_link):
     ).get_commit(commit_hash)
 
     committer_login = commit_data['committer']['login']
+    committer_email = commit_data['commit']['committer']['email']
     # https://github.com/mozilla-releng/scriptworker/issues/334: web-flow is the User used by
     # GitHub to create some commits on github.com or the Github Desktop app. For sure, this user
     # is not the one who triggered a push event. Let's fall back to the author login, instead.
-    sender_login = commit_data['author']['login'] if committer_login == 'web-flow' else committer_login
+    if committer_login == 'web-flow':
+        committer_login = commit_data['author']['login']
+        committer_email = commit_data['commit']['author']['email']
 
     # The commit data expose by the API[1] is not the same as the original event[2]. That's why
     # we have to rebuild the object manually
@@ -1227,15 +1230,19 @@ async def _get_additional_github_push_jsone_context(decision_link):
     # [2] https://developer.github.com/v3/activity/events/types/#pushevent
     return {
         'event': {
+            'after': commit_hash,
+            'pusher': {
+                'email': committer_email,
+            },
+            'ref': get_branch(task, source_env_prefix),
             'repository': {
                 'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
+                'name': extract_github_repo_owner_and_name(repo_url)[1],
                 'pushed_at': get_push_date_time(task, source_env_prefix),
             },
-            'ref': get_branch(task, source_env_prefix),
-            'after': commit_hash,
             'sender': {
-                'login': sender_login,
+                'login': committer_login,
             },
         },
     }
