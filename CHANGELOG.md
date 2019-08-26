@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [26.0.1] - 2019-08-26
+### Fixed
+- run_task returns 1 on non-zero exit code, 0 on success.
+- Chain of Trust breakage: Expose repo name and pusher's email on github pushes.
+
 ## [26.0.0] - 2019-08-16
 ### Added
 - Support taskgraph-style github cron contexts.
