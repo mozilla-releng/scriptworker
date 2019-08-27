@@ -18,6 +18,7 @@ import logging
 import os
 import tempfile
 
+from scriptworker.exceptions import CoTError
 from scriptworker.utils import makedirs, load_json_or_yaml_from_url
 from taskcluster.aio import Queue
 
@@ -82,12 +83,21 @@ class Context(object):
         self.proc = None
         if claim_task:
             self.task = claim_task['task']
+            self.verify_task()
             self.temp_credentials = claim_task['credentials']
             path = os.path.join(self.config['work_dir'], "task.json")
             self.write_json(path, self.task, "Writing task file to {path}...")
         else:
             self.temp_credentials = None
             self.task = None
+
+    def verify_task(self):
+        """Run some task sanity checks on ``self.task``."""
+        for upstream_artifact in self.task.get("payload", {}).get("upstreamArtifacts", []):
+            task_id = upstream_artifact["taskId"]
+            for path in upstream_artifact["paths"]:
+                if os.path.isabs(path) or '..' in path:
+                    raise CoTError("upstreamArtifacts taskId {} has illegal path {}!".format(task_id, path))
 
     @property
     def credentials(self):

@@ -8,6 +8,7 @@ import mock
 import os
 import pytest
 import taskcluster
+from scriptworker.exceptions import CoTError
 import scriptworker.context as swcontext
 from copy import deepcopy
 from . import tmpdir
@@ -150,3 +151,32 @@ def test_set_event_loop(mocker):
     context = swcontext.Context()
     context.event_loop = fake_loop
     assert context.event_loop is fake_loop
+
+
+def test_verify_task(claim_task):
+    context = swcontext.Context()
+    context.task = {
+        "payload": {
+            "upstreamArtifacts": [{
+                "taskId": "foo",
+                "paths": ["bar"],
+            }],
+        },
+    }
+    # should not throw
+    context.verify_task()
+
+
+@pytest.mark.parametrize("bad_path", ("/abspath/foo", "public/../../../blah"))
+def test_bad_verify_task(claim_task, bad_path):
+    context = swcontext.Context()
+    context.task = {
+        "payload": {
+            "upstreamArtifacts": [{
+                "taskId": "bar",
+                "paths": ["baz", bad_path],
+            }],
+        },
+    }
+    with pytest.raises(CoTError):
+        context.verify_task()
