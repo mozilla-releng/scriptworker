@@ -195,6 +195,7 @@ def _init_logging(context):
         level=logging.DEBUG if context.config.get('verbose') else logging.INFO
     )
     logging.getLogger('taskcluster').setLevel(logging.WARNING)
+    logging.getLogger('mohawk').setLevel(logging.INFO)
 
 
 async def _handle_asyncio_loop(async_main, context):
