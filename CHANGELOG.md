@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [26.0.2] - 2019-08-30
+### Fixed
+- Chain of Trust breakage: Staging cron context were bailing out because repos were unknown.
+
 ## [26.0.1] - 2019-08-26
 ### Fixed
 - run_task returns 1 on non-zero exit code, 0 on success.
