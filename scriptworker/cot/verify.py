@@ -1116,7 +1116,7 @@ async def _get_additional_git_cron_jsone_context(decision_link):
     source_env_prefix = decision_link.context.config['source_env_prefix']
     task = decision_link.task
     repo = get_repo(task, source_env_prefix)
-    project = await get_project(decision_link.context, repo)
+    _, repo_name = extract_github_repo_owner_and_name(repo)
     revision = get_revision(task, source_env_prefix)
     branch = get_branch(task, source_env_prefix)
 
@@ -1153,8 +1153,8 @@ async def _get_additional_git_cron_jsone_context(decision_link):
         # Taskgraph cron contexts mirror hg-push contexts
         'repository': {
             'url': repo,
-            'project': project,
-            'level': await get_scm_level(decision_link.context, project)
+            'project': repo_name,
+            'level': await get_scm_level(decision_link.context, repo_name)
         },
         'push': {
             'revision': revision,
