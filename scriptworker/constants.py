@@ -227,7 +227,7 @@ DEFAULT_CONFIG = frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
                 "path_regexes": tuple([
-                    r"^(?P<path>/mozilla-mobile/(?:android-components|focus-android|reference-browser|fenix))(/|.git|$)",
+                    r"^(?P<path>/mozilla-mobile/(?:android-components|focus-android|reference-browser|fenix|firefox-tv))(/|.git|$)",
                 ]),
             }),),
             'application-services': (frozendict({
@@ -331,8 +331,11 @@ DEFAULT_CONFIG = frozendict({
                 'project:mobile:focus:googleplay:product:focus': 'focus-repo',
                 'project:mobile:focus:releng:signing:cert:release-signing': 'focus-repo',
 
-                'project:mobile:reference-browser:releng:signing:cert:release-signing': 'reference-browser-repo',
                 'project:mobile:reference-browser:releng:googleplay:product:reference-browser': 'reference-browser-repo',
+                'project:mobile:reference-browser:releng:signing:cert:release-signing': 'reference-browser-repo',
+
+                'project:mobile:firefox-tv:releng:googleplay:product:firefox-tv': 'firefox-tv-repo',
+                'project:mobile:firefox-tv:releng:signing:cert:production-signing': 'firefox-tv-repo',
             }),
             'application-services': frozendict({
                 'project:mozilla:application-services:releng:beetmover:bucket:maven-production': 'application-services-repo',
@@ -447,6 +450,9 @@ DEFAULT_CONFIG = frozendict({
                 ),
                 'reference-browser-repo': (
                     '/mozilla-mobile/reference-browser',
+                ),
+                'firefox-tv-repo': (
+                    '/mozilla-mobile/firefox-tv',
                 ),
             }),
             'application-services': frozendict({
