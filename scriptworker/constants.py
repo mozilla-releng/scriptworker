@@ -324,7 +324,9 @@ DEFAULT_CONFIG = frozendict({
                 'project:mobile:android-components:releng:beetmover:bucket:maven-snapshot-production': 'android-components-repo',
 
                 'project:mobile:fenix:releng:googleplay:product:fenix': 'fenix-repo',
-                'project:mobile:fenix:releng:signing:cert:release-signing': 'fenix-repo',
+                'project:mobile:fenix:releng:signing:cert:nightly-signing': 'fenix-repo',
+                'project:mobile:fenix:releng:signing:cert:beta-signing': 'fenix-repo',
+                'project:mobile:fenix:releng:signing:cert:production-signing': 'fenix-repo',
 
                 'project:mobile:focus:googleplay:product:focus': 'focus-repo',
                 'project:mobile:focus:releng:signing:cert:release-signing': 'focus-repo',
