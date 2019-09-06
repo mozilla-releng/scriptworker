@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [26.0.3] - 2019-09-06
+### Added
+- CoT constants for `firefox-tv`
+
+### Changed
+- Updated restricted signing scopes for `fenix`
+
 ## [26.0.2] - 2019-08-30
 ### Fixed
 - Chain of Trust breakage: Staging cron context were bailing out because repos were unknown.
