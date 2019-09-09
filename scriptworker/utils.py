@@ -115,7 +115,7 @@ def datestring_to_timestamp(datestring):
         int: the corresponding timestamp.
 
     """
-    return arrow.get(datestring).timestamp
+    return arrow.get(float(datestring)).timestamp
 
 
 # to_unicode {{{1
