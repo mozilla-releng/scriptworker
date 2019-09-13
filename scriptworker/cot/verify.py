@@ -1097,6 +1097,7 @@ async def _get_additional_github_releases_jsone_context(decision_link):
                 'clone_url': "{}.git".format(repo_url),
                 'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
+                'name': repo_name,
             },
             'release': {
                 'tag_name': tag_name,
@@ -1140,6 +1141,7 @@ async def _get_additional_git_cron_jsone_context(decision_link):
                 'clone_url': repo,
                 'full_name': extract_github_repo_full_name(repo),
                 'html_url': repo,
+                'name': repo_name,
             },
             'release': {
                 'tag_name': revision,
@@ -1238,7 +1240,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
             'repository': {
                 'full_name': extract_github_repo_full_name(repo_url),
                 'html_url': repo_url,
-                'name': extract_github_repo_owner_and_name(repo_url)[1],
+                'name': repo_name,
                 'pushed_at': get_push_date_time(task, source_env_prefix),
             },
             'sender': {

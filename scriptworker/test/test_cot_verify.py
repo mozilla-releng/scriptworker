@@ -1367,6 +1367,7 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
                 'clone_url': 'https://github.com/mozilla-mobile/focus-android.git',
                 'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'name': 'focus-android',
             },
             'release': {
                 'tag_name': 'v9000.0.1',
@@ -1401,6 +1402,7 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
                 'clone_url': 'https://github.com/mozilla-mobile/focus-android',
                 'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'name': 'focus-android',
             },
             'release': {
                 'published_at': '2019-02-01T12:00:00.000Z',
@@ -1503,8 +1505,9 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
     github_repo_mock.get_pull_request.return_value = {
         'base': {
             'repo': {
-                'html_url': 'https://github.com/mozilla-mobile/focus-android',
                 'full_name': 'mozilla-mobile/focus-android',
+                'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'name': 'focus-android',
             },
         },
         'head': {
@@ -1546,12 +1549,14 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
             'repository': {
                 'full_name': 'mozilla-mobile/focus-android',
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                'name': 'focus-android',
             },
             'pull_request': {
                 'base': {
                     'repo': {
                         'full_name': 'mozilla-mobile/focus-android',
                         'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                        'name': 'focus-android',
                     },
                 },
                 'head': {
