@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [26.0.4] - 2019-09-13
+### Added
+- GitHub: support repo name
+
 ## [26.0.3] - 2019-09-06
 ### Added
 - CoT constants for `firefox-tv`
