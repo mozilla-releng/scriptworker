@@ -478,14 +478,6 @@ DEFAULT_CONFIG = frozendict({
             'application-services': 'APPSERVICES',
         })
     },
-    'extra_run_task_arguments': {
-        'by-cot-product': frozendict({
-            'firefox': (),
-            'thunderbird': ('--comm-checkout=',),
-            'mobile': (),
-            'application-services': (),
-        })
-    },
 })
 
 
