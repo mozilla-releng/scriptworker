@@ -1767,31 +1767,6 @@ async def verify_partials_task(chain, obj):
     pass
 
 
-# check_num_tasks {{{1
-def check_num_tasks(chain, task_count):
-    """Make sure there are a specific number of specific task types.
-
-    Currently we only check decision tasks.
-
-    Args:
-        chain (ChainOfTrust): the chain we're operating on
-        task_count (dict): mapping task type to the number of links.
-
-    Raises:
-        CoTError: on failure.
-
-    """
-    errors = []
-    # hardcode for now.  If we need a different set of constraints, either
-    # go by cot_product settings or by task_count['docker-image'] + 1
-    min_decision_tasks = 1
-    if task_count['decision'] < min_decision_tasks:
-        errors.append("{} decision tasks; we must have at least {}!".format(
-            task_count['decision'], min_decision_tasks
-        ))
-    raise_on_errors(errors)
-
-
 # verify_task_types {{{1
 async def verify_task_types(chain):
     """Verify the task type (e.g. decision, build) of each link in the chain.
@@ -2062,8 +2037,7 @@ async def verify_chain_of_trust(chain):
             # download all other artifacts needed to verify chain of trust
             await download_cot_artifacts(chain)
             # verify the task types, e.g. decision
-            task_count = await verify_task_types(chain)
-            check_num_tasks(chain, task_count)
+            await verify_task_types(chain)
             # verify the worker_impls, e.g. docker-worker
             await verify_worker_impls(chain)
             await trace_back_to_tree(chain)
