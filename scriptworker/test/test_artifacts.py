@@ -9,6 +9,7 @@ import os
 import pytest
 import tempfile
 
+import scriptworker.artifacts as swartifacts
 from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_encoding, upload_artifacts, \
     create_artifact, get_artifact_url, download_artifacts, compress_artifact_if_supported, \
     _craft_artifact_put_headers, get_upstream_artifacts_full_paths_per_task_id, \
@@ -377,3 +378,31 @@ def test_get_single_upstream_artifact_full_path(context):
 )))
 def test_get_optional_artifacts_per_task_id(upstream_artifacts, expected):
     assert get_optional_artifacts_per_task_id(upstream_artifacts) == expected
+
+
+# assert_is_parent {{{1
+@pytest.mark.parametrize("path, parent_path, raises", ((
+    "/foo/bar/baz", "/foo/bar", False
+), (
+    "/foo", "/foo/bar", True
+), (
+    "/foo/bar/..", "/foo/bar", True
+)))
+def test_assert_is_parent(path, parent_path, raises):
+    if raises:
+        with pytest.raises(ScriptWorkerTaskException):
+            swartifacts.assert_is_parent(path, parent_path)
+    else:
+        swartifacts.assert_is_parent(path, parent_path)
+
+
+def test_assert_is_parent_softlink(tmpdir):
+    """A softlink that points outside of a parent_dir is not under parent_dir."""
+    work_dir = os.path.join(tmpdir, "work")
+    external_dir = os.path.join(tmpdir, "external")
+    os.mkdir(work_dir)
+    os.mkdir(external_dir)
+    link = os.path.join(work_dir, "link")
+    os.symlink(external_dir, link)
+    with pytest.raises(ScriptWorkerTaskException):
+        swartifacts.assert_is_parent(link, work_dir)

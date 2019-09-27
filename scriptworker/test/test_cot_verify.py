@@ -2214,16 +2214,6 @@ async def test_verify_scriptworker_task_worker_impl(chain, build_link, func):
         await getattr(cotverify, func)(chain, build_link)
 
 
-# check_num_tasks {{{1
-@pytest.mark.parametrize("num,raises", ((1, False), (2, False), (3, False), (0, True)))
-def test_check_num_tasks(chain, num, raises):
-    if raises:
-        with pytest.raises(CoTError):
-            cotverify.check_num_tasks(chain, {'decision': num})
-    else:
-        cotverify.check_num_tasks(chain, {'decision': num})
-
-
 # verify_task_types {{{1
 @pytest.mark.asyncio
 async def test_verify_task_types(chain, decision_link, build_link, docker_image_link, mocker):
@@ -2416,8 +2406,7 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
     for func in ('build_task_dependencies', 'download_cot', 'download_cot_artifacts',
                  'verify_task_types', 'verify_worker_impls'):
         mocker.patch.object(cotverify, func, new=noop_async)
-    for func in ('verify_cot_signatures', 'check_num_tasks'):
-        mocker.patch.object(cotverify, func, new=noop_sync)
+    mocker.patch.object(cotverify, 'verify_cot_signatures', new=noop_sync)
     mocker.patch.object(cotverify, 'trace_back_to_tree', new=maybe_die)
     if exc:
         with pytest.raises(CoTError):

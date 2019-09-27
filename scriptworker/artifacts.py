@@ -12,6 +12,7 @@ import gzip
 import logging
 import mimetypes
 import os
+from pathlib import Path
 
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
@@ -294,6 +295,7 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
     for file_url in file_urls:
         rel_path = validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
+        assert_is_parent(abs_file_path, parent_dir)
         files.append(abs_file_path)
         tasks.append(
             asyncio.ensure_future(
@@ -396,7 +398,10 @@ def get_single_upstream_artifact_full_path(context, task_id, path):
         str: absolute path to the artifact should be.
 
     """
-    return os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id, path))
+    parent_dir = os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id))
+    full_path = os.path.join(parent_dir, path)
+    assert_is_parent(full_path, parent_dir)
+    return full_path
 
 
 def get_optional_artifacts_per_task_id(upstream_artifacts):
@@ -424,3 +429,20 @@ def get_optional_artifacts_per_task_id(upstream_artifacts):
             )
 
     return optional_artifacts_per_task_id
+
+
+def assert_is_parent(path, parent_dir):
+    """Raise ``ScriptworkerTaskException`` if ``path`` is not under ``parent_dir``.
+
+    Args:
+        path (str): the path to inspect.
+        parent_dir (str): the path that ``path`` should be under.
+
+    Raises:
+        ScriptworkerTaskException: if ``path`` is not under ``parent_dir``.
+
+    """
+    p1 = Path(os.path.realpath(path))
+    p2 = Path(os.path.realpath(parent_dir))
+    if p1 != p2 and p2 not in p1.parents:
+        raise ScriptWorkerTaskException("{} is not under {}!".format(p1, p2))
