@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [27.0.0] - 2019-09-27
+### Added
+- `assert_is_parent` to make sure a path is a subset of another path
+- `Context.verify_task` which checks for `..` in `upstreamArtifacts`
+
+### Changed
+- `download_artifacts` verifies the absolute path of the file is under the `parent_dir`
+- `get_single_upstream_artifact_full_path` verifies the full path is under the `parent_dir`
+
+### Removed
+- removed unused `extra_run_task_arguments`
+- removed extraneous `check_num_tasks`
+
 ## [26.0.4] - 2019-09-13
 ### Added
 - GitHub: support repo name
@@ -30,12 +43,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [25.0.0] - 2019-08-12
 ### Removed
 - Removed the following stub functions:
-  - verify_balrog_task
-  - verify_bouncer_task
-  - verify_pushapk_task
-  - verify_pushsnap_task
-  - verify_shipit_task
-  - verify_signing_task
+  - `verify_balrog_task`
+  - `verify_bouncer_task`
+  - `verify_pushapk_task`
+  - `verify_pushsnap_task`
+  - `verify_shipit_task`
+  - `verify_signing_task`
 ### Changed
 - Use `verify_scriptworker_task` for workers indirectly using it
 
