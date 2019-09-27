@@ -431,20 +431,18 @@ def get_optional_artifacts_per_task_id(upstream_artifacts):
     return optional_artifacts_per_task_id
 
 
-def assert_is_parent(path, parent_dir, exception=ScriptWorkerTaskException):
-    """Raise ``exception`` if ``path`` is not under ``parent_dir``.
+def assert_is_parent(path, parent_dir):
+    """Raise ``ScriptworkerTaskException`` if ``path`` is not under ``parent_dir``.
 
     Args:
         path (str): the path to inspect.
         parent_dir (str): the path that ``path`` should be under.
-        exception (Exception, optional): the exception to raise, if ``path``
-            is not under ``parent_dir``.
 
     Raises:
-        exception: if ``path`` is not under ``parent_dir``.
+        ScriptworkerTaskException: if ``path`` is not under ``parent_dir``.
 
     """
     p1 = Path(os.path.realpath(path))
     p2 = Path(os.path.realpath(parent_dir))
     if p1 != p2 and p2 not in p1.parents:
-        raise exception("{} is not under {}!".format(p1, p2))
+        raise ScriptWorkerTaskException("{} is not under {}!".format(p1, p2))
