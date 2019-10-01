@@ -360,6 +360,8 @@ DEFAULT_CONFIG = frozendict({
                 'project:mobile:firefox-tv:releng:signing:cert:production-signing': 'firefox-tv-repo',
             }),
             'mpd001': frozendict({
+                'project:releng:signing:cert:nightly-signing': 'mpd001-repo',
+                'project:releng:signing:cert:release-signing': 'mpd001-repo',
             }),
             'application-services': frozendict({
                 'project:mozilla:application-services:releng:beetmover:bucket:maven-production': 'application-services-repo',
@@ -479,7 +481,11 @@ DEFAULT_CONFIG = frozendict({
                     '/mozilla-mobile/firefox-tv',
                 ),
             }),
-            'mpd001': frozendict({}),
+            'mpd001': frozendict({
+                'mpd001-repo': (
+                    '/mozilla-services/guardian-vpn',
+                )
+            }),
             'application-services': frozendict({
                 'application-services-repo': (
                     '/mozilla/application-services',
