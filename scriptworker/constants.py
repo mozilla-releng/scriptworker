@@ -168,6 +168,10 @@ DEFAULT_CONFIG = frozendict({
                 # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
                 "aws-provisioner-v1/mobile-3-decision",
             ),
+            "mpd001": (
+                "aws-provisioner-v1/mpd001-1-decision",
+                "aws-provisioner-v1/mpd001-3-decision",
+            ),
             "application-services": (
                 "aws-provisioner-v1/app-services-1-decision",
                 "aws-provisioner-v1/app-services-3-decision",
@@ -191,6 +195,10 @@ DEFAULT_CONFIG = frozendict({
             "mobile": (
                 "aws-provisioner-v1/mobile-1-images",  # there is no mobile level 2.
                 "aws-provisioner-v1/mobile-3-images",
+            ),
+            "mpd001": (
+                "aws-provisioner-v1/mpd001-1-images",
+                "aws-provisioner-v1/mpd001-3-images",
             ),
             "application-services": (
                 "aws-provisioner-v1/app-services-1-images",
@@ -230,6 +238,13 @@ DEFAULT_CONFIG = frozendict({
                     r"^(?P<path>/mozilla-mobile/(?:android-components|focus-android|reference-browser|fenix|firefox-tv))(/|.git|$)",
                 ]),
             }),),
+            'mpd001': (frozendict({
+                "schemes": ("https", "ssh", ),
+                "netlocs": ("github.com", ),
+                "path_regexes": tuple([
+                    r"^(?P<path>/mozilla-services/(?:guardian-vpn))(/|.git|$)",
+                ]),
+            }),),
             'application-services': (frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
@@ -253,6 +268,12 @@ DEFAULT_CONFIG = frozendict({
                 'github-push',
                 'github-release',
             ),
+            'mpd001': (
+                'cron',
+                'github-pull-request',
+                'github-push',
+                'github-release',
+            ),
             'application-services': (
                 # On staging releases, level 1 docker images may be built in the pull-request graph
                 'github-pull-request',
@@ -268,6 +289,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': '',
             'thunderbird': '',
             'mobile': 'mozilla-mobile',
+            'mpd001': 'mozilla-services',
             'application-services': 'mozilla',
         }),
     },
@@ -336,6 +358,8 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:mobile:firefox-tv:releng:googleplay:product:firefox-tv': 'firefox-tv-repo',
                 'project:mobile:firefox-tv:releng:signing:cert:production-signing': 'firefox-tv-repo',
+            }),
+            'mpd001': frozendict({
             }),
             'application-services': frozendict({
                 'project:mozilla:application-services:releng:beetmover:bucket:maven-production': 'application-services-repo',
@@ -455,6 +479,7 @@ DEFAULT_CONFIG = frozendict({
                     '/mozilla-mobile/firefox-tv',
                 ),
             }),
+            'mpd001': frozendict({}),
             'application-services': frozendict({
                 'application-services-repo': (
                     '/mozilla/application-services',
@@ -467,6 +492,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': ('decision', 'action', 'docker-image'),
             'thunderbird': ('decision', 'action', 'docker-image'),
             'mobile': 'any',  # all allowed
+            'mpd001': 'any',  # all allowed
             'application-services': 'any',  # all allowed
         }),
     },
@@ -475,6 +501,7 @@ DEFAULT_CONFIG = frozendict({
             'firefox': 'GECKO',
             'thunderbird': 'COMM',
             'mobile': 'MOBILE',
+            'mpd001': 'MPD001',
             'application-services': 'APPSERVICES',
         })
     },

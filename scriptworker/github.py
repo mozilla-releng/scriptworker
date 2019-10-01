@@ -140,7 +140,7 @@ def is_github_url(url):
 
     """
     if isinstance(url, str):
-        return url.startswith('https://github.com/')
+        return url.startswith('https://github.com/') or url.startswith('ssh://github.com/')
     else:
         return False
 
