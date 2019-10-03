@@ -244,6 +244,7 @@ DEFAULT_CONFIG = frozendict({
                 "path_regexes": tuple([
                     r"^(?P<path>/mozilla-services/(?:guardian-vpn))(/|.git|$)",
                 ]),
+                "require_secret": True,
             }),),
             'application-services': (frozendict({
                 "schemes": ("https", "ssh", ),
@@ -360,8 +361,8 @@ DEFAULT_CONFIG = frozendict({
                 'project:mobile:firefox-tv:releng:signing:cert:production-signing': 'firefox-tv-repo',
             }),
             'mpd001': frozendict({
-                'project:releng:signing:cert:nightly-signing': 'mpd001-repo',
-                'project:releng:signing:cert:release-signing': 'mpd001-repo',
+                'project:mpd001:releng:signing:cert:nightly-signing': 'mpd001-repo',
+                'project:mpd001:releng:signing:cert:release-signing': 'mpd001-repo',
             }),
             'application-services': frozendict({
                 'project:mozilla:application-services:releng:beetmover:bucket:maven-production': 'application-services-repo',

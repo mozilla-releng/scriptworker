@@ -1211,6 +1211,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     source_env_prefix = context.config['source_env_prefix']
     task = decision_link.task
     repo_url = get_repo(task, source_env_prefix)
+    repo_url = repo_url.replace('git@github.com:', 'ssh://github.com/', 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     commit_hash = get_revision(task, source_env_prefix)
 
@@ -1378,10 +1379,12 @@ async def get_in_tree_template(link):
         ))
 
     auth = None
-    if any(
-        k.endswith('_SSH_SECRET_NAME')
-        for k in context.task.get('payload', {}).get('env', {}).keys()
-    ) and 'github.com' in source_url:
+    if (
+        any(
+            vcs_rule.get('require_secret')
+            for vcs_rule in context.config['trusted_vcs_rules']
+        )
+       ) and 'github.com' in source_url:
         newurl = re.sub(r'^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$',
                         r'https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>',
                         source_url)
