@@ -35,6 +35,7 @@ from scriptworker.github import (
     GitHubRepository,
     extract_github_repo_owner_and_name,
     extract_github_repo_full_name,
+    extract_github_repo_ssh_url,
 )
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
@@ -1237,11 +1238,15 @@ async def _get_additional_github_push_jsone_context(decision_link):
         'event': {
             'after': commit_hash,
             'pusher': {
-                'email': committer_email,
+                # Github was returning lowercase for ${event.pusher.email} for
+                # an intercaps e-mail, but we could not find any documentation
+                # for why.
+                'email': committer_email.lower(),
             },
             'ref': get_branch(task, source_env_prefix),
             'repository': {
                 'full_name': extract_github_repo_full_name(repo_url),
+                'ssh_url': extract_github_repo_ssh_url(repo_url),
                 'html_url': repo_url,
                 'name': repo_name,
                 'pushed_at': get_push_date_time(task, source_env_prefix),
