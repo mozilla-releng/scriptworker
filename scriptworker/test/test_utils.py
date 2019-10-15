@@ -383,7 +383,17 @@ def test_read_from_file(tmpdir, file_type, contents_or_path, expected, exception
 
 # download_file {{{1
 @pytest.mark.asyncio
-async def test_download_file(context, fake_session, tmpdir):
+@pytest.mark.parametrize("auth", (None, "someAuth"))
+async def test_download_file(context, fake_session, tmpdir, auth):
+    path = os.path.join(tmpdir, "foo")
+    await utils.download_file(context, "url", path, session=fake_session, auth=auth)
+    with open(path, "r") as fh:
+        contents = fh.read()
+    assert contents == "asdfasdf"
+
+
+@pytest.mark.asyncio
+async def test_download_file_no_auth(context, fake_session, tmpdir):
     path = os.path.join(tmpdir, "foo")
     await utils.download_file(context, "url", path, session=fake_session)
     with open(path, "r") as fh:
@@ -392,17 +402,19 @@ async def test_download_file(context, fake_session, tmpdir):
 
 
 @pytest.mark.asyncio
-async def test_download_file_exception(context, fake_session_500, tmpdir):
+@pytest.mark.parametrize("auth", (None, "someAuth"))
+async def test_download_file_exception(context, fake_session_500, tmpdir, auth):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(DownloadError):
-        await utils.download_file(context, "url", path, session=fake_session_500)
+        await utils.download_file(context, "url", path, session=fake_session_500, auth=auth)
 
 
 @pytest.mark.asyncio
-async def test_download_file_404(context, fake_session_404, tmpdir):
+@pytest.mark.parametrize("auth", (None, "someAuth"))
+async def test_download_file_404(context, fake_session_404, tmpdir, auth):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(Download404):
-        await utils.download_file(context, "url", path, session=fake_session_404)
+        await utils.download_file(context, "url", path, session=fake_session_404, auth=auth)
 
 
 # format_json {{{1
@@ -457,7 +469,12 @@ def test_load_json_or_yaml(string, is_path, exception, raises, result):
     False, "yaml"
 )))
 async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type, tmpdir):
-    mocker.patch.object(utils, 'retry_async', new=noop_async)
+    called_with_auth = []
+    async def mocked_download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None):
+        called_with_auth.append(auth == "someAuth")
+        return
+
+    mocker.patch.object(utils, 'download_file', new=mocked_download_file)
     path = os.path.join(tmpdir, "bad.{}".format(file_type))
     shutil.copyfile(
         os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
@@ -466,6 +483,44 @@ async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type,
     assert await utils.load_json_or_yaml_from_url(
         context, "", path, overwrite=overwrite
     ) == {"credentials": ["blah"]}
+    if not overwrite:
+        assert len(called_with_auth) == 1
+        assert called_with_auth[0] == False
+    else:
+        assert len(called_with_auth) == 0
+
+
+# load_json_or_yaml_from_url {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("overwrite,file_type", ((
+    True, "json"
+), (
+    False, "json"
+), (
+    True, "yaml"
+), (
+    False, "yaml"
+)))
+async def test_load_json_or_yaml_from_url_auth(context, mocker, overwrite, file_type, tmpdir):
+    called_with_auth = []
+    async def mocked_download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None):
+        called_with_auth.append(auth == "someAuth")
+        return
+
+    mocker.patch.object(utils, 'download_file', new=mocked_download_file)
+    path = os.path.join(tmpdir, "bad.{}".format(file_type))
+    shutil.copyfile(
+        os.path.join(os.path.dirname(__file__), 'data', 'bad.json'),
+        path
+    )
+    assert await utils.load_json_or_yaml_from_url(
+        context, "", path, overwrite=overwrite, auth="someAuth",
+    ) == {"credentials": ["blah"]}
+    if not overwrite:
+        assert len(called_with_auth) == 1
+        assert called_with_auth[0] == True
+    else:
+        assert len(called_with_auth) == 0
 
 
 # get_loggable_url {{{1

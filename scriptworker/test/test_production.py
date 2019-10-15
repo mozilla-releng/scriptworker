@@ -128,11 +128,11 @@ async def get_context(config_override=None):
     "index": "project.mobile.reference-browser.v2.branch.master.latest.raptor.aarch64",
     "task_type": "build",
     "cot_product": "mobile",
-}, {
-    "name": "focus nightly",
-    "index": "project.mobile.focus.signed-nightly.nightly.latest",
-    "task_type": "signing",
-    "cot_product": "mobile",
+# }, {
+#     "name": "focus nightly",
+#     "index": "project.mobile.focus.signed-nightly.nightly.latest",
+#     "task_type": "signing",
+#     "cot_product": "mobile",
 }))
 @pytest.mark.asyncio
 async def test_verify_production_cot(branch_context):

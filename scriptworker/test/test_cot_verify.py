@@ -1474,6 +1474,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
                 'name': 'focus-android',
                 'pushed_at': '1549022400',
+                'ssh_url': 'git@github.com:mozilla-mobile/focus-android.git',
             },
             'sender': {
                 'login': 'some-user',
@@ -2304,6 +2305,30 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     "https://example.com/blah/comm",
     'COMM',
     False,
+), (
+    {
+        'payload': {
+            'env': {
+                'PVT_HEAD_REPOSITORY': 'https://github.com/blah/blah.git',
+            },
+        },
+        'metadata': {'source': 'https://github.com/blah/blah'}
+    },
+    "https://github.com/blah/blah",
+    'PVT',
+    False,
+), (
+    {
+        'payload': {
+            'env': {
+                'PVT_HEAD_REPOSITORY': 'git@github.com:blah/blah.git',
+            },
+        },
+        'metadata': {'source': 'https://github.com/blah/blah'}
+    },
+    "https://github.com/blah/blah",
+    'PVT',
+    False,
 )))
 def test_get_source_url(task, expected, source_env_prefix, raises):
     obj = MagicMock()
@@ -2417,7 +2442,10 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
-def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
+@pytest.mark.parametrize("use_github_token", (False, True))
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_token, monkeypatch):
+    if use_github_token:
+        monkeypatch.setenv('SCRIPTWORKER_GITHUB_OAUTH_TOKEN', "sometoken")
     context = MagicMock()
     context.queue = MagicMock()
     context.queue.task = noop_async
@@ -2434,6 +2462,8 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
         m = MagicMock()
         m.links = [MagicMock()]
         m.dependent_task_ids = noop_sync
+        if use_github_token:
+            assert context.config['github_oauth_token'] == "sometoken"
         return m
 
     mocker.patch.object(tempfile, 'mkdtemp', new=mkdtemp)

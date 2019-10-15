@@ -3,6 +3,7 @@
 import re
 
 from github3 import GitHub
+import logging
 
 from scriptworker.exceptions import ConfigError
 from scriptworker.utils import (
@@ -13,6 +14,8 @@ from scriptworker.utils import (
 
 _GIT_FULL_HASH_PATTERN = re.compile(r'^[0-9a-f]{40}$')
 _branch_commits_cache = {}
+
+log = logging.getLogger(__name__)
 
 
 class GitHubRepository():
