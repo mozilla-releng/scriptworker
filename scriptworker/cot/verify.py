@@ -2060,7 +2060,7 @@ async def _async_verify_cot_cmdln(opts, tmp):
         context.queue = context.queue or Queue(
             session=session,
             options={
-                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://taskcluster.net'),
+                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://stage.taskcluster.nonprod.cloudops.mozgcp.net'),
             },
         )
         context.task = await context.queue.task(opts.task_id)
@@ -2135,7 +2135,7 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.queue = queue or context.queue or Queue(
             session=session,
             options={
-                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://taskcluster.net'),
+                'rootUrl': os.environ.get('TASKCLUSTER_ROOT_URL', 'https://stage.taskcluster.nonprod.cloudops.mozgcp.net'),
             },
         )
         context.task = await context.queue.task(task_id)

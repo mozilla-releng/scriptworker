@@ -30,7 +30,7 @@ STATUSES = {
 # When adding new complex config, make sure all `list`s are `tuple`s, and all
 # `dict`s are `frozendict`s!  (This should get caught by config tests.)
 DEFAULT_CONFIG = frozendict({
-    "taskcluster_root_url": "https://taskcluster.net",
+    "taskcluster_root_url": "https://stage.taskcluster.nonprod.cloudops.mozgcp.net",
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
     "worker_group": "test-dummy-workers",
