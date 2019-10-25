@@ -1393,9 +1393,8 @@ async def get_in_tree_template(link):
         newurl = re.sub(r'^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$',
                         r'https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>',
                         source_url)
-        if newurl != source_url:
-            log.info("Converted source_url ({}) to new url ({})".format(source_url, newurl))
-            source_url = newurl
+        log.info("Converted source_url ({}) to new url ({})".format(source_url, newurl))
+        source_url = newurl
         if context.config.get('github_oauth_token'):
             auth = aiohttp.BasicAuth(context.config['github_oauth_token'])
     tmpl = await load_json_or_yaml_from_url(
