@@ -1747,8 +1747,8 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
-    "decision", "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV2_DIR, "decision_github_private.json"),
-    "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV2_DIR, "decision_github_private.json"),
+    "decision", "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV4_DIR, "decision_github_private.json"),
+    "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV4_DIR, "decision_github_private.json"),
 ),
 ))
 async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
@@ -1777,7 +1777,7 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
                 'committer': {'login': 'Callek'},
                 }
 
-    async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
+    async def mocked_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs):
         if path.endswith("taskcluster.yml"):
             assert kwargs.get('auth')
             assert isinstance(kwargs['auth'], aiohttp.BasicAuth)
@@ -1788,9 +1788,9 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
         raise NotImplementedError()
 
     mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=mocked_load_url)
-    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv2_load_url)
-    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv2_load)
-    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv2_pushlog)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
     mocker.patch.object(cotverify, 'GitHubRepository', new=MockedGitHubRepository)
 
     mpd_chain.links = list(set([decision_link, link]))
