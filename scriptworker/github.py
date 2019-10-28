@@ -3,6 +3,7 @@
 import re
 
 from github3 import GitHub
+import logging
 
 from scriptworker.exceptions import ConfigError
 from scriptworker.utils import (
@@ -13,6 +14,8 @@ from scriptworker.utils import (
 
 _GIT_FULL_HASH_PATTERN = re.compile(r'^[0-9a-f]{40}$')
 _branch_commits_cache = {}
+
+log = logging.getLogger(__name__)
 
 
 class GitHubRepository():
@@ -113,6 +116,15 @@ class GitHubRepository():
             revision = self.get_tag_hash(tag_name=revision)
 
         repo = self._github_repository.html_url
+        if any(
+            vcs_rule.get('require_secret')
+            for vcs_rule in context.config['trusted_vcs_rules']
+        ):
+            # This check uses unofficial API on github, which we can't easily
+            # check for private repos, assume its true in the private case.
+            log.info("has_commit_landed_on_repository() not implemented for private"
+                     "repositories, assume True")
+            return True
 
         url = '/'.join([repo.rstrip('/'), 'branch_commits', revision])
         from scriptworker.task import get_decision_task_id
@@ -140,7 +152,7 @@ def is_github_url(url):
 
     """
     if isinstance(url, str):
-        return url.startswith('https://github.com/')
+        return url.startswith('https://github.com/') or url.startswith('ssh://github.com/')
     else:
         return False
 
@@ -183,6 +195,23 @@ def extract_github_repo_full_name(url):
 
     """
     return '/'.join(extract_github_repo_owner_and_name(url))
+
+
+def extract_github_repo_ssh_url(url):
+    """Given an URL, return the ssh url.
+
+    Args:
+        url (str): The URL to the GitHub repository
+
+    Raises:
+        ValueError: on url that aren't from github
+
+    Returns:
+        str: the ssh url
+
+    """
+    return "git@github.com:{}.git".format(
+        extract_github_repo_full_name(url))
 
 
 def extract_github_repo_and_revision_from_source_url(url):

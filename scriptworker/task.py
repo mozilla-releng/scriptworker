@@ -463,6 +463,8 @@ async def is_pull_request(context, task):
         if not repo_url and can_skip:
             continue
 
+        repo_url = repo_url.replace('git@github.com:', 'ssh://github.com/', 1)
+
         repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
         conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
 

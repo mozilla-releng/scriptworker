@@ -269,6 +269,15 @@ async def mobile_rw_context(event_loop):
             yield context
 
 
+@pytest.mark.asyncio
+@pytest.yield_fixture(scope='function')
+async def mpd_rw_context(event_loop):
+    async with aiohttp.ClientSession() as session:
+        with tempfile.TemporaryDirectory() as tmp:
+            context = _craft_rw_context(tmp, event_loop, cot_product='mpd001', session=session)
+            yield context
+
+
 def _craft_rw_context(tmp, event_loop, cot_product, session):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config['cot_product'] = cot_product

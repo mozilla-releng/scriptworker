@@ -4,14 +4,24 @@ import pytest
 
 from unittest.mock import MagicMock, patch
 
+from . import mobile_rw_context, mpd_rw_context
 from scriptworker import github
 from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
 
 
 @pytest.yield_fixture(scope='function')
-def context():
-    ctx = Context()
+def context(mobile_rw_context):
+    ctx = mobile_rw_context
+    ctx.task = {
+        'taskGroupId': 'bobo',
+    }
+    yield ctx
+
+
+@pytest.yield_fixture(scope='function')
+def mpd_context(mpd_rw_context):
+    ctx = mpd_rw_context
     ctx.task = {
         'taskGroupId': 'bobo',
     }
@@ -175,6 +185,20 @@ async def test_has_commit_landed_on_repository(context, github_repository, commi
 
 
 @pytest.mark.asyncio
+async def test_has_commit_landed_on_repository_private(mpd_context, github_repository):
+    """For private repos we don't actually query against github.
+
+    The API used is not formally available and needs authorization on private repos, but isn't clearly useful
+    to try to use for this case.
+    """
+    commitish = '06789abcdf0123ef01123456789abcde45234569'
+    async def retry_request(_, url):
+        assert False, "We should never have made a request"
+
+    assert await github_repository.has_commit_landed_on_repository(mpd_context, commitish) == True
+
+
+@pytest.mark.asyncio
 async def test_has_commit_landed_on_repository_cache(context, github_repository):
     is_cached = False
     async def retry_request(_, _url):
@@ -202,6 +226,12 @@ async def test_has_commit_landed_on_repository_cache(context, github_repository)
     'https://hg.mozilla.org', False
 ), (
     None, False
+), (
+    'ssh://hg.mozilla.org/some-repo', False
+), (
+    'ssh://github.com/some-user', True
+), (
+    'ssh://github.com/some-user/some-repo.git', True
 )))
 def test_is_github_url(url, expected):
     assert github.is_github_url(url) == expected
@@ -253,6 +283,31 @@ def test_extract_github_repo_full_name(repo_url, expected, raises):
             github.extract_github_repo_full_name(repo_url)
     else:
         assert github.extract_github_repo_full_name(repo_url) == expected
+
+
+@pytest.mark.parametrize('repo_url, expected, raises', ((
+    'https://github.com/mozilla-mobile/android-components',
+    'git@github.com:mozilla-mobile/android-components.git', False
+), (
+    'https://github.com/mozilla-mobile/android-components.git',
+    'git@github.com:mozilla-mobile/android-components.git', False
+), (
+    'https://github.com/JohanLorenzo/android-components',
+    'git@github.com:JohanLorenzo/android-components.git', False
+), (
+    'https://github.com/JohanLorenzo/android-components/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml',
+    'git@github.com:JohanLorenzo/android-components.git', False
+), (
+    'https://hg.mozilla.org/mozilla-central',
+    None, True
+)))
+def test_extract_github_repo_ssh_url(repo_url, expected, raises):
+    if raises:
+        with pytest.raises(ValueError):
+            github.extract_github_repo_ssh_url(repo_url)
+    else:
+        assert github.extract_github_repo_ssh_url(repo_url) == expected
+
 
 
 @pytest.mark.parametrize('repo_url, expected_user, expected_repo_name, raises', ((

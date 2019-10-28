@@ -16,6 +16,7 @@ import jsone
 import logging
 import os
 import pprint
+import re
 import sys
 import tempfile
 from urllib.parse import urlparse
@@ -34,6 +35,7 @@ from scriptworker.github import (
     GitHubRepository,
     extract_github_repo_owner_and_name,
     extract_github_repo_full_name,
+    extract_github_repo_ssh_url,
 )
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
@@ -1170,6 +1172,7 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     source_env_prefix = context.config['source_env_prefix']
     task = decision_link.task
     repo_url = get_repo(task, source_env_prefix)
+    repo_url = repo_url.replace('git@github.com:', 'ssh://github.com/', 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     pull_request_number = get_pull_request_number(task, source_env_prefix)
     token = context.config['github_oauth_token']
@@ -1209,6 +1212,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     source_env_prefix = context.config['source_env_prefix']
     task = decision_link.task
     repo_url = get_repo(task, source_env_prefix)
+    repo_url = repo_url.replace('git@github.com:', 'ssh://github.com/', 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     commit_hash = get_revision(task, source_env_prefix)
 
@@ -1234,11 +1238,15 @@ async def _get_additional_github_push_jsone_context(decision_link):
         'event': {
             'after': commit_hash,
             'pusher': {
-                'email': committer_email,
+                # Github was returning lowercase for ${event.pusher.email} for
+                # an intercaps e-mail, but we could not find any documentation
+                # for why.
+                'email': committer_email.lower(),
             },
             'ref': get_branch(task, source_env_prefix),
             'repository': {
                 'full_name': extract_github_repo_full_name(repo_url),
+                'ssh_url': extract_github_repo_ssh_url(repo_url),
                 'html_url': repo_url,
                 'name': repo_name,
                 'pushed_at': get_push_date_time(task, source_env_prefix),
@@ -1304,7 +1312,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         'taskId': None
     }
 
-    if chain.context.config['cot_product'] in ('mobile', 'application-services'):
+    if chain.context.config['cot_product'] in ('mobile', 'mpd001', 'application-services'):
         if tasks_for == 'github-release':
             jsone_context.update(
                 await _get_additional_github_releases_jsone_context(decision_link)
@@ -1374,10 +1382,26 @@ async def get_in_tree_template(link):
         raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(
             link.name, source_url
         ))
+
+    auth = None
+    if (
+        any(
+            vcs_rule.get('require_secret')
+            for vcs_rule in context.config['trusted_vcs_rules']
+        )
+       ) and 'github.com' in source_url:
+        newurl = re.sub(r'^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$',
+                        r'https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>',
+                        source_url)
+        log.info("Converted source_url ({}) to new url ({})".format(source_url, newurl))
+        source_url = newurl
+        if context.config.get('github_oauth_token'):
+            auth = aiohttp.BasicAuth(context.config['github_oauth_token'])
     tmpl = await load_json_or_yaml_from_url(
         context, source_url, os.path.join(
             context.config["work_dir"], "{}_taskcluster.yml".format(link.name)
-        )
+        ),
+        auth=auth,
     )
     return tmpl
 
@@ -1879,6 +1903,10 @@ def verify_repo_matches_url(repo, url):
         bool: ``True`` if the repo matches the url.
 
     """
+    # Translate git@github.com:... to a path:
+    repo = repo.replace('git@github.com:', 'ssh://github.com/', 1)
+    if repo.endswith('.git'):
+        repo = repo[:-4]
     repo_parts = urlparse(repo)
     url_parts = urlparse(url)
     errors = []
@@ -2072,6 +2100,9 @@ async def _async_verify_cot_cmdln(opts, tmp):
             'verify_cot_signature': opts.verify_sigs,
         })
         context.config = apply_product_config(context.config)
+        if os.environ.get('SCRIPTWORKER_GITHUB_OAUTH_TOKEN'):
+            context.config['github_oauth_token'] = \
+                os.environ.get('SCRIPTWORKER_GITHUB_OAUTH_TOKEN')
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
         await verify_chain_of_trust(cot)
         log.info(format_json(cot.dependent_task_ids()))
@@ -2102,7 +2133,10 @@ but does run the other tests in `scriptworker.cot.verify.verify_chain_of_trust`.
 This is helpful in debugging chain of trust changes or issues.
 
 To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6N
-or in the CREDS_FILES http://bit.ly/2fVMu0A""")
+or in the CREDS_FILES http://bit.ly/2fVMu0A
+
+If you are verifying against a private github repo, please also set in environment
+SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the repo""")
     parser.add_argument('task_id', help='the task id to test')
     parser.add_argument('--task-type', help='the task type to test',
                         choices=sorted(get_valid_task_types().keys()), required=True)

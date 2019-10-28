@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify
 """
+import aiohttp
 from copy import deepcopy
 from frozendict import frozendict
 import json
@@ -24,7 +25,7 @@ from scriptworker.utils import (
     read_from_file,
     write_to_file,
 )
-from . import noop_async, noop_sync, rw_context, mobile_rw_context, tmpdir, touch
+from . import noop_async, noop_sync, rw_context, mobile_rw_context, mpd_rw_context, tmpdir, touch
 
 
 assert rw_context, tmpdir  # silence pyflakes
@@ -93,6 +94,20 @@ def mobile_chain_pull_request(mobile_rw_context):
     chain.context.config['github_oauth_token'] = 'fakegithubtoken'
     chain.context.task['payload']['env'] = {
         'MOBILE_HEAD_REPOSITORY': 'https://github.com/JohanLorenzo/focus-android',
+    }
+    yield chain
+
+
+@pytest.yield_fixture(scope='function')
+def mpd_chain(mpd_rw_context):
+    chain = _craft_chain(
+        mpd_rw_context,
+        scopes=['project:mpd001:releng:signing:cert:release-signing', 'ignoreme'],
+        source_url='https://github.com/mozilla-foobar/private-repo/raw/somerevision/.taskcluster.yml'
+    )
+    chain.context.config['github_oauth_token'] = 'fakegithubtoken'
+    chain.context.task['payload']['env'] = {
+        'MPD001_HEAD_REPOSITORY': 'https://github.com/mozilla-services/guardian-vpn',
     }
     yield chain
 
@@ -1474,6 +1489,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
                 'html_url': 'https://github.com/mozilla-mobile/focus-android',
                 'name': 'focus-android',
                 'pushed_at': '1549022400',
+                'ssh_url': 'git@github.com:mozilla-mobile/focus-android.git',
             },
             'sender': {
                 'login': 'some-user',
@@ -1727,6 +1743,95 @@ async def test_verify_parent_task_definition(chain, name, task_id, path,
     await cotverify.verify_parent_task_definition(
         chain, link
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name,task_id,path,decision_task_id,decision_path", ((
+    "decision", "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV4_DIR, "decision_github_private.json"),
+    "VUTfOIPFQWaGHf7sIbgTEg", os.path.join(COTV4_DIR, "decision_github_private.json"),
+),
+))
+async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
+                                                 decision_task_id, decision_path, mocker):
+    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+    link.task = load_json_or_yaml(path, is_path=True)
+    if task_id == decision_task_id:
+        decision_link = link
+    else:
+        decision_link = cotverify.LinkOfTrust(mpd_chain.context, 'decision', decision_task_id)
+        decision_link.task = load_json_or_yaml(decision_path, is_path=True)
+
+    class MockedGitHubRepository(object):
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def get_commit(self, commit):
+            assert commit == "330ea928b42ff2403fc99cd3e596d13294fe8775"
+            # Return minimal information necessary for jsone rebuild
+            return {
+                'author': {'login': 'Callek'},
+                'commit': {
+                    'author': {'email': 'Callek@gmail.com'},
+                    'committer': {'email': 'Callek@gmail.com'},
+                    },
+                'committer': {'login': 'Callek'},
+                }
+
+    async def mocked_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs):
+        if path.endswith("taskcluster.yml"):
+            assert kwargs.get('auth')
+            assert isinstance(kwargs['auth'], aiohttp.BasicAuth)
+            assert kwargs['auth'].login == 'fakegithubtoken'
+            return load_json_or_yaml(
+                os.path.join(parent_path, "private_github_.taskcluster.yml"), is_path=True, file_type='yaml'
+            )
+        raise NotImplementedError()
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=mocked_load_url)
+    mocker.patch.object(swcontext, 'load_json_or_yaml_from_url', new=cotv4_load_url)
+    mocker.patch.object(cotverify, 'load_json_or_yaml', new=cotv4_load)
+    mocker.patch.object(cotverify, 'get_pushlog_info', new=cotv4_pushlog)
+    mocker.patch.object(cotverify, 'GitHubRepository', new=MockedGitHubRepository)
+
+    mpd_chain.links = list(set([decision_link, link]))
+    await cotverify.verify_parent_task_definition(
+        mpd_chain, link
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("use_auth", (None, True))
+@pytest.mark.parametrize("source_url,expected_url", (
+    ("https://github.com/mozilla-services/guardian-vpn/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+     "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml"),
+    ("ssh://git@github.com/mozilla-services/guardian-vpn/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+     "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml"),
+    ("https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml",
+     "https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml"),
+))
+async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, source_url, expected_url):
+
+    name = "decision"
+    task_id = "VUTfOIPFQWaGHf7sIbgTEg"
+    if not use_auth:
+        del mpd_chain.context.config['github_oauth_token']
+    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+
+    async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
+        assert url == expected_url
+        if use_auth and 'github.com' in source_url:
+            assert kwargs.get('auth')
+            assert isinstance(kwargs['auth'], aiohttp.BasicAuth)
+            assert kwargs['auth'].login == 'fakegithubtoken'
+            return "some_template"
+        else:
+            assert not kwargs.get('auth')
+            return "some_template_no_auth"
+
+    mocker.patch.object(cotverify, 'load_json_or_yaml_from_url', new=mocked_load_url)
+    mocker.patch.object(cotverify, 'get_source_url', new=lambda x: source_url)
+
+    await cotverify.get_in_tree_template(link)
 
 
 @pytest.mark.asyncio
@@ -2304,6 +2409,30 @@ async def test_verify_worker_impls(chain, decision_link, build_link,
     "https://example.com/blah/comm",
     'COMM',
     False,
+), (
+    {
+        'payload': {
+            'env': {
+                'PVT_HEAD_REPOSITORY': 'https://github.com/blah/blah.git',
+            },
+        },
+        'metadata': {'source': 'https://github.com/blah/blah'}
+    },
+    "https://github.com/blah/blah",
+    'PVT',
+    False,
+), (
+    {
+        'payload': {
+            'env': {
+                'PVT_HEAD_REPOSITORY': 'git@github.com:blah/blah.git',
+            },
+        },
+        'metadata': {'source': 'https://github.com/blah/blah'}
+    },
+    "https://github.com/blah/blah",
+    'PVT',
+    False,
 )))
 def test_get_source_url(task, expected, source_env_prefix, raises):
     obj = MagicMock()
@@ -2417,7 +2546,10 @@ async def test_verify_chain_of_trust(chain, exc, mocker):
 
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
-def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
+@pytest.mark.parametrize("use_github_token", (False, True))
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_token, monkeypatch):
+    if use_github_token:
+        monkeypatch.setenv('SCRIPTWORKER_GITHUB_OAUTH_TOKEN', "sometoken")
     context = MagicMock()
     context.queue = MagicMock()
     context.queue.task = noop_async
@@ -2434,6 +2566,8 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop):
         m = MagicMock()
         m.links = [MagicMock()]
         m.dependent_task_ids = noop_sync
+        if use_github_token:
+            assert context.config['github_oauth_token'] == "sometoken"
         return m
 
     mocker.patch.object(tempfile, 'mkdtemp', new=mkdtemp)
