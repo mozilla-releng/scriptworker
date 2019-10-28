@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [27.1.0] - 2019-10-28
+### Added
+- added `mpd001` CoT support
+- added `xpi` CoT support
+- added github action CoT support
+- added `require_secret` in trusted vcs config
+- added support for private github repos in CoT verification
+
+### Changed
+- `git@github.com` urls will now be translated to `ssh://github.com/` for the purposes of CoT
+- we now trust the github task email, because we can't verify alternate emails
+- `download_file` now takes an `auth` kwarg
+- `load_json_or_yaml_from_url` now takes an `auth` kwarg
+
+### Removed
+- removed Focus Nightly from `test_production` for continued bustage due to force pushes
+
 ## [27.0.0] - 2019-09-27
 ### Added
 - `assert_is_parent` to make sure a path is a subset of another path

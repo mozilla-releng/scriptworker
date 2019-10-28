@@ -127,6 +127,7 @@ def _craft_chain(context, scopes, source_url='https://hg.mozilla.org/mozilla-cen
         },
         'metadata': {
             'source': source_url,
+            'owner': 'foo@example.tld',
         },
     }
     # decision_task_id
@@ -166,6 +167,7 @@ def _craft_build_link(chain, source_url='https://hg.mozilla.org/mozilla-central'
         'dependencies': ['some_task_id'],
         'metadata': {
             'source': source_url,
+            'owner': 'foo@example.tld',
         },
         'payload': {
             'artifacts': {
@@ -206,6 +208,14 @@ def decision_link(chain):
 @pytest.yield_fixture(scope='function')
 def cron_link(chain):
     yield _craft_decision_link(chain, tasks_for='cron')
+
+
+@pytest.yield_fixture(scope='function')
+def github_action_link(mobile_chain):
+    link = cotverify.LinkOfTrust(mobile_chain.context, 'action', 'action_task_id')
+    with open(os.path.join(COTV4_DIR, "action_github.json")) as fh:
+        link.task = json.load(fh)
+    yield link
 
 
 @pytest.yield_fixture(scope='function')
@@ -293,6 +303,7 @@ def _craft_decision_link(chain, *, tasks_for, source_url='https://hg.mozilla.org
         'scopes': [],
         'metadata': {
             'source': source_url,
+            'owner': 'foo@example.tld',
         },
         'payload': {
             'image': "blah",
@@ -1481,7 +1492,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
         'event': {
             'after': 'somerevision',
             'pusher': {
-                'email': 'some-user@email.tld',
+                'email': 'foo@example.tld',
             },
             'ref': 'refs/heads/some-branch',
             'repository': {
@@ -1499,6 +1510,24 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
         'ownTaskId': 'decision_task_id',
         'taskId': None,
         'tasks_for': 'github-push',
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_additional_git_action_jsone_context(github_action_link):
+    jsone_context = await cotverify._get_additional_git_action_jsone_context(None, github_action_link)
+    assert jsone_context == {
+        "taskGroupId": "decision_task_id",
+        "taskId": None,
+        "input": {
+            "build_number": 1,
+            "do_not_optimize": [],
+            "previous_graph_ids": [],
+            "rebuild_kinds": [],
+            "release_promotion_flavor": "build",
+            "version": "",
+            "xpi_name": "multipreffer",
+        },
     }
 
 
@@ -1607,6 +1636,30 @@ async def test_populate_jsone_context_fail(mobile_chain, mobile_github_release_l
         await cotverify.populate_jsone_context(
             mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for='bad-tasks-for'
         )
+
+
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github_action(mocker, mobile_chain, mobile_github_push_link, github_action_link):
+    context = await cotverify.populate_jsone_context(
+        mobile_chain, github_action_link, mobile_github_push_link, tasks_for='action'
+    )
+    del context['as_slugid']
+    assert context == {
+        'now': '2019-10-21T23:36:07.490Z',
+        'ownTaskId': 'action_task_id',
+        'taskId': None,
+        'tasks_for': 'action',
+        "taskGroupId": "decision_task_id",
+        "input": {
+            "build_number": 1,
+            "do_not_optimize": [],
+            "previous_graph_ids": [],
+            "rebuild_kinds": [],
+            "release_promotion_flavor": "build",
+            "version": "",
+            "xpi_name": "multipreffer",
+        },
+    }
 
 
 # get_action_context_and_template {{{1
