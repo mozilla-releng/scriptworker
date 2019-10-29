@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [27.2.0] - 2019-10-29
+### Added
+- worker-manager based decision and docker image worker pools are supported
+
 ## [27.1.0] - 2019-10-28
 ### Added
 - added `mpd001` CoT support
