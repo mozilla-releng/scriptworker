@@ -153,11 +153,17 @@ DEFAULT_CONFIG = frozendict({
                 "aws-provisioner-v1/gecko-1-decision",
                 "aws-provisioner-v1/gecko-2-decision",
                 "aws-provisioner-v1/gecko-3-decision",
+                "gecko-1/decision",
+                "gecko-2/decision",
+                "gecko-3/decision",
             ),
             "thunderbird": (
                 "aws-provisioner-v1/gecko-1-decision",
                 "aws-provisioner-v1/gecko-2-decision",
                 "aws-provisioner-v1/gecko-3-decision",
+                "comm-1/decision",
+                "comm-2/decision",
+                "comm-3/decision",
             ),
             "mobile": (
                 # gecko-focus was for mozilla-mobile releases (bug 1455290) for more details.
@@ -167,18 +173,26 @@ DEFAULT_CONFIG = frozendict({
                 # We haven't had the need for mobile-2-decision yet
                 # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
                 "aws-provisioner-v1/mobile-3-decision",
+                "mobile-1/decision",
+                "mobile-3/decision",
             ),
             "mpd001": (
                 "aws-provisioner-v1/mpd001-1-decision",
                 "aws-provisioner-v1/mpd001-3-decision",
+                "mpd001-1/decision",
+                "mpd001-3/decision",
             ),
             "application-services": (
                 "aws-provisioner-v1/app-services-1-decision",
                 "aws-provisioner-v1/app-services-3-decision",
+                "app-services-1/decision",
+                "app-services-3/decision",
             ),
             "xpi": (
                 "aws-provisioner-v1/xpi-1-decision",
                 "aws-provisioner-v1/xpi-3-decision",
+                "xpi-1/decision",
+                "xpi-3/decision",
             ),
         }),
     }),
@@ -190,27 +204,41 @@ DEFAULT_CONFIG = frozendict({
                 "aws-provisioner-v1/gecko-1-images",
                 "aws-provisioner-v1/gecko-2-images",
                 "aws-provisioner-v1/gecko-3-images",
+                "gecko-1/images",
+                "gecko-2/images",
+                "gecko-3/images",
             ),
             "thunderbird": (
                 "aws-provisioner-v1/gecko-1-images",
                 "aws-provisioner-v1/gecko-2-images",
                 "aws-provisioner-v1/gecko-3-images",
+                "comm-1/images",
+                "comm-2/images",
+                "comm-3/images",
             ),
             "mobile": (
                 "aws-provisioner-v1/mobile-1-images",  # there is no mobile level 2.
                 "aws-provisioner-v1/mobile-3-images",
+                "mobile-1/images",
+                "mobile-3/images",
             ),
             "mpd001": (
                 "aws-provisioner-v1/mpd001-1-images",
                 "aws-provisioner-v1/mpd001-3-images",
+                "mpd001-1/images",
+                "mpd001-3/images",
             ),
             "application-services": (
                 "aws-provisioner-v1/app-services-1-images",
                 "aws-provisioner-v1/app-services-3-images",
+                "app-services-1/images",
+                "app-services-3/images",
             ),
             "xpi": (
                 "aws-provisioner-v1/xpi-1-images",
                 "aws-provisioner-v1/xpi-3-images",
+                "xpi-1/images",
+                "xpi-3/images",
             ),
         }),
     }),
