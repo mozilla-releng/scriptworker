@@ -110,11 +110,21 @@ DEFAULT_CONFIG = frozendict({
     "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
 
     # for download url validation.  The regexes need to define a 'filepath'.
-    'valid_artifact_rules': (frozendict({
-        "schemes": ("https", ),
-        "netlocs": ("queue.taskcluster.net", ),
-        "path_regexes": (r"^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
-    }), ),
+    'valid_artifact_rules': (
+        frozendict({
+            "schemes": ("https", ),
+            "netlocs": ("queue.taskcluster.net", ),
+            "path_regexes": (r"^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
+        }),
+        frozendict({
+            "schemes": ("https", ),
+            "netlocs": (
+                "firefox-ci-tc.services.mozilla.com",
+                "stage.taskcluster.nonprod.cloudops.mozgcp.net",
+            ),
+            "path_regexes": (r"^/api/queue/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$", ),
+        }),
+    ),
 
     # scriptworker identification
     "scriptworker_worker_pools": (
