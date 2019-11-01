@@ -198,7 +198,7 @@ def test_get_worker_type(task, result):
 ), (
     "https://hg.mozilla.org/projects/foo", "foo", True, "firefox"
 ), (
-    "https://hg.mozilla.org/releases/mozilla-esr60", "mozilla-esr60", False, "firefox"
+    "https://hg.mozilla.org/releases/mozilla-esr68", "mozilla-esr68", False, "firefox"
 ), (
     "https://hg.mozilla.org/try", "try", False, "firefox"
 ), (
