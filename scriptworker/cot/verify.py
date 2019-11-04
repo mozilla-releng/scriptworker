@@ -1083,9 +1083,10 @@ async def _get_additional_github_releases_jsone_context(decision_link):
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     tag_name = get_revision(task, source_env_prefix)
 
-    release_data = GitHubRepository(
+    github_repo = GitHubRepository(
         repo_owner, repo_name, context.config['github_oauth_token']
-    ).get_release(tag_name)
+    )
+    release_data = await github_repo.get_release(tag_name)
 
     # The release data expose by the API[1] is not the same as the original event[2]. That's why
     # we have to rebuild the object manually
@@ -1191,7 +1192,7 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
             token=token,
         )
 
-    pull_request_data = github_repo.get_pull_request(pull_request_number)
+    pull_request_data = await github_repo.get_pull_request(pull_request_number)
     # Even though pull_request_data['head']['repo']['pushed_at'] does exist,
     # we can't reliably use it because a new commit would update the HEAD data.
     # This becomes a problem if a staging release was kicked off and the PR got
@@ -1220,9 +1221,8 @@ async def _get_additional_github_push_jsone_context(decision_link):
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     commit_hash = get_revision(task, source_env_prefix)
 
-    commit_data = GitHubRepository(
-        repo_owner, repo_name, context.config['github_oauth_token']
-    ).get_commit(commit_hash)
+    github_repo = GitHubRepository(repo_owner, repo_name, context.config['github_oauth_token'])
+    commit_data = await github_repo.get_commit(commit_hash)
 
     committer_login = commit_data['committer']['login']
     # https://github.com/mozilla-releng/scriptworker/issues/334: web-flow is the User used by

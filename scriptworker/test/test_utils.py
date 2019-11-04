@@ -194,6 +194,36 @@ async def test_retry_async_always_fail():
     assert retry_count['always_fail'] == 5
 
 
+@pytest.mark.asyncio
+async def test_retry_async_decorator_fail_first():
+    global retry_count
+
+    @utils.retry_async_decorator(sleeptime_kwargs={'delay_factor': 0})
+    async def decorated_fail_first(*args, **kwargs):
+        return await fail_first(*args, **kwargs)
+
+    retry_count['fail_first'] = 0
+    status = await decorated_fail_first()
+    assert status == "yay"
+    assert retry_count['fail_first'] == 2
+
+
+@pytest.mark.asyncio
+async def test_retry_async_decorator_always_fail_async():
+    global retry_count
+
+    @utils.retry_async_decorator(sleeptime_kwargs={'delay_factor': 0})
+    async def decorated_always_fail(*args, **kwargs):
+        return await always_fail(*args, **kwargs)
+
+    retry_count['always_fail'] = 0
+    with mock.patch('asyncio.sleep', new=fake_sleep):
+        with pytest.raises(ScriptWorkerException):
+            await decorated_always_fail()
+
+    assert retry_count['always_fail'] == 5
+
+
 # create_temp_creds {{{1
 def test_create_temp_creds():
     with mock.patch.object(utils, 'createTemporaryCredentials') as p:
