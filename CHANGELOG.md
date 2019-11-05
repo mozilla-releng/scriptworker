@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [27.2.0] - 2019-10-29
+### Changed
+- `taskcluster_root_url` now defaults to `os.environ["TASKCLUSTER_ROOT_URL"]`, with a fallback of `https://taskcluster.net`.
+- The firefox-ci and staging clusters are now in the `valid_artifact_rules`
+
+## [27.2.0] - 2019-10-29
 ### Added
 - worker-manager based decision and docker image worker pools are supported
 

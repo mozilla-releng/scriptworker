@@ -3,6 +3,7 @@ arrow
 cryptography>=2.6.1
 dictdiffer
 frozendict
+github3.py
 jsonschema
 json-e>=2.5.0
 PyYAML
