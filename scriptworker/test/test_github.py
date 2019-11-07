@@ -62,18 +62,21 @@ def test_get_definition(github_repository):
     github_repository._github_repository.as_dict.assert_called_once_with()
 
 
-def test_get_commit(github_repository):
-    github_repository.get_commit('somehash')
+@pytest.mark.asyncio
+async def test_get_commit(github_repository):
+    await github_repository.get_commit('somehash')
     github_repository._github_repository.commit.assert_called_once_with('somehash')
 
 
-def test_get_pull_request(github_repository):
-    github_repository.get_pull_request(1)
+@pytest.mark.asyncio
+async def test_get_pull_request(github_repository):
+    await github_repository.get_pull_request(1)
     github_repository._github_repository.pull_request.assert_called_once_with(1)
 
 
-def test_get_release(github_repository):
-    github_repository.get_release('some-tag')
+@pytest.mark.asyncio
+async def test_get_release(github_repository):
+    await github_repository.get_release('some-tag')
     github_repository._github_repository.release_from_tag.assert_called_once_with('some-tag')
 
 
@@ -106,15 +109,16 @@ def test_get_release(github_repository):
     True,
     None,
 )))
-def test_get_tag_hash(github_repository, tags, raises, expected):
+@pytest.mark.asyncio
+async def test_get_tag_hash(github_repository, tags, raises, expected):
     github_repository._github_repository.tags.return_value = tags
 
     if raises:
         with pytest.raises(ValueError):
-            github_repository.get_tag_hash('some-tag')
+            await github_repository.get_tag_hash('some-tag')
     else:
-        assert github_repository.get_tag_hash('some-tag') == expected
-
+        tag_hash = await github_repository.get_tag_hash('some-tag')
+        assert tag_hash == expected
 
 
 @pytest.mark.parametrize('commitish, expected_url, html_text, raises, expected', ((

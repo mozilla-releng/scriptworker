@@ -239,8 +239,8 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
             how long to sleep after each attempt.  Defaults to ``calculateSleepTime``.
         retry_exceptions (list or exception, optional): the exception(s) to retry on.
             Defaults to ``Exception``.
-        args (list, optional): the args to pass to ``function``.  Defaults to ()
-        kwargs (dict, optional): the kwargs to pass to ``function``.  Defaults to
+        args (list, optional): the args to pass to ``func``.  Defaults to ()
+        kwargs (dict, optional): the kwargs to pass to ``func``.  Defaults to
             {}.
         sleeptime_kwargs (dict, optional): the kwargs to pass to ``sleeptime_callback``.
             If None, use {}.  Defaults to None.
@@ -268,6 +268,33 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
             sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
             log.debug("retry_async: {}: sleeping {} seconds before retry".format(func.__name__, sleep_time))
             await asyncio.sleep(sleep_time)
+
+
+def retry_async_decorator(retry_exceptions=Exception, sleeptime_kwargs=None):
+    """Decorate a function by wrapping ``retry_async`` around.
+
+    Args:
+        retry_exceptions (list or exception, optional): the exception(s) to retry on.
+            Defaults to ``Exception``.
+        sleeptime_kwargs (dict, optional): the kwargs to pass to ``sleeptime_callback``.
+            If None, use {}.  Defaults to None.
+
+    Returns:
+        function: the decorated function
+
+    """
+    def wrap(async_func):
+        @functools.wraps(async_func)
+        async def wrapped(*args, **kwargs):
+            return await retry_async(
+                async_func,
+                retry_exceptions=retry_exceptions,
+                args=args,
+                kwargs=kwargs,
+                sleeptime_kwargs=sleeptime_kwargs,
+            )
+        return wrapped
+    return wrap
 
 
 # create_temp_creds {{{1

@@ -1370,13 +1370,18 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
 @pytest.mark.asyncio
 async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobile_github_release_link):
     github_repo_mock = MagicMock()
-    github_repo_mock.get_release.return_value = {
-        'author': {
-            'login': 'some-user',
-        },
-        'published_at': '2019-02-01T12:00:00Z',
-        'target_commitish': 'releases/v9000',
-    }
+
+    async def get_release_mock(release_name, *args, **kwargs):
+        assert release_name == 'v9000.0.1'
+        return {
+            'author': {
+                'login': 'some-user',
+            },
+            'published_at': '2019-02-01T12:00:00Z',
+            'target_commitish': 'releases/v9000',
+        }
+
+    github_repo_mock.get_release = get_release_mock
     github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
 
     context = await cotverify.populate_jsone_context(
@@ -1384,7 +1389,6 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
     )
 
     github_repo_class_mock.assert_called_once_with('mozilla-mobile', 'focus-android', 'fakegithubtoken')
-    github_repo_mock.get_release.assert_called_once_with('v9000.0.1')
     del context['as_slugid']
     assert context == {
         'event': {
@@ -1463,22 +1467,27 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
 ))
 async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_github_push_link, committer_login, committer_email, author_login, author_email):
     github_repo_mock = MagicMock()
-    github_repo_mock.get_commit.return_value = {
-        'commit': {
-            'author': {
-                'email': author_email,
+
+    async def get_commit_mock(commit_hash, *args, **kwargs):
+        assert commit_hash == 'somerevision'
+        return {
+            'commit': {
+                'author': {
+                    'email': author_email,
+                },
+                'committer': {
+                    'email': committer_email,
+                },
             },
             'committer': {
-                'email': committer_email,
+                'login': committer_login,
             },
-        },
-        'committer': {
-            'login': committer_login,
-        },
-        'author': {
-            'login': author_login,
-        },
-    }
+            'author': {
+                'login': author_login,
+            },
+        }
+
+    github_repo_mock.get_commit = get_commit_mock
     github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
 
     context = await cotverify.populate_jsone_context(
@@ -1486,7 +1495,6 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
     )
 
     github_repo_class_mock.assert_called_once_with('mozilla-mobile', 'focus-android', 'fakegithubtoken')
-    github_repo_mock.get_commit.assert_called_once_with('somerevision')
     del context['as_slugid']
     assert context == {
         'event': {
@@ -1547,28 +1555,32 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         'fork': False,
     }
 
-    github_repo_mock.get_pull_request.return_value = {
-        'base': {
-            'repo': {
-                'full_name': 'mozilla-mobile/focus-android',
-                'html_url': 'https://github.com/mozilla-mobile/focus-android',
-                'name': 'focus-android',
+    async def get_pull_request_mock(pull_request_number, *args, **kwargs):
+        assert pull_request_number == 1234
+        return {
+            'base': {
+                'repo': {
+                    'full_name': 'mozilla-mobile/focus-android',
+                    'html_url': 'https://github.com/mozilla-mobile/focus-android',
+                    'name': 'focus-android',
+                },
             },
-        },
-        'head': {
-            'ref': 'some-branch',
-            'repo': {
-                'html_url': 'https://github.com/JohanLorenzo/focus-android',
+            'head': {
+                'ref': 'some-branch',
+                'repo': {
+                    'html_url': 'https://github.com/JohanLorenzo/focus-android',
+                },
+                'sha': 'somerevision',
+                'user': {
+                    'login': 'some-user',
+                },
             },
-            'sha': 'somerevision',
-            'user': {
-                'login': 'some-user',
-            },
-        },
-        'html_url': 'https://github.com/mozilla-mobile/focus-android/pulls/1234',
-        'number': 1234,
-        'title': 'Some PR title',
-    }
+            'html_url': 'https://github.com/mozilla-mobile/focus-android/pulls/1234',
+            'number': 1234,
+            'title': 'Some PR title',
+        }
+
+    github_repo_mock.get_pull_request = get_pull_request_mock
     github_repo_class_mock = mocker.patch.object(cotverify, 'GitHubRepository', return_value=github_repo_mock)
 
     context = await cotverify.populate_jsone_context(
@@ -1584,8 +1596,6 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         assert len(github_repo_class_mock.call_args_list) == 2
     else:
         assert len(github_repo_class_mock.call_args_list) == 1
-
-    github_repo_mock.get_pull_request.assert_called_once_with(1234)
 
     del context['as_slugid']
     assert context == {
@@ -1818,7 +1828,7 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
         def __init__(self, *args, **kwargs):
             pass
 
-        def get_commit(self, commit):
+        async def get_commit(self, commit):
             assert commit == "330ea928b42ff2403fc99cd3e596d13294fe8775"
             # Return minimal information necessary for jsone rebuild
             return {

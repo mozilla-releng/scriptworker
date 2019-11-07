@@ -1,14 +1,16 @@
 """GitHub helper functions."""
 
+import logging
 import re
 
 from github3 import GitHub
-import logging
+from github3.exceptions import GitHubException
 
 from scriptworker.exceptions import ConfigError
 from scriptworker.utils import (
     get_single_item_from_sequence,
     get_parts_of_url_path,
+    retry_async_decorator,
     retry_request,
 )
 
@@ -45,7 +47,8 @@ class GitHubRepository():
         """
         return self._github_repository.as_dict()
 
-    def get_commit(self, commit_hash):
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_commit(self, commit_hash):
         """Fetch the definition of the commit, exposed by the GitHub API.
 
         Args:
@@ -57,7 +60,8 @@ class GitHubRepository():
         """
         return self._github_repository.commit(commit_hash).as_dict()
 
-    def get_pull_request(self, pull_request_number):
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_pull_request(self, pull_request_number):
         """Fetch the definition of the pull request, exposed by the GitHub API.
 
         Args:
@@ -69,7 +73,8 @@ class GitHubRepository():
         """
         return self._github_repository.pull_request(pull_request_number).as_dict()
 
-    def get_release(self, tag_name):
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_release(self, tag_name):
         """Fetch the definition of the release matching the tag name.
 
         Args:
@@ -81,7 +86,8 @@ class GitHubRepository():
         """
         return self._github_repository.release_from_tag(tag_name).as_dict()
 
-    def get_tag_hash(self, tag_name):
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_tag_hash(self, tag_name):
         """Fetch the commit hash that was tagged with ``tag_name``.
 
         Args:
@@ -113,7 +119,7 @@ class GitHubRepository():
         """
         # Revision may be a tag name. `branch_commits` doesn't work on tags
         if not _is_git_full_hash(revision):
-            revision = self.get_tag_hash(tag_name=revision)
+            revision = await self.get_tag_hash(tag_name=revision)
 
         repo = self._github_repository.html_url
         if any(

@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [28.0.0] - TBD
+### Changed
+- Methods of `GitHubRepository` are now async and are retried thanks to `retry_async`. Only methods making network calls are async/retried.
+
 ## [27.3.0] - 2019-11-05
 ### Changed
 - `taskcluster_root_url` now defaults to `os.environ["TASKCLUSTER_ROOT_URL"]`, with a fallback of `https://taskcluster.net`.
