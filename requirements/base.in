@@ -8,4 +8,5 @@ jsonschema
 json-e>=2.5.0
 PyYAML
 taskcluster>=7
+uptime
 wheel

@@ -14,6 +14,9 @@ import sys
 import signal
 import socket
 import typing
+import json
+import time
+import uptime
 
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
@@ -22,11 +25,32 @@ from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, \
-    reclaim_task, run_task, worst_level
+    reclaim_task, run_task, worst_level, get_task_id, get_run_id
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
+
+
+# log_worker_metric {{{1
+def log_worker_metric(context, eventType, taskId=None, runId=None, timestamp=None):
+    """Emit a worker log event."""
+    provisionerId = context.config['provisioner_id']
+    workerType = context.config['worker_type']
+    workerId = context.config['worker_id']
+    timestamp = timestamp or time.time()
+    timestamp = arrow.get(timestamp).format()
+    fields = {
+        "eventType": eventType,
+        "worker": "scriptworker",
+        "workerPoolId": "{}/{}".format(provisionerId, workerType),
+        "workerId": workerId,
+        "timestamp": timestamp,
+    }
+    if taskId and runId:
+        fields["taskId"] = taskId
+        fields["runId"] = runId
+    log.info("WORKER_METRICS %s", json.dumps(fields, separators=",:"))
 
 
 # do_run_task {{{1
@@ -131,6 +155,15 @@ class RunTasks:
             status = None
             for task_defn in tasks.get('tasks', []):
                 prepare_to_run_task(context, task_defn)
+                try:
+                    taskId = get_task_id(task_defn)
+                    runId = get_run_id(task_defn)
+                except KeyError:
+                    taskId = None
+                    runId = None
+                log_worker_metric(context, "taskStart",
+                                  taskId=taskId,
+                                  runId=runId)
                 reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
                 try:
                     status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
@@ -143,6 +176,9 @@ class RunTasks:
                     status = STATUSES['worker-shutdown']
                 status = worst_level(status, await do_upload(context, artifacts_paths))
                 await complete_task(context, status)
+                log_worker_metric(context, "taskFinish",
+                                  taskId=taskId,
+                                  runId=runId)
                 reclaim_fut.cancel()
                 cleanup(context)
 
@@ -210,6 +246,7 @@ async def async_main(context, credentials):
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
+
     """
     conn = aiohttp.TCPConnector(limit=context.config['aiohttp_max_connections'])
     async with aiohttp.ClientSession(connector=conn) as session:
@@ -230,6 +267,7 @@ def main(event_loop=None):
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
     log.info("Worker FQDN: {}".format(socket.getfqdn()))
+    log_worker_metric(context, "instanceBoot", timestamp=uptime.boottime())
     cleanup(context)
     context.event_loop = event_loop or asyncio.get_event_loop()
 
@@ -251,6 +289,7 @@ def main(event_loop=None):
     context.event_loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.ensure_future(_handle_sigterm()))
     context.event_loop.add_signal_handler(signal.SIGUSR1, lambda: asyncio.ensure_future(_handle_sigusr1()))
 
+    log_worker_metric(context, "workerReady")
     while not done:
         try:
             context.event_loop.run_until_complete(async_main(context, credentials))

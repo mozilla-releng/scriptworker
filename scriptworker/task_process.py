@@ -23,6 +23,7 @@ class TaskProcess:
 
         Args:
             process (Process): task process
+
         """
         self.process = process
         self.stopped_due_to_worker_shutdown = False

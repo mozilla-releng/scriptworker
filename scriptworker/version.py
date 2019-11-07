@@ -68,6 +68,7 @@ def write_version(name=None, path=None):
 
       path (Optional[str]): the path to write the version json to.  Defaults
         to ../version.json
+
     """
     # Written like this for coverage purposes.
     # http://stackoverflow.com/questions/5850268/how-to-test-or-mock-if-name-main-contents/27084447#27084447
