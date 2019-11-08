@@ -199,8 +199,6 @@ DEFAULT_CONFIG = frozendict({
                 "app-services-3/decision",
             ),
             "xpi": (
-                "aws-provisioner-v1/xpi-1-decision",
-                "aws-provisioner-v1/xpi-3-decision",
                 "xpi-1/decision",
                 "xpi-3/decision",
             ),
@@ -245,8 +243,6 @@ DEFAULT_CONFIG = frozendict({
                 "app-services-3/images",
             ),
             "xpi": (
-                "aws-provisioner-v1/xpi-1-images",
-                "aws-provisioner-v1/xpi-3-images",
                 "xpi-1/images",
                 "xpi-3/images",
             ),
@@ -303,7 +299,7 @@ DEFAULT_CONFIG = frozendict({
                 "schemes": ("https", "ssh", ),
                 "netlocs": ("github.com", ),
                 "path_regexes": tuple([
-                    r"^(?P<path>/escapewindow/xpi-manifest)(/|.git|$)",
+                    r"^(?P<path>/mozilla-extensions/xpi-manifest)(/|.git|$)",
                 ]),
             }),),
         }),
@@ -352,7 +348,7 @@ DEFAULT_CONFIG = frozendict({
             'mobile': 'mozilla-mobile',
             'mpd001': 'mozilla-services',
             'application-services': 'mozilla',
-            'xpi': 'escapewindow',
+            'xpi': 'mozilla-extensions',
         }),
     },
 
@@ -558,7 +554,7 @@ DEFAULT_CONFIG = frozendict({
             }),
             'xpi': frozendict({
                 'xpi-manifest-repo': (
-                    '/escapewindow/xpi-manifest',
+                    '/mozilla-extensions/xpi-manifest',
                 )
             }),
         }),
