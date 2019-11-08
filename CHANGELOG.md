@@ -2,9 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [28.0.0] - TBD
+## [28.0.0] - 2019-11-08
+### Added
+- `retry_async_decorator`
+
 ### Changed
 - Methods of `GitHubRepository` are now async and are retried thanks to `retry_async`. Only methods making network calls are async/retried.
+- XPI is now pointing at mozilla-extensions/xpi-manifest
+
+### Fixed
+- `test_production.py` no longer leaves behind a `...` test directory
 
 ## [27.3.0] - 2019-11-05
 ### Changed
