@@ -111,12 +111,23 @@ async def get_context(config_override=None):
 
 
 def get_temp_creds(context):
-    if 'certificate' in context.credentials:
+    creds = read_integration_creds()
+    if 'certificate' in creds:
         return
     temp_creds = utils.create_temp_creds(
-        context.credentials['clientId'],
-        context.credentials['accessToken'],
+        creds['clientId'],
+        creds['accessToken'],
         expires=arrow.utcnow().shift(minutes=10).datetime,
+        scopes=[
+            "queue:cancel-task:test-dummy-scheduler/*",
+            "queue:claim-work:test-dummy-provisioner/dummy-worker-*",
+            "queue:create-task:lowest:test-dummy-provisioner/dummy-worker-*",
+            "queue:define-task:test-dummy-provisioner/dummy-worker-*",
+            "queue:get-artifact:SampleArtifacts/_/X.txt",
+            "queue:schedule-task:test-dummy-scheduler/*",
+            "queue:task-group-id:test-dummy-scheduler/*",
+            "queue:worker-id:test-dummy-workers/dummy-worker-*",
+        ],
     )
     if temp_creds:
         context.credentials = temp_creds

@@ -61,8 +61,14 @@ Without any tests connecting ot the net, then
 
 With integration tests, first create a client with the scopes::
 
-    assume:project:taskcluster:worker-test-scopes
     queue:cancel-task:test-dummy-scheduler/*
+    queue:claim-work:test-dummy-provisioner/dummy-worker-*
+    queue:create-task:lowest:test-dummy-provisioner/dummy-worker-*
+    queue:define-task:test-dummy-provisioner/dummy-worker-*
+    queue:get-artifact:SampleArtifacts/_/X.txt
+    queue:schedule-task:test-dummy-scheduler/*
+    queue:task-group-id:test-dummy-scheduler/*
+    queue:worker-id:test-dummy-workers/dummy-worker-*
 
 Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 
