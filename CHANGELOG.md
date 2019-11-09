@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [29.0.0] - 2019-11-12
+### Changed
+- The default `taskcluster_root_url` is now `https://firefox-ci-tc.services.mozilla.com/`
+- Updated the scriptworker worker pool list
+
 ## [28.0.0] - 2019-11-08
 ### Added
 - `retry_async_decorator`
