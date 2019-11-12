@@ -126,6 +126,7 @@ DEFAULT_CONFIG = frozendict({
         }),
     ),
 
+    # scriptworker identification
     "scriptworker_worker_pools": (
         "scriptworker-prov-v1/signing-linux-v1",
         "scriptworker-k8s/appservices-1-beetmover",
