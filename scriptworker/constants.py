@@ -30,7 +30,7 @@ STATUSES = {
 # When adding new complex config, make sure all `list`s are `tuple`s, and all
 # `dict`s are `frozendict`s!  (This should get caught by config tests.)
 DEFAULT_CONFIG = frozendict({
-    "taskcluster_root_url": os.environ.get('TASKCLUSTER_ROOT_URL', 'https://taskcluster.net'),
+    "taskcluster_root_url": os.environ.get('TASKCLUSTER_ROOT_URL', 'https://firefox-ci-tc.services.mozilla.com/'),
     # Worker identification
     "provisioner_id": "test-dummy-provisioner",
     "worker_group": "test-dummy-workers",
