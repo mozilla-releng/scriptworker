@@ -1,4 +1,5 @@
 aiohttp
+aiomemoizettl
 arrow
 cryptography>=2.6.1
 dictdiffer

@@ -1,7 +1,9 @@
 from types import SimpleNamespace
 
+import asyncio
 import pytest
 
+from copy import copy
 from unittest.mock import MagicMock, patch
 
 from . import mobile_rw_context, mpd_rw_context
@@ -203,19 +205,34 @@ async def test_has_commit_landed_on_repository_private(mpd_context, github_repos
 
 
 @pytest.mark.asyncio
-async def test_has_commit_landed_on_repository_cache(context, github_repository):
-    is_cached = False
-    async def retry_request(_, _url):
-        if is_cached:
-            assert False, "retry_request should not have been called."
-        return '\n'
+async def test_has_commit_landed_on_repository_cache(context, mpd_context, github_repository):
+    global retry_request_call_count
+    retry_request_call_count = 0
+    async def _counter(*args, **kwargs):
+        global retry_request_call_count
+        retry_request_call_count += 1
+        return ''
 
-    with patch('scriptworker.github.retry_request', retry_request):
-        await github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678")
-        is_cached = True
-        await github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678")
-        is_cached = False
+    with patch('scriptworker.github.retry_request', _counter):
+        await asyncio.gather(*[
+            github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
+            github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
+            github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
+            github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
+        ])
+        # Even though all calls were fired at once, just a single call was made
+        assert retry_request_call_count == 1
+
+
         await github_repository.has_commit_landed_on_repository(context, "456789abcdef0123456780129abcdef012345643")
+        # New commit means new request
+        assert retry_request_call_count == 2
+
+        different_context = copy(context)
+        different_context.task = {'taskGroupId': 'someOtherTaskId'}
+        await github_repository.has_commit_landed_on_repository(different_context, "456789abcdef0123456780129abcdef012345643")
+        # New context means new request too
+        assert retry_request_call_count == 3
 
 
 @pytest.mark.parametrize('url, expected', ((
