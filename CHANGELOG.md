@@ -2,7 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-## [29.0.1] - 2019-11-12
+## [29.0.2] - 2019-11-19
+### Fixed
+- Added treescript push capabilities to central
+
+## [29.0.1] - 2019-11-19
 ### Fixed
 - [Bug 1596439](https://bugzilla.mozilla.org/show_bug.cgi?id=1596439) - Cache calls to github's branch_commits
 
