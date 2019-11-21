@@ -30,6 +30,16 @@ reqs = [
 ]
 
 tests_require = [
+    "asyncio_extras",
+    "coverage>=4.2",
+    "flake8",
+    "flake8_docstrings",
+    "mock",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-random-order",
     "tox",
     "virtualenv",
 ]
@@ -71,8 +81,9 @@ setup(
     author="Mozilla Release Engineering",
     author_email="release+python@mozilla.com",
     url="https://github.com/mozilla-releng/scriptworker",
-    packages=["scriptworker", "scriptworker.cot", "scriptworker.test"],
+    packages=["scriptworker", "scriptworker.cot"],
     package_data={"": ["version.json"]},
+    package_dir={"": "src"},
     include_package_data=True,
     entry_points={
         "console_scripts": [

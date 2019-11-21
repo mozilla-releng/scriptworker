@@ -17,7 +17,6 @@ import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
-from scriptworker.test import create_async, create_finished_future
 from scriptworker.utils import (
     format_json,
     load_json_or_yaml,
@@ -25,7 +24,7 @@ from scriptworker.utils import (
     read_from_file,
     write_to_file,
 )
-from . import noop_async, noop_sync, rw_context, mobile_rw_context, mpd_rw_context, tmpdir, touch
+from . import create_async, create_finished_future, noop_async, noop_sync, rw_context, mobile_rw_context, mpd_rw_context, tmpdir, touch
 
 
 assert rw_context, tmpdir  # silence pyflakes

@@ -16,9 +16,8 @@ from scriptworker.artifacts import get_expiration_arrow, guess_content_type_and_
     get_and_check_single_upstream_artifact_full_path, get_single_upstream_artifact_full_path, \
     get_optional_artifacts_per_task_id
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
-from scriptworker.test import create_finished_future, create_rejected_future
 
-from . import touch, rw_context, fake_session, fake_session_500, successful_queue
+from . import create_finished_future, create_rejected_future, touch, rw_context, fake_session, fake_session_500, successful_queue
 
 
 @pytest.yield_fixture(scope='function')
