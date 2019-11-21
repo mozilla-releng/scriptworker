@@ -3,12 +3,9 @@
 """Test scriptworker.client
 """
 
-import asyncio
 import json
 import logging
 import os
-import random
-import string
 import sys
 import tempfile
 from copy import deepcopy
@@ -22,10 +19,6 @@ import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-
-from . import noop_sync, tmpdir
-
-assert tmpdir  # silence pyflakes
 
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PARTIAL_CREDS = os.path.join(TEST_DATA_DIR, "partial_credentials.json")
@@ -284,7 +277,7 @@ def test_fail_init_context(capsys, monkeypatch):
         argv = ["argv{}".format(j) for j in range(i)]
         monkeypatch.setattr(sys, "argv", argv)
         with pytest.raises(SystemExit):
-            context = client._init_context()
+            client._init_context()
 
         # XXX This prevents usage from being printed out when the test is passing. Assertions are
         # done in test_usage

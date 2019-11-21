@@ -13,11 +13,6 @@ import scriptworker.context as swcontext
 import taskcluster
 from scriptworker.exceptions import CoTError
 
-from . import rw_context as context
-from . import tmpdir
-
-assert tmpdir, context  # silence pyflakes
-
 
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope="function")
@@ -30,8 +25,8 @@ def reclaim_task():
     return {"credentials": {"reclaim_task_credentials": True}}
 
 
-def get_task_file(context):
-    temp_dir = context.config["work_dir"]
+def get_task_file(rw_context):
+    temp_dir = rw_context.config["work_dir"]
     path = os.path.join(temp_dir, "task.json")
     return path
 
@@ -42,57 +37,57 @@ def get_json(path):
 
 
 # tests {{{1
-def test_empty_context(context):
-    assert context.task is None
-    assert context.claim_task is None
-    assert context.reclaim_task is None
-    assert context.temp_credentials is None
+def test_empty_context(rw_context):
+    assert rw_context.task is None
+    assert rw_context.claim_task is None
+    assert rw_context.reclaim_task is None
+    assert rw_context.temp_credentials is None
 
 
 @pytest.mark.asyncio
-async def test_set_task(context, claim_task):
-    context.claim_task = claim_task
-    assert context.claim_task == claim_task
-    assert context.reclaim_task is None
-    assert context.temp_credentials == claim_task["credentials"]
-    assert get_json(get_task_file(context)) == claim_task["task"]
+async def test_set_task(rw_context, claim_task):
+    rw_context.claim_task = claim_task
+    assert rw_context.claim_task == claim_task
+    assert rw_context.reclaim_task is None
+    assert rw_context.temp_credentials == claim_task["credentials"]
+    assert get_json(get_task_file(rw_context)) == claim_task["task"]
 
 
 @pytest.mark.asyncio
-async def test_set_reclaim_task(context, claim_task, reclaim_task):
-    context.claim_task = claim_task
-    context.reclaim_task = reclaim_task
-    assert context.claim_task == claim_task
-    assert context.task == claim_task["task"]
-    assert context.reclaim_task == reclaim_task
-    assert context.temp_credentials == reclaim_task["credentials"]
-    assert get_json(get_task_file(context)) == claim_task["task"]
+async def test_set_reclaim_task(rw_context, claim_task, reclaim_task):
+    rw_context.claim_task = claim_task
+    rw_context.reclaim_task = reclaim_task
+    assert rw_context.claim_task == claim_task
+    assert rw_context.task == claim_task["task"]
+    assert rw_context.reclaim_task == reclaim_task
+    assert rw_context.temp_credentials == reclaim_task["credentials"]
+    assert get_json(get_task_file(rw_context)) == claim_task["task"]
 
 
 @pytest.mark.asyncio
-async def test_set_reset_task(context, claim_task, reclaim_task):
-    context.claim_task = claim_task
-    context.reclaim_task = reclaim_task
-    context.claim_task = None
-    assert context.claim_task is None
-    assert context.task is None
-    assert context.reclaim_task is None
-    assert context.proc is None
-    assert context.temp_credentials is None
-    assert context.temp_queue is None
+async def test_set_reset_task(rw_context, claim_task, reclaim_task):
+    rw_context.claim_task = claim_task
+    rw_context.reclaim_task = reclaim_task
+    rw_context.claim_task = None
+    assert rw_context.claim_task is None
+    assert rw_context.task is None
+    assert rw_context.reclaim_task is None
+    assert rw_context.proc is None
+    assert rw_context.temp_credentials is None
+    assert rw_context.temp_queue is None
 
 
-def test_temp_queue(context, mocker):
+def test_temp_queue(rw_context, mocker):
     mocker.patch("taskcluster.aio.Queue")
-    context.session = {"c": "d"}
-    context.temp_credentials = {"a": "b"}
+    rw_context.session = {"c": "d"}
+    rw_context.temp_credentials = {"a": "b"}
     assert taskcluster.aio.Queue.called_once_with(
-        options={"rootUrl": context.config["taskcluster_root_url"], "credentials": context.temp_credentials}, session=context.session
+        options={"rootUrl": rw_context.config["taskcluster_root_url"], "credentials": rw_context.temp_credentials}, session=rw_context.session
     )
 
 
 @pytest.mark.asyncio
-async def test_projects(context, mocker):
+async def test_projects(rw_context, mocker):
     fake_projects = {"mozilla-central": "blah", "count": 0}
 
     async def fake_load(*args):
@@ -100,51 +95,51 @@ async def test_projects(context, mocker):
         return deepcopy(fake_projects)
 
     mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=fake_load)
-    assert context.projects is None
-    await context.populate_projects()
-    assert context.projects == fake_projects
+    assert rw_context.projects is None
+    await rw_context.populate_projects()
+    assert rw_context.projects == fake_projects
     assert fake_projects["count"] == 1
 
-    await context.populate_projects(force=True)
-    assert context.projects == fake_projects
+    await rw_context.populate_projects(force=True)
+    assert rw_context.projects == fake_projects
     assert fake_projects["count"] == 2
 
-    await context.populate_projects()
-    assert context.projects == fake_projects
+    await rw_context.populate_projects()
+    assert rw_context.projects == fake_projects
     assert fake_projects["count"] == 2
 
 
-def test_get_credentials(context):
+def test_get_credentials(rw_context):
     expected = {"asdf": "foobar"}
-    context._credentials = expected
-    assert context.credentials == expected
+    rw_context._credentials = expected
+    assert rw_context.credentials == expected
 
 
 def test_new_event_loop(mocker):
-    """The default context.event_loop is from `asyncio.get_event_loop`"""
+    """The default rw_context.event_loop is from `asyncio.get_event_loop`"""
     fake_loop = mock.MagicMock()
     mocker.patch.object(asyncio, "get_event_loop", return_value=fake_loop)
-    context = swcontext.Context()
-    assert context.event_loop is fake_loop
+    rw_context = swcontext.Context()
+    assert rw_context.event_loop is fake_loop
 
 
 def test_set_event_loop(mocker):
-    """`context.event_loop` returns the same value once set.
+    """`rw_context.event_loop` returns the same value once set.
 
     (This may seem obvious, but this tests the correctness of the property.)
 
     """
     fake_loop = mock.MagicMock()
-    context = swcontext.Context()
-    context.event_loop = fake_loop
-    assert context.event_loop is fake_loop
+    rw_context = swcontext.Context()
+    rw_context.event_loop = fake_loop
+    assert rw_context.event_loop is fake_loop
 
 
 def test_verify_task(claim_task):
-    context = swcontext.Context()
-    context.task = {"payload": {"upstreamArtifacts": [{"taskId": "foo", "paths": ["bar"]}]}}
+    rw_context = swcontext.Context()
+    rw_context.task = {"payload": {"upstreamArtifacts": [{"taskId": "foo", "paths": ["bar"]}]}}
     # should not throw
-    context.verify_task()
+    rw_context.verify_task()
 
 
 @pytest.mark.parametrize("bad_path", ("/abspath/foo", "public/../../../blah"))

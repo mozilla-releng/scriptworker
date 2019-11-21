@@ -9,9 +9,7 @@ import pytest
 import scriptworker.cot.generate as cot
 from scriptworker.exceptions import ScriptWorkerException
 
-from . import ARTIFACT_SHAS, rw_context
-
-assert rw_context  # silence pyflakes
+from . import ARTIFACT_SHAS
 
 log = logging.getLogger(__name__)
 

@@ -2,7 +2,6 @@ import asyncio
 import gzip
 import itertools
 import json
-import mimetypes
 import os
 import tempfile
 
@@ -26,7 +25,7 @@ from scriptworker.artifacts import (
 )
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
-from . import create_finished_future, create_rejected_future, fake_session, fake_session_500, rw_context, successful_queue, touch
+from . import create_finished_future, create_rejected_future, touch
 
 
 @pytest.yield_fixture(scope="function")
@@ -302,7 +301,7 @@ def test_get_and_check_single_upstream_artifact_full_path(context):
 
 
 def test_get_single_upstream_artifact_full_path(context):
-    folder = os.path.join(context.config["work_dir"], "cot", "dependency1")
+    os.path.join(context.config["work_dir"], "cot", "dependency1")
 
     assert get_single_upstream_artifact_full_path(context, "dependency1", "public/file_a") == os.path.join(
         context.config["work_dir"], "cot", "dependency1", "public", "file_a"

@@ -6,12 +6,10 @@ import asyncio
 import glob
 import json
 import os
-import pprint
 import sys
 import time
 from unittest.mock import MagicMock
 
-import aiohttp
 import arrow
 import mock
 import pytest
@@ -21,11 +19,7 @@ import taskcluster.exceptions
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.task_process import TaskProcess
 
-from . import TIMEOUT_SCRIPT, fake_session, fake_session_500, mobile_rw_context, noop_async, read, rw_context, successful_queue, unsuccessful_queue
-
-assert rw_context  # silence flake8
-assert fake_session, fake_session_500  # silence flake8
-assert successful_queue, unsuccessful_queue  # silence flake8
+from . import TIMEOUT_SCRIPT, noop_async, read
 
 
 async def noop_to_cancellable_process(process):
@@ -437,7 +431,7 @@ async def test_run_task_negative_11(context, mocker):
 
     mocker.patch.object(asyncio, "create_subprocess_exec", new=fake_exec)
 
-    status = await swtask.run_task(context, noop_to_cancellable_process)
+    await swtask.run_task(context, noop_to_cancellable_process)
     log_file = log.get_log_filename(context)
     contents = read(log_file)
     assert contents == "Automation Error: python exited with signal -11\n"

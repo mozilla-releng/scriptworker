@@ -3,10 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from scriptworker import github
-from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
-
-from . import mobile_rw_context, mpd_rw_context
 
 
 @pytest.yield_fixture(scope="function")

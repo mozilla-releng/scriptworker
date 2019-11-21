@@ -17,12 +17,10 @@ import scriptworker.cot.verify as cotverify
 from frozendict import frozendict
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
-from scriptworker.utils import format_json, load_json_or_yaml, makedirs, read_from_file, write_to_file
+from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
 from taskcluster.exceptions import TaskclusterFailure
 
-from . import create_async, create_finished_future, mobile_rw_context, mpd_rw_context, noop_async, noop_sync, rw_context, tmpdir, touch
-
-assert rw_context, tmpdir  # silence pyflakes
+from . import create_async, create_finished_future, noop_async, noop_sync, touch
 
 log = logging.getLogger(__name__)
 
@@ -330,8 +328,8 @@ async def cotv4_pushlog(_):
 def test_dependent_task_ids(chain):
     ids = ["one", "TWO", "thr33", "vier"]
     for i in ids:
-        l = cotverify.LinkOfTrust(chain.context, "build", i)
-        chain.links.append(l)
+        link = cotverify.LinkOfTrust(chain.context, "build", i)
+        chain.links.append(link)
     assert sorted(chain.dependent_task_ids()) == sorted(ids)
 
 
@@ -364,8 +362,8 @@ async def test_chain_is_try_or_pull_request(chain, bools, expected):
 @pytest.mark.parametrize("ids,req,raises", ((("one", "two", "three"), "one", False), (("one", "one", "two"), "one", True), (("one", "two"), "three", True)))
 def test_get_link(chain, ids, req, raises):
     for i in ids:
-        l = cotverify.LinkOfTrust(chain.context, "build", i)
-        chain.links.append(l)
+        link = cotverify.LinkOfTrust(chain.context, "build", i)
+        chain.links.append(link)
     if raises:
         with pytest.raises(CoTError):
             chain.get_link(req)

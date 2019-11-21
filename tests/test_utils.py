@@ -13,13 +13,7 @@ import pytest
 import scriptworker.utils as utils
 from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 
-from . import FakeResponse, fake_session, fake_session_404, fake_session_500, noop_async
-from . import rw_context as context
-from . import tmpdir, touch
-
-assert tmpdir, context  # silence flake8
-assert fake_session, fake_session_500  # silence flake8
-assert fake_session_404  # silence flake8
+from . import FakeResponse, touch
 
 # constants helpers and fixtures {{{1
 TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
@@ -87,61 +81,61 @@ def test_datestring_to_timestamp(datestring):
 
 
 # cleanup {{{1
-def test_cleanup(context):
+def test_cleanup(rw_context):
     for name in "work_dir", "artifact_dir", "task_log_dir":
-        path = context.config[name]
+        path = rw_context.config[name]
         open(os.path.join(path, "tempfile"), "w").close()
         assert os.path.exists(os.path.join(path, "tempfile"))
-    utils.cleanup(context)
+    utils.cleanup(rw_context)
     for name in "work_dir", "artifact_dir":
-        path = context.config[name]
+        path = rw_context.config[name]
         assert os.path.exists(path)
         assert not os.path.exists(os.path.join(path, "tempfile"))
     # 2nd pass
-    utils.rm(context.config["work_dir"])
-    utils.cleanup(context)
+    utils.rm(rw_context.config["work_dir"])
+    utils.cleanup(rw_context)
 
 
 # request and retry_request {{{1
 @pytest.mark.asyncio
-async def test_request(context, fake_session):
-    context.session = fake_session
-    result = await utils.request(context, "url")
+async def test_request(rw_context, fake_session):
+    rw_context.session = fake_session
+    result = await utils.request(rw_context, "url")
     assert result == "{}"
 
 
 @pytest.mark.asyncio
-async def test_request_json(context, fake_session):
-    context.session = fake_session
-    result = await utils.request(context, "url", return_type="json")
+async def test_request_json(rw_context, fake_session):
+    rw_context.session = fake_session
+    result = await utils.request(rw_context, "url", return_type="json")
     assert result == {}
 
 
 @pytest.mark.asyncio
-async def test_request_response(context, fake_session):
-    context.session = fake_session
-    result = await utils.request(context, "url", return_type="response")
+async def test_request_response(rw_context, fake_session):
+    rw_context.session = fake_session
+    result = await utils.request(rw_context, "url", return_type="response")
     assert isinstance(result, FakeResponse)
 
 
 @pytest.mark.asyncio
-async def test_request_retry(context, fake_session_500):
-    context.session = fake_session_500
+async def test_request_retry(rw_context, fake_session_500):
+    rw_context.session = fake_session_500
     with pytest.raises(ScriptWorkerRetryException):
-        await utils.request(context, "url")
+        await utils.request(rw_context, "url")
 
 
 @pytest.mark.asyncio
-async def test_request_exception(context, fake_session_500):
-    context.session = fake_session_500
+async def test_request_exception(rw_context, fake_session_500):
+    rw_context.session = fake_session_500
     with pytest.raises(ScriptWorkerException):
-        await utils.request(context, "url", retry=())
+        await utils.request(rw_context, "url", retry=())
 
 
 @pytest.mark.asyncio
-async def test_retry_request(context, fake_session):
-    context.session = fake_session
-    result = await utils.retry_request(context, "url")
+async def test_retry_request(rw_context, fake_session):
+    rw_context.session = fake_session
+    result = await utils.retry_request(rw_context, "url")
     assert result == "{}"
 
 
@@ -390,18 +384,18 @@ def test_read_from_file(tmpdir, file_type, contents_or_path, expected, exception
 # download_file {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("auth", (None, "someAuth"))
-async def test_download_file(context, fake_session, tmpdir, auth):
+async def test_download_file(rw_context, fake_session, tmpdir, auth):
     path = os.path.join(tmpdir, "foo")
-    await utils.download_file(context, "url", path, session=fake_session, auth=auth)
+    await utils.download_file(rw_context, "url", path, session=fake_session, auth=auth)
     with open(path, "r") as fh:
         contents = fh.read()
     assert contents == "asdfasdf"
 
 
 @pytest.mark.asyncio
-async def test_download_file_no_auth(context, fake_session, tmpdir):
+async def test_download_file_no_auth(rw_context, fake_session, tmpdir):
     path = os.path.join(tmpdir, "foo")
-    await utils.download_file(context, "url", path, session=fake_session)
+    await utils.download_file(rw_context, "url", path, session=fake_session)
     with open(path, "r") as fh:
         contents = fh.read()
     assert contents == "asdfasdf"
@@ -409,18 +403,18 @@ async def test_download_file_no_auth(context, fake_session, tmpdir):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("auth", (None, "someAuth"))
-async def test_download_file_exception(context, fake_session_500, tmpdir, auth):
+async def test_download_file_exception(rw_context, fake_session_500, tmpdir, auth):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(DownloadError):
-        await utils.download_file(context, "url", path, session=fake_session_500, auth=auth)
+        await utils.download_file(rw_context, "url", path, session=fake_session_500, auth=auth)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("auth", (None, "someAuth"))
-async def test_download_file_404(context, fake_session_404, tmpdir, auth):
+async def test_download_file_404(rw_context, fake_session_404, tmpdir, auth):
     path = os.path.join(tmpdir, "foo")
     with pytest.raises(Download404):
-        await utils.download_file(context, "url", path, session=fake_session_404, auth=auth)
+        await utils.download_file(rw_context, "url", path, session=fake_session_404, auth=auth)
 
 
 # format_json {{{1
@@ -451,20 +445,20 @@ def test_load_json_or_yaml(string, is_path, exception, raises, result):
 # load_json_or_yaml_from_url {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("overwrite,file_type", ((True, "json"), (False, "json"), (True, "yaml"), (False, "yaml")))
-async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type, tmpdir):
+async def test_load_json_or_yaml_from_url(rw_context, mocker, overwrite, file_type, tmpdir):
     called_with_auth = []
 
-    async def mocked_download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None):
+    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None):
         called_with_auth.append(auth == "someAuth")
         return
 
     mocker.patch.object(utils, "download_file", new=mocked_download_file)
     path = os.path.join(tmpdir, "bad.{}".format(file_type))
     shutil.copyfile(os.path.join(os.path.dirname(__file__), "data", "bad.json"), path)
-    assert await utils.load_json_or_yaml_from_url(context, "", path, overwrite=overwrite) == {"credentials": ["blah"]}
+    assert await utils.load_json_or_yaml_from_url(rw_context, "", path, overwrite=overwrite) == {"credentials": ["blah"]}
     if not overwrite:
         assert len(called_with_auth) == 1
-        assert called_with_auth[0] == False
+        assert called_with_auth[0] is False
     else:
         assert len(called_with_auth) == 0
 
@@ -472,20 +466,20 @@ async def test_load_json_or_yaml_from_url(context, mocker, overwrite, file_type,
 # load_json_or_yaml_from_url {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("overwrite,file_type", ((True, "json"), (False, "json"), (True, "yaml"), (False, "yaml")))
-async def test_load_json_or_yaml_from_url_auth(context, mocker, overwrite, file_type, tmpdir):
+async def test_load_json_or_yaml_from_url_auth(rw_context, mocker, overwrite, file_type, tmpdir):
     called_with_auth = []
 
-    async def mocked_download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None):
+    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None):
         called_with_auth.append(auth == "someAuth")
         return
 
     mocker.patch.object(utils, "download_file", new=mocked_download_file)
     path = os.path.join(tmpdir, "bad.{}".format(file_type))
     shutil.copyfile(os.path.join(os.path.dirname(__file__), "data", "bad.json"), path)
-    assert await utils.load_json_or_yaml_from_url(context, "", path, overwrite=overwrite, auth="someAuth") == {"credentials": ["blah"]}
+    assert await utils.load_json_or_yaml_from_url(rw_context, "", path, overwrite=overwrite, auth="someAuth") == {"credentials": ["blah"]}
     if not overwrite:
         assert len(called_with_auth) == 1
-        assert called_with_auth[0] == True
+        assert called_with_auth[0] is True
     else:
         assert len(called_with_auth) == 0
 

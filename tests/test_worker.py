@@ -5,7 +5,6 @@
 import asyncio
 import json
 import os
-import shutil
 import signal
 import sys
 import tempfile
@@ -20,10 +19,7 @@ from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.worker import RunTasks, do_run_task
 
-from . import TIMEOUT_SCRIPT, create_async, create_finished_future, create_slow_async, create_sync, noop_async, noop_sync, rw_context, successful_queue, tmpdir
-
-assert rw_context, tmpdir  # silence flake8
-assert successful_queue  # silence flake8
+from . import TIMEOUT_SCRIPT, create_async, create_finished_future, create_slow_async, create_sync, noop_async, noop_sync
 
 
 # constants helpers and fixtures {{{1

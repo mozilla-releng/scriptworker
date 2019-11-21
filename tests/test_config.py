@@ -11,7 +11,6 @@ import pytest
 import scriptworker.config as config
 from frozendict import frozendict
 from scriptworker.constants import DEFAULT_CONFIG
-from scriptworker.exceptions import ConfigError
 
 # constants helpers and fixtures {{{1
 ENV_CREDS_PARAMS = (
