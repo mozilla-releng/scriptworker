@@ -21,13 +21,19 @@ tasks:
       then: '${event.number}',
       else: '',
     }
+    branch: {
+      $if: 'tasks_for == "github-pull-request"',
+      then: '${event.pull_request.head.ref}',
+      else: {$eval: 'event.ref[11:]'},
+    }
   in:
     # map tox command -> docker image
     $map: [['py36', 'python:3.6', {NO_TESTS_OVER_WIRE: '1'}, []],
            ['py37', 'python:3.7', {
                 NO_TESTS_OVER_WIRE: '1',
                 CIRCLECI: '1',
-                CI_PULL_REQUEST: '${pull_request_number}'
+                CI_PULL_REQUEST: '${pull_request_number}',
+                CI_BRANCH: '${branch}'
             }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:coveralls']],
            ['py38', 'python:3.8', {NO_TESTS_OVER_WIRE: '1'}, []],
            ['py37-cot', 'python:3.7', {NO_CREDENTIALS_TESTS: '1'}, []],
