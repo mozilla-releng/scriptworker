@@ -20,7 +20,7 @@ This worker was designed for `Releng processes`_ that need specific, limited, an
 
 .. _Releng processes: https://bugzilla.mozilla.org/show_bug.cgi?id=1245837
 
-Free software: MPL2 license
+Free software: MPL2 License
 
 -----
 Usage
