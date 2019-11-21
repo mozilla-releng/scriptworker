@@ -7,10 +7,9 @@ RUN apt-get update \
 RUN mkdir -p /builds/test
 RUN mkdir -p /builds/scriptworker
 
-COPY ./requirements/ /builds/scriptworker/requirements
 COPY setup.py /builds/scriptworker/
 COPY setup.cfg /builds/scriptworker/
-COPY scriptworker/ /builds/scriptworker/scriptworker
+COPY src/ /builds/scriptworker/src/
 COPY .coveragerc /builds/scriptworker/
 COPY tox.ini /builds/scriptworker/
 COPY MANIFEST.in /builds/scriptworker/

@@ -9,7 +9,6 @@
 
 test_env() {
     cd /builds/scriptworker
-    pip3 install -r requirements/test.in
     python3 setup.py develop
     cp /builds/test/secrets.json .
 }
