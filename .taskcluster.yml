@@ -16,17 +16,27 @@ tasks:
                   then: '${event.pusher.email}',
                   # Assume Pull Request
                   else: '${event.pull_request.user.login}@users.noreply.github.com'}
+    pull_request_number: {
+      $if: 'tasks_for == "github-pull-request"',
+      then: '${event.number}',
+      else: '',
+    }
   in:
     # map tox command -> docker image
-    $map: [['py36', 'python:3.6', {NO_TESTS_OVER_WIRE: '1'}],
-           ['py37', 'python:3.7', {NO_TESTS_OVER_WIRE: '1'}],
-           ['py38', 'python:3.8', {NO_TESTS_OVER_WIRE: '1'}],
-           ['py37-cot', 'python:3.7', {NO_CREDENTIALS_TESTS: '1'}],
-           ['check', 'python:3.7', {}]]
+    $map: [['py36', 'python:3.6', {NO_TESTS_OVER_WIRE: '1'}, []],
+           ['py37', 'python:3.7', {
+                NO_TESTS_OVER_WIRE: '1',
+                CIRCLECI: '1',
+                CI_PULL_REQUEST: '${pull_request_number}'
+            }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:coveralls']],
+           ['py38', 'python:3.8', {NO_TESTS_OVER_WIRE: '1'}, []],
+           ['py37-cot', 'python:3.7', {NO_CREDENTIALS_TESTS: '1'}, []],
+           ['check', 'python:3.7', {}, []]]
     each(py):
       taskId: "${as_slugid(py[0])}"
       provisionerId: "releng-t"
       workerType: "linux"
+      scopes: {$eval: 'py[3]'}
       created: {$eval: 'now'}
       deadline: {$fromNow: '1 hour'}
       payload:
@@ -42,7 +52,10 @@ tasks:
             git checkout ${head_sha} &&
             pip install tox &&
             tox -e ${py[0]} &&
-            if [ "${py[0]}" == "py37" ]; then tox -e coveralls; fi
+            if [ "${py[0]}" == "py37" ]; then
+                export COVERALLS_REPO_TOKEN=$(curl 'taskcluster/secrets/v1/secret/repo:github.com/mozilla-releng/scriptworker:coveralls' | python -c 'import json, sys; a = json.load(sys.stdin); print(a["secret"]["repo_token"])') &&
+                tox -e coveralls
+            fi
       metadata:
         name: Scriptworker Pull Request ${py[0]}
         description: Pull Request ${py[0]}
