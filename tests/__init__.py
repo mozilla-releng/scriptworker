@@ -2,23 +2,26 @@
 # coding=utf-8
 """Test base files
 """
-import aiohttp
-import arrow
 import asyncio
-from copy import deepcopy
 import functools
 import json
-import mock
 import os
-import pytest
 import tempfile
+from copy import deepcopy
+
+import aiohttp
+import arrow
+import mock
+import pytest
 import taskcluster.exceptions
-from scriptworker.config import get_unfrozen_copy, apply_product_config
+from scriptworker.config import apply_product_config, get_unfrozen_copy
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.utils import makedirs
+
 try:
     import yarl
+
     YARL = True
 except ImportError:
     YARL = False
@@ -55,36 +58,31 @@ class SuccessfulQueue(object):
     info = None
     status = 409
     task = {}
-    reclaim_task = {
-        'credentials': {'a': 'b'},
-    }
+    reclaim_task = {"credentials": {"a": "b"}}
 
     async def claimTask(self, *args, **kwargs):
         return self.result
 
     async def reclaimTask(self, *args, **kwargs):
-        self.info = ['reclaimTask', args, kwargs]
+        self.info = ["reclaimTask", args, kwargs]
         raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=self.status)
 
     async def reportCompleted(self, *args, **kwargs):
-        self.info = ['reportCompleted', args, kwargs]
+        self.info = ["reportCompleted", args, kwargs]
 
     async def reportFailed(self, *args, **kwargs):
-        self.info = ['reportFailed', args, kwargs]
+        self.info = ["reportFailed", args, kwargs]
 
     async def reportException(self, *args, **kwargs):
-        self.info = ['reportException', args, kwargs]
+        self.info = ["reportException", args, kwargs]
 
     async def createArtifact(self, *args, **kwargs):
-        self.info = ['createArtifact', args, kwargs]
-        return {
-            "contentType": "text/plain",
-            "putUrl": "url",
-        }
+        self.info = ["createArtifact", args, kwargs]
+        return {"contentType": "text/plain", "putUrl": "url"}
 
     async def claimWork(self, *args, **kwargs):
-        self.info = ['claimWork', args, kwargs]
-        return {'tasks': [self.task]}
+        self.info = ["claimWork", args, kwargs]
+        return {"tasks": [self.task]}
 
 
 class UnsuccessfulQueue(object):
@@ -105,11 +103,12 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
     correctly.  When we don't want to actually hit an external url, have
     the aiohttp session's _request method return a FakeResponse.
     """
+
     def __init__(self, *args, status=200, payload=None, **kwargs):
         self._connection = mock.MagicMock()
         self._payload = payload or {}
         self.status = status
-        self._headers = {'content-type': 'application/json'}
+        self._headers = {"content-type": "application/json"}
         self._cache = {}
         self._loop = mock.MagicMock()
         self.content = self
@@ -137,12 +136,12 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
             return self.resp.pop(0)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def successful_queue():
     return SuccessfulQueue()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def unsuccessful_queue():
     return UnsuccessfulQueue()
 
@@ -155,7 +154,7 @@ def _fake_request(resp_status, method, url, *args, **kwargs):
 
 
 @pytest.mark.asyncio
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 async def fake_session():
     session = aiohttp.ClientSession()
     session._request = functools.partial(_fake_request, 200)
@@ -164,7 +163,7 @@ async def fake_session():
 
 
 @pytest.mark.asyncio
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 async def fake_session_500():
     session = aiohttp.ClientSession()
     session._request = functools.partial(_fake_request, 500)
@@ -173,7 +172,7 @@ async def fake_session_500():
 
 
 @pytest.mark.asyncio
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 async def fake_session_404():
     session = aiohttp.ClientSession()
     session._request = functools.partial(_fake_request, 404)
@@ -181,8 +180,7 @@ async def fake_session_404():
     await session.close()
 
 
-def integration_create_task_payload(config, task_group_id, scopes=None,
-                                    task_payload=None, task_extra=None):
+def integration_create_task_payload(config, task_group_id, scopes=None, task_payload=None, task_extra=None):
     """For various integration tests, we need to call createTask for test tasks.
 
     This function creates a dummy payload for those createTask calls.
@@ -194,32 +192,32 @@ def integration_create_task_payload(config, task_group_id, scopes=None,
     task_payload = task_payload or {}
     task_extra = task_extra or {}
     return {
-        'provisionerId': config['provisioner_id'],
-        'schedulerId': 'test-dummy-scheduler',
-        'workerType': config['worker_type'],
-        'taskGroupId': task_group_id,
-        'dependencies': [],
-        'requires': 'all-completed',
-        'routes': [],
-        'priority': 'normal',
-        'retries': 5,
-        'created': now.isoformat(),
-        'deadline': deadline.isoformat(),
-        'expires': expires.isoformat(),
-        'scopes': scopes,
-        'payload': task_payload,
-        'metadata': {
-            'name': 'ScriptWorker Integration Test',
-            'description': 'ScriptWorker Integration Test',
-            'owner': 'release+python@mozilla.com',
-            'source': 'https://github.com/mozilla-releng/scriptworker/'
+        "provisionerId": config["provisioner_id"],
+        "schedulerId": "test-dummy-scheduler",
+        "workerType": config["worker_type"],
+        "taskGroupId": task_group_id,
+        "dependencies": [],
+        "requires": "all-completed",
+        "routes": [],
+        "priority": "normal",
+        "retries": 5,
+        "created": now.isoformat(),
+        "deadline": deadline.isoformat(),
+        "expires": expires.isoformat(),
+        "scopes": scopes,
+        "payload": task_payload,
+        "metadata": {
+            "name": "ScriptWorker Integration Test",
+            "description": "ScriptWorker Integration Test",
+            "owner": "release+python@mozilla.com",
+            "source": "https://github.com/mozilla-releng/scriptworker/",
         },
-        'tags': {},
-        'extra': task_extra,
+        "tags": {},
+        "extra": task_extra,
     }
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture(scope="function")
 def tmpdir():
     """Yield a tmpdir that gets cleaned up afterwards.
 
@@ -230,7 +228,7 @@ def tmpdir():
         yield tmp
 
 
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture(scope="function")
 def tmpdir2():
     """Yield a tmpdir that gets cleaned up afterwards.
 
@@ -245,53 +243,53 @@ async def _close_session(obj):
     """Get rid of all the unclosed session warnings.
 
     """
-    if not hasattr(obj, 'session'):
+    if not hasattr(obj, "session"):
         return
     if isinstance(obj.session, aiohttp.ClientSession):
         await obj.session.close()
 
 
 @pytest.mark.asyncio
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture(scope="function")
 async def rw_context(event_loop):
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product='firefox', session=session)
+            context = _craft_rw_context(tmp, event_loop, cot_product="firefox", session=session)
             yield context
 
 
 @pytest.mark.asyncio
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture(scope="function")
 async def mobile_rw_context(event_loop):
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product='mobile', session=session)
+            context = _craft_rw_context(tmp, event_loop, cot_product="mobile", session=session)
             yield context
 
 
 @pytest.mark.asyncio
-@pytest.yield_fixture(scope='function')
+@pytest.yield_fixture(scope="function")
 async def mpd_rw_context(event_loop):
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product='mpd001', session=session)
+            context = _craft_rw_context(tmp, event_loop, cot_product="mpd001", session=session)
             yield context
 
 
 def _craft_rw_context(tmp, event_loop, cot_product, session):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
-    config['cot_product'] = cot_product
+    config["cot_product"] = cot_product
     context = Context()
     context.session = session
     context.config = apply_product_config(config)
-    context.config['cot_job_type'] = "scriptworker"
+    context.config["cot_job_type"] = "scriptworker"
     for key, value in context.config.items():
         if key.endswith("_dir"):
             context.config[key] = os.path.join(tmp, key)
             makedirs(context.config[key])
         if key.endswith("key_path"):
             context.config[key] = os.path.join(tmp, key)
-    context.config['verbose'] = VERBOSE
+    context.config["verbose"] = VERBOSE
     context.event_loop = event_loop
     return context
 
@@ -330,10 +328,12 @@ def create_slow_async(result=None):
 def create_sync(result=None):
     def fn(*args, **kwargs):
         return result
+
     return fn
 
 
 def create_async(result=None):
     async def fn(*args, **kwargs):
         return result
+
     return fn

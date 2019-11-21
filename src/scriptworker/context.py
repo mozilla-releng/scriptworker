@@ -9,17 +9,17 @@ Attributes:
     log (logging.Logger): the log object for the module.
 
 """
-import aiohttp
-import arrow
 import asyncio
-from copy import deepcopy
 import json
 import logging
 import os
 import tempfile
+from copy import deepcopy
 
+import aiohttp
+import arrow
 from scriptworker.exceptions import CoTError
-from scriptworker.utils import makedirs, load_json_or_yaml_from_url
+from scriptworker.utils import load_json_or_yaml_from_url, makedirs
 from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
@@ -82,10 +82,10 @@ class Context(object):
         self.reclaim_task = None
         self.proc = None
         if claim_task:
-            self.task = claim_task['task']
+            self.task = claim_task["task"]
             self.verify_task()
-            self.temp_credentials = claim_task['credentials']
-            path = os.path.join(self.config['work_dir'], "task.json")
+            self.temp_credentials = claim_task["credentials"]
+            path = os.path.join(self.config["work_dir"], "task.json")
             self.write_json(path, self.task, "Writing task file to {path}...")
         else:
             self.temp_credentials = None
@@ -96,7 +96,7 @@ class Context(object):
         for upstream_artifact in self.task.get("payload", {}).get("upstreamArtifacts", []):
             task_id = upstream_artifact["taskId"]
             for path in upstream_artifact["paths"]:
-                if os.path.isabs(path) or '..' in path:
+                if os.path.isabs(path) or ".." in path:
                     raise CoTError("upstreamArtifacts taskId {} has illegal path {}!".format(task_id, path))
 
     @property
@@ -116,7 +116,7 @@ class Context(object):
     def task_id(self):
         """string: The running task's taskId."""
         if self.claim_task:
-            return self.claim_task['status']['taskId']
+            return self.claim_task["status"]["taskId"]
 
     @credentials.setter
     def credentials(self, creds):
@@ -133,13 +133,7 @@ class Context(object):
         """
         if credentials:
             session = self.session or aiohttp.ClientSession(loop=self.event_loop)
-            return Queue(
-                options={
-                    'credentials': credentials,
-                    'rootUrl': self.config['taskcluster_root_url'],
-                },
-                session=session
-            )
+            return Queue(options={"credentials": credentials, "rootUrl": self.config["taskcluster_root_url"]}, session=session)
 
     @property
     def reclaim_task(self):
@@ -160,7 +154,7 @@ class Context(object):
     def reclaim_task(self, value):
         self._reclaim_task = value
         if value is not None:
-            self.temp_credentials = value['credentials']
+            self.temp_credentials = value["credentials"]
 
     @property
     def temp_credentials(self):
@@ -233,7 +227,4 @@ class Context(object):
         """
         if force or not self.projects:
             with tempfile.TemporaryDirectory() as tmpdirname:
-                self.projects = await load_json_or_yaml_from_url(
-                    self, self.config['project_configuration_url'],
-                    os.path.join(tmpdirname, 'projects.yml')
-                )
+                self.projects = await load_json_or_yaml_from_url(self, self.config["project_configuration_url"], os.path.join(tmpdirname, "projects.yml"))

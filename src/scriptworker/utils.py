@@ -5,11 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module
 
 """
-import aiohttp
-import arrow
 import asyncio
-import async_timeout
-from copy import deepcopy
 import functools
 import hashlib
 import json
@@ -18,23 +14,21 @@ import os
 import random
 import re
 import shutil
+from copy import deepcopy
 from urllib.parse import unquote, urlparse
+
+import aiohttp
+import arrow
+import async_timeout
 import yaml
+from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 from taskcluster.client import createTemporaryCredentials
-from scriptworker.exceptions import (
-    DownloadError,
-    Download404,
-    ScriptWorkerException,
-    ScriptWorkerRetryException,
-    ScriptWorkerTaskException,
-)
 
 log = logging.getLogger(__name__)
 
 
 # request {{{1
-async def request(context, url, timeout=60, method='get', good=(200, ),
-                  retry=tuple(range(500, 512)), return_type='text', **kwargs):
+async def request(context, url, timeout=60, method="get", good=(200,), retry=tuple(range(500, 512)), return_type="text", **kwargs):
     """Async aiohttp request wrapper.
 
     Args:
@@ -72,18 +66,16 @@ async def request(context, url, timeout=60, method='get', good=(200, ),
                 raise ScriptWorkerRetryException(message)
             if resp.status not in good:
                 raise ScriptWorkerException(message)
-            if return_type == 'text':
+            if return_type == "text":
                 return await resp.text()
-            elif return_type == 'json':
+            elif return_type == "json":
                 return await resp.json()
             else:
                 return resp
 
 
 # retry_request {{{1
-async def retry_request(*args, retry_exceptions=(asyncio.TimeoutError,
-                                                 ScriptWorkerRetryException),
-                        retry_async_kwargs=None, **kwargs):
+async def retry_request(*args, retry_exceptions=(asyncio.TimeoutError, ScriptWorkerRetryException), retry_async_kwargs=None, **kwargs):
     """Retry the ``request`` function.
 
     Args:
@@ -99,8 +91,7 @@ async def retry_request(*args, retry_exceptions=(asyncio.TimeoutError,
 
     """
     retry_async_kwargs = retry_async_kwargs or {}
-    return await retry_async(request, retry_exceptions=retry_exceptions,
-                             args=args, kwargs=kwargs, **retry_async_kwargs)
+    return await retry_async(request, retry_exceptions=retry_exceptions, args=args, kwargs=kwargs, **retry_async_kwargs)
 
 
 # datestring_to_timestamp {{{1
@@ -131,7 +122,7 @@ def to_unicode(line):
 
     """
     try:
-        line = line.decode('utf-8')
+        line = line.decode("utf-8")
     except (UnicodeDecodeError, AttributeError):
         pass
     return line
@@ -155,9 +146,7 @@ def makedirs(path):
         else:
             realpath = os.path.realpath(path)
             if not os.path.isdir(realpath):
-                raise ScriptWorkerException(
-                    "makedirs: {} already exists and is not a directory!".format(path)
-                )
+                raise ScriptWorkerException("makedirs: {} already exists and is not a directory!".format(path))
 
 
 # rm {{{1
@@ -187,7 +176,7 @@ def cleanup(context):
         context (scriptworker.context.Context): the scriptworker context.
 
     """
-    for name in 'work_dir', 'artifact_dir', 'task_log_dir':
+    for name in "work_dir", "artifact_dir", "task_log_dir":
         path = context.config[name]
         if os.path.exists(path):
             log.debug("rm({})".format(path))
@@ -196,7 +185,7 @@ def cleanup(context):
 
 
 # calculate_sleep_time {{{1
-def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max_delay=120):
+def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=0.5, max_delay=120):
     """Calculate the sleep time between retries, in seconds.
 
     Based off of `taskcluster.utils.calculateSleepTime`, but with kwargs instead
@@ -227,9 +216,7 @@ def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=.5, max
 
 
 # retry_async {{{1
-async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
-                      retry_exceptions=Exception, args=(), kwargs=None,
-                      sleeptime_kwargs=None):
+async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time, retry_exceptions=Exception, args=(), kwargs=None, sleeptime_kwargs=None):
     """Retry ``func``, where ``func`` is an awaitable.
 
     Args:
@@ -283,23 +270,19 @@ def retry_async_decorator(retry_exceptions=Exception, sleeptime_kwargs=None):
         function: the decorated function
 
     """
+
     def wrap(async_func):
         @functools.wraps(async_func)
         async def wrapped(*args, **kwargs):
-            return await retry_async(
-                async_func,
-                retry_exceptions=retry_exceptions,
-                args=args,
-                kwargs=kwargs,
-                sleeptime_kwargs=sleeptime_kwargs,
-            )
+            return await retry_async(async_func, retry_exceptions=retry_exceptions, args=args, kwargs=kwargs, sleeptime_kwargs=sleeptime_kwargs)
+
         return wrapped
+
     return wrap
 
 
 # create_temp_creds {{{1
-def create_temp_creds(client_id, access_token, start=None, expires=None,
-                      scopes=None, name=None):
+def create_temp_creds(client_id, access_token, start=None, expires=None, scopes=None, name=None):
     """Request temp TC creds with our permanent creds.
 
     Args:
@@ -320,12 +303,11 @@ def create_temp_creds(client_id, access_token, start=None, expires=None,
     now = arrow.utcnow().shift(minutes=-10)
     start = start or now.datetime
     expires = expires or now.shift(days=31).datetime
-    scopes = scopes or ['assume:project:taskcluster:worker-test-scopes', ]
-    creds = createTemporaryCredentials(client_id, access_token, start, expires,
-                                       scopes, name=name)
+    scopes = scopes or ["assume:project:taskcluster:worker-test-scopes"]
+    creds = createTemporaryCredentials(client_id, access_token, start, expires, scopes, name=name)
     for key, value in creds.items():
         try:
-            creds[key] = value.decode('utf-8')
+            creds[key] = value.decode("utf-8")
         except (AttributeError, UnicodeDecodeError):
             pass
     return creds
@@ -387,7 +369,7 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
                 if raise_at_first_error:
                     raise exc
                 else:
-                    log.warning('Async task failed with error: {}'.format(exc))
+                    log.warning("Async task failed with error: {}".format(exc))
                     error_results.append(exc)
             else:
                 succeeded_results.append(task.result())
@@ -411,7 +393,7 @@ def filepaths_in_dir(path):
     for root, directories, filenames in os.walk(path):
         for filename in filenames:
             filepath = os.path.join(root, filename)
-            filepath = filepath.replace(path, '').lstrip('/')
+            filepath = filepath.replace(path, "").lstrip("/")
             filepaths.append(filepath)
     return filepaths
 
@@ -432,7 +414,7 @@ def get_hash(path, hash_alg="sha256"):
     """
     h = hashlib.new(hash_alg)
     with open(path, "rb") as f:
-        for chunk in iter(functools.partial(f.read, 4096), b''):
+        for chunk in iter(functools.partial(f.read, 4096), b""):
             h.update(chunk)
     return h.hexdigest()
 
@@ -452,9 +434,7 @@ def format_json(data):
 
 
 # load_json_or_yaml {{{1
-def load_json_or_yaml(string, is_path=False, file_type='json',
-                      exception=ScriptWorkerTaskException,
-                      message="Failed to load %(file_type)s: %(exc)s"):
+def load_json_or_yaml(string, is_path=False, file_type="json", exception=ScriptWorkerTaskException, message="Failed to load %(file_type)s: %(exc)s"):
     """Load json or yaml from a filehandle or string, and raise a custom exception on failure.
 
     Args:
@@ -473,7 +453,7 @@ def load_json_or_yaml(string, is_path=False, file_type='json',
         Exception: as specified, on failure
 
     """
-    if file_type == 'json':
+    if file_type == "json":
         _load_fh = json.load
         _load_str = json.loads
     else:
@@ -482,19 +462,19 @@ def load_json_or_yaml(string, is_path=False, file_type='json',
 
     try:
         if is_path:
-            with open(string, 'r') as fh:
+            with open(string, "r") as fh:
                 contents = _load_fh(fh)
         else:
             contents = _load_str(string)
         return contents
     except (OSError, ValueError, yaml.scanner.ScannerError) as exc:
         if exception is not None:
-            repl_dict = {'exc': str(exc), 'file_type': file_type}
+            repl_dict = {"exc": str(exc), "file_type": file_type}
             raise exception(message % repl_dict)
 
 
 # write_to_file {{{1
-def write_to_file(path, contents, file_type='text'):
+def write_to_file(path, contents, file_type="text"):
     """Write ``contents`` to ``path`` with optional formatting.
 
     Small helper function to write ``contents`` to ``file`` with optional formatting.
@@ -511,21 +491,21 @@ def write_to_file(path, contents, file_type='text'):
         TypeError: if ``file_type`` is ``json`` and ``contents`` isn't JSON serializable
 
     """
-    FILE_TYPES = ('json', 'text', 'binary')
+    FILE_TYPES = ("json", "text", "binary")
     if file_type not in FILE_TYPES:
         raise ScriptWorkerException("Unknown file_type {} not in {}!".format(file_type, FILE_TYPES))
-    if file_type == 'json':
+    if file_type == "json":
         contents = format_json(contents)
-    if file_type == 'binary':
-        with open(path, 'wb') as fh:
+    if file_type == "binary":
+        with open(path, "wb") as fh:
             fh.write(contents)
     else:
-        with open(path, 'w') as fh:
+        with open(path, "w") as fh:
             print(contents, file=fh, end="")
 
 
 # read_from_file {{{1
-def read_from_file(path, file_type='text', exception=ScriptWorkerException):
+def read_from_file(path, file_type="text", exception=ScriptWorkerException):
     """Read from ``path``.
 
     Small helper function to read from ``file``.
@@ -545,7 +525,7 @@ def read_from_file(path, file_type='text', exception=ScriptWorkerException):
         Exception: if ``exception`` is set.
 
     """
-    FILE_TYPE_MAP = {'text': 'r', 'binary': 'rb'}
+    FILE_TYPE_MAP = {"text": "r", "binary": "rb"}
     if file_type not in FILE_TYPE_MAP:
         raise exception("Unknown file_type {} not in {}!".format(file_type, FILE_TYPE_MAP))
     try:
@@ -557,7 +537,7 @@ def read_from_file(path, file_type='text', exception=ScriptWorkerException):
 
 # download_file {{{1
 async def _log_download_error(resp, msg):
-    log.debug(msg, {'url': get_loggable_url(str(resp.url)), 'status': resp.status, 'body': (await resp.text())[:1000]})
+    log.debug(msg, {"url": get_loggable_url(str(resp.url)), "status": resp.status, "body": (await resp.text())[:1000]})
     for i, h in enumerate(resp.history):
         log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
 
@@ -630,8 +610,8 @@ def get_parts_of_url_path(url):
 
     """
     parsed = urlparse(url)
-    path = unquote(parsed.path).lstrip('/')
-    parts = path.split('/')
+    path = unquote(parsed.path).lstrip("/")
+    parts = path.split("/")
     return parts
 
 
@@ -654,18 +634,15 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True, auth=No
 
     """
     if path.endswith("json"):
-        file_type = 'json'
+        file_type = "json"
     else:
-        file_type = 'yaml'
+        file_type = "yaml"
 
     kwargs = {}
     if auth:
-        kwargs = {'auth': auth}
+        kwargs = {"auth": auth}
     if not overwrite or not os.path.exists(path):
-        await retry_async(
-            download_file, args=(context, url, path), kwargs=kwargs,
-            retry_exceptions=(DownloadError, aiohttp.ClientError),
-        )
+        await retry_async(download_file, args=(context, url, path), kwargs=kwargs, retry_exceptions=(DownloadError, aiohttp.ClientError))
     return load_json_or_yaml(path, is_path=True, file_type=file_type)
 
 
@@ -681,7 +658,7 @@ def match_url_path_callback(match):
 
     """
     path_info = match.groupdict()
-    return path_info['path']
+    return path_info["path"]
 
 
 # match_url_regex {{{1
@@ -716,11 +693,11 @@ def match_url_regex(rules, url, callback):
     parts = urlparse(url)
     path = unquote(parts.path)
     for rule in rules:
-        if parts.scheme not in rule['schemes']:
+        if parts.scheme not in rule["schemes"]:
             continue
-        if parts.netloc not in rule['netlocs']:
+        if parts.netloc not in rule["netlocs"]:
             continue
-        for regex in rule['path_regexes']:
+        for regex in rule["path_regexes"]:
             m = re.search(regex, path)
             if m is None:
                 continue
@@ -755,7 +732,7 @@ def add_enumerable_item_to_dict(dict_, key, item):
 
 
 # remove_empty_keys {{{1
-def remove_empty_keys(values, remove=({}, None, [], 'null')):
+def remove_empty_keys(values, remove=({}, None, [], "null")):
     """Recursively remove key/value pairs where the value is in ``remove``.
 
     This is targeted at comparing json-e rebuilt task definitions, since
@@ -769,22 +746,21 @@ def remove_empty_keys(values, remove=({}, None, [], 'null')):
 
     """
     if isinstance(values, dict):
-        return {key: remove_empty_keys(value, remove=remove)
-                for key, value in deepcopy(values).items() if value not in remove}
+        return {key: remove_empty_keys(value, remove=remove) for key, value in deepcopy(values).items() if value not in remove}
     if isinstance(values, list):
-        return [remove_empty_keys(value, remove=remove)
-                for value in deepcopy(values) if value not in remove]
+        return [remove_empty_keys(value, remove=remove) for value in deepcopy(values) if value not in remove]
 
     return values
 
 
 # get_single_item_from_sequence {{{1
 def get_single_item_from_sequence(
-    sequence, condition,
+    sequence,
+    condition,
     ErrorClass=ValueError,
-    no_item_error_message='No item matched condition',
-    too_many_item_error_message='Too many items matched condition',
-    append_sequence_to_error_message=True
+    no_item_error_message="No item matched condition",
+    too_many_item_error_message="Too many items matched condition",
+    append_sequence_to_error_message=True,
 ):
     """Return an item from a python sequence based on the given condition.
 
@@ -812,5 +788,5 @@ def get_single_item_from_sequence(
         return filtered_sequence[0]
 
     if append_sequence_to_error_message:
-        error_message = '{}. Given: {}'.format(error_message, sequence)
+        error_message = "{}. Given: {}".format(error_message, sequence)
     raise ErrorClass(error_message)

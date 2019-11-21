@@ -5,25 +5,19 @@ import re
 
 from github3 import GitHub
 from github3.exceptions import GitHubException
-
 from scriptworker.exceptions import ConfigError
-from scriptworker.utils import (
-    get_single_item_from_sequence,
-    get_parts_of_url_path,
-    retry_async_decorator,
-    retry_request,
-)
+from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request
 
-_GIT_FULL_HASH_PATTERN = re.compile(r'^[0-9a-f]{40}$')
+_GIT_FULL_HASH_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 _branch_commits_cache = {}
 
 log = logging.getLogger(__name__)
 
 
-class GitHubRepository():
+class GitHubRepository:
     """Wrapper around GitHub API. Used to access public data."""
 
-    def __init__(self, owner, repo_name, token=''):
+    def __init__(self, owner, repo_name, token=""):
         """Build the GitHub API URL which points to the definition of the repository.
 
         Args:
@@ -122,19 +116,16 @@ class GitHubRepository():
             revision = await self.get_tag_hash(tag_name=revision)
 
         repo = self._github_repository.html_url
-        if any(
-            vcs_rule.get('require_secret')
-            for vcs_rule in context.config['trusted_vcs_rules']
-        ):
+        if any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]):
             # This check uses unofficial API on github, which we can't easily
             # check for private repos, assume its true in the private case.
-            log.info("has_commit_landed_on_repository() not implemented for private"
-                     "repositories, assume True")
+            log.info("has_commit_landed_on_repository() not implemented for private" "repositories, assume True")
             return True
 
-        url = '/'.join([repo.rstrip('/'), 'branch_commits', revision])
+        url = "/".join([repo.rstrip("/"), "branch_commits", revision])
         from scriptworker.task import get_decision_task_id
-        cache_key = '{}-{}'.format(get_decision_task_id(context.task), url)
+
+        cache_key = "{}-{}".format(get_decision_task_id(context.task), url)
         if cache_key in _branch_commits_cache:
             html_text = _branch_commits_cache[cache_key]
         else:
@@ -144,7 +135,7 @@ class GitHubRepository():
         # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
         # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
         # represents the branches on which the given revision is present.
-        return html_text != ''
+        return html_text != ""
 
 
 def is_github_url(url):
@@ -158,7 +149,7 @@ def is_github_url(url):
 
     """
     if isinstance(url, str):
-        return url.startswith('https://github.com/') or url.startswith('ssh://github.com/')
+        return url.startswith("https://github.com/") or url.startswith("ssh://github.com/")
     else:
         return False
 
@@ -200,7 +191,7 @@ def extract_github_repo_full_name(url):
         str: the full name.
 
     """
-    return '/'.join(extract_github_repo_owner_and_name(url))
+    return "/".join(extract_github_repo_owner_and_name(url))
 
 
 def extract_github_repo_ssh_url(url):
@@ -216,8 +207,7 @@ def extract_github_repo_ssh_url(url):
         str: the ssh url
 
     """
-    return "git@github.com:{}.git".format(
-        extract_github_repo_full_name(url))
+    return "git@github.com:{}.git".format(extract_github_repo_full_name(url))
 
 
 def extract_github_repo_and_revision_from_source_url(url):
@@ -240,7 +230,7 @@ def extract_github_repo_and_revision_from_source_url(url):
     try:
         revision = parts[3]
     except IndexError:
-        raise ValueError('Revision cannot be extracted from url: {}'.format(url))
+        raise ValueError("Revision cannot be extracted from url: {}".format(url))
 
     end_index = url.index(repo_name) + len(repo_name)
     repo_url = url[:end_index]
@@ -249,8 +239,8 @@ def extract_github_repo_and_revision_from_source_url(url):
 
 
 def _strip_trailing_dot_git(url):
-    if url.endswith('.git'):
-        url = url[:-len('.git')]
+    if url.endswith(".git"):
+        url = url[: -len(".git")]
     return url
 
 
@@ -268,11 +258,10 @@ def is_github_repo_owner_the_official_one(context, repo_owner):
         bool: True when ``repo_owner`` matches the one configured to be the official one
 
     """
-    official_repo_owner = context.config['official_github_repos_owner']
+    official_repo_owner = context.config["official_github_repos_owner"]
     if not official_repo_owner:
         raise ConfigError(
-            'This worker does not have a defined owner for official GitHub repositories. '
-            'Given "official_github_repos_owner": {}'.format(official_repo_owner)
+            "This worker does not have a defined owner for official GitHub repositories. " 'Given "official_github_repos_owner": {}'.format(official_repo_owner)
         )
 
     return official_repo_owner == repo_owner

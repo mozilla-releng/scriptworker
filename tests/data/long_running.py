@@ -22,19 +22,10 @@ def launch_second_instances():
     temp_dir = sys.argv[1]
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
-    job1 = subprocess.Popen(
-        [sys.executable, __file__,
-         os.path.join(temp_dir, "one"),
-         os.path.join(temp_dir, "two"),
-         os.path.join(temp_dir, "three")],
-    )
+    job1 = subprocess.Popen([sys.executable, __file__, os.path.join(temp_dir, "one"), os.path.join(temp_dir, "two"), os.path.join(temp_dir, "three")])
     loop = asyncio.get_event_loop()
     job2 = asyncio.create_subprocess_exec(
-        sys.executable,
-        __file__,
-        os.path.join(temp_dir, "four"),
-        os.path.join(temp_dir, "five"),
-        os.path.join(temp_dir, "six"),
+        sys.executable, __file__, os.path.join(temp_dir, "four"), os.path.join(temp_dir, "five"), os.path.join(temp_dir, "six")
     )
     loop.run_until_complete(job2)
     job1.wait()
@@ -44,15 +35,13 @@ async def write_file1(path):
     with open(path, "w") as fh:
         while True:
             print(time.time(), file=fh)
-            await asyncio.sleep(.001)
+            await asyncio.sleep(0.001)
 
 
 def write_files():
     loop = asyncio.get_event_loop()
-    tasks = [
-        write_file1(sys.argv[1]),
-    ]
-    subprocess.Popen(['bash', BASH_SCRIPT, sys.argv[2]])
+    tasks = [write_file1(sys.argv[1])]
+    subprocess.Popen(["bash", BASH_SCRIPT, sys.argv[2]])
     subprocess.Popen("bash {} {}".format(BASH_SCRIPT, sys.argv[3]), shell=True)
     loop.run_until_complete(asyncio.wait(tasks))
 
@@ -66,5 +55,5 @@ def main():
         write_files()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -16,8 +16,8 @@ Attributes:
   __version_string__ (str): semver version in string format.
 
 """
-from __future__ import absolute_import, division, print_function, \
-                       unicode_literals
+from __future__ import absolute_import, division, print_function, unicode_literals
+
 import json
 import os
 
@@ -40,13 +40,11 @@ def get_version_string(version):
     """
     version_len = len(version)
     if version_len == 3:
-        version_string = '%d.%d.%d' % version
+        version_string = "%d.%d.%d" % version
     elif version_len == 4:
-        version_string = '%d.%d.%d%s' % version
+        version_string = "%d.%d.%d%s" % version
     else:
-        raise Exception(
-            'Version tuple is non-semver-compliant {} length!'.format(version_len)
-        )
+        raise Exception("Version tuple is non-semver-compliant {} length!".format(version_len))
     return version_string
 
 
@@ -71,15 +69,11 @@ def write_version(name=None, path=None):
     """
     # Written like this for coverage purposes.
     # http://stackoverflow.com/questions/5850268/how-to-test-or-mock-if-name-main-contents/27084447#27084447
-    if name in (None, '__main__'):
-        path = path or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                                    "version.json")
-        contents = {
-            'version': __version__,
-            'version_string': __version_string__,
-        }
-        with open(path, 'w') as filehandle:
-            print(json.dumps(contents, sort_keys=True, indent=4, separators=(',', ':')), file=filehandle)
+    if name in (None, "__main__"):
+        path = path or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "version.json")
+        contents = {"version": __version__, "version_string": __version_string__}
+        with open(path, "w") as filehandle:
+            print(json.dumps(contents, sort_keys=True, indent=4, separators=(",", ":")), file=filehandle)
 
 
 write_version(name=__name__)

@@ -15,7 +15,7 @@ class ScriptWorkerException(Exception):
 
     """
 
-    exit_code = STATUSES['internal-error']
+    exit_code = STATUSES["internal-error"]
 
 
 class ScriptWorkerRetryException(ScriptWorkerException):
@@ -26,7 +26,7 @@ class ScriptWorkerRetryException(ScriptWorkerException):
 
     """
 
-    exit_code = STATUSES['resource-unavailable']
+    exit_code = STATUSES["resource-unavailable"]
 
 
 class ScriptWorkerTaskException(ScriptWorkerException):
@@ -74,7 +74,7 @@ class TaskVerificationError(ScriptWorkerTaskException):
             msg (string): the error message
 
         """
-        super().__init__(msg, exit_code=STATUSES['malformed-payload'])
+        super().__init__(msg, exit_code=STATUSES["malformed-payload"])
 
 
 class BaseDownloadError(ScriptWorkerTaskException):
@@ -92,9 +92,7 @@ class BaseDownloadError(ScriptWorkerTaskException):
             msg (string): the error message
 
         """
-        super(BaseDownloadError, self).__init__(
-            msg, exit_code=STATUSES['resource-unavailable']
-        )
+        super(BaseDownloadError, self).__init__(msg, exit_code=STATUSES["resource-unavailable"])
 
 
 class Download404(BaseDownloadError):
@@ -130,9 +128,7 @@ class CoTError(ScriptWorkerTaskException, KeyError):
             msg (string): the error message
 
         """
-        super(CoTError, self).__init__(
-            msg, exit_code=STATUSES['malformed-payload']
-        )
+        super(CoTError, self).__init__(msg, exit_code=STATUSES["malformed-payload"])
 
 
 class ScriptWorkerEd25519Error(CoTError):

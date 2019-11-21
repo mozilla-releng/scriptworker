@@ -8,31 +8,28 @@ Attributes:
 
 """
 import argparse
-from copy import deepcopy
-from frozendict import frozendict
 import logging
 import os
 import re
 import sys
-from yaml import safe_load
 from collections import Mapping
+from copy import deepcopy
 
+from frozendict import frozendict
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
 from scriptworker.log import update_logging_config
 from scriptworker.utils import load_json_or_yaml
+from yaml import safe_load
 
 log = logging.getLogger(__name__)
 
-CREDS_FILES = (
-    os.path.join(os.getcwd(), 'secrets.json'),
-    os.path.join(os.environ.get('HOME', '/etc/'), '.scriptworker'),
-)
+CREDS_FILES = (os.path.join(os.getcwd(), "secrets.json"), os.path.join(os.environ.get("HOME", "/etc/"), ".scriptworker"))
 
 # Based on
 # https://github.com/taskcluster/taskcluster/blob/8bf75678626567ec2fdae3889dff2f6d86235958/services/queue/src/api.js#L63
-_GENERIC_ID_REGEX = re.compile(r'^[a-zA-Z0-9-_]{1,38}$')
+_GENERIC_ID_REGEX = re.compile(r"^[a-zA-Z0-9-_]{1,38}$")
 _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
@@ -94,14 +91,10 @@ def read_worker_creds(key="credentials"):
         if contents.get(key):
             return contents[key]
     else:
-        if key == "credentials" and os.environ.get("TASKCLUSTER_ACCESS_TOKEN") and \
-                os.environ.get("TASKCLUSTER_CLIENT_ID"):
-            credentials = {
-                "accessToken": os.environ["TASKCLUSTER_ACCESS_TOKEN"],
-                "clientId": os.environ["TASKCLUSTER_CLIENT_ID"],
-            }
+        if key == "credentials" and os.environ.get("TASKCLUSTER_ACCESS_TOKEN") and os.environ.get("TASKCLUSTER_CLIENT_ID"):
+            credentials = {"accessToken": os.environ["TASKCLUSTER_ACCESS_TOKEN"], "clientId": os.environ["TASKCLUSTER_CLIENT_ID"]}
             if os.environ.get("TASKCLUSTER_CERTIFICATE"):
-                credentials['certificate'] = os.environ['TASKCLUSTER_CERTIFICATE']
+                credentials["certificate"] = os.environ["TASKCLUSTER_CERTIFICATE"]
             return credentials
 
 
@@ -134,14 +127,12 @@ def check_config(config, path):
             messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
         else:
             value_type = type(value)
-            if isinstance(DEFAULT_CONFIG[key], Mapping) and 'by-cot-product' in DEFAULT_CONFIG[key]:
-                default_type = type(DEFAULT_CONFIG[key]['by-cot-product'][config['cot_product']])
+            if isinstance(DEFAULT_CONFIG[key], Mapping) and "by-cot-product" in DEFAULT_CONFIG[key]:
+                default_type = type(DEFAULT_CONFIG[key]["by-cot-product"][config["cot_product"]])
             else:
                 default_type = type(DEFAULT_CONFIG[key])
             if value_type is not default_type:
-                messages.append(
-                    "{} {}: type {} is not {}!".format(path, key, value_type, default_type)
-                )
+                messages.append("{} {}: type {} is not {}!".format(path, key, value_type, default_type))
         if value in ("...", b"..."):
             messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
         if key in ("provisioner_id", "worker_group", "worker_type", "worker_id") and not _is_id_valid(value):
@@ -164,12 +155,12 @@ def apply_product_config(config):
     Returns: dict
 
     """
-    cot_product = config['cot_product']
+    cot_product = config["cot_product"]
 
     for key in config:
-        if isinstance(config[key], Mapping) and 'by-cot-product' in config[key]:
+        if isinstance(config[key], Mapping) and "by-cot-product" in config[key]:
             try:
-                config[key] = config[key]['by-cot-product'][cot_product]
+                config[key] = config[key]["by-cot-product"][cot_product]
             except KeyError:
                 raise ConfigError("Product {} not specified for key {}".format(cot_product, key))
 
@@ -200,16 +191,16 @@ def create_config(config_path="scriptworker.yaml"):
         secrets = safe_load(fh)
     config = dict(deepcopy(DEFAULT_CONFIG))
     if not secrets.get("credentials"):
-        secrets['credentials'] = read_worker_creds()
+        secrets["credentials"] = read_worker_creds()
     config.update(secrets)
     apply_product_config(config)
     messages = check_config(config, config_path)
     if messages:
-        print('\n'.join(messages), file=sys.stderr)
+        print("\n".join(messages), file=sys.stderr)
         print("Exiting...", file=sys.stderr)
         sys.exit(1)
-    credentials = get_frozen_copy(secrets['credentials'])
-    del(config['credentials'])
+    credentials = get_frozen_copy(secrets["credentials"])
+    del config["credentials"]
     config = get_frozen_copy(config)
     return config, credentials
 
@@ -228,10 +219,7 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
     """
     context = Context()
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument(
-        "config_path", type=str, nargs="?", default="scriptworker.yaml",
-        help="the path to the config file"
-    )
+    parser.add_argument("config_path", type=str, nargs="?", default="scriptworker.yaml", help="the path to the config file")
     parsed_args = parser.parse_args(args)
     context.config, credentials = create_config(config_path=parsed_args.config_path)
     update_logging_config(context)

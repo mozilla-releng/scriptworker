@@ -7,16 +7,11 @@ Attributes:
 """
 import logging
 import os
+
 from scriptworker.client import validate_json_schema
 from scriptworker.ed25519 import ed25519_private_key_from_file
 from scriptworker.exceptions import ScriptWorkerException
-from scriptworker.utils import (
-    filepaths_in_dir,
-    format_json,
-    get_hash,
-    load_json_or_yaml,
-    write_to_file,
-)
+from scriptworker.utils import filepaths_in_dir, format_json, get_hash, load_json_or_yaml, write_to_file
 
 log = logging.getLogger(__name__)
 
@@ -33,10 +28,10 @@ def get_cot_artifacts(context):
 
     """
     artifacts = {}
-    filepaths = filepaths_in_dir(context.config['artifact_dir'])
-    hash_alg = context.config['chain_of_trust_hash_algorithm']
+    filepaths = filepaths_in_dir(context.config["artifact_dir"])
+    hash_alg = context.config["chain_of_trust_hash_algorithm"]
     for filepath in sorted(filepaths):
-        path = os.path.join(context.config['artifact_dir'], filepath)
+        path = os.path.join(context.config["artifact_dir"], filepath)
         sha = get_hash(path, hash_alg=hash_alg)
         artifacts[filepath] = {hash_alg: sha}
     return artifacts
@@ -76,17 +71,17 @@ def generate_cot_body(context):
     """
     try:
         cot = {
-            'artifacts': get_cot_artifacts(context),
-            'chainOfTrustVersion': 1,
-            'runId': context.claim_task['runId'],
-            'task': context.task,
-            'taskId': context.claim_task['status']['taskId'],
-            'workerGroup': context.claim_task['workerGroup'],
-            'workerId': context.config['worker_id'],
-            'workerType': context.config['worker_type'],
-            'environment': get_cot_environment(context),
+            "artifacts": get_cot_artifacts(context),
+            "chainOfTrustVersion": 1,
+            "runId": context.claim_task["runId"],
+            "task": context.task,
+            "taskId": context.claim_task["status"]["taskId"],
+            "workerGroup": context.claim_task["workerGroup"],
+            "workerId": context.config["worker_id"],
+            "workerType": context.config["worker_type"],
+            "environment": get_cot_environment(context),
         }
-    except (KeyError, ) as exc:
+    except (KeyError,) as exc:
         raise ScriptWorkerException("Can't generate chain of trust! {}".format(str(exc)))
 
     return cot
@@ -111,18 +106,19 @@ def generate_cot(context, parent_path=None):
     """
     body = generate_cot_body(context)
     schema = load_json_or_yaml(
-        context.config['cot_schema_path'], is_path=True,
+        context.config["cot_schema_path"],
+        is_path=True,
         exception=ScriptWorkerException,
-        message="Can't read schema file {}: %(exc)s".format(context.config['cot_schema_path'])
+        message="Can't read schema file {}: %(exc)s".format(context.config["cot_schema_path"]),
     )
     validate_json_schema(body, schema, name="chain of trust")
     body = format_json(body)
-    parent_path = parent_path or os.path.join(context.config['artifact_dir'], 'public')
-    unsigned_path = os.path.join(parent_path, 'chain-of-trust.json')
+    parent_path = parent_path or os.path.join(context.config["artifact_dir"], "public")
+    unsigned_path = os.path.join(parent_path, "chain-of-trust.json")
     write_to_file(unsigned_path, body)
-    if context.config['sign_chain_of_trust']:
-        ed25519_signature_path = '{}.sig'.format(unsigned_path)
-        ed25519_private_key = ed25519_private_key_from_file(context.config['ed25519_private_key_path'])
-        ed25519_signature = ed25519_private_key.sign(body.encode('utf-8'))
-        write_to_file(ed25519_signature_path, ed25519_signature, file_type='binary')
+    if context.config["sign_chain_of_trust"]:
+        ed25519_signature_path = "{}.sig".format(unsigned_path)
+        ed25519_private_key = ed25519_private_key_from_file(context.config["ed25519_private_key_path"])
+        ed25519_signature = ed25519_private_key.sign(body.encode("utf-8"))
+        write_to_file(ed25519_signature_path, ed25519_signature, file_type="binary")
     return body

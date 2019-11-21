@@ -8,7 +8,6 @@ Attributes:
 import logging
 import logging.handlers
 import os
-
 from contextlib import contextmanager
 
 from scriptworker.utils import makedirs, to_unicode
@@ -16,7 +15,7 @@ from scriptworker.utils import makedirs, to_unicode
 log = logging.getLogger(__name__)
 
 
-def update_logging_config(context, log_name=None, file_name='worker.log'):
+def update_logging_config(context, log_name=None, file_name="worker.log"):
     """Update python logging settings from config.
 
     By default, this sets the ``scriptworker`` log settings, but this will
@@ -33,11 +32,11 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
             Defaults to None.
 
     """
-    log_name = log_name or __name__.split('.')[0]
+    log_name = log_name or __name__.split(".")[0]
     top_level_logger = logging.getLogger(log_name)
 
-    datefmt = context.config['log_datefmt']
-    fmt = context.config['log_fmt']
+    datefmt = context.config["log_datefmt"]
+    fmt = context.config["log_fmt"]
     formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
 
     if context.config.get("verbose"):
@@ -50,8 +49,8 @@ def update_logging_config(context, log_name=None, file_name='worker.log'):
         top_level_logger.setLevel(logging.INFO)
 
     # Rotating log file
-    makedirs(context.config['log_dir'])
-    path = os.path.join(context.config['log_dir'], file_name)
+    makedirs(context.config["log_dir"])
+    path = os.path.join(context.config["log_dir"], file_name)
     if context.config["watch_log_file"]:
         # If we rotate the log file via logrotate.d, let's watch the file
         # so we can automatically close/reopen on move.
@@ -96,7 +95,7 @@ def get_log_filename(context):
 
     """
     # XXX Even though our logs aren't live, Treeherder looks for live_backing.log to show errors in failures summary
-    return os.path.join(context.config['task_log_dir'], 'live_backing.log')
+    return os.path.join(context.config["task_log_dir"], "live_backing.log")
 
 
 @contextmanager
@@ -111,14 +110,13 @@ def get_log_filehandle(context):
 
     """
     log_file_name = get_log_filename(context)
-    makedirs(context.config['task_log_dir'])
+    makedirs(context.config["task_log_dir"])
     with open(log_file_name, "w", encoding="utf-8") as filehandle:
         yield filehandle
 
 
 @contextmanager
-def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
-                           formatter=None):
+def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG, formatter=None):
     """Add a short-lived log with a contextmanager for cleanup.
 
     Args:
@@ -135,13 +133,10 @@ def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG,
 
     """
     log_obj = log_obj or log
-    formatter = formatter or logging.Formatter(
-        fmt=context.config['log_fmt'],
-        datefmt=context.config['log_datefmt'],
-    )
+    formatter = formatter or logging.Formatter(fmt=context.config["log_fmt"], datefmt=context.config["log_datefmt"])
     parent_path = os.path.dirname(path)
     makedirs(parent_path)
-    contextual_handler = logging.FileHandler(path, encoding='utf-8')
+    contextual_handler = logging.FileHandler(path, encoding="utf-8")
     contextual_handler.setLevel(level)
     contextual_handler.setFormatter(formatter)
     log_obj.addHandler(contextual_handler)

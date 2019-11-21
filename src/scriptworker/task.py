@@ -7,32 +7,29 @@ Attributes:
 
 """
 
-import aiohttp
 import asyncio
-from asyncio.subprocess import PIPE
-from copy import deepcopy
 import logging
 import os
 import pprint
 import re
+from asyncio.subprocess import PIPE
+from copy import deepcopy
 
+import aiohttp
 import taskcluster
 import taskcluster.exceptions
-
 from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
     GitHubRepository,
-    extract_github_repo_owner_and_name,
     extract_github_repo_and_revision_from_source_url,
+    extract_github_repo_owner_and_name,
     is_github_repo_owner_the_official_one,
     is_github_url,
 )
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import (
-    get_parts_of_url_path,
-)
+from scriptworker.utils import get_parts_of_url_path
 
 log = logging.getLogger(__name__)
 
@@ -65,7 +62,7 @@ def get_task_id(claim_task):
         str: the taskId.
 
     """
-    return claim_task['status']['taskId']
+    return claim_task["status"]["taskId"]
 
 
 # get_run_id {{{1
@@ -79,7 +76,7 @@ def get_run_id(claim_task):
         int: the runId.
 
     """
-    return claim_task['runId']
+    return claim_task["runId"]
 
 
 # get_action_callback_name {{{1
@@ -94,7 +91,7 @@ def get_action_callback_name(task):
         None: if not found.
 
     """
-    return _extract_from_env_in_payload(task, 'ACTION_CALLBACK')
+    return _extract_from_env_in_payload(task, "ACTION_CALLBACK")
 
 
 # get_commit_message {{{1
@@ -108,7 +105,7 @@ def get_commit_message(task):
         str: the commit message.
 
     """
-    return _extract_from_env_in_payload(task, 'GECKO_COMMIT_MSG', default=' ')
+    return _extract_from_env_in_payload(task, "GECKO_COMMIT_MSG", default=" ")
 
 
 # get_decision_task_id {{{1
@@ -124,7 +121,7 @@ def get_decision_task_id(task):
         str: the taskId of the decision task.
 
     """
-    return task['taskGroupId']
+    return task["taskGroupId"]
 
 
 # get_parent_task_id {{{1
@@ -142,7 +139,7 @@ def get_parent_task_id(task):
         str: the taskId of the parent.
 
     """
-    return task.get('extra', {}).get('parent', get_decision_task_id(task))
+    return task.get("extra", {}).get("parent", get_decision_task_id(task))
 
 
 # get_repo {{{1
@@ -159,9 +156,9 @@ def get_repo(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    repo = _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REPOSITORY')
+    repo = _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REPOSITORY")
     if repo is not None:
-        repo = repo.rstrip('/')
+        repo = repo.rstrip("/")
     return repo
 
 
@@ -179,7 +176,7 @@ def get_revision(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    return _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REV')
+    return _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REV")
 
 
 def get_branch(task, source_env_prefix):
@@ -195,10 +192,7 @@ def get_branch(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    return _extract_from_env_in_payload(
-        task, source_env_prefix + '_HEAD_BRANCH',
-        _extract_from_env_in_payload(task, source_env_prefix + '_HEAD_REF')
-    )
+    return _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_BRANCH", _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REF"))
 
 
 def get_triggered_by(task, source_env_prefix):
@@ -214,7 +208,7 @@ def get_triggered_by(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    return _extract_from_env_in_payload(task, source_env_prefix + '_TRIGGERED_BY')
+    return _extract_from_env_in_payload(task, source_env_prefix + "_TRIGGERED_BY")
 
 
 def get_pull_request_number(task, source_env_prefix):
@@ -230,7 +224,7 @@ def get_pull_request_number(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    pull_request = _extract_from_env_in_payload(task, source_env_prefix + '_PULL_REQUEST_NUMBER')
+    pull_request = _extract_from_env_in_payload(task, source_env_prefix + "_PULL_REQUEST_NUMBER")
     if pull_request is not None:
         pull_request = int(pull_request)
     return pull_request
@@ -254,11 +248,11 @@ def get_push_date_time(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    return _extract_from_env_in_payload(task, source_env_prefix + '_PUSH_DATE_TIME')
+    return _extract_from_env_in_payload(task, source_env_prefix + "_PUSH_DATE_TIME")
 
 
 def _extract_from_env_in_payload(task, key, default=None):
-    return task['payload'].get('env', {}).get(key, default)
+    return task["payload"].get("env", {}).get(key, default)
 
 
 # get_worker_type {{{1
@@ -272,7 +266,7 @@ def get_worker_type(task):
         str: the workerType.
 
     """
-    return task['workerType']
+    return task["workerType"]
 
 
 # get_provisioner_id {{{1
@@ -286,7 +280,7 @@ def get_provisioner_id(task):
         str: the provisionerId.
 
     """
-    return task['provisionerId']
+    return task["provisionerId"]
 
 
 # get_worker_pool_id {{{1
@@ -302,9 +296,7 @@ def get_worker_pool_id(task):
         str: the workerPoolId.
 
     """
-    return "{}/{}".format(
-        get_provisioner_id(task), get_worker_type(task)
-    )
+    return "{}/{}".format(get_provisioner_id(task), get_worker_type(task))
 
 
 # get_project {{{1
@@ -326,13 +318,13 @@ async def get_project(context, source_url):
     """
     await context.populate_projects()
     for project, config in context.projects.items():
-        if source_url == config['repo'] or source_url.startswith(config['repo'] + '/'):
+        if source_url == config["repo"] or source_url.startswith(config["repo"] + "/"):
             return project
     raise ValueError("Unknown repo for source url {}!".format(source_url))
 
 
 # get_and_check_tasks_for {{{1
-def get_and_check_tasks_for(context, task, msg_prefix=''):
+def get_and_check_tasks_for(context, task, msg_prefix=""):
     """Given a parent task, return the reason the parent task was spawned.
 
     ``.taskcluster.yml`` uses this to know whether to spawn an action,
@@ -349,11 +341,9 @@ def get_and_check_tasks_for(context, task, msg_prefix=''):
         str: the ``tasks_for``
 
     """
-    tasks_for = task['extra']['tasks_for']
-    if tasks_for not in context.config['valid_tasks_for']:
-        raise ValueError(
-            '{}Unknown tasks_for: {}'.format(msg_prefix, tasks_for)
-        )
+    tasks_for = task["extra"]["tasks_for"]
+    if tasks_for not in context.config["valid_tasks_for"]:
+        raise ValueError("{}Unknown tasks_for: {}".format(msg_prefix, tasks_for))
     return tasks_for
 
 
@@ -375,19 +365,17 @@ def get_repo_scope(task, name):
 
     """
     repo_scopes = []
-    for scope in task['scopes']:
+    for scope in task["scopes"]:
         if REPO_SCOPE_REGEX.match(scope):
             repo_scopes.append(scope)
     if len(repo_scopes) > 1:
-        raise ValueError(
-            "{}: Too many repo_scopes: {}!".format(name, repo_scopes)
-        )
+        raise ValueError("{}: Too many repo_scopes: {}!".format(name, repo_scopes))
     if repo_scopes:
         return repo_scopes[0]
 
 
 def _is_try_url(url):
-    return 'try' in get_parts_of_url_path(url)[0]
+    return "try" in get_parts_of_url_path(url)[0]
 
 
 def is_try(task, source_env_prefix):
@@ -413,13 +401,15 @@ def is_try(task, source_env_prefix):
 
     """
     # If get_repo() returns None, then _is_try_url() doesn't manage to process the URL
-    repo = get_repo(task, source_env_prefix) or ''
-    return any((
-        task['schedulerId'] in ('gecko-level-1', ),
-        'try' in _extract_from_env_in_payload(task, 'MH_BRANCH', default=''),
-        _is_try_url(repo),
-        _is_try_url(task['metadata'].get('source', '')),
-    ))
+    repo = get_repo(task, source_env_prefix) or ""
+    return any(
+        (
+            task["schedulerId"] in ("gecko-level-1",),
+            "try" in _extract_from_env_in_payload(task, "MH_BRANCH", default=""),
+            _is_try_url(repo),
+            _is_try_url(task["metadata"].get("source", "")),
+        )
+    )
 
 
 async def is_pull_request(context, task):
@@ -445,25 +435,21 @@ async def is_pull_request(context, task):
         ``task.extra.env.tasks_for`` or ``task.payload.env.MOBILE_HEAD_REPOSITORY``, for instance.
 
     """
-    tasks_for = task.get('extra', {}).get('tasks_for')
-    repo_url_from_payload = get_repo(task, context.config['source_env_prefix'])
-    revision_from_payload = get_revision(task, context.config['source_env_prefix'])
+    tasks_for = task.get("extra", {}).get("tasks_for")
+    repo_url_from_payload = get_repo(task, context.config["source_env_prefix"])
+    revision_from_payload = get_revision(task, context.config["source_env_prefix"])
 
-    metadata_source_url = task['metadata'].get('source', '')
-    repo_from_source_url, revision_from_source_url = \
-        extract_github_repo_and_revision_from_source_url(metadata_source_url)
+    metadata_source_url = task["metadata"].get("source", "")
+    repo_from_source_url, revision_from_source_url = extract_github_repo_and_revision_from_source_url(metadata_source_url)
 
-    conditions = [tasks_for == 'github-pull-request']
-    urls_revisions_and_can_skip = (
-        (repo_url_from_payload, revision_from_payload, True),
-        (repo_from_source_url, revision_from_source_url, False),
-    )
+    conditions = [tasks_for == "github-pull-request"]
+    urls_revisions_and_can_skip = ((repo_url_from_payload, revision_from_payload, True), (repo_from_source_url, revision_from_source_url, False))
     for repo_url, revision, can_skip in urls_revisions_and_can_skip:
         # XXX In the case of scriptworker tasks, neither the repo nor the revision is defined
         if not repo_url and can_skip:
             continue
 
-        repo_url = repo_url.replace('git@github.com:', 'ssh://github.com/', 1)
+        repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
 
         repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
         conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
@@ -471,7 +457,7 @@ async def is_pull_request(context, task):
         if not revision and can_skip:
             continue
 
-        github_repository = GitHubRepository(repo_owner, repo_name, context.config['github_oauth_token'])
+        github_repository = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
         conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision))
 
     return any(conditions)
@@ -493,7 +479,7 @@ async def is_try_or_pull_request(context, task):
     if is_github_task(task):
         return await is_pull_request(context, task)
     else:
-        return is_try(task, context.config['source_env_prefix'])
+        return is_try(task, context.config["source_env_prefix"])
 
 
 def is_github_task(task):
@@ -509,14 +495,16 @@ def is_github_task(task):
         bool: True if a piece of data refers to GitHub
 
     """
-    return any((
-        # XXX Cron tasks don't usually define 'taskcluster-github' as their schedulerId as they
-        # are scheduled within another Taskcluster task.
-        task.get('schedulerId') == 'taskcluster-github',
-        # XXX Same here, cron tasks don't start with github
-        task.get('extra', {}).get('tasks_for', '').startswith('github-'),
-        is_github_url(task.get('metadata', {}).get('source', '')),
-    ))
+    return any(
+        (
+            # XXX Cron tasks don't usually define 'taskcluster-github' as their schedulerId as they
+            # are scheduled within another Taskcluster task.
+            task.get("schedulerId") == "taskcluster-github",
+            # XXX Same here, cron tasks don't start with github
+            task.get("extra", {}).get("tasks_for", "").startswith("github-"),
+            is_github_url(task.get("metadata", {}).get("source", "")),
+        )
+    )
 
 
 # is_action {{{1
@@ -540,9 +528,9 @@ def is_action(task):
 
     """
     result = False
-    if _extract_from_env_in_payload(task, 'ACTION_CALLBACK'):
+    if _extract_from_env_in_payload(task, "ACTION_CALLBACK"):
         result = True
-    if task.get('extra', {}).get('action') is not None:
+    if task.get("extra", {}).get("action") is not None:
         result = True
     return result
 
@@ -563,15 +551,10 @@ def prepare_to_run_task(context, claim_task):
     """
     current_task_info = {}
     context.claim_task = claim_task
-    current_task_info['taskId'] = context.task_id
-    current_task_info['runId'] = get_run_id(claim_task)
-    log.info("Going to run taskId {taskId} runId {runId}!".format(
-        **current_task_info
-    ))
-    context.write_json(
-        os.path.join(context.config['work_dir'], 'current_task_info.json'),
-        current_task_info, "Writing current task info to {path}..."
-    )
+    current_task_info["taskId"] = context.task_id
+    current_task_info["runId"] = get_run_id(claim_task)
+    log.info("Going to run taskId {taskId} runId {runId}!".format(**current_task_info))
+    context.write_json(os.path.join(context.config["work_dir"], "current_task_info.json"), current_task_info, "Writing current task info to {path}...")
     return current_task_info
 
 
@@ -590,36 +573,23 @@ async def run_task(context, to_cancellable_process):
 
     """
     env = deepcopy(os.environ)
-    env['TASK_ID'] = context.task_id or 'None'
-    kwargs = {  # pragma: no branch
-        'stdout': PIPE,
-        'stderr': PIPE,
-        'stdin': None,
-        'close_fds': True,
-        'preexec_fn': lambda: os.setsid(),
-        'env': env,
-    }
+    env["TASK_ID"] = context.task_id or "None"
+    kwargs = {"stdout": PIPE, "stderr": PIPE, "stdin": None, "close_fds": True, "preexec_fn": lambda: os.setsid(), "env": env}  # pragma: no branch
 
-    subprocess = await asyncio.create_subprocess_exec(*context.config['task_script'], **kwargs)
+    subprocess = await asyncio.create_subprocess_exec(*context.config["task_script"], **kwargs)
     context.proc = await to_cancellable_process(TaskProcess(subprocess))
-    timeout = context.config['task_max_timeout']
+    timeout = context.config["task_max_timeout"]
 
     with get_log_filehandle(context) as log_filehandle:
-        stderr_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle])
-        )
-        stdout_future = asyncio.ensure_future(
-            pipe_to_log(context.proc.process.stdout, filehandles=[log_filehandle])
-        )
+        stderr_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle]))
+        stdout_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stdout, filehandles=[log_filehandle]))
         try:
-            _, pending = await asyncio.wait(
-                [stderr_future, stdout_future], timeout=timeout
-            )
+            _, pending = await asyncio.wait([stderr_future, stdout_future], timeout=timeout)
             if pending:
                 message = "Exceeded task_max_timeout of {} seconds".format(timeout)
                 log.warning(message)
                 await context.proc.stop()
-                raise ScriptWorkerTaskException(message, exit_code=context.config['task_max_timeout_status'])
+                raise ScriptWorkerTaskException(message, exit_code=context.config["task_max_timeout_status"])
         finally:
             # in the case of a timeout, this will be -15.
             # this code is in the finally: block so we still get the final
@@ -660,18 +630,15 @@ async def reclaim_task(context, task):
 
     """
     while True:
-        log.debug("waiting %s seconds before reclaiming..." % context.config['reclaim_interval'])
-        await asyncio.sleep(context.config['reclaim_interval'])
+        log.debug("waiting %s seconds before reclaiming..." % context.config["reclaim_interval"])
+        await asyncio.sleep(context.config["reclaim_interval"])
         if task != context.task:
             return
         log.debug("Reclaiming task...")
         try:
-            context.reclaim_task = await context.temp_queue.reclaimTask(
-                get_task_id(context.claim_task),
-                get_run_id(context.claim_task),
-            )
+            context.reclaim_task = await context.temp_queue.reclaimTask(get_task_id(context.claim_task), get_run_id(context.claim_task))
             clean_response = deepcopy(context.reclaim_task)
-            clean_response['credentials'] = "{********}"
+            clean_response["credentials"] = "{********}"
             log.debug("Reclaim task response:\n{}".format(pprint.pformat(clean_response)))
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
@@ -680,7 +647,7 @@ async def reclaim_task(context, task):
                     message = "Killing task after receiving 409 status in reclaim_task"
                     log.warning(message)
                     await context.proc.stop()
-                    raise ScriptWorkerTaskException(message, exit_code=context.config['invalid_reclaim_status'])
+                    raise ScriptWorkerTaskException(message, exit_code=context.config["invalid_reclaim_status"])
                 break
             else:
                 raise
@@ -735,20 +702,15 @@ async def claim_work(context):
         dict: a dict containing a list of the task definitions of the tasks claimed.
 
     """
-    log.debug("Calling claimWork for {}/{}...".format(
-        context.config['worker_group'], context.config['worker_id']))
+    log.debug("Calling claimWork for {}/{}...".format(context.config["worker_group"], context.config["worker_id"]))
     payload = {
-        'workerGroup': context.config['worker_group'],
-        'workerId': context.config['worker_id'],
+        "workerGroup": context.config["worker_group"],
+        "workerId": context.config["worker_id"],
         # Hardcode one task at a time.  Make this a pref if we allow for
         # parallel tasks in multiple `work_dir`s.
-        'tasks': 1,
+        "tasks": 1,
     }
     try:
-        return await context.queue.claimWork(
-            context.config['provisioner_id'],
-            context.config['worker_type'],
-            payload
-        )
+        return await context.queue.claimWork(context.config["provisioner_id"], context.config["worker_type"], payload)
     except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:
         log.warning("{} {}".format(exc.__class__, exc))

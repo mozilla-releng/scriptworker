@@ -4,45 +4,38 @@ Importing this script updates the mimetypes database. This maps some known exten
 in S3.
 
 """
-import aiohttp
-import arrow
 import asyncio
-import async_timeout
 import gzip
 import logging
 import mimetypes
 import os
 from pathlib import Path
 
+import aiohttp
+import arrow
+import async_timeout
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
-from scriptworker.task import get_task_id, get_run_id, get_decision_task_id
-from scriptworker.utils import (
-    add_enumerable_item_to_dict,
-    download_file,
-    get_loggable_url,
-    raise_future_exceptions,
-    retry_async,
-)
-
+from scriptworker.task import get_decision_task_id, get_run_id, get_task_id
+from scriptworker.utils import add_enumerable_item_to_dict, download_file, get_loggable_url, raise_future_exceptions, retry_async
 
 log = logging.getLogger(__name__)
 
 
-_GZIP_SUPPORTED_CONTENT_TYPE = ('text/plain', 'application/json', 'text/html', 'application/xml')
+_GZIP_SUPPORTED_CONTENT_TYPE = ("text/plain", "application/json", "text/html", "application/xml")
 
 
 _EXTENSION_TO_MIME_TYPE = {
     # do not use gzip encoding for .tar.gz or .tgz, or we'll gunzip while
     # downloading, breaking cot verification
-    '.tar.gz': ('application/x-tar', None),
-    '.tgz': ('application/x-tar', None),
-    '.txt': ('text/plain', None),
-    '.dmg': ('application/x-apple-diskimage', None),
-    '.log': ('text/plain', None),
-    '.asc': ('text/plain', None),
-    '.diff': ('text/plain', None),
-    '.xml': ('application/xml', None),
+    ".tar.gz": ("application/x-tar", None),
+    ".tgz": ("application/x-tar", None),
+    ".txt": ("text/plain", None),
+    ".dmg": ("application/x-apple-diskimage", None),
+    ".log": ("text/plain", None),
+    ".asc": ("text/plain", None),
+    ".diff": ("text/plain", None),
+    ".xml": ("application/xml", None),
 }
 
 
@@ -63,16 +56,13 @@ async def upload_artifacts(context, files):
         Exception: any exceptions the tasks raise.
 
     """
+
     def to_upload_future(target_path):
-        path = os.path.join(context.config['artifact_dir'], target_path)
+        path = os.path.join(context.config["artifact_dir"], target_path)
         content_type, content_encoding = compress_artifact_if_supported(path)
-        return asyncio.ensure_future(retry_create_artifact(
-            context,
-            path,
-            target_path=target_path,
-            content_type=content_type,
-            content_encoding=content_encoding,
-        ))
+        return asyncio.ensure_future(
+            retry_create_artifact(context, path, target_path=target_path, content_type=content_type, content_encoding=content_encoding)
+        )
 
     tasks = list(map(to_upload_future, files))
     await raise_future_exceptions(tasks)
@@ -95,13 +85,13 @@ def compress_artifact_if_supported(artifact_path):
 
     if encoding is None and content_type in _GZIP_SUPPORTED_CONTENT_TYPE:
         log.info('"{}" can be gzip\'d. Compressing...'.format(artifact_path))
-        with open(artifact_path, 'rb') as f_in:
+        with open(artifact_path, "rb") as f_in:
             text_content = f_in.read()
 
-        with gzip.open(artifact_path, 'wb') as f_out:
+        with gzip.open(artifact_path, "wb") as f_out:
             f_out.write(text_content)
 
-        encoding = 'gzip'
+        encoding = "gzip"
         log.info('"{}" compressed'.format(artifact_path))
     else:
         log.debug('"{}" is not supported for compression.'.format(artifact_path))
@@ -139,19 +129,11 @@ async def retry_create_artifact(*args, **kwargs):
         **kwargs: the args to pass on to create_artifact
 
     """
-    await retry_async(
-        create_artifact,
-        retry_exceptions=(
-            ScriptWorkerRetryException,
-            aiohttp.ClientError
-        ),
-        args=args,
-        kwargs=kwargs
-    )
+    await retry_async(create_artifact, retry_exceptions=(ScriptWorkerRetryException, aiohttp.ClientError), args=args, kwargs=kwargs)
 
 
 # create_artifact {{{1
-async def create_artifact(context, path, target_path, content_type, content_encoding, storage_type='s3', expires=None):
+async def create_artifact(context, path, target_path, content_type, content_encoding, storage_type="s3", expires=None):
     """Create an artifact and upload it.
 
     This should support s3 and azure out of the box; we'll need some tweaking
@@ -174,38 +156,32 @@ async def create_artifact(context, path, target_path, content_type, content_enco
         ScriptWorkerRetryException: on failure.
 
     """
-    payload = {
-        "storageType": storage_type,
-        "expires": expires or get_expiration_arrow(context).isoformat(),
-        "contentType": content_type,
-    }
-    args = [get_task_id(context.claim_task), get_run_id(context.claim_task),
-            target_path, payload]
+    payload = {"storageType": storage_type, "expires": expires or get_expiration_arrow(context).isoformat(), "contentType": content_type}
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task), target_path, payload]
 
     tc_response = await context.temp_queue.createArtifact(*args)
     skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
-    loggable_url = get_loggable_url(tc_response['putUrl'])
+    loggable_url = get_loggable_url(tc_response["putUrl"])
     log.info("uploading {path} to {url}...".format(path=path, url=loggable_url))
     with open(path, "rb") as fh:
-        async with async_timeout.timeout(context.config['artifact_upload_timeout']):
+        async with async_timeout.timeout(context.config["artifact_upload_timeout"]):
             async with context.session.put(
-                tc_response['putUrl'], data=fh, headers=_craft_artifact_put_headers(content_type, content_encoding),
-                skip_auto_headers=skip_auto_headers, compress=False
+                tc_response["putUrl"],
+                data=fh,
+                headers=_craft_artifact_put_headers(content_type, content_encoding),
+                skip_auto_headers=skip_auto_headers,
+                compress=False,
             ) as resp:
                 log.info("create_artifact {}: {}".format(path, resp.status))
                 response_text = await resp.text()
                 log.info(response_text)
                 if resp.status not in (200, 204):
-                    raise ScriptWorkerRetryException(
-                        "Bad status {}".format(resp.status),
-                    )
+                    raise ScriptWorkerRetryException("Bad status {}".format(resp.status))
 
 
 def _craft_artifact_put_headers(content_type, encoding=None):
-    log.debug('{} {}'.format(content_type, encoding))
-    headers = {
-        aiohttp.hdrs.CONTENT_TYPE: content_type,
-    }
+    log.debug("{} {}".format(content_type, encoding))
+    headers = {aiohttp.hdrs.CONTENT_TYPE: content_type}
 
     if encoding is not None:
         headers[aiohttp.hdrs.CONTENT_ENCODING] = encoding
@@ -230,10 +206,12 @@ def get_artifact_url(context, task_id, path):
 
     """
     if path.startswith("public/"):
-        url = context.queue.buildUrl('getLatestArtifact', task_id, path)
+        url = context.queue.buildUrl("getLatestArtifact", task_id, path)
     else:
         url = context.queue.buildSignedUrl(
-            'getLatestArtifact', task_id, path,
+            "getLatestArtifact",
+            task_id,
+            path,
             # XXX Can set expiration kwarg in (int) seconds from now;
             # defaults to 15min.
         )
@@ -252,12 +230,11 @@ def get_expiration_arrow(context):
         arrow: `context.task['expires']`.
 
     """
-    return arrow.get(context.task['expires'])
+    return arrow.get(context.task["expires"])
 
 
 # download_artifacts {{{1
-async def download_artifacts(context, file_urls, parent_dir=None, session=None,
-                             download_func=download_file, valid_artifact_task_ids=None):
+async def download_artifacts(context, file_urls, parent_dir=None, session=None, download_func=download_file, valid_artifact_task_ids=None):
     """Download artifacts in parallel after validating their URLs.
 
     Valid ``taskId``s for download include the task's dependencies and the
@@ -284,14 +261,14 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
             any applicable retries.
 
     """
-    parent_dir = parent_dir or context.config['work_dir']
+    parent_dir = parent_dir or context.config["work_dir"]
     session = session or context.session
 
     tasks = []
     files = []
-    valid_artifact_rules = context.config['valid_artifact_rules']
+    valid_artifact_rules = context.config["valid_artifact_rules"]
     # XXX when chain of trust is on everywhere, hardcode the chain of trust task list
-    valid_artifact_task_ids = valid_artifact_task_ids or list(context.task['dependencies'] + [get_decision_task_id(context.task)])
+    valid_artifact_task_ids = valid_artifact_task_ids or list(context.task["dependencies"] + [get_decision_task_id(context.task)])
     for file_url in file_urls:
         rel_path = validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, file_url)
         abs_file_path = os.path.join(parent_dir, rel_path)
@@ -300,9 +277,10 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None,
         tasks.append(
             asyncio.ensure_future(
                 retry_async(
-                    download_func, args=(context, file_url, abs_file_path),
+                    download_func,
+                    args=(context, file_url, abs_file_path),
                     retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
-                    kwargs={'session': session},
+                    kwargs={"session": session},
                 )
             )
         )
@@ -326,11 +304,8 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
         scriptworker.exceptions.ScriptWorkerTaskException: when an artifact doesn't exist.
 
     """
-    upstream_artifacts = context.task['payload']['upstreamArtifacts']
-    task_ids_and_relative_paths = [
-        (artifact_definition['taskId'], artifact_definition['paths'])
-        for artifact_definition in upstream_artifacts
-    ]
+    upstream_artifacts = context.task["payload"]["upstreamArtifacts"]
+    task_ids_and_relative_paths = [(artifact_definition["taskId"], artifact_definition["paths"]) for artifact_definition in upstream_artifacts]
 
     optional_artifacts_per_task_id = get_optional_artifacts_per_task_id(upstream_artifacts)
 
@@ -340,17 +315,11 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
         for path in paths:
             try:
                 path_to_add = get_and_check_single_upstream_artifact_full_path(context, task_id, path)
-                add_enumerable_item_to_dict(
-                    dict_=upstream_artifacts_full_paths_per_task_id,
-                    key=task_id, item=path_to_add
-                )
+                add_enumerable_item_to_dict(dict_=upstream_artifacts_full_paths_per_task_id, key=task_id, item=path_to_add)
             except ScriptWorkerTaskException:
                 if path in optional_artifacts_per_task_id.get(task_id, []):
                     log.warning('Optional artifact "{}" of task "{}" not found'.format(path, task_id))
-                    add_enumerable_item_to_dict(
-                        dict_=failed_paths_per_task_id,
-                        key=task_id, item=path
-                    )
+                    add_enumerable_item_to_dict(dict_=failed_paths_per_task_id, key=task_id, item=path)
                 else:
                     raise
 
@@ -374,9 +343,7 @@ def get_and_check_single_upstream_artifact_full_path(context, task_id, path):
     """
     abs_path = get_single_upstream_artifact_full_path(context, task_id, path)
     if not os.path.exists(abs_path):
-        raise ScriptWorkerTaskException(
-            'upstream artifact with path: {}, does not exist'.format(abs_path)
-        )
+        raise ScriptWorkerTaskException("upstream artifact with path: {}, does not exist".format(abs_path))
 
     return abs_path
 
@@ -398,7 +365,7 @@ def get_single_upstream_artifact_full_path(context, task_id, path):
         str: absolute path to the artifact should be.
 
     """
-    parent_dir = os.path.abspath(os.path.join(context.config['work_dir'], 'cot', task_id))
+    parent_dir = os.path.abspath(os.path.join(context.config["work_dir"], "cot", task_id))
     full_path = os.path.join(parent_dir, path)
     assert_is_parent(full_path, parent_dir)
     return full_path
@@ -419,14 +386,11 @@ def get_optional_artifacts_per_task_id(upstream_artifacts):
     optional_artifacts_per_task_id = {}
 
     for artifact_definition in upstream_artifacts:
-        if artifact_definition.get('optional', False) is True:
-            task_id = artifact_definition['taskId']
-            artifacts_paths = artifact_definition['paths']
+        if artifact_definition.get("optional", False) is True:
+            task_id = artifact_definition["taskId"]
+            artifacts_paths = artifact_definition["paths"]
 
-            add_enumerable_item_to_dict(
-                dict_=optional_artifacts_per_task_id,
-                key=task_id, item=artifacts_paths
-            )
+            add_enumerable_item_to_dict(dict_=optional_artifacts_per_task_id, key=task_id, item=artifacts_paths)
 
     return optional_artifacts_per_task_id
 

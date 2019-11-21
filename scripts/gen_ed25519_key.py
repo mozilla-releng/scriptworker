@@ -6,41 +6,34 @@ easier standalone use. It could easily be a `console_script` though.
 
 """
 from __future__ import print_function
+
 import base64
+import sys
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
-import sys
 
 
 def private_key_from_string(key_str):
     """Create an Ed25519PrivateKey from a base64-encoded string."""
-    return Ed25519PrivateKey.from_private_bytes(
-        base64.b64decode(key_str)
-    )
+    return Ed25519PrivateKey.from_private_bytes(base64.b64decode(key_str))
 
 
 def public_key_from_string(key_str):
     """Create an Ed25519PublicKey from a base64-encoded string."""
-    return Ed25519PublicKey.from_public_bytes(
-        base64.b64decode(key_str)
-    )
+    return Ed25519PublicKey.from_public_bytes(base64.b64decode(key_str))
 
 
 def b64_from_private_key(key):
     """Get the base64 string from an Ed25519PrivateKey."""
-    return base64.b64encode(key.private_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PrivateFormat.Raw,
-        encryption_algorithm=serialization.NoEncryption()
-    )).decode('utf-8')
+    return base64.b64encode(
+        key.private_bytes(encoding=serialization.Encoding.Raw, format=serialization.PrivateFormat.Raw, encryption_algorithm=serialization.NoEncryption())
+    ).decode("utf-8")
 
 
 def b64_from_public_key(key):
     """Get the base64 string from an Ed25519PublicKey."""
-    return base64.b64encode(key.public_bytes(
-        encoding=serialization.Encoding.Raw,
-        format=serialization.PublicFormat.Raw,
-    )).decode('utf-8')
+    return base64.b64encode(key.public_bytes(encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)).decode("utf-8")
 
 
 prefix = ""
