@@ -3,6 +3,7 @@
 import logging
 import re
 
+from aiomemoizettl import memoize_ttl
 from github3 import GitHub
 from github3.exceptions import GitHubException
 
@@ -15,7 +16,6 @@ from scriptworker.utils import (
 )
 
 _GIT_FULL_HASH_PATTERN = re.compile(r'^[0-9a-f]{40}$')
-_branch_commits_cache = {}
 
 log = logging.getLogger(__name__)
 
@@ -117,11 +117,6 @@ class GitHubRepository():
             bool: True if the commit is present in one of the branches of the main repository
 
         """
-        # Revision may be a tag name. `branch_commits` doesn't work on tags
-        if not _is_git_full_hash(revision):
-            revision = await self.get_tag_hash(tag_name=revision)
-
-        repo = self._github_repository.html_url
         if any(
             vcs_rule.get('require_secret')
             for vcs_rule in context.config['trusted_vcs_rules']
@@ -132,19 +127,39 @@ class GitHubRepository():
                      "repositories, assume True")
             return True
 
-        url = '/'.join([repo.rstrip('/'), 'branch_commits', revision])
-        from scriptworker.task import get_decision_task_id
-        cache_key = '{}-{}'.format(get_decision_task_id(context.task), url)
-        if cache_key in _branch_commits_cache:
-            html_text = _branch_commits_cache[cache_key]
-        else:
-            html_data = await retry_request(context, url)
-            html_text = html_data.strip()
-            _branch_commits_cache[cache_key] = html_text
+        # Revision may be a tag name. `branch_commits` doesn't work on tags
+        if not _is_git_full_hash(revision):
+            revision = await self.get_tag_hash(tag_name=revision)
+
+        html_text = await _fetch_github_branch_commits_data(
+            context, self._github_repository.html_url, revision
+        )
+
         # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
         # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
         # represents the branches on which the given revision is present.
         return html_text != ''
+
+
+# TODO Use memoize_ttl() as decorator once https://github.com/michalc/aiomemoizettl/issues/2 is done
+async def _fetch_github_branch_commits_data_helper(context, repo_html_url, revision):
+    url = '/'.join((repo_html_url.rstrip('/'), 'branch_commits', revision))
+    log.info('Cache does not exist for URL "{}" (in this context), fetching it...'.format(url))
+    html_text = await retry_request(context, url)
+    return html_text.strip()
+
+# XXX memoize_ttl() uses all function parameters to create a key that stores its cache.
+# This means new contexts cannot use the memoized value, even though they're calling the same
+# repo and revision. jlorenzo tried to take the context out of the memoize_ttl() call, but
+# whenever the cache is invalidated, request() doesn't work anymore because the session carried
+# by the context has been long closed.
+# Therefore, the defined TTL has 2 purposes:
+#  a. it memoizes calls for the time of a single cot_verify() run
+#  b. it clears the cache automatically, so we don't have to manually invalidate it.
+_BRANCH_COMMITS_CACHE_TTL_IN_SECONDS = 10*60    # 10 minutes
+_fetch_github_branch_commits_data = memoize_ttl(
+    _fetch_github_branch_commits_data_helper, get_ttl=lambda _: _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS
+)
 
 
 def is_github_url(url):

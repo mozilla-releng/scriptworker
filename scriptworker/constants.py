@@ -414,7 +414,7 @@ DEFAULT_CONFIG = frozendict({
 
                 'project:releng:ship-it:production': 'all-production-branches',
 
-                'project:releng:treescript:action:push': 'all-release-branches',
+                'project:releng:treescript:action:push': 'all-production-branches',
             }),
             'thunderbird': frozendict({
                 'project:comm:thunderbird:releng:balrog:server:nightly': 'all-nightly-branches',
