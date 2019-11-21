@@ -18,7 +18,19 @@ if {"register", "upload"}.intersection(set(sys.argv)):
     )
     sys.exit(1)
 
-reqs = ["aiohttp>=3", "arrow", "cryptography>=2.6.1", "dictdiffer", "frozendict", "github3.py", "jsonschema", "json-e>=2.5.0", "PyYAML", "taskcluster>=4.0.0"]
+reqs = [
+    "aiohttp>=3",
+    "aiomemoizettl",
+    "arrow",
+    "cryptography>=2.6.1",
+    "dictdiffer",
+    "frozendict",
+    "github3.py",
+    "jsonschema",
+    "json-e>=2.5.0",
+    "PyYAML",
+    "taskcluster>=4.0.0",
+]
 
 tests_require = [
     "asyncio_extras",
