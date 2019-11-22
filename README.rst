@@ -20,7 +20,7 @@ This worker was designed for `Releng processes`_ that need specific, limited, an
 
 .. _Releng processes: https://bugzilla.mozilla.org/show_bug.cgi?id=1245837
 
-Free software: MPL2 license
+Free software: MPL2 License
 
 -----
 Usage
@@ -33,19 +33,6 @@ Usage
 Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
 
 * Launch: ``scriptworker [config_path]``
-
-.. _build the docker image:
-
------------------------
-Building a docker image
------------------------
-
-First, create a `secrets.json`. For integration testing, you'll need to define the `integration_credentials`; to do any other authenticated work, you'll need to define `credentials`.
-
-Then::
-
-    PY_DOT_VERSION=3.7  # or 3.6
-    docker build -t scriptworker-test-$PY_DOT_VERSION --build-arg PY_DOT_VERSION=$PY_DOT_VERSION  --file docker/Dockerfile.test .
 
 -------
 Testing
@@ -87,7 +74,3 @@ Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 then
 
 ``tox``
-
-It's also possible to test in docker. First, `build the docker image`_, making sure to add integration credentials to `secrets.json`. Then::
-
-    docker run -i scriptworker-test-$PY_DOT_VERSION

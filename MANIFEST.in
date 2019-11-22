@@ -1,23 +1,24 @@
-recursive-include scriptworker/data *
-recursive-include scriptworker/test/data *
-recursive-include docker *
+recursive-include src *
 recursive-include scripts *
 
-include .coveragerc
-include CHANGELOG.md
 include CONTRIBUTING.rst
+include HISTORY.rst
 include LICENSE
 include README.rst
 include config_example.json
+include pyproject.toml
+include scriptworker.yaml.tmpl
 include version.json
-include requirements*.txt
 include tox.ini
 
-include scriptworker/docs/Makefile
-include scriptworker/docs/conf.py
-include scriptworker/docs/*.rst
-include scriptworker/docs/*.md
+exclude .taskcluster.yml
+exclude CODE_OF_CONDUCT.md
+exclude docs
+exclude readthedocs.yml
+exclude requirements-docs.txt
+exclude tests
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
-recursive-exclude * 1000pubkeys
+recursive-exclude docs *
+recursive-exclude tests *
