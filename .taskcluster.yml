@@ -31,9 +31,8 @@ tasks:
     $map: [['py36', 'python:3.6', {NO_TESTS_OVER_WIRE: '1'}, []],
            ['py37', 'python:3.7', {
                 NO_TESTS_OVER_WIRE: '1',
-                CIRCLECI: '1',
-                CI_PULL_REQUEST: '${pull_request_number}',
-                CI_BRANCH: '${branch}'
+                TRAVIS_JOB_ID: '${as_slugid(py[0])}',
+                COVERALLS_SERVICE_NAME: 'taskcluster',
             }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:coveralls']],
            # Disabled due to legitimate failures.
            # See https://github.com/mozilla-releng/scriptworker/issues/415
@@ -62,9 +61,6 @@ tasks:
             tox -e ${py[0]} &&
             if [ "${py[0]}" == "py37" ]; then
                 export COVERALLS_REPO_TOKEN=$(curl 'taskcluster/secrets/v1/secret/repo:github.com/mozilla-releng/scriptworker:coveralls' | python -c 'import json, sys; a = json.load(sys.stdin); print(a["secret"]["repo_token"])') &&
-                echo "PR: $CI_PULL_REQUEST" &&
-                echo "Branch: $CI_BRANCH" &&
-                echo "Circle: $CIRCLECI" &&
                 tox -e coveralls
             fi
         features:
