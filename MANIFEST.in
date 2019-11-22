@@ -11,10 +11,8 @@ include scriptworker.yaml.tmpl
 include version.json
 include tox.ini
 
-exclude .dockerignore
 exclude .taskcluster.yml
 exclude CODE_OF_CONDUCT.md
-exclude docker
 exclude docs
 exclude readthedocs.yml
 exclude requirements-docs.txt
@@ -22,7 +20,5 @@ exclude tests
 
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
-recursive-exclude * 1000pubkeys
-recursive-exclude docker *
 recursive-exclude docs *
 recursive-exclude tests *
