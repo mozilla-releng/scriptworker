@@ -25,7 +25,7 @@ Set up the test env
 -  Create a ~/.scriptworker or ./secrets.json with test client creds.
 
 -  Create the client at `the client
-   manager <https://tools.taskcluster.net/auth/clients/>`__. Mine has
+   manager <https://firefox-ci-tc.services.mozilla.com/auth/clients>`__. Mine has
    the ``assume:project:taskcluster:worker-test-scopes`` scope, but I
    don't think that's required.
 

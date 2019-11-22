@@ -14,7 +14,7 @@ back to the tree.
 High level view
 ~~~~~~~~~~~~~~~
 
-`Scopes <https://docs.taskcluster.net/manual/integrations/apis/scopes>`__ are how Taskcluster controls access to certain features. These are granted to `roles <https://docs.taskcluster.net/manual/integrations/apis/roles>`__, which are granted to users or LDAP groups.
+`Scopes <https://firefox-ci-tc.services.mozilla.com/docs/reference/platform/auth/scopes>`__ are how Taskcluster controls access to certain features. These are granted to `roles <https://firefox-ci-tc.services.mozilla.com/docs/reference/platform/auth/roles>`__, which are granted to users or LDAP groups.
 
 Scopes and their associated Taskcluster credentials are not leak-proof. Also, by their nature, more people will have restricted scopes than you want, given any security-sensitive scope.  Without the chain of trust, someone with release-signing scopes would be able to schedule any arbitrary task to sign any arbitrary binary with the release keys, for example.
 

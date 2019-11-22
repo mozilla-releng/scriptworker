@@ -76,7 +76,7 @@ It will download them into `$artifact_dir/public/cot/$upstream-task-id/$path`.
 
 ##### Scopes
 
-[Taskcluster scopes](https://docs.taskcluster.net/presentations/scopes/#/) are its ACLs: restricted behavior is placed behind scopes, and only those people and processes that need access to that behavior are given those scopes.  With the Chain of Trust, we can verify that restricted scopes can only be used in specific repos.
+[Taskcluster scopes](https://firefox-ci-tc.services.mozilla.com/docs/reference/platform/auth/scopes) are its ACLs: restricted behavior is placed behind scopes, and only those people and processes that need access to that behavior are given those scopes.  With the Chain of Trust, we can verify that restricted scopes can only be used in specific repos.
 
 If your script is going to have different levels of access (e.g., CI- signing, nightly- signing, and release- signing), then it's best to put them each behind a different scope, and use that scope for determining which credentials to use.
 

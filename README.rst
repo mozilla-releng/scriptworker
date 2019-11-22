@@ -14,7 +14,7 @@ Scriptworker Readme
 
 Scriptworker implements the `TaskCluster worker model`_, then launches a pre-defined script.
 
-.. _TaskCluster worker model: http://docs.taskcluster.net/queue/worker-interaction/
+.. _TaskCluster worker model: https://firefox-ci-tc.services.mozilla.com/docs/reference/platform/queue/worker-interaction
 
 This worker was designed for `Releng processes`_ that need specific, limited, and pre-defined capabilities.
 

@@ -1370,7 +1370,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
 
         # define the JSON-e context with which the hook's task template was
         # rendered, defined at
-        # https://docs.taskcluster.net/docs/reference/core/taskcluster-hooks/docs/firing-hooks#triggerhook
+        # https://firefox-ci-tc.services.mozilla.com/docs/reference/core/hooks/firing-hooks#triggerhook
         # This is created by working backward from the json-e context the
         # .taskcluster.yml expects
         jsone_context = {
