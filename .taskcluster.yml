@@ -62,6 +62,9 @@ tasks:
             tox -e ${py[0]} &&
             if [ "${py[0]}" == "py37" ]; then
                 export COVERALLS_REPO_TOKEN=$(curl 'taskcluster/secrets/v1/secret/repo:github.com/mozilla-releng/scriptworker:coveralls' | python -c 'import json, sys; a = json.load(sys.stdin); print(a["secret"]["repo_token"])') &&
+                echo "PR: $CI_PULL_REQUEST" &&
+                echo "Branch: $CI_BRANCH" &&
+                echo "Circle: $CIRCLECI" &&
                 tox -e coveralls
             fi
         features:
