@@ -63,90 +63,74 @@ async def get_context(config_override=None):
 
 
 # verify_cot {{{1
-@pytest.mark.parametrize(
-    "branch_context",
-    (
-        {
-            "name": "mozilla-central nightly desktop",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-desktop",
-            "task_label_to_task_type": {"balrog-.*-nightly/opt": "balrog", "beetmover-repackage-.*-nightly/opt": "beetmover"},
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-esr68 nightly android",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-esr68.latest.firefox.decision-nightly-android",
-            "task_label_to_task_type": {"push-apk/opt": "pushapk"},
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-central nightly android",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-central.latest.firefox.decision-nightly-android",
-            "task_label_to_task_type": {"push-apk/opt": "pushapk"},
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-central win64 en-US repackage signing",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-central.shippable.latest.firefox.win64-shippable-repackage-signing",
-            "task_type": "signing",
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-beta win64 en-US repackage signing",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-beta.shippable.latest.firefox.win64-shippable-repackage-signing",
-            "task_type": "signing",
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-release win64 en-US repackage signing",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-release.shippable.latest.firefox.win64-shippable-repackage-signing",
-            "task_type": "signing",
-            "cot_product": "firefox",
-        },
-        {
-            "name": "mozilla-esr68 win64 en-US repackage signing",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "gecko.v2.mozilla-esr68.shippable.latest.firefox.win64-shippable-repackage-signing",
-            "task_type": "signing",
-            "cot_product": "firefox",
-        },
-        {
-            "name": "fenix nightly",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "project.mobile.fenix.v2.nightly.latest",
-            "task_type": "build",
-            "cot_product": "mobile",
-        },
-        {
-            "name": "fenix master raptor aarch64",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "project.mobile.fenix.v2.branch.master.latest.raptor.aarch64",
-            "task_type": "build",
-            "cot_product": "mobile",
-        },
-        {
-            "name": "reference-browser nightly",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "project.mobile.reference-browser.v2.nightly.latest",
-            "task_type": "signing",
-            "cot_product": "mobile",
-        },
-        {
-            "name": "reference-browser master raptor aarch64",
-            "taskcluster_root_url": "https://taskcluster.net",
-            "index": "project.mobile.reference-browser.v2.branch.master.latest.raptor.aarch64",
-            "task_type": "build",
-            "cot_product": "mobile",
-        },
-    ),
+VERIFY_COT_BRANCH_CONTEXTS = (
+    {
+        "name": "mozilla-central nightly desktop",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-central.shippable.latest.firefox.win64-shippable-repackage-signing",
+        "task_type": "signing",
+        "cot_product": "firefox",
+    },
+    {
+        "name": "mozilla-esr68 nightly android",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-esr68.latest.firefox.decision-nightly-android",
+        "task_label_to_task_type": {"push-apk/opt": "pushapk"},
+        "cot_product": "firefox",
+    },
+    {
+        "name": "mozilla-central win64 en-US repackage signing",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-central.shippable.latest.firefox.win64-shippable-repackage-signing",
+        "task_type": "signing",
+        "cot_product": "firefox",
+    },
+    {
+        "name": "mozilla-beta win64 en-US repackage signing",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-beta.shippable.latest.firefox.win64-shippable-repackage-signing",
+        "task_type": "signing",
+        "cot_product": "firefox",
+    },
+    {
+        "name": "mozilla-release win64 en-US repackage signing",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-release.shippable.latest.firefox.win64-shippable-repackage-signing",
+        "task_type": "signing",
+        "cot_product": "firefox",
+    },
+    {
+        "name": "mozilla-esr68 win64 en-US repackage signing",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "gecko.v2.mozilla-esr68.shippable.latest.firefox.win64-shippable-repackage-signing",
+        "task_type": "signing",
+        "cot_product": "firefox",
+    },
+    {
+        "name": "fenix nightly",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "project.mobile.fenix.v2.nightly.latest",
+        "task_type": "build",
+        "cot_product": "mobile",
+    },
+    {
+        "name": "reference-browser nightly",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "project.mobile.reference-browser.v3.nightly.latest",
+        "task_type": "signing",
+        "cot_product": "mobile",
+    },
+    {
+        "name": "reference-browser master raptor aarch64",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "project.mobile.reference-browser.v3.raptor.latest",
+        "task_type": "build",
+        "cot_product": "mobile",
+    },
 )
-# We were testing "project.mobile.focus.signed-nightly.nightly.latest" but that repo is
-# currently failing due to a force-push.
+
+
+@pytest.mark.parametrize("branch_context", VERIFY_COT_BRANCH_CONTEXTS, ids=[bc["name"] for bc in VERIFY_COT_BRANCH_CONTEXTS])
 @pytest.mark.asyncio
 async def test_verify_production_cot(branch_context):
     index = Index(options={"rootUrl": branch_context["taskcluster_root_url"]})

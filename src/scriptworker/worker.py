@@ -203,7 +203,7 @@ async def run_tasks(context):
 async def async_main(context, credentials):
     """Set up and run tasks for this iteration.
 
-    http://docs.taskcluster.net/queue/worker-interaction/
+    https://firefox-ci-tc.services.mozilla.com/docs/reference/platform/queue/worker-interaction
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
