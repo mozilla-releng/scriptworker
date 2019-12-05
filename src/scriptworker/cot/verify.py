@@ -1968,29 +1968,29 @@ async def verify_chain_of_trust(chain, *, check_task=False):
 
 
 # verify_cot_cmdln {{{1
-async def _async_verify_cot_cmdln(opts, tmp):
+async def _async_verify_task_cot(tmp, *, task_id, task_type, cot_product, verify_sigs, check_task):
     async with aiohttp.ClientSession() as session:
         context = Context()
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.queue = context.queue or Queue(session=session, options={"rootUrl": context.config["taskcluster_root_url"]})
-        context.task = await retry_get_task_definition(context.queue, opts.task_id, exception=CoTError)
+        context.task = await retry_get_task_definition(context.queue, task_id, exception=CoTError)
         context.config.update(
             {
-                "cot_product": opts.cot_product,
+                "cot_product": cot_product,
                 "work_dir": os.path.join(tmp, "work"),
                 "artifact_dir": os.path.join(tmp, "artifacts"),
                 "task_log_dir": os.path.join(tmp, "artifacts", "public", "logs"),
-                "verify_cot_signature": opts.verify_sigs,
+                "verify_cot_signature": verify_sigs,
             }
         )
         context.config = apply_product_config(context.config)
         if os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN"):
             context.config["github_oauth_token"] = os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN")
-        cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-        check_task = opts.no_check_task is False
+        cot = ChainOfTrust(context, task_type, task_id=task_id)
         await verify_chain_of_trust(cot, check_task=check_task)
+        return cot
 
 
 def verify_cot_cmdln(args=None, event_loop=None):
@@ -2026,7 +2026,7 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     parser.add_argument("--cot-product", help="the product type to test", default="firefox")
     parser.add_argument("--verify-sigs", help="enable signature verification", action="store_true", default=False)
     parser.add_argument("--verbose", "-v", help="enable debug logging", action="store_true", default=False)
-    parser.add_argument("--no-check-task", help="skip verifying the taskId's cot status", action="store_true", default=False)
+    parser.add_argument("--no-check-task", dest="check_task", help="skip verifying the taskId's cot status", action="store_false", default=True)
     opts = parser.parse_args(args)
     tmp = tempfile.mkdtemp()
     log = logging.getLogger("scriptworker")
@@ -2035,7 +2035,20 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     logging.basicConfig(level=level)
     event_loop = event_loop or asyncio.get_event_loop()
     try:
-        event_loop.run_until_complete(_async_verify_cot_cmdln(opts, tmp))
+        cot = event_loop.run_until_complete(
+            _async_verify_task_cot(
+                tmp,
+                task_id=opts.task_id,
+                task_type=opts.task_type,
+                cot_product=opts.cot_product,
+                verify_sigs=opts.verify_sigs,
+                check_task=opts.check_task,
+            )
+        )
+        log.info(format_json(cot.dependent_task_ids()))
+        log.info("{} : {}".format(cot.name, cot.task_id))
+        for link in cot.links:
+            log.info("{} : {}".format(link.name, link.task_id))
     finally:
         if opts.cleanup:
             rm(tmp)
