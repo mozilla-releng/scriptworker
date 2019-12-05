@@ -96,29 +96,7 @@ We need to trace upstream tasks back to the tree.  We're able to find our decisi
 
 If there are upstream tasks that depend on the output of other tasks, make sure all of them are connected via at least one of these two data structures.
 
-### Puppet
+### GCP
 
-There is a [scriptworker module](http://hg.mozilla.org/build/puppet/file/tip/modules/scriptworker) that we should use for new Firefox scriptworker instances, following the [signing scriptworker](http://hg.mozilla.org/build/puppet/file/tip/modules/signing_scriptworker) example.
+For more information on deploying this to GCP, please consult the [scriptworker-scripts](https://scriptworker-scripts.readthedocs.io/en/latest/) documentation.
 
-For other products, we can either support them within MoCo Releng, or we can spin up a new parallel set of scriptworker pools to keep the secrets and access separate.  If we choose the latter, any deployment solution is acceptable: ansible, puppet, nix, ...
-
-### Monitoring
-
-We use nagios to ensure the health of instances running a scriptworker type. For each instance we
-typically monitor the host (ping, disk usage, load, time, and puppet freshness) and the scriptworker
-service (process running, log freshness). There is also a check for the queue length of each type.
-
-Setting up a new type is more work than adding a new instance of an existing type. Once you've
-cloned the IT puppet repo
-([see point 10 for the location](https://mana.mozilla.org/wiki/display/MOC/NEW+New+Hire+Onboarding),
-VPN required), a good approach is to look in the `modules/nagios4/manifests/prod/releng/`
-directory to see how balrog-scriptworkers work. Some of the components are
- * `mdc1.pp` - adding the instance host names, and assigning them to a new hostgroup
- * `hostgroups.pp` - adding an alias for the new hostgroup
- * `services/mdc1.pp` - adding the hostgroup to all the checks needed.
- * `clusterchecks/mdc1.pp` - adding a queue check for the new type
- * `servicegroups/mdc1.pp` - adding an alias for the queue check
-
- Create a patch, attach it to Bugzilla, and ask someone from RelOps for review, before
- landing. After a 15-30 minute delay the checks should be live and you can look for them on the
- [mdc1 nagios server](https://nagios1.private.releng.mdc1.mozilla.com/releng-mdc1/).
