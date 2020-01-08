@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[29.1.0] - 2019-01-09
+---------------------
+
+Added
+~~~~~
+
+- utils.retry_sync() to enable retries on functions that cannot be asyncronous.
+
+Fixed
+~~~~~
+
+- Retry more times whenever github3 raises a ConnectionError
+
 [29.0.2] - 2019-11-19
 ---------------------
 
