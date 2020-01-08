@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 
 import mock
 import pytest
@@ -174,6 +175,43 @@ async def test_retry_async_always_fail():
     with mock.patch("asyncio.sleep", new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
             status = await utils.retry_async(always_fail, sleeptime_kwargs={"delay_factor": 0})
+            assert status is None
+    assert retry_count["always_fail"] == 5
+
+
+def test_retry_sync_fail_first_and_blocks_the_main_process():
+    global retry_count
+    retry_count["fail_first"] = 0
+
+    def fail_first_sync(*args, **kwargs):
+        global retry_count
+        retry_count["fail_first"] += 1
+        if retry_count["fail_first"] < 2:
+            raise ScriptWorkerRetryException("first")
+        return "yay"
+
+    start_time = time.time()
+    status = utils.retry_sync(fail_first_sync, sleeptime_kwargs={"delay_factor": 0.25, "randomization_factor": 0})
+    elapsed_time = time.time() - start_time
+
+    assert 0.4 <= elapsed_time <= 0.6
+    assert status == "yay"
+    assert retry_count["fail_first"] == 2
+
+
+def test_retry_sync_always_fail():
+    global retry_count
+    retry_count["always_fail"] = 0
+
+    def always_fail_sync(*args, **kwargs):
+        global retry_count
+        retry_count.setdefault("always_fail", 0)
+        retry_count["always_fail"] += 1
+        raise ScriptWorkerException("fail")
+
+    with mock.patch("asyncio.sleep", new=fake_sleep):
+        with pytest.raises(ScriptWorkerException):
+            status = utils.retry_sync(always_fail_sync, sleeptime_kwargs={"delay_factor": 0})
             assert status is None
     assert retry_count["always_fail"] == 5
 
