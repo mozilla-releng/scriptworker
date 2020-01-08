@@ -7,9 +7,14 @@ from aiomemoizettl import memoize_ttl
 from github3 import GitHub
 from github3.exceptions import GitHubException
 from scriptworker.exceptions import ConfigError
-from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request
+from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request, retry_sync
 
 _GIT_FULL_HASH_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+# The github3 library already retries requests. It gives a round of waiting of usually 15 seconds.
+# A delay factor of 7.5s means the second round of waiting will occur ~15s after the first one,
+# the third one ~30s and so on.
+_GITHUB_LIBRARY_SLEEP_TIME_KWARGS = {"delay_factor": 7.5}
+
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +34,8 @@ class GitHubRepository:
             dict: a representation of the repo definition
 
         """
-        self._github_repository = GitHub(token=token).repository(owner, repo_name)
+        github = retry_sync(GitHub, kwargs={"token": token}, sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
+        self._github_repository = retry_sync(github.repository, args=(owner, repo_name), sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
 
     @property
     def definition(self):
