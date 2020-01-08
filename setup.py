@@ -34,7 +34,9 @@ reqs = [
 
 tests_require = [
     "asyncio_extras",
-    "coverage>=4.2",
+    # TODO Remove the condition on coverage once
+    # https://github.com/z4r/python-coveralls/issues/73 is fixed
+    "coverage<5",
     "flake8",
     "flake8_docstrings",
     "mock",
