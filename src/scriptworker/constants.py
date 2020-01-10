@@ -79,8 +79,9 @@ DEFAULT_CONFIG = frozendict(
         "ed25519_private_key_path": "...",
         "ed25519_public_keys": frozendict(
             {
-                "docker-worker": tuple(["J+PAKmq3jkS2uCpBk5WU2ycrnTFPwZujJT4OHAxm38I="]),
-                "docker-worker-gcp": tuple(["tk/SjxY3mREARba6ODw7qReUoVWj0RgEIxBURkwcM4I="]),
+                # the key beginning in J+PAK... is the longstanding docker-worker CoT key, to be phased out
+                # the key beginning in tk/Sj... is a new key added to differentiate GCP workers
+                "docker-worker": tuple(["J+PAKmq3jkS2uCpBk5WU2ycrnTFPwZujJT4OHAxm38I=", "tk/SjxY3mREARba6ODw7qReUoVWj0RgEIxBURkwcM4I="]),
                 "generic-worker": tuple(["6UPrVTyw0EPQV7bCEMXo+5jNR4clbK55JWG74bBJHZQ="]),
                 "scriptworker": tuple(["DaEKQ79ZC/X+7O8zwm8iyhwTlgyjRSi/TDd63fh2JG0="]),
             }
