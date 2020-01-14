@@ -114,6 +114,7 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "mobile",
     },
     {
+        "check_task": False,
         "name": "reference-browser nightly",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "project.mobile.reference-browser.v3.nightly.latest",
@@ -126,6 +127,7 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "index": "project.mobile.reference-browser.v3.raptor.latest",
         "task_type": "build",
         "cot_product": "mobile",
+        "check_task": False,
     },
 )
 
@@ -156,20 +158,23 @@ async def test_verify_production_cot(branch_context):
                 log.warning("Not running verify_cot against {} {} because there are no elegible completed tasks".format(decision_task_id, task_type))
         return task_info
 
-    async def verify_cot(name, task_id, task_type):
+    async def verify_cot(name, task_id, task_type, check_task=True):
         log.info("Verifying {} {} {}...".format(name, task_id, task_type))
         context.task = await queue.task(task_id)
         cot = ChainOfTrust(context, task_type, task_id=task_id)
-        await verify_chain_of_trust(cot)
+        await verify_chain_of_trust(cot, check_task=check_task)
 
-    async with get_context({"cot_product": branch_context["cot_product"]}) as context:
+    async with get_context({"cot_product": branch_context["cot_product"], "verify_cot_signature": True}) as context:
         context.queue = queue
         task_id = await get_task_id_from_index(branch_context["index"])
         assert task_id, "{}: Can't get task_id from index {}!".format(branch_context["name"], branch_context["index"])
         if branch_context.get("task_label_to_task_type"):
             task_info = await get_completed_task_info_from_labels(task_id, branch_context["task_label_to_task_type"])
+            assert "check_task" not in branch_context, "{}: Can't disable check_task.".format(branch_context["name"],)
             for task_id, task_type in task_info.items():
                 name = "{} {}".format(branch_context["name"], task_type)
                 await verify_cot(name, task_id, task_type)
         else:
-            await verify_cot(branch_context["name"], task_id, branch_context["task_type"])
+            await verify_cot(
+                branch_context["name"], task_id, branch_context["task_type"], branch_context.get("check_task", True),
+            )
