@@ -25,11 +25,16 @@ def mpd_context(mpd_rw_context):
 @pytest.yield_fixture(scope="function")
 def github_repository(mocker):
     github_repository_mock = MagicMock()
+    github_repository_mock.__name__ = "GithubRepositoryMock"
     github_repository_mock.html_url = "https://github.com/some-user/some-repo/"
+    github_repository_mock.tags.__name__ = "GithubTagsMock"
     github_repository_mock.tags.return_value = [SimpleNamespace(name="v1.0.0", commit=SimpleNamespace(sha="hashforv100"))]
     github_instance_mock = MagicMock()
+    github_instance_mock.__name__ = "github_instance_mock"
+    github_instance_mock.repository.__name__ = "GithubRepositoryMock"
     github_instance_mock.repository.return_value = github_repository_mock
-    mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
+    github_class_mock = mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
+    github_class_mock.__name__ = github_class_mock.name
     yield github.GitHubRepository("some-user", "some-repo")
 
 
@@ -38,12 +43,39 @@ def github_repository(mocker):
 )
 def test_constructor(mocker, args, expected_class_kwargs):
     github_instance_mock = MagicMock()
+    github_instance_mock.repository.__name__ = "github_instance_repository_mock"
     github_class_mock = mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
+    github_class_mock.__name__ = github_class_mock.name
 
     github.GitHubRepository(*args)
 
     github_class_mock.assert_called_once_with(**expected_class_kwargs)
     github_instance_mock.repository.assert_called_once_with("some-user", "some-repo")
+
+
+retry_count = {}
+
+
+def test_constructor_uses_retry_sync(mocker):
+    global retry_count
+    retry_count["fail_first"] = 0
+
+    def fail_first(*args, **kwargs):
+        global retry_count
+        retry_count["fail_first"] += 1
+        if retry_count["fail_first"] < 2:
+            raise ScriptWorkerRetryException("first")
+
+        github_instance_mock = MagicMock()
+        github_instance_mock.repository.__name__ = "github_instance_repository_mock"
+        return github_instance_mock
+
+    github_class_mock = mocker.patch.object(github, "GitHub", side_effect=fail_first)
+    github_class_mock.__name__ = github_class_mock.name
+    mocker.patch.object(github, "_GITHUB_LIBRARY_SLEEP_TIME_KWARGS", {"delay_factor": 0.1})
+    github.GitHubRepository("some-user", "some-repo", "some-token")
+
+    assert retry_count["fail_first"] == 2
 
 
 def test_get_definition(github_repository):

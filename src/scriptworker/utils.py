@@ -14,6 +14,7 @@ import os
 import random
 import re
 import shutil
+import time
 from copy import deepcopy
 from urllib.parse import unquote, urlparse
 
@@ -248,13 +249,59 @@ async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time,
             return await func(*args, **kwargs)
         except retry_exceptions:
             attempt += 1
-            if attempt > attempts:
-                log.warning("retry_async: {}: too many retries!".format(func.__name__))
-                raise
-            sleeptime_kwargs = sleeptime_kwargs or {}
-            sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
-            log.debug("retry_async: {}: sleeping {} seconds before retry".format(func.__name__, sleep_time))
-            await asyncio.sleep(sleep_time)
+            _check_number_of_attempts(attempt, attempts, func, "retry_async")
+            await asyncio.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_async"))
+
+
+def retry_sync(func, attempts=5, sleeptime_callback=calculate_sleep_time, retry_exceptions=Exception, args=(), kwargs=None, sleeptime_kwargs=None):
+    """Retry ``func``, where ``func`` is a regular function.
+
+    Please favor ``retry_async`` whenever possible.
+
+    Args:
+        func (function): a function.
+        attempts (int, optional): the number of attempts to make.  Default is 5.
+        sleeptime_callback (function, optional): the function to use to determine
+            how long to sleep after each attempt.  Defaults to ``calculateSleepTime``.
+        retry_exceptions (list or exception, optional): the exception(s) to retry on.
+            Defaults to ``Exception``.
+        args (list, optional): the args to pass to ``func``.  Defaults to ()
+        kwargs (dict, optional): the kwargs to pass to ``func``.  Defaults to
+            {}.
+        sleeptime_kwargs (dict, optional): the kwargs to pass to ``sleeptime_callback``.
+            If None, use {}.  Defaults to None.
+
+    Returns:
+        object: the value from a successful ``function`` call
+
+    Raises:
+        Exception: the exception from a failed ``function`` call, either outside
+            of the retry_exceptions, or one of those if we pass the max
+            ``attempts``.
+
+    """
+    kwargs = kwargs or {}
+    attempt = 1
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except retry_exceptions:
+            attempt += 1
+            _check_number_of_attempts(attempt, attempts, func, "retry_sync")
+            time.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_sync"))
+
+
+def _check_number_of_attempts(attempt, attempts, func, retry_function_name):
+    if attempt > attempts:
+        log.warning("{}: {}: too many retries!".format(retry_function_name, func.__name__))
+        raise
+
+
+def _define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, retry_function_name):
+    sleeptime_kwargs = sleeptime_kwargs or {}
+    sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
+    log.debug("{}: {}: sleeping {} seconds before retry".format(retry_function_name, func.__name__, sleep_time))
+    return sleep_time
 
 
 def retry_async_decorator(retry_exceptions=Exception, sleeptime_kwargs=None):

@@ -554,6 +554,33 @@ def _sort_dependencies_by_name_then_task_id(dependencies):
 
 
 # build_task_dependencies {{{1
+async def build_link(chain, task_name, task_id):
+    """Build a LinkOfTrust and add it to the chain.
+
+    Args:
+        chain (ChainOfTrust): the chain of trust to add to.
+        task_name (str): the name of the task to operate on.
+        task_id (str): the taskId of the task to operate on.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    link = LinkOfTrust(chain.context, task_name, task_id)
+    json_path = link.get_artifact_full_path("task.json")
+    try:
+        task_defn = await chain.context.queue.task(task_id)
+        link.task = task_defn
+        chain.links.append(link)
+        # write task json to disk
+        makedirs(os.path.dirname(json_path))
+        with open(json_path, "w") as fh:
+            fh.write(format_json(task_defn))
+        await build_task_dependencies(chain, task_defn, task_name, task_id)
+    except TaskclusterFailure as exc:
+        raise CoTError(str(exc))
+
+
 async def build_task_dependencies(chain, task, name, my_task_id):
     """Recursively build the task dependencies of a task.
 
@@ -574,19 +601,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
     for task_name, task_id in sorted_dependencies:
         if task_id not in chain.dependent_task_ids():
-            link = LinkOfTrust(chain.context, task_name, task_id)
-            json_path = link.get_artifact_full_path("task.json")
-            try:
-                task_defn = await chain.context.queue.task(task_id)
-                link.task = task_defn
-                chain.links.append(link)
-                # write task json to disk
-                makedirs(os.path.dirname(json_path))
-                with open(json_path, "w") as fh:
-                    fh.write(format_json(task_defn))
-                await build_task_dependencies(chain, task_defn, task_name, task_id)
-            except TaskclusterFailure as exc:
-                raise CoTError(str(exc))
+            await build_link(chain, task_name, task_id)
 
 
 # download_cot {{{1
@@ -1854,11 +1869,13 @@ class AuditLogFormatter(logging.Formatter):
 
 
 # verify_chain_of_trust {{{1
-async def verify_chain_of_trust(chain):
+async def verify_chain_of_trust(chain, *, check_task=False):
     """Build and verify the chain of trust.
 
     Args:
         chain (ChainOfTrust): the chain we're operating on
+        check_task (bool): Whether to download and verify the task itself. This
+            is useful for verifying a task after it has run.
 
     Raises:
         CoTError: on failure
@@ -1875,7 +1892,10 @@ async def verify_chain_of_trust(chain):
         log.info("Running scriptworker version {}".format(__version_string__))
         try:
             # build LinkOfTrust objects
-            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+            if check_task:
+                await build_link(chain, chain.name, chain.task_id)
+            else:
+                await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
             # verify the signatures and populate the ``link.cot``s
@@ -1918,7 +1938,7 @@ async def _async_verify_cot_cmdln(opts, tmp):
         if os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN"):
             context.config["github_oauth_token"] = os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN")
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-        await verify_chain_of_trust(cot)
+        await verify_chain_of_trust(cot, check_task=True)
         log.info(format_json(cot.dependent_task_ids()))
         log.info("{} : {}".format(cot.name, cot.task_id))
         for link in cot.links:
