@@ -28,7 +28,6 @@ from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
 
-
 # do_run_task {{{1
 async def do_run_task(context, run_cancellable, to_cancellable_process):
     """Run the task logic.
@@ -149,7 +148,7 @@ class RunTasks:
         except asyncio.CancelledError:
             return None
 
-    async def _run_cancellable(self, coroutine: typing.Awaitable) -> Any:
+    async def _run_cancellable(self, coroutine: typing.Awaitable[Any]) -> Any:
         self.future = asyncio.ensure_future(coroutine)
         if self.is_cancelled:
             self.future.cancel()
