@@ -20,10 +20,14 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import json
 import os
+from typing import Optional, Tuple, Union, cast
+
+ShortVerType = Tuple[int, int, int]
+LongVerType = Tuple[int, int, int, str]
 
 
 # get_version_string {{{1
-def get_version_string(version):
+def get_version_string(version: Union[ShortVerType, LongVerType]) -> str:
     """Translate a version tuple into a string.
 
     Specify the __version__ as a tuple for more precise comparisons, and
@@ -40,9 +44,9 @@ def get_version_string(version):
     """
     version_len = len(version)
     if version_len == 3:
-        version_string = "%d.%d.%d" % version
+        version_string = "%d.%d.%d" % cast(ShortVerType, version)
     elif version_len == 4:
-        version_string = "%d.%d.%d%s" % version
+        version_string = "%d.%d.%d%s" % cast(LongVerType, version)
     else:
         raise Exception("Version tuple is non-semver-compliant {} length!".format(version_len))
     return version_string
@@ -55,7 +59,7 @@ __version_string__ = get_version_string(__version__)
 
 
 # write_version {{{1
-def write_version(name=None, path=None):
+def write_version(name: Optional[str] = None, path: Optional[str] = None) -> None:
     """Write the version info to ../version.json, for setup.py.
 
     Args:
