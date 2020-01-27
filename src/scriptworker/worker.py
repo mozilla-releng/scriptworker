@@ -28,6 +28,7 @@ from scriptworker.utils import cleanup, filepaths_in_dir
 
 log = logging.getLogger(__name__)
 
+
 # do_run_task {{{1
 async def do_run_task(context, run_cancellable, to_cancellable_process):
     """Run the task logic.
