@@ -112,17 +112,17 @@ class Context(object):
         if self._credentials:
             return dict(deepcopy(self._credentials))
 
-    @property
-    def task_id(self):
-        """string: The running task's taskId."""
-        if self.claim_task:
-            return self.claim_task["status"]["taskId"]
-
     @credentials.setter
     def credentials(self, creds):
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
         self.credentials_timestamp = arrow.utcnow().timestamp
+
+    @property
+    def task_id(self):
+        """string: The running task's taskId."""
+        if self.claim_task:
+            return self.claim_task["status"]["taskId"]
 
     def create_queue(self, credentials):
         """Create a taskcluster queue.
