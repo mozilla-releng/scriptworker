@@ -27,7 +27,7 @@ class TaskProcess:
         self.process = process
         self.stopped_due_to_worker_shutdown = False
 
-    async def worker_shutdown_stop(self):
+    async def worker_shutdown_stop(self) -> None:
         """Invoke on worker shutdown to stop task process."""
         self.stopped_due_to_worker_shutdown = True
         await self.stop()
