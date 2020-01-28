@@ -32,7 +32,7 @@ class TaskProcess:
         self.stopped_due_to_worker_shutdown = True
         await self.stop()
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Stop the current task process.
 
         Starts with SIGTERM, gives the process 1 second to terminate, then kills it
