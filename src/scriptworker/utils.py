@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import Any, Awaitable, Callable, Dict, Optional, Type
+from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Type, Union
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -218,7 +218,15 @@ def calculate_sleep_time(attempt, delay_factor=5.0, randomization_factor=0.5, ma
 
 
 # retry_async {{{1
-async def retry_async(func, attempts=5, sleeptime_callback=calculate_sleep_time, retry_exceptions=Exception, args=(), kwargs=None, sleeptime_kwargs=None):
+async def retry_async(
+    func: Callable[..., Awaitable[Any]],
+    attempts: int = 5,
+    sleeptime_callback: Callable[..., Any] = calculate_sleep_time,
+    retry_exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception,
+    args: Sequence[Any] = (),
+    kwargs: Optional[Dict[str, Any]] = None,
+    sleeptime_kwargs: Optional[Dict[str, Any]] = None,
+) -> Any:
     """Retry ``func``, where ``func`` is an awaitable.
 
     Args:
@@ -292,13 +300,15 @@ def retry_sync(func, attempts=5, sleeptime_callback=calculate_sleep_time, retry_
             time.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_sync"))
 
 
-def _check_number_of_attempts(attempt, attempts, func, retry_function_name):
+def _check_number_of_attempts(attempt: int, attempts: int, func: Callable[..., Any], retry_function_name: str) -> None:
     if attempt > attempts:
         log.warning("{}: {}: too many retries!".format(retry_function_name, func.__name__))
         raise
 
 
-def _define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, retry_function_name):
+def _define_sleep_time(
+    sleeptime_kwargs: Optional[Dict[str, Any]], sleeptime_callback: Callable[..., int], attempt: int, func: Callable[..., Any], retry_function_name: str
+) -> float:
     sleeptime_kwargs = sleeptime_kwargs or {}
     sleep_time = sleeptime_callback(attempt, **sleeptime_kwargs)
     log.debug("{}: {}: sleeping {} seconds before retry".format(retry_function_name, func.__name__, sleep_time))
@@ -306,7 +316,7 @@ def _define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, retr
 
 
 def retry_async_decorator(
-    retry_exceptions: Optional[Type[BaseException]] = Exception, sleeptime_kwargs: Optional[Dict[str, Any]] = None
+    retry_exceptions: Union[Type[BaseException], Tuple[Type[BaseException], ...]] = Exception, sleeptime_kwargs: Optional[Dict[str, Any]] = None
 ) -> Callable[..., Callable[..., Awaitable[Any]]]:
     """Decorate a function by wrapping ``retry_async`` around.
 
