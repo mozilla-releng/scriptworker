@@ -8,6 +8,7 @@ Attributes:
 
 """
 import os
+from typing import Any, Dict
 
 from frozendict import frozendict
 
@@ -518,7 +519,7 @@ DEFAULT_CONFIG = frozendict(
 
 
 # get_reversed_statuses {{{1
-def get_reversed_statuses(context):
+def get_reversed_statuses(context: Any) -> Dict[int, str]:
     """Return a mapping of exit codes to status strings.
 
     Args:
