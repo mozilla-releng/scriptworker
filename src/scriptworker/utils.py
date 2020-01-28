@@ -16,6 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
+from typing import Any, Awaitable, Callable, Dict, Optional, Type
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -304,7 +305,9 @@ def _define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, retr
     return sleep_time
 
 
-def retry_async_decorator(retry_exceptions=Exception, sleeptime_kwargs=None):
+def retry_async_decorator(
+    retry_exceptions: Optional[Type[BaseException]] = Exception, sleeptime_kwargs: Optional[Dict[str, Any]] = None
+) -> Callable[..., Callable[..., Awaitable[Any]]]:
     """Decorate a function by wrapping ``retry_async`` around.
 
     Args:
@@ -318,9 +321,9 @@ def retry_async_decorator(retry_exceptions=Exception, sleeptime_kwargs=None):
 
     """
 
-    def wrap(async_func):
+    def wrap(async_func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         @functools.wraps(async_func)
-        async def wrapped(*args, **kwargs):
+        async def wrapped(*args: Any, **kwargs: Any) -> Any:
             return await retry_async(async_func, retry_exceptions=retry_exceptions, args=args, kwargs=kwargs, sleeptime_kwargs=sleeptime_kwargs)
 
         return wrapped
