@@ -331,6 +331,7 @@ def retry_async_decorator(
 
     """
 
+    # Better type hinting here once https://www.python.org/dev/peps/pep-0612/ is implemented
     def wrap(async_func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
         @functools.wraps(async_func)
         async def wrapped(*args: Any, **kwargs: Any) -> Any:
