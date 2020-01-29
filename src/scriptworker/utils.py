@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Type, Union
+from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Type, Union, cast
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -112,7 +112,7 @@ def datestring_to_timestamp(datestring):
 
 
 # to_unicode {{{1
-def to_unicode(line):
+def to_unicode(line: Union[str, bytes]) -> str:
     """Avoid ``b'line'`` type messages in the logs.
 
     Args:
@@ -123,15 +123,16 @@ def to_unicode(line):
             Otherwise return ``line`` unmodified.
 
     """
+    ret = cast(str, line)
     try:
-        line = line.decode("utf-8")
+        ret = cast(bytes, line).decode("utf-8")
     except (UnicodeDecodeError, AttributeError):
         pass
-    return line
+    return ret
 
 
 # makedirs {{{1
-def makedirs(path):
+def makedirs(path: str) -> None:
     """Equivalent to mkdir -p.
 
     Args:

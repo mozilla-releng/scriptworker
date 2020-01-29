@@ -8,14 +8,16 @@ Attributes:
 import logging
 import logging.handlers
 import os
+from asyncio.streams import StreamReader
 from contextlib import contextmanager
+from typing import IO, Any, Generator, Iterator, Optional, Sequence, Union
 
 from scriptworker.utils import makedirs, to_unicode
 
 log = logging.getLogger(__name__)
 
 
-def update_logging_config(context, log_name=None, file_name="worker.log"):
+def update_logging_config(context: Any, log_name: Optional[str] = None, file_name: str = "worker.log") -> None:
     """Update python logging settings from config.
 
     By default, this sets the ``scriptworker`` log settings, but this will
@@ -63,7 +65,7 @@ def update_logging_config(context, log_name=None, file_name="worker.log"):
     top_level_logger.addHandler(logging.NullHandler())
 
 
-async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
+async def pipe_to_log(pipe: StreamReader, filehandles: Sequence[IO[str]] = (), level: int = logging.INFO) -> None:
     """Log from a subprocess PIPE.
 
     Args:
@@ -74,7 +76,7 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
 
     """
     while True:
-        line = await pipe.readline()
+        line = await pipe.readline()  # type: Union[str, bytes]
         if line:
             line = to_unicode(line)
             log.log(level, line.rstrip())
@@ -84,7 +86,7 @@ async def pipe_to_log(pipe, filehandles=(), level=logging.INFO):
             break
 
 
-def get_log_filename(context):
+def get_log_filename(context: Any) -> str:
     """Get the task log/error file paths.
 
     Args:
@@ -99,7 +101,7 @@ def get_log_filename(context):
 
 
 @contextmanager
-def get_log_filehandle(context):
+def get_log_filehandle(context: Any) -> Iterator[IO[str]]:
     """Open the log and error filehandles.
 
     Args:
@@ -116,7 +118,9 @@ def get_log_filehandle(context):
 
 
 @contextmanager
-def contextual_log_handler(context, path, log_obj=None, level=logging.DEBUG, formatter=None):
+def contextual_log_handler(
+    context: Any, path: str, log_obj: Optional[logging.Logger] = None, level: int = logging.DEBUG, formatter: Optional[logging.Formatter] = None
+) -> Generator[None, None, None]:
     """Add a short-lived log with a contextmanager for cleanup.
 
     Args:
