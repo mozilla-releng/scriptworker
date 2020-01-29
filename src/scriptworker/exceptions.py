@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """scriptworker exceptions."""
 
+from typing import Any
+
 from scriptworker.constants import STATUSES
 
 
@@ -46,18 +48,17 @@ class ScriptWorkerTaskException(ScriptWorkerException):
 
     """
 
-    def __init__(self, *args, exit_code=1, **kwargs):
+    def __init__(self, *args: Any, exit_code: int = 1):
         """Initialize ScriptWorkerTaskException.
 
         Args:
             *args: These are passed on via super().
             exit_code (int, optional): The exit_code we should exit with when
                 this exception is raised.  Defaults to 1 (failure).
-            **kwargs: These are passed on via super().
 
         """
         self.exit_code = exit_code
-        super(ScriptWorkerTaskException, self).__init__(*args, **kwargs)
+        super(ScriptWorkerTaskException, self).__init__(*args)
 
 
 class TaskVerificationError(ScriptWorkerTaskException):
@@ -67,7 +68,7 @@ class TaskVerificationError(ScriptWorkerTaskException):
 
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         """Initialize TaskVerificationError.
 
         Args:
@@ -85,7 +86,7 @@ class BaseDownloadError(ScriptWorkerTaskException):
 
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         """Initialize Download404.
 
         Args:
@@ -121,7 +122,7 @@ class CoTError(ScriptWorkerTaskException, KeyError):
 
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         """Initialize CoTError.
 
         Args:
@@ -139,7 +140,7 @@ class ScriptWorkerEd25519Error(CoTError):
 
     """
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         """Initialize ScriptWorkerEd25519Error.
 
         Args:

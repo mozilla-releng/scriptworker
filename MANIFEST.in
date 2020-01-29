@@ -14,6 +14,7 @@ include tox.ini
 exclude .taskcluster.yml
 exclude CODE_OF_CONDUCT.md
 exclude docs
+exclude mypi.ini
 exclude readthedocs.yml
 exclude requirements-docs.txt
 exclude tests

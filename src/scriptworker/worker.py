@@ -12,6 +12,7 @@ import signal
 import socket
 import sys
 import typing
+from typing import Any
 
 import aiohttp
 import arrow
@@ -148,7 +149,7 @@ class RunTasks:
         except asyncio.CancelledError:
             return None
 
-    async def _run_cancellable(self, coroutine: typing.Awaitable):
+    async def _run_cancellable(self, coroutine: typing.Awaitable[Any]) -> Any:
         self.future = asyncio.ensure_future(coroutine)
         if self.is_cancelled:
             self.future.cancel()
@@ -156,7 +157,7 @@ class RunTasks:
         self.future = None
         return result
 
-    async def _to_cancellable_process(self, task_process: TaskProcess):
+    async def _to_cancellable_process(self, task_process: TaskProcess) -> TaskProcess:
         self.task_process = task_process
 
         if self.is_cancelled:
