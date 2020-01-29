@@ -13,6 +13,8 @@ import asyncio
 import logging
 import os
 import sys
+from asyncio import AbstractEventLoop
+from typing import Any, Awaitable, Callable, Dict, List, Match, NoReturn, Optional, Tuple
 from urllib.parse import unquote
 
 import aiohttp
@@ -25,7 +27,7 @@ from scriptworker.utils import load_json_or_yaml, match_url_regex
 log = logging.getLogger(__name__)
 
 
-def get_task(config):
+def get_task(config: Dict[str, Any]) -> Dict[str, Any]:
     """Read the task.json from work_dir.
 
     Args:
@@ -44,7 +46,7 @@ def get_task(config):
     return contents
 
 
-def validate_json_schema(data, schema, name="task"):
+def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any], name: str = "task") -> None:
     """Given data and a jsonschema, let's validate it.
 
     This happens for tasks and chain of trust artifacts.
@@ -65,7 +67,7 @@ def validate_json_schema(data, schema, name="task"):
         raise ScriptWorkerTaskException("Can't validate {} schema!\n{}".format(name, str(exc)), exit_code=STATUSES["malformed-payload"])
 
 
-def validate_task_schema(context, schema_key="schema_file"):
+def validate_task_schema(context: Any, schema_key: str = "schema_file") -> None:
     """Validate the task definition.
 
     Args:
@@ -92,7 +94,7 @@ def validate_task_schema(context, schema_key="schema_file"):
         raise TaskVerificationError("Cannot validate task against schema. Task: {}.".format(context.task)) from e
 
 
-def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
+def validate_artifact_url(valid_artifact_rules: Tuple[Any], valid_artifact_task_ids: List[str], url: str) -> str:
     """Ensure a URL fits in given scheme, netloc, and path restrictions.
 
     If we fail any checks, raise a ScriptWorkerTaskException with
@@ -112,13 +114,13 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
 
     """
 
-    def callback(match):
+    def callback(match: Match[str]) -> Optional[str]:
         path_info = match.groupdict()
         # make sure we're pointing at a valid task ID
         if "taskId" in path_info and path_info["taskId"] not in valid_artifact_task_ids:
-            return
+            return None
         if "filepath" not in path_info:
-            return
+            return None
         return path_info["filepath"]
 
     filepath = match_url_regex(valid_artifact_rules, url, callback)
@@ -127,7 +129,13 @@ def validate_artifact_url(valid_artifact_rules, valid_artifact_task_ids, url):
     return unquote(filepath).lstrip("/")
 
 
-def sync_main(async_main, config_path=None, default_config=None, should_validate_task=True, loop_function=asyncio.get_event_loop):
+def sync_main(
+    async_main: Callable[[Any], Awaitable[None]],
+    config_path: Optional[str] = None,
+    default_config: Optional[Dict[str, Any]] = None,
+    should_validate_task: bool = True,
+    loop_function: Callable[[], AbstractEventLoop] = asyncio.get_event_loop,
+) -> None:
     """Entry point for scripts using scriptworker.
 
     This function sets up the basic needs for a script to run. More specifically:
@@ -157,12 +165,13 @@ def sync_main(async_main, config_path=None, default_config=None, should_validate
     loop.run_until_complete(_handle_asyncio_loop(async_main, context))
 
 
-def _init_context(config_path=None, default_config=None):
-    context = Context()
+def _init_context(config_path: Optional[str] = None, default_config: Optional[Dict[str, Any]] = None) -> Any:
+    context = Context()  # type: Any
 
     # This prevents *script from overwriting json on disk
     context.write_json = lambda *args: None
-    context.write_json()  # for coverage
+    # call it for coverage
+    context.write_json()  # type: ignore
 
     if config_path is None:
         if len(sys.argv) != 2:
@@ -177,18 +186,18 @@ def _init_context(config_path=None, default_config=None):
     return context
 
 
-def _usage():
+def _usage() -> NoReturn:
     print("Usage: {} CONFIG_FILE".format(sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 
-def _init_logging(context):
+def _init_logging(context: Any) -> None:
     logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG if context.config.get("verbose") else logging.INFO)
     logging.getLogger("taskcluster").setLevel(logging.WARNING)
     logging.getLogger("mohawk").setLevel(logging.INFO)
 
 
-async def _handle_asyncio_loop(async_main, context):
+async def _handle_asyncio_loop(async_main: Callable[[Any], Awaitable[None]], context: Any) -> None:
     async with aiohttp.ClientSession() as session:
         context.session = session
         try:
