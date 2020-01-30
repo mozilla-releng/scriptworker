@@ -4,13 +4,26 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-[29.1.0] - 2019-01-09
+[30.0.0] - 2020-01-30
 ---------------------
 
 Added
 ~~~~~
 
-- utils.retry_sync() to enable retries on functions that cannot be asyncronous.
+- "adhoc" product in order to enable adhoc dep-signing.
+
+Removed
+~~~~~~~
+
+- Unused ``scriptworker_worker_pools``.
+
+[29.1.0] - 2020-01-09
+---------------------
+
+Added
+~~~~~
+
+- ``utils.retry_sync()`` to enable retries on functions that cannot be asynchronous.
 
 Fixed
 ~~~~~
