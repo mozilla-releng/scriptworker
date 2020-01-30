@@ -498,7 +498,7 @@ def format_json(data):
 # load_json_or_yaml {{{1
 
 # The overload lets us say that exception=None may return None, but if exception kwarg
-# is ommitted we don't actually ever return None (because on failure we raise an Exception)
+# is omitted we don't actually ever return None (because on failure we raise an Exception)
 @overload
 def load_json_or_yaml(
     string: str, is_path: Optional[bool] = ..., file_type: Optional[str] = ..., exception: Type[BaseException] = ..., message: str = ...
