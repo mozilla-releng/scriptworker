@@ -37,6 +37,7 @@ from scriptworker.task import (
     get_decision_task_id,
     get_parent_task_id,
     get_project,
+    get_provisioner_id,
     get_pull_request_number,
     get_push_date_time,
     get_repo,
@@ -330,7 +331,8 @@ def guess_worker_impl(link):
         worker_impls.append("docker-worker")
     if task["provisionerId"] in link.context.config["scriptworker_provisioners"]:
         worker_impls.append("scriptworker")
-    if get_worker_pool_id(task) in link.context.config["scriptworker_worker_pools"]:
+    # XXX while deprecated, "scriptworker-prov-v1" is still around for mac signing
+    if get_provisioner_id(task) == "scriptworker-prov-v1":
         worker_impls.append("scriptworker")
     if task["payload"].get("mounts") is not None:
         worker_impls.append("generic-worker")
