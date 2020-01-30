@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Type, Union
+from typing import IO, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -112,7 +112,7 @@ def datestring_to_timestamp(datestring):
 
 
 # to_unicode {{{1
-def to_unicode(line):
+def to_unicode(line: Union[str, bytes]) -> str:
     """Avoid ``b'line'`` type messages in the logs.
 
     Args:
@@ -123,15 +123,16 @@ def to_unicode(line):
             Otherwise return ``line`` unmodified.
 
     """
+    ret = cast(str, line)
     try:
-        line = line.decode("utf-8")
+        ret = cast(bytes, line).decode("utf-8")
     except (UnicodeDecodeError, AttributeError):
         pass
-    return line
+    return ret
 
 
 # makedirs {{{1
-def makedirs(path):
+def makedirs(path: str) -> None:
     """Equivalent to mkdir -p.
 
     Args:
@@ -495,7 +496,34 @@ def format_json(data):
 
 
 # load_json_or_yaml {{{1
-def load_json_or_yaml(string, is_path=False, file_type="json", exception=ScriptWorkerTaskException, message="Failed to load %(file_type)s: %(exc)s"):
+
+# The overload lets us say that exception=None may return None, but if exception kwarg
+# is omitted we don't actually ever return None (because on failure we raise an Exception)
+@overload
+def load_json_or_yaml(
+    string: str, is_path: Optional[bool] = ..., file_type: Optional[str] = ..., exception: Type[BaseException] = ..., message: str = ...
+) -> Dict[str, Any]:  # pragma: no cover
+    ...
+
+
+@overload
+def load_json_or_yaml(
+    string: str,
+    is_path: Optional[bool] = False,
+    file_type: Optional[str] = "json",
+    exception: Optional[Type[BaseException]] = ScriptWorkerTaskException,
+    message: str = "Failed to load %(file_type)s: %(exc)s",
+) -> Optional[Dict[str, Any]]:  # pragma: no cover
+    ...
+
+
+def load_json_or_yaml(
+    string: str,
+    is_path: Optional[bool] = False,
+    file_type: Optional[str] = "json",
+    exception: Optional[Type[BaseException]] = ScriptWorkerTaskException,
+    message: str = "Failed to load %(file_type)s: %(exc)s",
+) -> Optional[Dict[str, Any]]:
     """Load json or yaml from a filehandle or string, and raise a custom exception on failure.
 
     Args:
@@ -515,8 +543,8 @@ def load_json_or_yaml(string, is_path=False, file_type="json", exception=ScriptW
 
     """
     if file_type == "json":
-        _load_fh = json.load
-        _load_str = json.loads
+        _load_fh = json.load  # type: Callable[[IO[str]], Dict[str, Any]]
+        _load_str = json.loads  # type: Callable[[str], Dict[str, Any]]
     else:
         _load_fh = yaml.safe_load
         _load_str = yaml.safe_load
@@ -532,6 +560,7 @@ def load_json_or_yaml(string, is_path=False, file_type="json", exception=ScriptW
         if exception is not None:
             repl_dict = {"exc": str(exc), "file_type": file_type}
             raise exception(message % repl_dict)
+    return None
 
 
 # write_to_file {{{1
@@ -708,7 +737,7 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True, auth=No
 
 
 # match_url_path_callback {{{1
-def match_url_path_callback(match):
+def match_url_path_callback(match: Match[str]) -> str:
     """Return the path, as a ``match_url_regex`` callback.
 
     Args:
@@ -723,7 +752,7 @@ def match_url_path_callback(match):
 
 
 # match_url_regex {{{1
-def match_url_regex(rules, url, callback):
+def match_url_regex(rules: Tuple[Any], url: str, callback: Callable[[Match[str]], Any]) -> Any:
     """Given rules and a callback, find the rule that matches the url.
 
     Rules look like::
