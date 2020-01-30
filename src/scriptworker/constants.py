@@ -200,6 +200,8 @@ DEFAULT_CONFIG = frozendict(
                             "app-services-3/decision",
                         ),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
+                        # TODO: Add adhoc-3 whenever we're ready to go to prod
+                        "adhoc": ("adhoc-1/decision",),
                     }
                 )
             }
@@ -239,6 +241,8 @@ DEFAULT_CONFIG = frozendict(
                             "app-services-3/images",
                         ),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
+                        # TODO: Add adhoc-3 whenever we're ready to go to prod
+                        "adhoc": ("adhoc-1/images",),
                     }
                 )
             }
@@ -307,6 +311,16 @@ DEFAULT_CONFIG = frozendict(
                             }
                         ),
                     ),
+                    "adhoc": (
+                        frozendict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                # TODO: Change repo to its final name
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/mvp-adhoc)(/|.git|$)"]),
+                            }
+                        ),
+                    ),
                 }
             )
         },
@@ -333,6 +347,7 @@ DEFAULT_CONFIG = frozendict(
                         "github-release",
                     ),
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
+                    "adhoc": ("action", "github-pull-request", "github-push",),
                 }
             )
         },
@@ -345,6 +360,7 @@ DEFAULT_CONFIG = frozendict(
                     "mpd001": "mozilla-services",
                     "application-services": "mozilla",
                     "xpi": "mozilla-extensions",
+                    "adhoc": "mozilla-releng",
                 }
             )
         },
@@ -415,6 +431,7 @@ DEFAULT_CONFIG = frozendict(
                         {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
                     "xpi": frozendict({"project:xpi:signing:cert:release-signing": "xpi-manifest-repo"}),
+                    "adhoc": frozendict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
                 }
             )
         },
@@ -494,6 +511,7 @@ DEFAULT_CONFIG = frozendict(
                     "mpd001": frozendict({"mpd001-repo": ("/mozilla-services/guardian-vpn",)}),
                     "application-services": frozendict({"application-services-repo": ("/mozilla/application-services",)}),
                     "xpi": frozendict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
+                    "adhoc": frozendict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
                 }
             )
         },
@@ -506,12 +524,21 @@ DEFAULT_CONFIG = frozendict(
                     "mpd001": "any",  # all allowed
                     "application-services": "any",  # all allowed
                     "xpi": "any",  # all allowed
+                    "adhoc": "any",  # all allowed
                 }
             )
         },
         "source_env_prefix": {
             "by-cot-product": frozendict(
-                {"firefox": "GECKO", "thunderbird": "COMM", "mobile": "MOBILE", "mpd001": "MPD001", "application-services": "APPSERVICES", "xpi": "XPI"}
+                {
+                    "firefox": "GECKO",
+                    "thunderbird": "COMM",
+                    "mobile": "MOBILE",
+                    "mpd001": "MPD001",
+                    "application-services": "APPSERVICES",
+                    "xpi": "XPI",
+                    "adhoc": "ADHOC",
+                }
             )
         },
     }
