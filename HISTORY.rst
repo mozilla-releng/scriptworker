@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[30.0.1] - 2020-02-06
+---------------------
+
+Fixed
+~~~~~
+
+- Allow `action` tasks_for on mobile
+
 [30.0.0] - 2020-01-30
 ---------------------
 
