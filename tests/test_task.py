@@ -182,8 +182,9 @@ async def test_get_project(context, mobile_context, source_url, expected, raises
         ("firefox", "cron", False),
         ("firefox", "action", False),
         ("mobile", "hg-push", True),
-        ("mobile", "cron", False),  # Mobile does accept cron tasks
-        ("mobile", "action", True),
+        # Mobile now accepts cron and action tasks
+        ("mobile", "cron", False),
+        ("mobile", "action", False),
         ("firefox", "github-pull-request", True),
         ("firefox", "github-push", True),
         ("firefox", "github-release", True),
