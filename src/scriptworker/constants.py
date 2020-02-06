@@ -281,6 +281,7 @@ DEFAULT_CONFIG = frozendict(
                     "firefox": ("hg-push", "cron", "action"),
                     "thunderbird": ("hg-push", "cron", "action"),
                     "mobile": (
+                        "action",
                         "cron",
                         # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
