@@ -443,19 +443,17 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_right_before_cot(context, mocker):
+    async def fake_upload(*args, **kwargs):
+        assert args == (context, [])
+        return 0
+
     context.config["verify_chain_of_trust"] = True
 
     mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
-    mock_prepare_task.return_value = create_finished_future()
-
     mock_run_task = mocker.patch("scriptworker.worker.run_task")
-    mock_run_task.return_value = create_finished_future()
-
-    mock_do_upload = mocker.patch("scriptworker.worker.do_upload")
-    mock_do_upload.return_value = create_finished_future(0)
-
     mock_complete_task = mocker.patch("scriptworker.worker.complete_task")
-    mock_complete_task.return_value = create_finished_future()
+
+    mocker.patch("scriptworker.worker.do_upload", new=fake_upload)
 
     verify_cot_future = asyncio.Future()
     mock_verify_chain_of_trust = mocker.patch("scriptworker.worker.verify_chain_of_trust")
@@ -466,6 +464,11 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
     mocker.patch("scriptworker.worker.reclaim_task", noop_async)
     mocker.patch("scriptworker.worker.generate_cot", noop_sync)
     mocker.patch("scriptworker.worker.cleanup", noop_sync)
+
+    if not AT_LEAST_PY38:
+        mock_prepare_task.return_value = create_finished_future()
+        mock_run_task.return_value = create_finished_future()
+        mock_complete_task.return_value = create_finished_future()
 
     run_tasks = RunTasks()
 
@@ -478,11 +481,13 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
     mocker.patch("scriptworker.worker.do_run_task", mock_do_run_task)
     await run_tasks.invoke(context)
 
-    assert verify_cot_future.cancelled()
+    if AT_LEAST_PY38:
+        assert mock_verify_chain_of_trust.cancelled()
+    else:
+        assert verify_cot_future.cancelled()
     mock_run_task.assert_not_called()
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES["worker-shutdown"])
-    mock_do_upload.assert_called_once_with(context, [])
 
 
 @pytest.mark.asyncio
