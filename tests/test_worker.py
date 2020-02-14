@@ -37,7 +37,7 @@ def test_main(mocker, context, event_loop):
     config["credentials"] = deepcopy(creds)
 
     async def foo(arg, credentials):
-        # arg.credentials will be a dict copy of a frozendict.
+        # arg.credentials will be a dict copy of a immutabledict.
         assert credentials == dict(creds)
         raise ScriptWorkerException("foo")
 

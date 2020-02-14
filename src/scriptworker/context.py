@@ -32,8 +32,8 @@ class Context(object):
     passing around config and easier overriding in tests.
 
     Attributes:
-        config (dict): the running config.  In production this will be a
-            FrozenDict.
+        config (dict): the running config.  In production this will be an
+            immutabledict.
         credentials_timestamp (int): the unix timestamp when we last updated
             our credentials.
         proc (task_process.TaskProcess): when launching the script, this is

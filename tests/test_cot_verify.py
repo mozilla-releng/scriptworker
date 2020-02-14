@@ -14,7 +14,7 @@ import jsone
 import pytest
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
-from frozendict import frozendict
+from immutabledict import immutabledict
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
@@ -446,7 +446,7 @@ def test_guess_worker_impl(chain, task, expected, raises):
 # get_valid_worker_impls {{{1
 def test_get_valid_worker_impls():
     result = cotverify.get_valid_worker_impls()
-    assert isinstance(result, frozendict)
+    assert isinstance(result, immutabledict)
     for key, value in result.items():
         assert key in VALID_WORKER_IMPLS
         assert callable(value)

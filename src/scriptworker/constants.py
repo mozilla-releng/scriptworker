@@ -2,7 +2,7 @@
 """scriptworker constants.
 
 Attributes:
-    DEFAULT_CONFIG (frozendict): the default config for scriptworker.  Running configs
+    DEFAULT_CONFIG (immutabledict): the default config for scriptworker.  Running configs
         are validated against this.
     STATUSES (dict): maps taskcluster status (string) to exit code (int).
 
@@ -10,7 +10,7 @@ Attributes:
 import os
 from typing import Any, Dict
 
-from frozendict import frozendict
+from immutabledict import immutabledict
 
 STATUSES = {
     "success": 0,
@@ -30,8 +30,8 @@ STATUSES = {
 # Often DEFAULT_CONFIG changes will require test changes as well.
 #
 # When adding new complex config, make sure all `list`s are `tuple`s, and all
-# `dict`s are `frozendict`s!  (This should get caught by config tests.)
-DEFAULT_CONFIG = frozendict(
+# `dict`s are `immutabledict`s!  (This should get caught by config tests.)
+DEFAULT_CONFIG = immutabledict(
     {
         "taskcluster_root_url": os.environ.get("TASKCLUSTER_ROOT_URL", "https://firefox-ci-tc.services.mozilla.com/"),
         # Worker identification
@@ -39,7 +39,7 @@ DEFAULT_CONFIG = frozendict(
         "worker_group": "test-dummy-workers",
         "worker_type": "dummy-worker-myname",
         "worker_id": os.environ.get("SCRIPTWORKER_WORKER_ID", "dummy-worker-myname1"),
-        "credentials": frozendict({"clientId": "...", "accessToken": "...", "certificate": "..."}),
+        "credentials": immutabledict({"clientId": "...", "accessToken": "...", "certificate": "..."}),
         # Worker log settings
         "log_datefmt": "%Y-%m-%dT%H:%M:%S",
         "log_fmt": "%(asctime)s %(levelname)8s - %(message)s",
@@ -49,7 +49,7 @@ DEFAULT_CONFIG = frozendict(
         "reclaim_interval": 300,
         "poll_interval": 10,
         "sign_key_timeout": 60 * 2,
-        "reversed_statuses": frozendict({-11: STATUSES["intermittent-task"], -15: STATUSES["intermittent-task"]}),
+        "reversed_statuses": immutabledict({-11: STATUSES["intermittent-task"], -15: STATUSES["intermittent-task"]}),
         # Report this status on max_timeout. `intermittent-task` will rerun the
         # task automatically. `internal-error` or other will require manual
         # intervention.
@@ -78,7 +78,7 @@ DEFAULT_CONFIG = frozendict(
         "github_oauth_token": "",
         # ed25519 settings
         "ed25519_private_key_path": "...",
-        "ed25519_public_keys": frozendict(
+        "ed25519_public_keys": immutabledict(
             {
                 # the key beginning in J+PAK... is the longstanding docker-worker CoT key, to be phased out
                 # the key beginning in tk/Sj... is a new key added to differentiate GCP workers
@@ -93,14 +93,14 @@ DEFAULT_CONFIG = frozendict(
         "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
         # for download url validation.  The regexes need to define a 'filepath'.
         "valid_artifact_rules": (
-            frozendict(
+            immutabledict(
                 {
                     "schemes": ("https",),
                     "netlocs": ("queue.taskcluster.net",),
                     "path_regexes": (r"^/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$",),
                 }
             ),
-            frozendict(
+            immutabledict(
                 {
                     "schemes": ("https",),
                     "netlocs": ("firefox-ci-tc.services.mozilla.com", "stage.taskcluster.nonprod.cloudops.mozgcp.net"),
@@ -112,9 +112,9 @@ DEFAULT_CONFIG = frozendict(
         # valid hash algorithms for chain of trust artifacts
         "valid_hash_algorithms": ("sha256", "sha512"),
         # decision task cot
-        "valid_decision_worker_pools": frozendict(
+        "valid_decision_worker_pools": immutabledict(
             {
-                "by-cot-product": frozendict(
+                "by-cot-product": immutabledict(
                     {
                         "firefox": (
                             "aws-provisioner-v1/gecko-1-decision",
@@ -158,9 +158,9 @@ DEFAULT_CONFIG = frozendict(
             }
         ),
         # docker-image cot
-        "valid_docker_image_worker_pools": frozendict(
+        "valid_docker_image_worker_pools": immutabledict(
             {
-                "by-cot-product": frozendict(
+                "by-cot-product": immutabledict(
                     {
                         "firefox": (
                             "aws-provisioner-v1/gecko-1-images",
@@ -201,10 +201,10 @@ DEFAULT_CONFIG = frozendict(
         # for trace_back_to_*_tree.  These repos have access to restricted scopes;
         # all other repos are relegated to CI scopes.
         "trusted_vcs_rules": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
                     "firefox": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("hg.mozilla.org",),
@@ -219,7 +219,7 @@ DEFAULT_CONFIG = frozendict(
                     ),
                     # XXX We should also check the mozilla-central tree that is being used.
                     "thunderbird": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("hg.mozilla.org",),
@@ -228,7 +228,7 @@ DEFAULT_CONFIG = frozendict(
                         ),
                     ),
                     "mobile": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
@@ -239,7 +239,7 @@ DEFAULT_CONFIG = frozendict(
                         ),
                     ),
                     "mpd001": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
@@ -249,12 +249,12 @@ DEFAULT_CONFIG = frozendict(
                         ),
                     ),
                     "application-services": (
-                        frozendict(
+                        immutabledict(
                             {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
                         ),
                     ),
                     "xpi": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
@@ -263,7 +263,7 @@ DEFAULT_CONFIG = frozendict(
                         ),
                     ),
                     "adhoc": (
-                        frozendict(
+                        immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
@@ -276,7 +276,7 @@ DEFAULT_CONFIG = frozendict(
             )
         },
         "valid_tasks_for": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
                     "firefox": ("hg-push", "cron", "action"),
                     "thunderbird": ("hg-push", "cron", "action"),
@@ -304,7 +304,7 @@ DEFAULT_CONFIG = frozendict(
             )
         },
         "official_github_repos_owner": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
                     "firefox": "",
                     "thunderbird": "",
@@ -318,9 +318,9 @@ DEFAULT_CONFIG = frozendict(
         },
         # Map scopes to restricted-level
         "cot_restricted_scopes": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
-                    "firefox": frozendict(
+                    "firefox": immutabledict(
                         {
                             "project:releng:addons.mozilla.org:server:production": "all-release-branches",
                             "project:releng:balrog:server:nightly": "all-nightly-branches",
@@ -345,7 +345,7 @@ DEFAULT_CONFIG = frozendict(
                             "project:releng:treescript:action:push": "all-production-branches",
                         }
                     ),
-                    "thunderbird": frozendict(
+                    "thunderbird": immutabledict(
                         {
                             "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
                             "project:comm:thunderbird:releng:balrog:server:beta": "beta",
@@ -357,7 +357,7 @@ DEFAULT_CONFIG = frozendict(
                             "project:comm:thunderbird:releng:signing:cert:release-signing": "all-release-branches",
                         }
                     ),
-                    "mobile": frozendict(
+                    "mobile": immutabledict(
                         {
                             "project:mobile:android-components:releng:beetmover:bucket:maven-production": "android-components-repo",
                             "project:mobile:android-components:releng:beetmover:bucket:maven-snapshot-production": "android-components-repo",
@@ -373,25 +373,25 @@ DEFAULT_CONFIG = frozendict(
                             "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
                         }
                     ),
-                    "mpd001": frozendict(
+                    "mpd001": immutabledict(
                         {
                             "project:mpd001:releng:signing:cert:nightly-signing": "mpd001-repo",
                             "project:mpd001:releng:signing:cert:release-signing": "mpd001-repo",
                         }
                     ),
-                    "application-services": frozendict(
+                    "application-services": immutabledict(
                         {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
-                    "xpi": frozendict({"project:xpi:signing:cert:release-signing": "xpi-manifest-repo"}),
-                    "adhoc": frozendict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
+                    "xpi": immutabledict({"project:xpi:signing:cert:release-signing": "xpi-manifest-repo"}),
+                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
                 }
             )
         },
         # Map restricted-level to trees
         "cot_restricted_trees": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
-                    "firefox": frozendict(
+                    "firefox": immutabledict(
                         {
                             # Which repos can perform release actions?
                             # XXX remove /projects/maple and birch when taskcluster relpro
@@ -442,7 +442,7 @@ DEFAULT_CONFIG = frozendict(
                             "all-staging-branches": ("/projects/birch", "/projects/jamun", "/projects/maple"),
                         }
                     ),
-                    "thunderbird": frozendict(
+                    "thunderbird": immutabledict(
                         {
                             "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr60", "/releases/comm-esr68"),
                             "beta": ("/releases/comm-beta",),
@@ -451,7 +451,7 @@ DEFAULT_CONFIG = frozendict(
                             "nightly": ("/comm-central",),
                         }
                     ),
-                    "mobile": frozendict(
+                    "mobile": immutabledict(
                         {
                             "fenix-repo": ("/mozilla-mobile/fenix",),
                             "focus-repo": ("/mozilla-mobile/focus-android",),
@@ -460,15 +460,15 @@ DEFAULT_CONFIG = frozendict(
                             "firefox-tv-repo": ("/mozilla-mobile/firefox-tv",),
                         }
                     ),
-                    "mpd001": frozendict({"mpd001-repo": ("/mozilla-services/guardian-vpn",)}),
-                    "application-services": frozendict({"application-services-repo": ("/mozilla/application-services",)}),
-                    "xpi": frozendict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
-                    "adhoc": frozendict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
+                    "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn",)}),
+                    "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
+                    "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
+                    "adhoc": immutabledict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
                 }
             )
         },
         "prebuilt_docker_image_task_types": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
                     "firefox": ("decision", "action", "docker-image"),
                     "thunderbird": ("decision", "action", "docker-image"),
@@ -481,7 +481,7 @@ DEFAULT_CONFIG = frozendict(
             )
         },
         "source_env_prefix": {
-            "by-cot-product": frozendict(
+            "by-cot-product": immutabledict(
                 {
                     "firefox": "GECKO",
                     "thunderbird": "COMM",
