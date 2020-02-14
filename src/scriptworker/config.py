@@ -15,7 +15,7 @@ import sys
 from collections import Mapping
 from copy import deepcopy
 
-from frozendict import frozendict
+from immutabledict import immutabledict
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
@@ -34,7 +34,7 @@ _VALUE_UNDEFINED_MESSAGE = "{path} {key} needs to be defined!"
 
 
 def get_frozen_copy(values):
-    """Convert `values`'s list values into tuples, and dicts into frozendicts.
+    """Convert `values`'s list values into tuples, and dicts into immutabledicts.
 
     A recursive function(bottom-up conversion)
 
@@ -42,8 +42,8 @@ def get_frozen_copy(values):
         values (dict/list): the values/list to be modified in-place.
 
     """
-    if isinstance(values, (frozendict, dict)):
-        return frozendict({key: get_frozen_copy(value) for key, value in values.items()})
+    if isinstance(values, (immutabledict, dict)):
+        return immutabledict({key: get_frozen_copy(value) for key, value in values.items()})
     elif isinstance(values, (list, tuple)):
         return tuple([get_frozen_copy(value) for value in values])
 
@@ -52,16 +52,16 @@ def get_frozen_copy(values):
 
 
 def get_unfrozen_copy(values):
-    """Recursively convert `value`'s tuple values into lists, and frozendicts into dicts.
+    """Recursively convert `value`'s tuple values into lists, and immutabledicts into dicts.
 
     Args:
-        values (frozendict/tuple): the frozendict/tuple.
+        values (immutabledict/tuple): the immutabledict/tuple.
 
     Returns:
         values (dict/list): the unfrozen copy.
 
     """
-    if isinstance(values, (frozendict, dict)):
+    if isinstance(values, (immutabledict, dict)):
         return {key: get_unfrozen_copy(value) for key, value in values.items()}
     elif isinstance(values, (list, tuple)):
         return [get_unfrozen_copy(value) for value in values]
@@ -178,7 +178,7 @@ def create_config(config_path="scriptworker.yaml"):
             "scriptworker.yaml"
 
     Returns:
-        tuple: (config frozendict, credentials dict)
+        tuple: (config immutabledict, credentials dict)
 
     Raises:
         SystemExit: on failure
@@ -214,7 +214,7 @@ def get_context_from_cmdln(args, desc="Run scriptworker"):
 
     Returns:
         tuple: ``scriptworker.context.Context`` with populated config, and
-            credentials frozendict
+            credentials immutabledict
 
     """
     context = Context()

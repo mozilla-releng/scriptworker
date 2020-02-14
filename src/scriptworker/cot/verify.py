@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 import aiohttp
 import dictdiffer
 import jsone
-from frozendict import frozendict
+from immutabledict import immutabledict
 from scriptworker.artifacts import download_artifacts, get_artifact_url, get_optional_artifacts_per_task_id, get_single_upstream_artifact_full_path
 from scriptworker.config import apply_product_config, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
@@ -361,12 +361,12 @@ def get_valid_worker_impls():
     No longer a constant, due to code ordering issues.
 
     Returns:
-        frozendict: maps the valid worker_impls (e.g., docker-worker) to their
+        immutabledict: maps the valid worker_impls (e.g., docker-worker) to their
             validation functions.
 
     """
     # TODO support taskcluster worker
-    return frozendict({"docker-worker": verify_docker_worker_task, "generic-worker": verify_generic_worker_task, "scriptworker": verify_scriptworker_task})
+    return immutabledict({"docker-worker": verify_docker_worker_task, "generic-worker": verify_generic_worker_task, "scriptworker": verify_scriptworker_task})
 
 
 # guess_task_type {{{1
@@ -402,10 +402,10 @@ def get_valid_task_types():
     No longer a constant, due to code ordering issues.
 
     Returns:
-        frozendict: maps the valid task types (e.g., signing) to their validation functions.
+        immutabledict: maps the valid task types (e.g., signing) to their validation functions.
 
     """
-    return frozendict(
+    return immutabledict(
         {
             "scriptworker": verify_scriptworker_task,
             "balrog": verify_scriptworker_task,

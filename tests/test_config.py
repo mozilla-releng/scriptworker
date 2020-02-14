@@ -9,7 +9,7 @@ from copy import deepcopy
 import mock
 import pytest
 import scriptworker.config as config
-from frozendict import frozendict
+from immutabledict import immutabledict
 from scriptworker.constants import DEFAULT_CONFIG
 
 # constants helpers and fixtures {{{1
@@ -40,11 +40,11 @@ def t_env():
 @pytest.mark.parametrize(
     "input_dict,expected_dict",
     (
-        ({1: 2}, frozendict({1: 2})),
-        ({"a": [1.0, 2.5]}, frozendict({"a": (1.0, 2.5)})),
-        (frozendict({1: {"a": True}}), frozendict({1: frozendict({"a": True})})),
-        ({1: [{"a": None}, ["A", "B", "C"]]}, frozendict({1: (frozendict({"a": None}), ("A", "B", "C"))})),
-        ({1: [1, [2, 3], {}]}, frozendict({1: (1, (2, 3), frozendict({}))})),
+        ({1: 2}, immutabledict({1: 2})),
+        ({"a": [1.0, 2.5]}, immutabledict({"a": (1.0, 2.5)})),
+        (immutabledict({1: {"a": True}}), immutabledict({1: immutabledict({"a": True})})),
+        ({1: [{"a": None}, ["A", "B", "C"]]}, immutabledict({1: (immutabledict({"a": None}), ("A", "B", "C"))})),
+        ({1: [1, [2, 3], {}]}, immutabledict({1: (1, (2, 3), immutabledict({}))})),
         ([1, []], (1, ())),
     ),
 )
@@ -58,9 +58,9 @@ def test_get_frozen_copy(input_dict, expected_dict):
     (
         ({1: 2}, {1: 2}),
         ({"a": (1.0, 2.5)}, {"a": [1.0, 2.5]}),
-        (frozendict({1: frozendict({"a": True})}), {1: {"a": True}}),
-        ({1: (frozendict({"a": None}), ("A", "B", "C"))}, {1: [{"a": None}, ["A", "B", "C"]]}),
-        ({1: (1, [2, 3], frozendict({}))}, {1: [1, [2, 3], {}]}),
+        (immutabledict({1: immutabledict({"a": True})}), {1: {"a": True}}),
+        ({1: (immutabledict({"a": None}), ("A", "B", "C"))}, {1: [{"a": None}, ["A", "B", "C"]]}),
+        ({1: (1, [2, 3], immutabledict({}))}, {1: [1, [2, 3], {}]}),
         ((1, ()), [1, []]),
     ),
 )
@@ -138,8 +138,8 @@ def test_create_config_good(t_config):
     generated_config, generated_creds = config.create_config(config_path=path)
     assert generated_config == t_config
     assert generated_creds == test_creds
-    assert isinstance(generated_config, frozendict)
-    assert isinstance(generated_creds, frozendict)
+    assert isinstance(generated_config, immutabledict)
+    assert isinstance(generated_creds, immutabledict)
 
 
 # credentials {{{1
@@ -187,9 +187,9 @@ def test_get_context_from_cmdln(t_config):
     c = deepcopy(dict(DEFAULT_CONFIG))
     with open(path) as fh:
         c.update(json.load(fh))
-    expected_creds = frozendict(c["credentials"])
+    expected_creds = immutabledict(c["credentials"])
     del c["credentials"]
-    expected_config = frozendict(config.apply_product_config(c))
+    expected_config = immutabledict(config.apply_product_config(c))
 
     def noop(*args, **kwargs):
         pass
