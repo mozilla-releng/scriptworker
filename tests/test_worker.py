@@ -404,21 +404,20 @@ async def test_run_tasks_cancel_cot(context, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_run_tasks(context, mocker):
-    mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
-    mock_prepare_task.return_value = create_finished_future()
-
     mocker.patch("scriptworker.worker.claim_work", create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch("scriptworker.worker.reclaim_task", noop_async)
     mocker.patch("scriptworker.worker.run_task", noop_async)
     mocker.patch("scriptworker.worker.generate_cot", noop_sync)
     mocker.patch("scriptworker.worker.cleanup", noop_sync)
     mocker.patch("os.path.isfile", create_sync(True))
+    mocker.patch("scriptworker.worker.do_upload", new=create_async(result=0))
 
-    mock_do_upload = mocker.patch("scriptworker.worker.do_upload")
-    mock_do_upload.return_value = create_finished_future(0)
-
+    mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
     mock_complete_task = mocker.patch("scriptworker.worker.complete_task")
-    mock_complete_task.return_value = create_finished_future()
+
+    if not AT_LEAST_PY38:
+        mock_prepare_task.return_value = create_finished_future()
+        mock_complete_task.return_value = create_finished_future()
 
     task_process = MockTaskProcess()
     run_task_called = asyncio.Future()
@@ -440,7 +439,6 @@ async def test_run_tasks_cancel_run_tasks(context, mocker):
     assert task_process.stopped_due_to_worker_shutdown
     mock_prepare_task.assert_called_once()
     mock_complete_task.assert_called_once_with(mock.ANY, STATUSES["worker-shutdown"])
-    mock_do_upload.assert_called_once_with(context, ["public/logs/chain_of_trust.log", "public/logs/live_backing.log"])
 
 
 @pytest.mark.asyncio
