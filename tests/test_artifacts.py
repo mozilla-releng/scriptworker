@@ -25,7 +25,7 @@ from scriptworker.artifacts import (
 )
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
-from . import create_finished_future, create_rejected_future, touch
+from . import touch
 
 
 @pytest.yield_fixture(scope="function")
@@ -84,15 +84,18 @@ async def test_upload_artifacts(context):
 
 
 @pytest.mark.asyncio
-async def test_upload_artifacts_throws(context):
-    def mock_create_artifact():
-        yield create_finished_future()
-        yield create_rejected_future(ArithmeticError)
+async def test_upload_artifacts_throws(context, mocker):
+    exceptions = [None, ArithmeticError]
 
-    generator = mock_create_artifact()
-    with mock.patch("scriptworker.artifacts.create_artifact", new=lambda *args, **kwargs: next(generator)):
-        with pytest.raises(ArithmeticError):
-            await upload_artifacts(context, ["one", "public/two"])
+    async def mock_create_artifact(*args, **kwargs):
+        exc = exceptions.pop()
+        if exc:
+            raise exc("foo")
+        return 0
+
+    mocker.patch("scriptworker.artifacts.create_artifact", new=mock_create_artifact)
+    with pytest.raises(ArithmeticError):
+        await upload_artifacts(context, ["one", "public/two"])
 
 
 @pytest.mark.parametrize(
