@@ -302,6 +302,13 @@ class MockTaskProcess:
 
 @pytest.mark.asyncio
 async def test_run_tasks_no_cancel(context, mocker):
+
+    expected_args = [(context, ["one", "public/two"]), None]
+
+    async def fake_upload(*args, **kwargs):
+        assert args == expected_args.pop(0)
+        return 0
+
     mocker.patch("scriptworker.worker.claim_work", create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch.object(asyncio, "sleep", noop_async)
     mocker.patch("scriptworker.worker.prepare_to_run_task", noop_sync)
@@ -310,8 +317,7 @@ async def test_run_tasks_no_cancel(context, mocker):
     mocker.patch("scriptworker.worker.cleanup", noop_sync)
     mocker.patch("scriptworker.worker.filepaths_in_dir", create_sync(["one", "public/two"]))
     mock_complete_task = mocker.patch("scriptworker.worker.complete_task")
-    mock_do_upload = mocker.patch("scriptworker.worker.do_upload")
-    mock_do_upload.return_value = create_finished_future(0)
+    mocker.patch("scriptworker.worker.do_upload", new=fake_upload)
 
     future = asyncio.Future()
     future.set_result(None)
@@ -320,7 +326,6 @@ async def test_run_tasks_no_cancel(context, mocker):
     run_tasks = RunTasks()
     await run_tasks.invoke(context)
     mock_complete_task.assert_called_once_with(mock.ANY, 0)
-    mock_do_upload.assert_called_once_with(context, ["one", "public/two"])
 
 
 @pytest.mark.asyncio
