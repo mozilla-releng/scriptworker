@@ -337,10 +337,10 @@ async def test_run_tasks_cancel_claim_work(context, mocker):
     slow_function_called, slow_function = create_slow_async()
     mocker.patch("scriptworker.worker.claim_work", slow_function)
 
-    mock_sleep = mocker.patch.object(asyncio, "sleep", new=dont_call_me)
-    mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task", new=dont_call_me)
-    mock_do_upload = mocker.patch("scriptworker.worker.do_upload", new=dont_call_me)
-    mock_complete_task = mocker.patch("scriptworker.worker.complete_task", new=dont_call_me)
+    mocker.patch.object(asyncio, "sleep", new=dont_call_me)
+    mocker.patch("scriptworker.worker.prepare_to_run_task", new=dont_call_me)
+    mocker.patch("scriptworker.worker.do_upload", new=dont_call_me)
+    mocker.patch("scriptworker.worker.complete_task", new=dont_call_me)
 
     run_tasks = RunTasks()
     run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
@@ -351,29 +351,24 @@ async def test_run_tasks_cancel_claim_work(context, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_sleep(context, mocker):
+
+    async def dont_call_me(*args, **kwargs):
+        raise Exception("This should not have been called!")
+
     slow_function_called, slow_function = create_slow_async()
     mocker.patch.object(asyncio, "sleep", slow_function)
 
     mocker.patch("scriptworker.worker.claim_work", create_async(_MOCK_CLAIM_WORK_NONE_RETURN))
 
-    mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
-    mock_prepare_task.return_value = create_finished_future()
-
-    mock_do_upload = mocker.patch("scriptworker.worker.do_upload")
-    mock_do_upload.return_value = create_finished_future(0)
-
-    mock_complete_task = mocker.patch("scriptworker.worker.complete_task")
-    mock_complete_task.return_value = create_finished_future()
+    mocker.patch("scriptworker.worker.prepare_to_run_task", new=dont_call_me)
+    mocker.patch("scriptworker.worker.do_upload", new=dont_call_me)
+    mocker.patch("scriptworker.worker.complete_task", new=dont_call_me)
 
     run_tasks = RunTasks()
     run_tasks_future = asyncio.get_event_loop().create_task(run_tasks.invoke(context))
     await slow_function_called
     await run_tasks.cancel()
     await run_tasks_future
-
-    mock_prepare_task.assert_not_called()
-    mock_do_upload.assert_not_called()
-    mock_complete_task.assert_not_called()
 
 
 @pytest.mark.asyncio
