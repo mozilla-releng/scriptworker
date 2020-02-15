@@ -536,13 +536,13 @@ async def test_run_tasks_cancel_right_before_claim_work(context, mocker):
     mocker.patch("scriptworker.worker.claim_work", mock_claim_work)
 
     mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
-    mock_prepare_task.return_value = create_finished_future()
-
     mock_do_upload = mocker.patch("scriptworker.worker.do_upload")
-    mock_do_upload.return_value = create_finished_future(0)
-
     mock_complete_task = mocker.patch("scriptworker.worker.complete_task")
-    mock_complete_task.return_value = create_finished_future()
+
+    if not AT_LEAST_PY38:
+        mock_do_upload.return_value = create_finished_future(0)
+        mock_prepare_task.return_value = create_finished_future()
+        mock_complete_task.return_value = create_finished_future()
 
     run_tasks = RunTasks()
     await run_tasks.cancel()
