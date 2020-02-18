@@ -4,8 +4,8 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-[31.0.0] - ?
-------------
+[31.0.0] - 2020-02-18
+---------------------
 
 Added
 ~~~~~
