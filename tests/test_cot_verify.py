@@ -7,7 +7,7 @@ import logging
 import os
 import tempfile
 from copy import deepcopy
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import aiohttp
 import jsone
@@ -20,7 +20,7 @@ from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
 from taskcluster.exceptions import TaskclusterFailure
 
-from . import create_async, create_finished_future, noop_async, noop_sync, touch
+from . import create_async, noop_async, noop_sync, touch
 
 log = logging.getLogger(__name__)
 
@@ -2013,17 +2013,17 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, do
 )
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
-    mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises
+    mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises, mocker
 ):
     (source_url, raises) = ("https://github.com/mozilla-mobile/focus-android", False)
     mobile_github_release_link.task["metadata"]["source"] = source_url
     mobile_chain.links = [mobile_github_release_link, mobile_build_link]
-    with patch.object(mobile_chain, "is_try_or_pull_request", return_value=create_finished_future(False)):
-        if raises:
-            with pytest.raises(CoTError):
-                await cotverify.trace_back_to_tree(mobile_chain)
-        else:
+    mocker.patch.object(mobile_chain, "is_try_or_pull_request", new=create_async(result=False))
+    if raises:
+        with pytest.raises(CoTError):
             await cotverify.trace_back_to_tree(mobile_chain)
+    else:
+        await cotverify.trace_back_to_tree(mobile_chain)
 
 
 # AuditLogFormatter {{{1

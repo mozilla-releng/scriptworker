@@ -5,6 +5,7 @@
 import asyncio
 import json
 import os
+import sys
 
 import aiohttp
 import arrow
@@ -27,6 +28,7 @@ ARTIFACT_SHAS = {
 }
 
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
+AT_LEAST_PY38 = sys.version_info >= (3, 8)
 
 
 def read(path):
@@ -128,12 +130,16 @@ def noop_sync(*args, **kwargs):
 
 
 def create_finished_future(result=None):
+    # XXX deprecated; remove after we drop py37 support
+    assert not AT_LEAST_PY38, "Use AsyncMock!"
     future = asyncio.Future()
     future.set_result(result)
     return future
 
 
 def create_rejected_future(exception=BaseException):
+    # XXX deprecated; remove after we drop py37 support
+    assert not AT_LEAST_PY38, "Use AsyncMock!"
     future = asyncio.Future()
     future.set_exception(exception)
     return future
