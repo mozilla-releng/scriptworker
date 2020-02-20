@@ -170,9 +170,9 @@ class Context(object):
     def temp_credentials(self, credentials):
         self._temp_credentials = credentials
         if credentials is not None:
-            self._temp_queue = self.create_queue(self.temp_credentials)
+            self.temp_queue = self.create_queue(self.temp_credentials)
         else:
-            self._temp_queue = None
+            self.temp_queue = None
 
     def write_json(self, path, contents, message):
         """Write json to disk.
@@ -229,6 +229,10 @@ class Context(object):
             return self._temp_queue
         else:
             return self.queue
+
+    @temp_queue.setter
+    def temp_queue(self, queue):
+        self._temp_queue = queue
 
     @credentials.setter
     def credentials(self, creds):
