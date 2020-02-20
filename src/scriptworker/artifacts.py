@@ -207,9 +207,9 @@ def get_artifact_url(context, task_id, path):
 
     """
     if path.startswith("public/"):
-        url = context.queue.buildUrl("getLatestArtifact", task_id, path)
+        url = context.temp_queue.buildUrl("getLatestArtifact", task_id, path)
     else:
-        url = context.queue.buildSignedUrl(
+        url = context.temp_queue.buildSignedUrl(
             "getLatestArtifact",
             task_id,
             path,
