@@ -233,7 +233,18 @@ DEFAULT_CONFIG = immutabledict(
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
                                 "path_regexes": tuple(
-                                    [r"^(?P<path>/mozilla-mobile/(?:android-components|focus-android|reference-browser|fenix|firefox-tv))(/|.git|$)"]
+                                    [
+                                        r"^(?P<path>/mozilla-mobile/"
+                                        "(?:"
+                                        "android-components"
+                                        "|fenix"
+                                        "|fennec-profile-manager"
+                                        "|firefox-tv"
+                                        "|focus-android"
+                                        "|reference-browser"
+                                        "))"
+                                        "(/|.git|$)"
+                                    ]
                                 ),
                             }
                         ),
@@ -365,12 +376,18 @@ DEFAULT_CONFIG = immutabledict(
                             "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:beta-signing": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:production-signing": "fenix-repo",
+                            "project:mobile:fenix:releng:signing:cert:fennec-nightly-signing": "fenix-repo",
+                            # Fennec Beta and Fennec Release share the same key
+                            "project:mobile:fenix:releng:signing:cert:fennec-production-signing": "fenix-repo",
+                            "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-nightly-signing": "fennec-profile-manager-repo",
+                            # Fennec Beta and Fennec Release share the same key
+                            "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-production-signing": "fennec-profile-manager-repo",
+                            "project:mobile:firefox-tv:releng:googleplay:product:firefox-tv": "firefox-tv-repo",
+                            "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
                             "project:mobile:focus:googleplay:product:focus": "focus-repo",
                             "project:mobile:focus:releng:signing:cert:release-signing": "focus-repo",
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
-                            "project:mobile:firefox-tv:releng:googleplay:product:firefox-tv": "firefox-tv-repo",
-                            "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
                         }
                     ),
                     "mpd001": immutabledict(
@@ -453,11 +470,12 @@ DEFAULT_CONFIG = immutabledict(
                     ),
                     "mobile": immutabledict(
                         {
-                            "fenix-repo": ("/mozilla-mobile/fenix",),
-                            "focus-repo": ("/mozilla-mobile/focus-android",),
                             "android-components-repo": ("/mozilla-mobile/android-components",),
-                            "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
+                            "fenix-repo": ("/mozilla-mobile/fenix",),
+                            "fennec-profile-manager-repo": ("/mozilla-mobile/fennec-profile-manager",),
                             "firefox-tv-repo": ("/mozilla-mobile/firefox-tv",),
+                            "focus-repo": ("/mozilla-mobile/focus-android",),
+                            "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
                         }
                     ),
                     "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn",)}),
