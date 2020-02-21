@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[31.1.0] - 2020-02-21
+---------------------
+
+Added
+~~~~~
+- Added fennec-profile-manager
+
 [31.0.0] - 2020-02-18
 ---------------------
 
