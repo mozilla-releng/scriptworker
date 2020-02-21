@@ -234,12 +234,6 @@ class Context(object):
     def temp_queue(self, queue):
         self._temp_queue = queue
 
-    @credentials.setter
-    def credentials(self, creds):
-        self._credentials = creds
-        self.queue = self.create_queue(self.credentials)
-        self.credentials_timestamp = arrow.utcnow().timestamp
-
     async def populate_projects(self, force=False):
         """Download the ``projects.yml`` file and populate ``self.projects``.
 
