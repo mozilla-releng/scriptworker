@@ -53,7 +53,7 @@ class Context(object):
     queue = None
     session = None
     task = None
-    temp_queue = None
+    _temp_queue = None
     running_tasks = None
     _credentials = None
     _claim_task = None  # This assumes a single task per worker.
@@ -169,7 +169,10 @@ class Context(object):
     @temp_credentials.setter
     def temp_credentials(self, credentials):
         self._temp_credentials = credentials
-        self.temp_queue = self.create_queue(self.temp_credentials)
+        if credentials is not None:
+            self.temp_queue = self.create_queue(self.temp_credentials)
+        else:
+            self.temp_queue = None
 
     def write_json(self, path, contents, message):
         """Write json to disk.
@@ -214,6 +217,22 @@ class Context(object):
     @event_loop.setter
     def event_loop(self, event_loop):
         self._event_loop = event_loop
+
+    @property
+    def temp_queue(self):
+        """dict: The queue for the current task.
+
+        These will have different sets of scopes than the worker queue.
+
+        """
+        if self._temp_queue:
+            return self._temp_queue
+        else:
+            return self.queue
+
+    @temp_queue.setter
+    def temp_queue(self, queue):
+        self._temp_queue = queue
 
     async def populate_projects(self, force=False):
         """Download the ``projects.yml`` file and populate ``self.projects``.

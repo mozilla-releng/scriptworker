@@ -143,8 +143,8 @@ async def get_temp_creds_context(config_override=None):
         yield context
 
 
-async def create_task(context, task_id, task_group_id):
-    payload = integration_create_task_payload(context.config, task_group_id)
+async def create_task(context, task_id, task_group_id, **kwargs):
+    payload = integration_create_task_payload(context.config, task_group_id, **kwargs)
     return await context.queue.createTask(task_id, payload)
 
 
@@ -327,7 +327,7 @@ async def test_private_artifacts(context_function):
     task_group_id = task_id = slugid.nice()
     override = {"task_script": ("bash", "-c", ">&2 echo")}
     async with context_function(override) as context:
-        result = await create_task(context, task_id, task_group_id)
+        result = await create_task(context, task_id, task_group_id, scopes=["queue:get-artifact:SampleArtifacts/_/X.txt"])
         assert result["status"]["state"] == "pending"
         path = os.path.join(context.config["artifact_dir"], "SampleArtifacts/_/X.txt")
         utils.makedirs(os.path.dirname(path))
