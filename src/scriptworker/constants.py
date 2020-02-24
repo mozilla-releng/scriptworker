@@ -349,6 +349,9 @@ DEFAULT_CONFIG = immutabledict(
                             "project:releng:googleplay:release": "esr68",
                             "project:releng:signing:cert:nightly-signing": "all-nightly-branches",
                             "project:releng:signing:cert:release-signing": "all-release-branches",
+                            "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
+                            "project:releng:flathub:firefox:release": "release",
+                            "project:releng:flathub:firefox:esr": "esr",
                             "project:releng:snapcraft:firefox:beta": "beta-or-release",  # Needed on release for RCs
                             "project:releng:snapcraft:firefox:candidate": "release",
                             "project:releng:snapcraft:firefox:esr": "esr",
