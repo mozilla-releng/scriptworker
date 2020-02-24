@@ -4,12 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-[31.1.1] - 2020-02-24
+[32.0.1] - 2020-02-24
 ---------------------
 
 Added
 ~~~~~
 - Added scopes for flatpakscript
+
+[32.0.0] - 2020-02-24
+---------------------
+
+Changed
+~~~~~~~
+- Scriptworker now uses ``context.temp_queue`` to download artifacts.
 
 [31.1.0] - 2020-02-21
 ---------------------
