@@ -84,12 +84,6 @@ def test_temp_queue(rw_context, mocker):
     assert taskcluster.aio.Queue.called_once_with(
         options={"rootUrl": rw_context.config["taskcluster_root_url"], "credentials": rw_context.temp_credentials}, session=rw_context.session
     )
-    assert rw_context._temp_queue is not None
-    rw_context.temp_queue = None
-    fake_queue = mocker.MagicMock()
-    rw_context.queue = fake_queue
-    assert rw_context._temp_queue is None
-    assert rw_context.temp_queue is fake_queue
 
 
 @pytest.mark.asyncio
