@@ -1322,6 +1322,7 @@ def _wrap_action_hook_with_let(tmpl, action_perm):
                 "taskGroupId": "${payload.decision.action.taskGroupId}",
                 "symbol": "${payload.decision.action.symbol}",
                 "repo_scope": "assume:repo:${payload.decision.repository.url[8:]}:action:" + action_perm,
+                "action_perm": action_perm,
                 "cb_name": "${payload.decision.action.cb_name}",
             },
             "push": {"$eval": "payload.decision.push"},

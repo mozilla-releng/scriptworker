@@ -1,6 +1,7 @@
 {
   "$let": {
     "action": {
+      "action_perm": "generic",
       "cb_name": "${payload.decision.action.cb_name}",
       "description": "${payload.decision.action.description}",
       "name": "${payload.decision.action.name}",
