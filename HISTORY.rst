@@ -9,7 +9,7 @@ This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
 Fixed
 ~~~~~
-- Fixed scopes for flatpaks as `stable` is the one used for production
+- Production scopes for flatpaks are now correctly set
 
 [32.0.2] - 2020-02-26
 ---------------------
