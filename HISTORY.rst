@@ -4,12 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[32.0.3] - 2020-02-28
+---------------------
+
+Fixed
+~~~~~
+- Fixed scopes for flatpaks as `stable` is the one used for production
+
 [32.0.2] - 2020-02-26
 ---------------------
 
-Changed
+Fixed
 ~~~~~
-- Fixed scopes for flatpaks as `stable` is the one used for production
+- Reverted ``context.temp_queue`` downloads
 
 [32.0.1] - 2020-02-24
 ---------------------
