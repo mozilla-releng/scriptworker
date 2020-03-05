@@ -401,10 +401,9 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": immutabledict(
                         {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
-                    "xpi": immutabledict({
-                        "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
-                        "project:xpi:ship-it:production": "xpi-manifest-repo",
-                    }),
+                    "xpi": immutabledict(
+                        {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo",}
+                    ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
                 }
             )
