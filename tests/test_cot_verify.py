@@ -83,9 +83,9 @@ def mobile_chain_pull_request(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope="function")
-def mpd_chain(mpd_rw_context):
+def mpd_chain(mpd_private_rw_context):
     chain = _craft_chain(
-        mpd_rw_context,
+        mpd_private_rw_context,
         scopes=["project:mpd001:releng:signing:cert:release-signing", "ignoreme"],
         source_url="https://github.com/mozilla-foobar/private-repo/raw/somerevision/.taskcluster.yml",
     )

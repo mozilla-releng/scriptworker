@@ -254,8 +254,7 @@ DEFAULT_CONFIG = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-services/(?:guardian-vpn))(/|.git|$)"]),
-                                "require_secret": True,
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-services/(?:guardian-vpn-windows))(/|.git|$)"]),
                             }
                         ),
                     ),
@@ -482,7 +481,7 @@ DEFAULT_CONFIG = immutabledict(
                             "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
                         }
                     ),
-                    "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn",)}),
+                    "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn-windows",)}),
                     "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
                     "adhoc": immutabledict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
