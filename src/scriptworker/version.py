@@ -54,7 +54,7 @@ def get_version_string(version: Union[ShortVerType, LongVerType]) -> str:
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (32, 0, 3)
+__version__ = (32, 1, 0)
 __version_string__ = get_version_string(__version__)
 
 

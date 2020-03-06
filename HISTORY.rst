@@ -4,6 +4,17 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[32.1.0] - 2020-03-06
+---------------------
+
+Added
+~~~~~
+- Added shipitscript scopes to the xpi restricted scopes
+
+Changed
+~~~~~~~
+- Moved the mpd001 repo to ``guardian-vpn-windows``
+
 [32.0.3] - 2020-02-28
 ---------------------
 
