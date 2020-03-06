@@ -16,8 +16,8 @@ def context(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope="function")
-def mpd_context(mpd_rw_context):
-    ctx = mpd_rw_context
+def mpd_context(mpd_private_rw_context):
+    ctx = mpd_private_rw_context
     ctx.task = {"taskGroupId": "bobo"}
     yield ctx
 

@@ -155,14 +155,14 @@ async def mobile_rw_context(event_loop):
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope="function")
-async def mpd_rw_context(event_loop):
+async def mpd_private_rw_context(event_loop):
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product="mpd001", session=session)
+            context = _craft_rw_context(tmp, event_loop, cot_product="mpd001", session=session, private=True)
             yield context
 
 
-def _craft_rw_context(tmp, event_loop, cot_product, session):
+def _craft_rw_context(tmp, event_loop, cot_product, session, private=False):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config["cot_product"] = cot_product
     context = Context()
@@ -175,6 +175,9 @@ def _craft_rw_context(tmp, event_loop, cot_product, session):
             makedirs(context.config[key])
         if key.endswith("key_path"):
             context.config[key] = os.path.join(tmp, key)
+    if private:
+        for rule in context.config["trusted_vcs_rules"]:
+            rule["require_secret"] = True
     context.config["verbose"] = VERBOSE
     context.event_loop = event_loop
     return context
