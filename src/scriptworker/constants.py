@@ -123,6 +123,7 @@ DEFAULT_CONFIG = immutabledict(
                         "application-services": ("app-services-1/decision", "app-services-3/decision",),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
+                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision",),
                     }
                 )
             }
@@ -139,6 +140,7 @@ DEFAULT_CONFIG = immutabledict(
                         "application-services": ("app-services-1/images", "app-services-3/images",),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
                         "adhoc": ("adhoc-1/images", "adhoc-3/images"),
+                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images",),
                     }
                 )
             }
@@ -227,6 +229,15 @@ DEFAULT_CONFIG = immutabledict(
                             }
                         ),
                     ),
+                    "scriptworker": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/scriptworker(?:|-scripts))(/|.git|$)"]),
+                            }
+                        ),
+                    ),
                 }
             )
         },
@@ -255,6 +266,7 @@ DEFAULT_CONFIG = immutabledict(
                     ),
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                     "adhoc": ("action", "github-pull-request", "github-push"),
+                    "scriptworker": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                 }
             )
         },
@@ -268,6 +280,7 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": "mozilla",
                     "xpi": "mozilla-extensions",
                     "adhoc": "mozilla-releng",
+                    "scriptworker": "mozilla-releng",
                 }
             )
         },
@@ -349,6 +362,12 @@ DEFAULT_CONFIG = immutabledict(
                         {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
                     ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
+                    "scriptworker": immutabledict(
+                        {
+                            "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
+                            "project:scriptworker:pypi:production": "all-production-repos",
+                        }
+                    ),
                 }
             )
         },
@@ -430,6 +449,12 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
                     "adhoc": immutabledict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
+                    "scriptworker": immutabledict(
+                        {
+                            "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
+                            "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts",),
+                        }
+                    ),
                 }
             )
         },
@@ -438,11 +463,13 @@ DEFAULT_CONFIG = immutabledict(
                 {
                     "firefox": ("decision", "action", "docker-image"),
                     "thunderbird": ("decision", "action", "docker-image"),
+                    # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
                     "mpd001": "any",  # all allowed
                     "application-services": "any",  # all allowed
                     "xpi": "any",  # all allowed
                     "adhoc": "any",  # all allowed
+                    "scriptworker": ("decision", "action", "docker-image"),
                 }
             )
         },
@@ -456,6 +483,7 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": "APPSERVICES",
                     "xpi": "XPI",
                     "adhoc": "ADHOC",
+                    "scriptworker": "SCRIPTWORKER",
                 }
             )
         },
