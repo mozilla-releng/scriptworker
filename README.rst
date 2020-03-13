@@ -53,6 +53,7 @@ With integration tests, first create a client with the scopes::
     queue:create-task:lowest:test-dummy-provisioner/dummy-worker-*
     queue:define-task:test-dummy-provisioner/dummy-worker-*
     queue:get-artifact:SampleArtifacts/_/X.txt
+    queue:scheduler-id:test-dummy-scheduler
     queue:schedule-task:test-dummy-scheduler/*
     queue:task-group-id:test-dummy-scheduler/*
     queue:worker-id:test-dummy-workers/dummy-worker-*
