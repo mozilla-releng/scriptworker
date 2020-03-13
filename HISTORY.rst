@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[32.1.1] - 2020-03-13
+---------------------
+
+Added
+~~~~~
+- Added the ``scriptworker`` cot product configs
+- Added ``adhoc-3`` workers
+
+Removed
+~~~~~~~
+- Removed ``aws-provisioner-v1`` workers
+- Removed ``esr60`` and the ``birch`` and ``jamun`` project branches
+
 [32.1.0] - 2020-03-06
 ---------------------
 

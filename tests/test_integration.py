@@ -122,6 +122,7 @@ def get_temp_creds(context):
             "queue:cancel-task:test-dummy-scheduler/*",
             "queue:claim-work:test-dummy-provisioner/dummy-worker-*",
             "queue:create-task:lowest:test-dummy-provisioner/dummy-worker-*",
+            "queue:scheduler-id:test-dummy-scheduler",
             "queue:define-task:test-dummy-provisioner/dummy-worker-*",
             "queue:get-artifact:SampleArtifacts/_/X.txt",
             "queue:schedule-task:test-dummy-scheduler/*",

@@ -116,43 +116,14 @@ DEFAULT_CONFIG = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": (
-                            "aws-provisioner-v1/gecko-1-decision",
-                            "aws-provisioner-v1/gecko-2-decision",
-                            "aws-provisioner-v1/gecko-3-decision",
-                            "gecko-1/decision",
-                            "gecko-2/decision",
-                            "gecko-3/decision",
-                        ),
-                        "thunderbird": (
-                            "aws-provisioner-v1/gecko-1-decision",
-                            "aws-provisioner-v1/gecko-2-decision",
-                            "aws-provisioner-v1/gecko-3-decision",
-                            "comm-1/decision",
-                            "comm-2/decision",
-                            "comm-3/decision",
-                        ),
-                        "mobile": (
-                            # gecko-focus was for mozilla-mobile releases (bug 1455290) for more details.
-                            # TODO: Remove it once not used anymore
-                            "aws-provisioner-v1/gecko-focus",
-                            "aws-provisioner-v1/mobile-1-decision",
-                            # We haven't had the need for mobile-2-decision yet
-                            # https://bugzilla.mozilla.org/show_bug.cgi?id=1512631#c6
-                            "aws-provisioner-v1/mobile-3-decision",
-                            "mobile-1/decision",
-                            "mobile-3/decision",
-                        ),
-                        "mpd001": ("aws-provisioner-v1/mpd001-1-decision", "aws-provisioner-v1/mpd001-3-decision", "mpd001-1/decision", "mpd001-3/decision"),
-                        "application-services": (
-                            "aws-provisioner-v1/app-services-1-decision",
-                            "aws-provisioner-v1/app-services-3-decision",
-                            "app-services-1/decision",
-                            "app-services-3/decision",
-                        ),
+                        "firefox": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision",),
+                        "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision",),
+                        "mobile": ("mobile-1/decision", "mobile-3/decision",),
+                        "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
+                        "application-services": ("app-services-1/decision", "app-services-3/decision",),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
-                        # TODO: Add adhoc-3 whenever we're ready to go to prod
-                        "adhoc": ("adhoc-1/decision",),
+                        "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
+                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision",),
                     }
                 )
             }
@@ -162,38 +133,14 @@ DEFAULT_CONFIG = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": (
-                            "aws-provisioner-v1/gecko-1-images",
-                            "aws-provisioner-v1/gecko-2-images",
-                            "aws-provisioner-v1/gecko-3-images",
-                            "gecko-1/images",
-                            "gecko-2/images",
-                            "gecko-3/images",
-                        ),
-                        "thunderbird": (
-                            "aws-provisioner-v1/gecko-1-images",
-                            "aws-provisioner-v1/gecko-2-images",
-                            "aws-provisioner-v1/gecko-3-images",
-                            "comm-1/images",
-                            "comm-2/images",
-                            "comm-3/images",
-                        ),
-                        "mobile": (
-                            "aws-provisioner-v1/mobile-1-images",  # there is no mobile level 2.
-                            "aws-provisioner-v1/mobile-3-images",
-                            "mobile-1/images",
-                            "mobile-3/images",
-                        ),
-                        "mpd001": ("aws-provisioner-v1/mpd001-1-images", "aws-provisioner-v1/mpd001-3-images", "mpd001-1/images", "mpd001-3/images"),
-                        "application-services": (
-                            "aws-provisioner-v1/app-services-1-images",
-                            "aws-provisioner-v1/app-services-3-images",
-                            "app-services-1/images",
-                            "app-services-3/images",
-                        ),
+                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images",),
+                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images",),
+                        "mobile": ("mobile-1/images", "mobile-3/images",),
+                        "mpd001": ("mpd001-1/images", "mpd001-3/images"),
+                        "application-services": ("app-services-1/images", "app-services-3/images",),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
-                        # TODO: Add adhoc-3 whenever we're ready to go to prod
-                        "adhoc": ("adhoc-1/images",),
+                        "adhoc": ("adhoc-1/images", "adhoc-3/images"),
+                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images",),
                     }
                 )
             }
@@ -212,7 +159,7 @@ DEFAULT_CONFIG = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(birch|jamun|maple|oak))(/|$)",
+                                    r"^(?P<path>/projects/(maple|oak))(/|$)",
                                 ),
                             }
                         ),
@@ -282,6 +229,15 @@ DEFAULT_CONFIG = immutabledict(
                             }
                         ),
                     ),
+                    "scriptworker": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/scriptworker(?:|-scripts))(/|.git|$)"]),
+                            }
+                        ),
+                    ),
                 }
             )
         },
@@ -310,6 +266,7 @@ DEFAULT_CONFIG = immutabledict(
                     ),
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                     "adhoc": ("action", "github-pull-request", "github-push"),
+                    "scriptworker": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                 }
             )
         },
@@ -323,6 +280,7 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": "mozilla",
                     "xpi": "mozilla-extensions",
                     "adhoc": "mozilla-releng",
+                    "scriptworker": "mozilla-releng",
                 }
             )
         },
@@ -404,6 +362,12 @@ DEFAULT_CONFIG = immutabledict(
                         {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
                     ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
+                    "scriptworker": immutabledict(
+                        {
+                            "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
+                            "project:scriptworker:pypi:production": "all-production-repos",
+                        }
+                    ),
                 }
             )
         },
@@ -414,60 +378,38 @@ DEFAULT_CONFIG = immutabledict(
                     "firefox": immutabledict(
                         {
                             # Which repos can perform release actions?
-                            # XXX remove /projects/maple and birch when taskcluster relpro
-                            #     migration is tier1 and landed on mozilla-central
-                            # XXX remove /projects/jamun when we no longer run staging releases
-                            #     from it
-                            "all-release-branches": (
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr60",
-                                "/releases/mozilla-esr68",
-                                "/projects/birch",
-                                "/projects/jamun",
-                                "/projects/maple",
-                            ),
+                            # XXX remove /projects/maple when we have a
+                            #     different prod signing testing solution
+                            "all-release-branches": ("/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr68", "/projects/maple",),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
                             "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
-                            "esr": ("/releases/mozilla-esr60", "/releases/mozilla-esr68"),
+                            "esr": ("/releases/mozilla-esr68",),
                             "esr68": ("/releases/mozilla-esr68",),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
-                            # XXX remove /projects/maple and birch when taskcluster relpro
-                            #     migration is tier1 and landed on mozilla-central
-                            # XXX remove /projects/jamun when we no longer run staging releases
-                            #     from it
+                            # XXX remove /projects/maple when we have a
+                            #     different prod signing testing solution
                             # XXX remove /projects/oak when we no longer test updates against it
                             "all-nightly-branches": (
                                 "/mozilla-central",
                                 "/releases/mozilla-unified",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr60",
                                 "/releases/mozilla-esr68",
-                                "/projects/birch",
-                                "/projects/jamun",
                                 "/projects/oak",
                                 "/projects/maple",
                             ),
-                            "all-production-branches": (
-                                "/mozilla-central",
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr60",
-                                "/releases/mozilla-esr68",
-                            ),
-                            "all-staging-branches": ("/projects/birch", "/projects/jamun", "/projects/maple"),
+                            "all-production-branches": ("/mozilla-central", "/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr68",),
                         }
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr60", "/releases/comm-esr68"),
+                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr68"),
                             "beta": ("/releases/comm-beta",),
-                            "esr": ("/releases/comm-esr60", "/releases/comm-esr68"),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr60", "/releases/comm-esr68"),
+                            "esr": ("/releases/comm-esr68",),
+                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr68"),
                             "nightly": ("/comm-central",),
                         }
                     ),
@@ -485,6 +427,12 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
                     "adhoc": immutabledict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
+                    "scriptworker": immutabledict(
+                        {
+                            "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
+                            "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts",),
+                        }
+                    ),
                 }
             )
         },
@@ -493,11 +441,13 @@ DEFAULT_CONFIG = immutabledict(
                 {
                     "firefox": ("decision", "action", "docker-image"),
                     "thunderbird": ("decision", "action", "docker-image"),
+                    # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
                     "mpd001": "any",  # all allowed
                     "application-services": "any",  # all allowed
                     "xpi": "any",  # all allowed
                     "adhoc": "any",  # all allowed
+                    "scriptworker": ("decision", "action", "docker-image"),
                 }
             )
         },
@@ -511,6 +461,7 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": "APPSERVICES",
                     "xpi": "XPI",
                     "adhoc": "ADHOC",
+                    "scriptworker": "SCRIPTWORKER",
                 }
             )
         },
