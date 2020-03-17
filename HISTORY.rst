@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[32.2.0] - 2020-03-17
+---------------------
+
+Added
+~~~~~
+- Added ``action_perm`` to action hooks
+
 [32.1.1] - 2020-03-13
 ---------------------
 
