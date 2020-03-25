@@ -129,7 +129,7 @@ async def retry_create_artifact(*args, **kwargs):
         **kwargs: the args to pass on to create_artifact
 
     """
-    await retry_async(create_artifact, retry_exceptions=(ScriptWorkerRetryException, aiohttp.ClientError), args=args, kwargs=kwargs)
+    await retry_async(create_artifact, retry_exceptions=(ScriptWorkerRetryException, aiohttp.ClientError, asyncio.TimeoutError), args=args, kwargs=kwargs)
 
 
 # create_artifact {{{1
