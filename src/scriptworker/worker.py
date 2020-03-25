@@ -90,7 +90,7 @@ async def do_upload(context, files):
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
-    except aiohttp.ClientError as e:
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
         status = worst_level(status, STATUSES["intermittent-task"])
         log.error("Hit aiohttp error: {}".format(e))
     except Exception as e:
