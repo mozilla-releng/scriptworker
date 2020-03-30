@@ -732,7 +732,7 @@ async def load_json_or_yaml_from_url(context, url, path, overwrite=True, auth=No
     if auth:
         kwargs = {"auth": auth}
     if not overwrite or not os.path.exists(path):
-        await retry_async(download_file, args=(context, url, path), kwargs=kwargs, retry_exceptions=(DownloadError, aiohttp.ClientError))
+        await retry_async(download_file, args=(context, url, path), kwargs=kwargs, retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError))
     return load_json_or_yaml(path, is_path=True, file_type=file_type)
 
 
