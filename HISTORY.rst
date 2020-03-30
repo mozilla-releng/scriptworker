@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[33.0.0] - 2020-03-30
+---------------------
+
+Removed
+~~~~~~~
+- Removed old docker-worker cot key
+
 [32.2.1] - 2020-03-25
 ---------------------
 
