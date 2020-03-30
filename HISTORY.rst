@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[33.0.1] - 2020-03-30
+---------------------
+
+Fixed
+~~~~~
+- Catch ``asyncio.TimeoutError`` on ``load_json_or_yaml_from_url``
+
 [33.0.0] - 2020-03-30
 ---------------------
 
