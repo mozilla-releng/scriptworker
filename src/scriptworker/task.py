@@ -81,6 +81,7 @@ async def retry_get_task_definition(queue, task_id, exception=TaskclusterFailure
             Defaults to ``TaskclusterFailure``.
 
     """
+    kwargs.setdefault("retry_exceptions", tuple(set([TaskclusterFailure, exception])))
     return await retry_async(get_task_definition, args=(queue, task_id), kwargs={"exception": exception}, **kwargs)
 
 
