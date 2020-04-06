@@ -18,7 +18,6 @@ from immutabledict import immutabledict
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
-from taskcluster.exceptions import TaskclusterFailure
 
 from . import create_async, noop_async, noop_sync, touch
 
@@ -654,23 +653,20 @@ def test_find_sorted_task_dependencies(task, expected, task_type):
 @pytest.mark.asyncio
 async def test_build_task_dependencies(chain, mocker):
     async def fake_task(task_id):
-        if task_id == "die":
-            raise TaskclusterFailure("dying")
-        else:
-            return {
-                "taskGroupId": "decision_task_id",
-                "provisionerId": "",
-                "schedulerId": "",
-                "workerType": "",
-                "scopes": [],
-                "payload": {"image": "x"},
-                "metadata": {},
-            }
+        return {
+            "taskGroupId": "decision_task_id",
+            "provisionerId": "",
+            "schedulerId": "",
+            "workerType": "",
+            "scopes": [],
+            "payload": {"image": "x"},
+            "metadata": {},
+        }
 
     def fake_find(task, name, _):
         if name.endswith("decision"):
             return []
-        return [("build:decision", "decision_task_id"), ("build:a", "already_exists"), ("build:docker-image", "die")]
+        return [("build:decision", "decision_task_id"), ("build:a", "already_exists")]
 
     already_exists = MagicMock()
     already_exists.task_id = "already_exists"
@@ -691,8 +687,6 @@ async def test_build_task_dependencies(chain, mocker):
             ":".join([str(x) for x in range(0, length + 2)]),
             "task_id",
         )
-    with pytest.raises(CoTError):
-        await cotverify.build_task_dependencies(chain, {}, "build", "task_id")
 
 
 # download_cot {{{1

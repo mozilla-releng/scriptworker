@@ -18,6 +18,7 @@ import scriptworker.task as swtask
 import taskcluster.exceptions
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.task_process import TaskProcess
+from taskcluster.exceptions import TaskclusterFailure
 
 from . import TIMEOUT_SCRIPT, noop_async, read
 
@@ -54,6 +55,28 @@ def _craft_context(rw_context):
 @pytest.mark.parametrize("one,two,expected", ((1, 2, 2), (4, 2, 4)))
 def test_worst_level(one, two, expected):
     assert swtask.worst_level(one, two) == expected
+
+
+# get_task_definition {{{1
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defn, raises", (({}, True), ({"payload": "foo"}, False)))
+async def test_get_task_definition(defn, raises, mocker):
+    async def fake_task(*args):
+        return defn
+
+    def fake_sleeptime(*args, **kwargs):
+        return 0
+
+    queue = mocker.MagicMock()
+    queue.task = fake_task
+    if raises:
+        with pytest.raises(TaskclusterFailure):
+            await swtask.get_task_definition(queue, None)
+        with pytest.raises(TaskclusterFailure):
+            await swtask.retry_get_task_definition(queue, None, sleeptime_callback=fake_sleeptime)
+    else:
+        assert defn == await swtask.get_task_definition(queue, None)
+        assert defn == await swtask.retry_get_task_definition(queue, None, sleeptime_callback=fake_sleeptime)
 
 
 # get_action_callback_name {{{1

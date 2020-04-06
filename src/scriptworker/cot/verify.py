@@ -69,7 +69,6 @@ from scriptworker.utils import (
 )
 from scriptworker.version import __version_string__
 from taskcluster.aio import Queue
-from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
 
@@ -571,17 +570,14 @@ async def build_link(chain, task_name, task_id):
     """
     link = LinkOfTrust(chain.context, task_name, task_id)
     json_path = link.get_artifact_full_path("task.json")
-    try:
-        task_defn = await retry_get_task_definition(chain.context.queue, task_id)
-        link.task = task_defn
-        chain.links.append(link)
-        # write task json to disk
-        makedirs(os.path.dirname(json_path))
-        with open(json_path, "w") as fh:
-            fh.write(format_json(task_defn))
-        await build_task_dependencies(chain, task_defn, task_name, task_id)
-    except TaskclusterFailure as exc:
-        raise CoTError(str(exc))
+    task_defn = await retry_get_task_definition(chain.context.queue, task_id, exception=CoTError)
+    link.task = task_defn
+    chain.links.append(link)
+    # write task json to disk
+    makedirs(os.path.dirname(json_path))
+    with open(json_path, "w") as fh:
+        fh.write(format_json(task_defn))
+    await build_task_dependencies(chain, task_defn, task_name, task_id)
 
 
 async def build_task_dependencies(chain, task, name, my_task_id):
@@ -1928,7 +1924,7 @@ async def _async_verify_cot_cmdln(opts, tmp):
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.queue = context.queue or Queue(session=session, options={"rootUrl": context.config["taskcluster_root_url"]})
-        context.task = await retry_get_task_definition(context.queue, opts.task_id)
+        context.task = await retry_get_task_definition(context.queue, opts.task_id, exception=CoTError)
         context.config.update(
             {
                 "cot_product": opts.cot_product,
@@ -2004,7 +2000,7 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.queue = queue or context.queue or Queue(session=session, options={"rootUrl": context.config["taskcluster_root_url"]})
-        context.task = await retry_get_task_definition(context.queue, task_id)
+        context.task = await retry_get_task_definition(context.queue, task_id, exception=CoTError)
         work_dir = os.path.abspath(path)
         context.config.update(
             {
