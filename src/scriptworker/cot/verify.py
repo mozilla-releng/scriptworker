@@ -48,6 +48,7 @@ from scriptworker.task import (
     get_worker_pool_id,
     is_action,
     is_try_or_pull_request,
+    retry_get_task_definition,
 )
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
@@ -571,7 +572,7 @@ async def build_link(chain, task_name, task_id):
     link = LinkOfTrust(chain.context, task_name, task_id)
     json_path = link.get_artifact_full_path("task.json")
     try:
-        task_defn = await chain.context.queue.task(task_id)
+        task_defn = await retry_get_task_definition(chain.context.queue, task_id)
         link.task = task_defn
         chain.links.append(link)
         # write task json to disk
@@ -1927,7 +1928,7 @@ async def _async_verify_cot_cmdln(opts, tmp):
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.queue = context.queue or Queue(session=session, options={"rootUrl": context.config["taskcluster_root_url"]})
-        context.task = await context.queue.task(opts.task_id)
+        context.task = await retry_get_task_definition(context.queue, opts.task_id)
         context.config.update(
             {
                 "cot_product": opts.cot_product,
@@ -2003,7 +2004,7 @@ async def _async_create_test_workdir(task_id, path, queue=None):
         context.config = dict(deepcopy(DEFAULT_CONFIG))
         context.credentials = read_worker_creds()
         context.queue = queue or context.queue or Queue(session=session, options={"rootUrl": context.config["taskcluster_root_url"]})
-        context.task = await context.queue.task(task_id)
+        context.task = await retry_get_task_definition(context.queue, task_id)
         work_dir = os.path.abspath(path)
         context.config.update(
             {

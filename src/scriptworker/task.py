@@ -29,7 +29,8 @@ from scriptworker.github import (
 )
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import get_parts_of_url_path
+from scriptworker.utils import get_parts_of_url_path, retry_async
+from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +50,38 @@ def worst_level(level1, level2):
 
     """
     return level1 if level1 > level2 else level2
+
+
+# get_task_definition {{{1
+async def get_task_definition(queue, task_id, exception=TaskclusterFailure):
+    """Get the task definition from the queue.
+
+    Detect whether the task definition is empty, per bug 1618731.
+
+    Args:
+        queue (taskcluster.aio.Queue): the taskcluster Queue object
+        task_id (str): the taskId of the task
+        exception (Exception, optional): the exception to raise if unsuccessful.
+            Defaults to ``TaskclusterFailure``.
+
+    """
+    task_defn = await queue.task(task_id)
+    if "payload" not in task_defn:
+        raise exception("Task definition for {} is empty!\n {}".format(task_id, task_defn))
+    return task_defn
+
+
+async def retry_get_task_definition(queue, task_id, exception=TaskclusterFailure, **kwargs):
+    """Retry ``get_task_definition``.
+
+    Args:
+        queue (taskcluster.aio.Queue): the taskcluster Queue object
+        task_id (str): the taskId of the task
+        exception (Exception, optional): the exception to raise if unsuccessful.
+            Defaults to ``TaskclusterFailure``.
+
+    """
+    return await retry_async(get_task_definition, args=(queue, task_id), kwargs={"exception": exception}, **kwargs)
 
 
 # get_task_id {{{1

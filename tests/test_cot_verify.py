@@ -2061,8 +2061,6 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_to
     if use_github_token:
         monkeypatch.setenv("SCRIPTWORKER_GITHUB_OAUTH_TOKEN", "sometoken")
     context = MagicMock()
-    context.queue = MagicMock()
-    context.queue.task = noop_async
     path = os.path.join(tmpdir, "x")
     makedirs(path)
 
@@ -2084,6 +2082,7 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_to
     mocker.patch.object(cotverify, "read_worker_creds", new=noop_sync)
     mocker.patch.object(cotverify, "Context", new=get_context)
     mocker.patch.object(cotverify, "ChainOfTrust", new=cot)
+    mocker.patch.object(cotverify, "retry_get_task_definition", new=noop_async)
     mocker.patch.object(cotverify, "verify_chain_of_trust", new=noop_async)
 
     cotverify.verify_cot_cmdln(args=args, event_loop=event_loop)
