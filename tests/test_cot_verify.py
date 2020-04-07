@@ -653,20 +653,23 @@ def test_find_sorted_task_dependencies(task, expected, task_type):
 @pytest.mark.asyncio
 async def test_build_task_dependencies(chain, mocker):
     async def fake_task(task_id):
-        return {
-            "taskGroupId": "decision_task_id",
-            "provisionerId": "",
-            "schedulerId": "",
-            "workerType": "",
-            "scopes": [],
-            "payload": {"image": "x"},
-            "metadata": {},
-        }
+        if task_id == "die":
+            raise CoTError("dying")
+        else:
+            return {
+                "taskGroupId": "decision_task_id",
+                "provisionerId": "",
+                "schedulerId": "",
+                "workerType": "",
+                "scopes": [],
+                "payload": {"image": "x"},
+                "metadata": {},
+            }
 
     def fake_find(task, name, _):
         if name.endswith("decision"):
             return []
-        return [("build:decision", "decision_task_id"), ("build:a", "already_exists")]
+        return [("build:decision", "decision_task_id"), ("build:a", "already_exists"), ("build:docker-image", "die")]
 
     already_exists = MagicMock()
     already_exists.task_id = "already_exists"
@@ -687,6 +690,8 @@ async def test_build_task_dependencies(chain, mocker):
             ":".join([str(x) for x in range(0, length + 2)]),
             "task_id",
         )
+    with pytest.raises(CoTError):
+        await cotverify.build_task_dependencies(chain, {}, "build", "task_id")
 
 
 # download_cot {{{1
