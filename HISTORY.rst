@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[33.1.0] - 2020-04-07
+---------------------
+
+Added
+~~~~~
+- ``retry_get_task_definition`` and ``get_task_definition`` to fix `Bug 1618731
+   <https://bugzilla.mozilla.org/show_bug.cgi?id=1618731>`__
+
 [33.0.2] - 2020-04-01 (genuinely not an April Fools' joke)
 ----------------------------------------------------------
 
