@@ -746,5 +746,5 @@ async def claim_work(context):
     }
     try:
         return await context.queue.claimWork(context.config["provisioner_id"], context.config["worker_type"], payload)
-    except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError) as exc:
+    except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError, asyncio.TimeoutError) as exc:
         log.warning("{} {}".format(exc.__class__, exc))
