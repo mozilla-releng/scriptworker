@@ -365,7 +365,6 @@ def get_valid_worker_impls():
             validation functions.
 
     """
-    # TODO support taskcluster worker
     return immutabledict({"docker-worker": verify_docker_worker_task, "generic-worker": verify_generic_worker_task, "scriptworker": verify_scriptworker_task})
 
 
@@ -436,8 +435,8 @@ def check_interactive_docker_worker(link):
     Args:
         link (LinkOfTrust): the task link we're checking.
 
-    Returns:
-        list: the list of error errors.  Success is an empty list.
+    Raises:
+        CoTError: on interactive.
 
     """
     errors = []
@@ -449,7 +448,34 @@ def check_interactive_docker_worker(link):
             errors.append("{} is interactive: task.payload.env.TASKCLUSTER_INTERACTIVE!".format(link.name))
     except KeyError:
         errors.append("check_interactive_docker_worker: {} task definition is malformed!".format(link.name))
-    return errors
+    raise_on_errors(errors)
+
+
+# check_interactive_generic_worker {{{1
+def check_interactive_generic_worker(link):
+    """Given a task, make sure the task was not defined as interactive.
+
+    * ``task.payload.rdpInfo`` must be absent or False.
+    * ``task.payload.env.TASKCLUSTER_INTERACTIVE`` must be absent or False.
+
+    Args:
+        link (LinkOfTrust): the task link we're checking.
+
+    Raises:
+        CoTError: on interactive.
+
+    """
+    errors = []
+    log.info("Checking for {} {} interactive generic-worker".format(link.name, link.task_id))
+    try:
+        if link.task["payload"].get("rdpInfo"):
+            errors.append("{} is interactive: task.payload.rdpInfo!".format(link.name))
+        for scope in link.task["scopes"]:
+            if scope.startswith("generic-worker:allow-rdp:"):
+                errors.append("{} is interactive: {}!".format(link.name, scope))
+    except KeyError:
+        errors.append("check_interactive_generic_worker: {} task definition is malformed!".format(link.name))
+    raise_on_errors(errors)
 
 
 # verify_docker_image_sha {{{1
@@ -1679,12 +1705,11 @@ async def verify_docker_worker_task(chain, link):
         CoTError: on failure.
 
     """
+    check_interactive_docker_worker(link)
     if chain != link:
-        # These two checks will die on `link.cot` if `link` is a ChainOfTrust
-        # object (e.g., the task we're running `verify_cot` against is a
-        # docker-worker task). So only run these tests if they are not the chain
-        # object.
-        check_interactive_docker_worker(link)
+        # This check will die on `link.cot` if `link` is a ChainOfTrust object
+        # (e.g., the task we're running `verify_cot` against is a docker-worker
+        # task). So only run this test if the link is not the chain object.
         verify_docker_image_sha(chain, link)
 
 
@@ -1700,7 +1725,9 @@ async def verify_generic_worker_task(chain, link):
         CoTError: on failure.
 
     """
-    pass
+    check_interactive_generic_worker(link)
+    # XXX once generic-worker supports docker, verify the docker image sha
+    #     if applicable.
 
 
 # verify_scriptworker_task {{{1
