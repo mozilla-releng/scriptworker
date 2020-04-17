@@ -464,7 +464,7 @@ def test_guess_task_type():
 
 # check_interactive_docker_worker {{{1
 @pytest.mark.parametrize(
-    "task,has_errors",
+    "task,raises",
     (
         ({"payload": {"features": {}, "env": {}}}, False),
         ({"payload": {"features": {"interactive": True}, "env": {}}}, True),
@@ -472,15 +472,36 @@ def test_guess_task_type():
         ({}, True),
     ),
 )
-def test_check_interactive_docker_worker(task, has_errors):
+def test_check_interactive_docker_worker(task, raises):
     link = MagicMock()
     link.name = "foo"
     link.task = task
-    result = cotverify.check_interactive_docker_worker(link)
-    if has_errors:
-        assert len(result) >= 1
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.check_interactive_docker_worker(link)
     else:
-        assert result == []
+        cotverify.check_interactive_docker_worker(link)
+
+
+# check_interactive_generic_worker {{{1
+@pytest.mark.parametrize(
+    "task,raises",
+    (
+        ({"payload": {}, "scopes": []}, False),
+        ({"payload": {"rdpInfo": {"foo": "bar"}}, "scopes": []}, True),
+        ({"payload": {}, "scopes": ["foo", "generic-worker:allow-rdp:foo:bar"]}, True),
+        ({}, True),
+    ),
+)
+def test_check_interactive_generic_worker(task, raises):
+    link = MagicMock()
+    link.name = "foo"
+    link.task = task
+    if raises:
+        with pytest.raises(CoTError):
+            cotverify.check_interactive_generic_worker(link)
+    else:
+        cotverify.check_interactive_generic_worker(link)
 
 
 # verify_docker_image_sha {{{1
@@ -1892,17 +1913,24 @@ async def test_verify_docker_worker_task(mocker):
     mocker.patch.object(cotverify, "check_interactive_docker_worker", new=check.method1)
     mocker.patch.object(cotverify, "verify_docker_image_sha", new=check.method2)
     await cotverify.verify_docker_worker_task(chain, chain)
-    check.method1.assert_not_called()
+    check.method1.assert_called_once_with(chain)
     check.method2.assert_not_called()
     await cotverify.verify_docker_worker_task(chain, link)
-    check.method1.assert_called_once_with(link)
+    check.method1.assert_called_with(link)
     check.method2.assert_called_once_with(chain, link)
 
 
 # verify_generic_worker_task {{{1
 @pytest.mark.asyncio
 async def test_verify_generic_worker_task(mocker):
-    await cotverify.verify_generic_worker_task(MagicMock(), MagicMock())
+    chain = MagicMock()
+    link = MagicMock()
+    check = MagicMock()
+    mocker.patch.object(cotverify, "check_interactive_generic_worker", new=check.method1)
+    await cotverify.verify_generic_worker_task(chain, chain)
+    check.method1.assert_called_once_with(chain)
+    await cotverify.verify_generic_worker_task(chain, link)
+    check.method1.assert_called_with(link)
 
 
 # verify_worker_impls {{{1
