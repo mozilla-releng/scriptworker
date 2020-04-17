@@ -456,7 +456,7 @@ def check_interactive_generic_worker(link):
     """Given a task, make sure the task was not defined as interactive.
 
     * ``task.payload.rdpInfo`` must be absent or False.
-    * ``task.payload.env.TASKCLUSTER_INTERACTIVE`` must be absent or False.
+    * ``task.payload.scopes`` must not contain a scope starting with ``generic-worker:allow-rdp:``
 
     Args:
         link (LinkOfTrust): the task link we're checking.
