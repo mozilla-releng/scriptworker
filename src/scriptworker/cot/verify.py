@@ -1239,7 +1239,8 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         "taskId": None,
     }
 
-    if chain.context.config["cot_product"] in ("mobile", "mpd001", "application-services", "xpi"):
+    # XXX add cot_product_type: by-cot-product: COT_PRODUCT: (github|hgmo) ?
+    if chain.context.config["cot_product"] in ("mobile", "mpd001", "application-services", "xpi", "adhoc"):
         if tasks_for == "github-release":
             jsone_context.update(await _get_additional_github_releases_jsone_context(decision_link))
         elif tasks_for == "cron":
