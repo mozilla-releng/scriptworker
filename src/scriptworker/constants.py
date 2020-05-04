@@ -111,6 +111,22 @@ DEFAULT_CONFIG = immutabledict(
         "scriptworker_provisioners": ("scriptworker-prov-v1", "scriptworker-k8s"),
         # valid hash algorithms for chain of trust artifacts
         "valid_hash_algorithms": ("sha256", "sha512"),
+        "cot_product_type": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "firefox": "hg",
+                        "thunderbird": "hg",
+                        "mobile": "github",
+                        "mpd001": "github",
+                        "application-services": "github",
+                        "xpi": "github",
+                        "adhoc": "github",
+                        "scriptworker": "github",
+                    },
+                ),
+            },
+        ),
         # decision task cot
         "valid_decision_worker_pools": immutabledict(
             {

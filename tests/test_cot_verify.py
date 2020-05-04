@@ -1270,6 +1270,9 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
 async def test_populate_jsone_context_fail(mobile_chain, mobile_github_release_link):
     with pytest.raises(CoTError):
         await cotverify.populate_jsone_context(mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for="bad-tasks-for")
+    mobile_chain.context.config["cot_product_type"] = "bad-cot-product-type"
+    with pytest.raises(CoTError):
+        await cotverify.populate_jsone_context(mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for="github-push")
 
 
 @pytest.mark.asyncio

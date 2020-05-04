@@ -1239,7 +1239,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         "taskId": None,
     }
 
-    if chain.context.config["cot_product"] in ("mobile", "mpd001", "application-services", "xpi"):
+    if chain.context.config["cot_product_type"] == "github":
         if tasks_for == "github-release":
             jsone_context.update(await _get_additional_github_releases_jsone_context(decision_link))
         elif tasks_for == "cron":
@@ -1251,8 +1251,8 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         elif tasks_for == "github-push":
             jsone_context.update(await _get_additional_github_push_jsone_context(decision_link))
         else:
-            raise CoTError('Unknown tasks_for "{}" for cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
-    else:
+            raise CoTError('Unknown tasks_for "{}" for github cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
+    elif chain.context.config["cot_product_type"] == "hg":
         source_url = get_source_url(decision_link)
         project = await get_project(chain.context, source_url)
         jsone_context["repository"] = {
@@ -1268,7 +1268,11 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         elif tasks_for == "cron":
             jsone_context.update(await _get_additional_hg_cron_jsone_context(parent_link, decision_link))
         else:
-            raise CoTError("Unknown tasks_for {}!".format(tasks_for))
+            raise CoTError('Unknown tasks_for "{}" for hg cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
+    else:
+        raise CoTError(
+            'Unknown cot_product_type "{}" for cot_product "{}"!'.format(chain.context.config["cot_product_type"], chain.context.config["cot_product"])
+        )
 
     log.debug("{} json-e context:".format(parent_link.name))
     # format_json() breaks on lambda values; use pprint.pformat here.
