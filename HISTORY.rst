@@ -4,6 +4,24 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[34.1.0] - 2020-05-04
+---------------------
+
+Added
+~~~~~
+- added ``cot_product_type``
+
+Changed
+~~~~~~~
+- ``populate_jsone_context`` now checks ``cot_product_type`` instead of allowlisting a set of ``cot_products`` as github
+
+Changed
+~~~~~~~
+- ``check_interactive_docker_worker`` now raises ``CoTError`` on errors, rather
+    than returning the list of error messages
+- ``check_interactive_docker_worker`` now also runs against the chain task, if it's
+    docker-worker
+
 [34.0.0] - 2020-04-17
 ---------------------
 
