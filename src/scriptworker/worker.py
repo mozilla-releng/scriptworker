@@ -136,7 +136,7 @@ class RunTasks:
                     status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
                     artifacts_paths = filepaths_in_dir(context.config["artifact_dir"])
                 except WorkerShutdownDuringTask:
-                    shutdown_artifact_paths = [os.path.join("public", "logs", log_file) for log_file in ["chain_of_trust.log", "live_backing.log"]]
+                    shutdown_artifact_paths = [os.path.join("public", "logs", log_file) for log_file in ["live_backing.log"]]
                     artifacts_paths = [path for path in shutdown_artifact_paths if os.path.isfile(os.path.join(context.config["artifact_dir"], path))]
                     status = STATUSES["worker-shutdown"]
                 status = worst_level(status, await do_upload(context, artifacts_paths))
