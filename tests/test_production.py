@@ -34,9 +34,10 @@ def build_config(override, basedir):
     config.update(
         {
             "log_dir": os.path.join(basedir, "log"),
-            "base_artifact_dir": os.path.join(basedir, "artifact"),
-            "task_log_dir_template": os.path.join(basedir, "artifact", "public", "logs"),
-            "base_work_dir": os.path.join(basedir, "work"),
+            "artifact_dir": os.path.join(basedir, "artifact"),
+            "task_log_dir": os.path.join(basedir, "artifact", "public", "logs"),
+            "work_dir": os.path.join(basedir, "work"),
+            "ed25519_private_key_path": "",
         }
     )
     del config["credentials"]
@@ -45,6 +46,10 @@ def build_config(override, basedir):
     with open(os.path.join(basedir, "config.json"), "w") as fh:
         json.dump(config, fh, indent=2, sort_keys=True)
     config = apply_product_config(config)
+    # Avoid creating a `...` directory
+    for k,v in config.items():
+        if v == '...':
+            raise Exception(f"Let's not keep any '...' config values. {k} is {v}!")
     return config
 
 
