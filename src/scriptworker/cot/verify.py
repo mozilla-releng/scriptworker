@@ -1303,7 +1303,9 @@ async def get_in_tree_template(link):
         raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(link.name, source_url))
 
     auth = None
-    if (any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"])) and "github.com" in source_url:
+    if (
+        source_url.startswith("ssh://") or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"])
+    ) and "github.com" in source_url:
         newurl = re.sub(
             r"^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$",
             r"https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>",
@@ -1969,11 +1971,8 @@ async def _async_verify_cot_cmdln(opts, tmp):
         if os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN"):
             context.config["github_oauth_token"] = os.environ.get("SCRIPTWORKER_GITHUB_OAUTH_TOKEN")
         cot = ChainOfTrust(context, opts.task_type, task_id=opts.task_id)
-        await verify_chain_of_trust(cot, check_task=True)
-        log.info(format_json(cot.dependent_task_ids()))
-        log.info("{} : {}".format(cot.name, cot.task_id))
-        for link in cot.links:
-            log.info("{} : {}".format(link.name, link.task_id))
+        check_task = opts.no_check_task is False
+        await verify_chain_of_trust(cot, check_task=check_task)
 
 
 def verify_cot_cmdln(args=None, event_loop=None):
@@ -2008,11 +2007,14 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     parser.add_argument("--cleanup", help="clean up the temp dir afterwards", dest="cleanup", action="store_true", default=False)
     parser.add_argument("--cot-product", help="the product type to test", default="firefox")
     parser.add_argument("--verify-sigs", help="enable signature verification", action="store_true", default=False)
+    parser.add_argument("--verbose", "-v", help="enable debug logging", action="store_true", default=False)
+    parser.add_argument("--no-check-task", help="skip verifying the taskId's cot status", action="store_true", default=False)
     opts = parser.parse_args(args)
     tmp = tempfile.mkdtemp()
     log = logging.getLogger("scriptworker")
-    log.setLevel(logging.DEBUG)
-    logging.basicConfig()
+    level = logging.DEBUG if opts.verbose else logging.INFO
+    log.setLevel(level)
+    logging.basicConfig(level=level)
     event_loop = event_loop or asyncio.get_event_loop()
     try:
         event_loop.run_until_complete(_async_verify_cot_cmdln(opts, tmp))

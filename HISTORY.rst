@@ -4,6 +4,18 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[34.2.0] - 2020-05-26
+---------------------
+
+Changed
+~~~~~~~
+- Github source urls starting with ``ssh://`` are now treated as private repositories.
+- ``verify_cot`` now takes ``--verbose`` and ``--no-check-task`` options.
+
+Fixed
+~~~~~
+- ``test_production`` should no longer leave behind temp ``...`` directories.
+
 [34.1.0] - 2020-05-04
 ---------------------
 
