@@ -47,8 +47,8 @@ def build_config(override, basedir):
         json.dump(config, fh, indent=2, sort_keys=True)
     config = apply_product_config(config)
     # Avoid creating a `...` directory
-    for k,v in config.items():
-        if v == '...':
+    for k, v in config.items():
+        if v == "...":
             raise Exception(f"Let's not keep any '...' config values. {k} is {v}!")
     return config
 
