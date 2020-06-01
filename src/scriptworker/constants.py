@@ -240,8 +240,7 @@ DEFAULT_CONFIG = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                # TODO: Change repo to its final name
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/mvp-adhoc)(/|.git|$)"]),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/(?:adhoc-signing|adhoc-manifest))(/|.git|$)"]),
                             }
                         ),
                     ),
@@ -377,7 +376,7 @@ DEFAULT_CONFIG = immutabledict(
                     "xpi": immutabledict(
                         {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
                     ),
-                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repo"}),
+                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
                     "scriptworker": immutabledict(
                         {
                             "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
@@ -442,7 +441,7 @@ DEFAULT_CONFIG = immutabledict(
                     "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn-windows",)}),
                     "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
-                    "adhoc": immutabledict({"adhoc-signing-repo": ("/mozilla-releng/mvp-adhoc",)}),
+                    "adhoc": immutabledict({"adhoc-signing-repos": ("/mozilla-releng/adhoc-signing", "/mozilla-releng/adhoc-manifest")}),
                     "scriptworker": immutabledict(
                         {
                             "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
