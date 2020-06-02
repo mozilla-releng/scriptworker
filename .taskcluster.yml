@@ -1,6 +1,6 @@
 version: 1
 policy:
-  pullRequests: public
+  pullRequests: collaborators
 tasks:
   $let:
     # Github events have this stuff in different places...
@@ -37,8 +37,12 @@ tasks:
            # Disabled due to legitimate failures.
            # See https://github.com/mozilla-releng/scriptworker/issues/415
            ['py38', 'python:3.8', {NO_TESTS_OVER_WIRE: '1'}, []],
-           ['py37-cot', 'python:3.7', {NO_CREDENTIALS_TESTS: '1'}, []],
-           ['py38-cot', 'python:3.8', {NO_CREDENTIALS_TESTS: '1'}, []],
+           ['py37-cot', 'python:3.7', {
+                NO_CREDENTIALS_TESTS: '1'
+            }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:github']],
+           ['py38-cot', 'python:3.8', {
+                NO_CREDENTIALS_TESTS: '1',
+            }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:github']],
            ['lint', 'python:3.7', {}, []],
            ['mypy', 'python:3.7', {}, []]]
     each(py):
