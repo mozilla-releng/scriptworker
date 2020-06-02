@@ -17,7 +17,7 @@ from scriptworker.config import apply_product_config, get_unfrozen_copy, read_wo
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
-from taskcluster.aio import Index, Queue
+from taskcluster.aio import Index, Queue, Secrets
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def read_integration_creds():
     return read_worker_creds(key="integration_credentials")
 
 
-def build_config(override, basedir):
+async def build_config(override, basedir):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config.update(
         {
@@ -38,6 +38,7 @@ def build_config(override, basedir):
             "task_log_dir": os.path.join(basedir, "artifact", "public", "logs"),
             "work_dir": os.path.join(basedir, "work"),
             "ed25519_private_key_path": "",
+            "github_oauth_token": await _get_github_token(),
         }
     )
     del config["credentials"]
@@ -53,11 +54,22 @@ def build_config(override, basedir):
     return config
 
 
+async def _get_github_token():
+    try:
+        root_url = os.environ["TASKCLUSTER_PROXY_URL"]
+    except KeyError as e:
+        raise KeyError("You must provide `TASKCLUSTER_PROXY_URL` to run these tests") from e
+
+    secrets = Secrets({"rootUrl": root_url})
+    secret = await secrets.get("repo:github.com/mozilla-releng/scriptworker:github")
+    return secret["secret"]["token"]
+
+
 @async_contextmanager
 async def get_context(config_override=None):
     context = Context()
     with tempfile.TemporaryDirectory() as tmp:
-        context.config = build_config(config_override, basedir=tmp)
+        context.config = await build_config(config_override, basedir=tmp)
         credentials = read_integration_creds()
         swlog.update_logging_config(context)
         utils.cleanup(context)
