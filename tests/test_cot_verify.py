@@ -93,7 +93,7 @@ def mpd_chain(mpd_private_rw_context):
     yield chain
 
 
-def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-central"):
+def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-central/raw/REVISION/.taskcluster.yml"):
     context.config["scriptworker_provisioners"] = [context.config["provisioner_id"]]
     context.config["scriptworker_worker_types"] = [context.config["worker_type"]]
     context.task = {
@@ -123,7 +123,7 @@ def mobile_build_link(chain):
     yield link
 
 
-def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central"):
+def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central/raw/REVISION/.taskcluster.yml"):
     link = cotverify.LinkOfTrust(chain.context, "build", "build_task_id")
     link.cot = {"taskId": "build_task_id", "environment": {"imageArtifactHash": "sha256:built_docker_image_sha"}}
     link.task = {
@@ -1998,7 +1998,7 @@ async def test_trace_back_to_tree(chain, decision_link, build_link, docker_image
 
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_bad_repo(chain):
-    chain.task["metadata"]["source"] = "https://hg.mozilla.org/try"
+    chain.task["metadata"]["source"] = "https://hg.mozilla.org/try/raw/REVISION/.taskcluster.yml"
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
 
@@ -2007,7 +2007,7 @@ async def test_trace_back_to_tree_bad_repo(chain):
 async def test_trace_back_to_tree_unknown_repo(chain, decision_link, build_link, docker_image_link):
     docker_image_link.decision_task_id = "other"
     docker_image_link.parent_task_id = "other"
-    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo"
+    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo/raw/REVISION/.taskcluster.yml"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
@@ -2015,7 +2015,7 @@ async def test_trace_back_to_tree_unknown_repo(chain, decision_link, build_link,
 
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_docker_unknown_repo(chain, decision_link, build_link, docker_image_link):
-    build_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo"
+    build_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo/raw/REVISION/.taskcluster.yml"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
@@ -2025,7 +2025,7 @@ async def test_trace_back_to_tree_docker_unknown_repo(chain, decision_link, buil
 async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, docker_image_link):
     docker_image_link.decision_task_id = "other"
     docker_image_link.parent_task_id = "other"
-    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/releases/mozilla-beta"
+    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/releases/mozilla-beta/raw/REVISION/.taskcluster.yml"
     chain.links = [decision_link, build_link, docker_image_link]
     await cotverify.trace_back_to_tree(chain)
 
