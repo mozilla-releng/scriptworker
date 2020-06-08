@@ -27,7 +27,13 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
-from scriptworker.github import GitHubRepository, extract_github_repo_full_name, extract_github_repo_owner_and_name, extract_github_repo_ssh_url
+from scriptworker.github import (
+    GitHubRepository,
+    extract_github_repo_and_revision_from_source_url,
+    extract_github_repo_full_name,
+    extract_github_repo_owner_and_name,
+    extract_github_repo_ssh_url,
+)
 from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
     get_action_callback_name,
@@ -47,6 +53,7 @@ from scriptworker.task import (
     get_triggered_by,
     get_worker_pool_id,
     is_action,
+    is_github_task,
     is_try_or_pull_request,
     retry_get_task_definition,
 )
@@ -1253,7 +1260,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         else:
             raise CoTError('Unknown tasks_for "{}" for github cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     elif chain.context.config["cot_product_type"] == "hg":
-        source_url = get_source_url(decision_link)
+        source_url = await get_source_url(chain.context, decision_link)
         project = await get_project(chain.context, source_url)
         jsone_context["repository"] = {
             "url": get_repo(decision_link.task, decision_link.context.config["source_env_prefix"]),
@@ -1298,7 +1305,7 @@ async def get_in_tree_template(link):
 
     """
     context = link.context
-    source_url = get_source_url(link)
+    source_url = await get_source_url(context, link)
     if not source_url.endswith((".yml", ".yaml")):
         raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(link.name, source_url))
 
@@ -1807,7 +1814,42 @@ def verify_repo_matches_url(repo, url):
     return True
 
 
-def get_source_url(obj):
+def valid_parent_source_urls(context, task):
+    """Return valid source urls.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        task (dict): the task definition to check.
+
+    Raises:
+        CoTError: on error.
+
+    Returns:
+        tuple: valid source urls
+
+    """
+    source_env_prefix = context.config["source_env_prefix"]
+    repo_url = get_repo(task, source_env_prefix=source_env_prefix)
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
+    if repo_url.endswith(".git"):
+        repo_url = repo_url[:-4]
+    metadata_source_url = task["metadata"].get("source", "")
+    if is_github_task(task):
+        _, revision = extract_github_repo_and_revision_from_source_url(metadata_source_url, exception=CoTError)
+        user, repo_name = extract_github_repo_owner_and_name(repo_url)
+        expected = [
+            f"ssh://github.com/{user}/{repo_name}/raw/{revision}/.taskcluster.yml",
+            f"https://github.com/{user}/{repo_name}/raw/{revision}/.taskcluster.yml",
+        ]
+    else:
+        revision = get_revision(task, source_env_prefix)
+        expected = [
+            f"{repo_url}/raw-file/{revision}/.taskcluster.yml",
+        ]
+    return tuple(expected)
+
+
+async def get_source_url(context, obj):
     """Get the source url for a Trust object.
 
     Args:
@@ -1820,17 +1862,35 @@ def get_source_url(obj):
         str: the source url.
 
     """
+    errors = []
+    is_parent_task = obj.task_type in PARENT_TASK_TYPES
     source_env_prefix = obj.context.config["source_env_prefix"]
     task = obj.task
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task["metadata"]["source"]
+    if is_parent_task:
+        if not repo:
+            errors.append(
+                "{name} {task_id}: parent task doesn't {source_env_prefix}_HEAD_REPOSITORY in env!".format(
+                    name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix
+                )
+            )
+        valid_urls = valid_parent_source_urls(obj.context, obj.task)
+        if source not in valid_urls:
+            errors.append(
+                "{name} {task_id}: parent task source {source} isn't in valid source urls: {valid_urls}".format(
+                    name=obj.name, task_id=obj.task_id, source=source, valid_urls=valid_urls
+                )
+            )
     if repo and not verify_repo_matches_url(repo, source):
-        raise CoTError(
+        errors.append(
             "{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
                 name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
             )
         )
+    if errors:
+        raise CoTError("\n".join(errors))
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
     return source
 
@@ -1860,7 +1920,7 @@ async def trace_back_to_tree(chain):
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
     for obj in [chain] + chain.links:
-        source_url = get_source_url(obj)
+        source_url = await get_source_url(chain.context, obj)
         repo_path = match_url_regex(chain.context.config["trusted_vcs_rules"], source_url, match_url_path_callback)
         repos[obj] = repo_path
     # check for restricted scopes.

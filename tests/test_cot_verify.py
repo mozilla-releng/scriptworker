@@ -210,16 +210,18 @@ def mobile_github_push_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml"
     )
-    decision_link.task["payload"]["env"] = {
-        "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
-        "MOBILE_HEAD_REV": "somerevision",
-        "MOBILE_PUSH_DATE_TIME": "1549022400",
-    }
+    decision_link.task["payload"]["env"].update(
+        {
+            "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
+            "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
+            "MOBILE_HEAD_REV": "somerevision",
+            "MOBILE_PUSH_DATE_TIME": "1549022400",
+        }
+    )
     yield decision_link
 
 
-def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org/mozilla-central"):
+def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org/mozilla-central/raw-file/REVISION/.taskcluster.yml"):
     link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
     link.cot = {"taskId": "decision_task_id", "environment": {"imageHash": "sha256:decision_image_sha"}}
     link.task = {
@@ -231,7 +233,7 @@ def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org
         "dependencies": [],
         "scopes": [],
         "metadata": {"source": source_url, "owner": "foo@example.tld"},
-        "payload": {"image": "blah"},
+        "payload": {"image": "blah", "env": {"GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central", "GECKO_HEAD_REV": "REVISION"}},
         "extra": {"cron": "{}", "tasks_for": tasks_for},
     }
     return link
@@ -249,8 +251,11 @@ def action_link(chain):
         "workerType": "workerType",
         "dependencies": [],
         "scopes": ["assume:repo:foo:action:bar"],
-        "metadata": {"source": "https://hg.mozilla.org/mozilla-central"},
-        "payload": {"env": {"ACTION_CALLBACK": ""}, "image": "blah"},
+        "metadata": {"source": "https://hg.mozilla.org/mozilla-central/raw-file/REVISION/.taskcluster.yml"},
+        "payload": {
+            "env": {"ACTION_CALLBACK": "", "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central", "GECKO_HEAD_REV": "REVISION"},
+            "image": "blah",
+        },
         "extra": {"action": {"context": {}}, "parent": "decision_task_id", "tasks_for": "action"},
     }
     yield link
@@ -1002,8 +1007,8 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
             {
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
-                "push": {"comment": " ", "owner": "some-user", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
-                "repository": {"level": "1", "project": "mozilla-central", "url": None},
+                "push": {"comment": " ", "owner": "some-user", "pushdate": 1500000000, "pushlog_id": 1, "revision": "REVISION"},
+                "repository": {"level": "1", "project": "mozilla-central", "url": "https://hg.mozilla.org/mozilla-central"},
                 "taskId": None,
                 "tasks_for": "hg-push",
             },
@@ -1015,8 +1020,8 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
                 "cron": {},
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
-                "push": {"comment": "", "owner": "cron", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
-                "repository": {"level": "1", "project": "mozilla-central", "url": None},
+                "push": {"comment": "", "owner": "cron", "pushdate": 1500000000, "pushlog_id": 1, "revision": "REVISION"},
+                "repository": {"level": "1", "project": "mozilla-central", "url": "https://hg.mozilla.org/mozilla-central"},
                 "taskId": None,
                 "tasks_for": "cron",
             },
@@ -1028,7 +1033,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "action_task_id",
                 "parameters": {},
-                "repository": {"level": "1", "project": "mozilla-central", "url": None},
+                "repository": {"level": "1", "project": "mozilla-central", "url": "https://hg.mozilla.org/mozilla-central"},
                 "task": None,
                 "taskId": None,
                 "tasks_for": "action",
@@ -1534,7 +1539,7 @@ async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, s
             return "some_template_no_auth"
 
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=mocked_load_url)
-    mocker.patch.object(cotverify, "get_source_url", new=lambda x: source_url)
+    mocker.patch.object(cotverify, "get_source_url", new=create_async(result=source_url))
 
     await cotverify.get_in_tree_template(link)
 
@@ -1625,14 +1630,11 @@ async def test_verify_parent_task_definition_bad_project(chain, mocker):
     link = cotverify.LinkOfTrust(chain.context, "decision", "VQU9QMO4Teq7zr91FhBusg")
     link.task = load_json_or_yaml(os.path.join(COTV2_DIR, "decision_hg-push.json"), is_path=True)
 
-    def fake_url(*args):
-        return "https://fake_server"
-
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv2_load_url)
     mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv2_load_url)
     mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv2_load)
     mocker.patch.object(cotverify, "get_pushlog_info", new=cotv2_pushlog)
-    mocker.patch.object(cotverify, "get_source_url", new=fake_url)
+    mocker.patch.object(cotverify, "get_source_url", new=create_async(result="https://fake_server"))
 
     chain.links = [link]
     with pytest.raises(CoTError):
@@ -1946,6 +1948,7 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
 
 
 # get_source_url {{{1
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "task,expected,source_env_prefix,raises",
     (
@@ -1980,15 +1983,15 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
         ),
     ),
 )
-def test_get_source_url(task, expected, source_env_prefix, raises):
+async def test_get_source_url(task, expected, source_env_prefix, raises):
     obj = MagicMock()
     obj.task = task
     obj.context.config = {"source_env_prefix": source_env_prefix}
     if raises:
         with pytest.raises(CoTError):
-            cotverify.get_source_url(obj)
+            await cotverify.get_source_url(obj.context, obj)
     else:
-        assert expected == cotverify.get_source_url(obj)
+        assert expected == await cotverify.get_source_url(obj.context, obj)
 
 
 # trace_back_to_tree {{{1
@@ -2045,7 +2048,7 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, do
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
     mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises, mocker
 ):
-    (source_url, raises) = ("https://github.com/mozilla-mobile/focus-android", False)
+    source_url = "{}/raw/REVISION/.taskcluster.yml".format(source_url)
     mobile_github_release_link.task["metadata"]["source"] = source_url
     mobile_chain.links = [mobile_github_release_link, mobile_build_link]
     mocker.patch.object(mobile_chain, "is_try_or_pull_request", new=create_async(result=False))
