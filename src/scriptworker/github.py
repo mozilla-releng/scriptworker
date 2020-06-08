@@ -227,14 +227,15 @@ def extract_github_repo_ssh_url(url):
     return "git@github.com:{}.git".format(extract_github_repo_full_name(url))
 
 
-def extract_github_repo_and_revision_from_source_url(url):
+def extract_github_repo_and_revision_from_source_url(url, exception=ValueError):
     """Given an URL, return the repo name and who owns it.
 
     Args:
         url (str): The URL to the GitHub repository
+        exception (Exception, optional): the exception to raise on error.
 
     Raises:
-        ValueError: on url that aren't from github or when the revision cannot be extracted
+        exception: on url that aren't from github or when the revision cannot be extracted
 
     Returns:
         str, str: the owner of the repository, the repository name
@@ -247,7 +248,7 @@ def extract_github_repo_and_revision_from_source_url(url):
     try:
         revision = parts[3]
     except IndexError:
-        raise ValueError("Revision cannot be extracted from url: {}".format(url))
+        raise exception("Revision cannot be extracted from url: {}".format(url))
 
     end_index = url.index(repo_name) + len(repo_name)
     repo_url = url[:end_index]
