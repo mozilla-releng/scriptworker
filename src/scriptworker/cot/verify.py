@@ -1260,7 +1260,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         else:
             raise CoTError('Unknown tasks_for "{}" for github cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     elif chain.context.config["cot_product_type"] == "hg":
-        source_url = await get_source_url(decision_link)
+        source_url = await get_source_url(chain.context, decision_link)
         project = await get_project(chain.context, source_url)
         jsone_context["repository"] = {
             "url": get_repo(decision_link.task, decision_link.context.config["source_env_prefix"]),
@@ -1305,7 +1305,7 @@ async def get_in_tree_template(link):
 
     """
     context = link.context
-    source_url = await get_source_url(link)
+    source_url = await get_source_url(context, link)
     if not source_url.endswith((".yml", ".yaml")):
         raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(link.name, source_url))
 
@@ -1916,7 +1916,7 @@ async def trace_back_to_tree(chain):
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
     for obj in [chain] + chain.links:
-        source_url = await get_source_url(obj)
+        source_url = await get_source_url(chain.context, obj)
         repo_path = match_url_regex(chain.context.config["trusted_vcs_rules"], source_url, match_url_path_callback)
         repos[obj] = repo_path
     # check for restricted scopes.
