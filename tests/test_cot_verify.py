@@ -93,7 +93,7 @@ def mpd_chain(mpd_private_rw_context):
     yield chain
 
 
-def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-central/raw/REVISION/.taskcluster.yml"):
+def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-central"):
     context.config["scriptworker_provisioners"] = [context.config["provisioner_id"]]
     context.config["scriptworker_worker_types"] = [context.config["worker_type"]]
     context.task = {
@@ -123,7 +123,7 @@ def mobile_build_link(chain):
     yield link
 
 
-def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central/raw/REVISION/.taskcluster.yml"):
+def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central"):
     link = cotverify.LinkOfTrust(chain.context, "build", "build_task_id")
     link.cot = {"taskId": "build_task_id", "environment": {"imageArtifactHash": "sha256:built_docker_image_sha"}}
     link.task = {
@@ -210,16 +210,16 @@ def mobile_github_push_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml"
     )
-    decision_link.task["payload"]["env"] = {
+    decision_link.task["payload"]["env"].update({
         "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
         "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
         "MOBILE_HEAD_REV": "somerevision",
         "MOBILE_PUSH_DATE_TIME": "1549022400",
-    }
+    })
     yield decision_link
 
 
-def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org/mozilla-central"):
+def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org/mozilla-central/raw-file/REVISION/.taskcluster.yml"):
     link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
     link.cot = {"taskId": "decision_task_id", "environment": {"imageHash": "sha256:decision_image_sha"}}
     link.task = {
@@ -231,7 +231,13 @@ def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org
         "dependencies": [],
         "scopes": [],
         "metadata": {"source": source_url, "owner": "foo@example.tld"},
-        "payload": {"image": "blah"},
+        "payload": {
+            "image": "blah",
+            "env": {
+                "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central",
+                "GECKO_HEAD_REV": "REVISION",
+            }
+        },
         "extra": {"cron": "{}", "tasks_for": tasks_for},
     }
     return link
@@ -1998,7 +2004,7 @@ async def test_trace_back_to_tree(chain, decision_link, build_link, docker_image
 
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_bad_repo(chain):
-    chain.task["metadata"]["source"] = "https://hg.mozilla.org/try/raw/REVISION/.taskcluster.yml"
+    chain.task["metadata"]["source"] = "https://hg.mozilla.org/try"
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
 
@@ -2007,7 +2013,7 @@ async def test_trace_back_to_tree_bad_repo(chain):
 async def test_trace_back_to_tree_unknown_repo(chain, decision_link, build_link, docker_image_link):
     docker_image_link.decision_task_id = "other"
     docker_image_link.parent_task_id = "other"
-    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo/raw/REVISION/.taskcluster.yml"
+    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
@@ -2015,7 +2021,7 @@ async def test_trace_back_to_tree_unknown_repo(chain, decision_link, build_link,
 
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_docker_unknown_repo(chain, decision_link, build_link, docker_image_link):
-    build_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo/raw/REVISION/.taskcluster.yml"
+    build_link.task["metadata"]["source"] = "https://hg.mozilla.org/unknown/repo"
     chain.links = [decision_link, build_link, docker_image_link]
     with pytest.raises(CoTError):
         await cotverify.trace_back_to_tree(chain)
@@ -2025,7 +2031,7 @@ async def test_trace_back_to_tree_docker_unknown_repo(chain, decision_link, buil
 async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, docker_image_link):
     docker_image_link.decision_task_id = "other"
     docker_image_link.parent_task_id = "other"
-    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/releases/mozilla-beta/raw/REVISION/.taskcluster.yml"
+    docker_image_link.task["metadata"]["source"] = "https://hg.mozilla.org/releases/mozilla-beta"
     chain.links = [decision_link, build_link, docker_image_link]
     await cotverify.trace_back_to_tree(chain)
 

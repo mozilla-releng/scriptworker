@@ -1830,6 +1830,9 @@ def valid_source_urls(context, task):
     """
     source_env_prefix = context.config["source_env_prefix"]
     repo_url = get_repo(task, source_env_prefix=source_env_prefix)
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
+    if repo_url.endswith(".git"):
+        repo_url = repo_url[:-4]
     metadata_source_url = task["metadata"].get("source", "")
     if is_github_task(task):
         _, revision = extract_github_repo_and_revision_from_source_url(metadata_source_url, exception=CoTError)
@@ -1873,10 +1876,11 @@ async def get_source_url(context, obj):
                     name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix
                 )
             )
-        if source not in valid_source_urls(obj.context, obj.task):
+        valid_urls = valid_source_urls(obj.context, obj.task)
+        if source not in valid_urls:
             errors.append(
                 "{name} {task_id}: parent task source {source} isn't in valid source urls: {valid_source_urls}".format(
-                    name=obj.name, task_id=obj.task_id, source=source, valid_source_urls=valid_source_urls
+                    name=obj.name, task_id=obj.task_id, source=source, valid_source_urls=valid_urls
                 )
             )
     if repo and not verify_repo_matches_url(repo, source):
