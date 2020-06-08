@@ -210,12 +210,14 @@ def mobile_github_push_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml"
     )
-    decision_link.task["payload"]["env"].update({
-        "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
-        "MOBILE_HEAD_REV": "somerevision",
-        "MOBILE_PUSH_DATE_TIME": "1549022400",
-    })
+    decision_link.task["payload"]["env"].update(
+        {
+            "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
+            "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
+            "MOBILE_HEAD_REV": "somerevision",
+            "MOBILE_PUSH_DATE_TIME": "1549022400",
+        }
+    )
     yield decision_link
 
 
@@ -231,13 +233,7 @@ def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org
         "dependencies": [],
         "scopes": [],
         "metadata": {"source": source_url, "owner": "foo@example.tld"},
-        "payload": {
-            "image": "blah",
-            "env": {
-                "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central",
-                "GECKO_HEAD_REV": "REVISION",
-            }
-        },
+        "payload": {"image": "blah", "env": {"GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central", "GECKO_HEAD_REV": "REVISION"}},
         "extra": {"cron": "{}", "tasks_for": tasks_for},
     }
     return link
@@ -255,8 +251,11 @@ def action_link(chain):
         "workerType": "workerType",
         "dependencies": [],
         "scopes": ["assume:repo:foo:action:bar"],
-        "metadata": {"source": "https://hg.mozilla.org/mozilla-central"},
-        "payload": {"env": {"ACTION_CALLBACK": ""}, "image": "blah"},
+        "metadata": {"source": "https://hg.mozilla.org/mozilla-central/raw-file/REVISION/.taskcluster.yml"},
+        "payload": {
+            "env": {"ACTION_CALLBACK": "", "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central", "GECKO_HEAD_REV": "REVISION"},
+            "image": "blah",
+        },
         "extra": {"action": {"context": {}}, "parent": "decision_task_id", "tasks_for": "action"},
     }
     yield link
