@@ -1124,7 +1124,7 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     context = decision_link.context
     source_env_prefix = context.config["source_env_prefix"]
     task = decision_link.task
-    repo_url = get_repo(task, source_env_prefix)
+    repo_url = get_repo(task, source_env_prefix) or ""
     repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     pull_request_number = get_pull_request_number(task, source_env_prefix)
