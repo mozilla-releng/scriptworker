@@ -117,7 +117,10 @@ DEFAULT_CONFIG = immutabledict(
                         "thunderbird": "hg",
                         "mobile": "github",
                         "mpd001": "github",
+                        # TODO: Once 1563169 is resolved, this CoT product will be removed
                         "application-services": "github",
+                        "app-services": "github",
+                        "glean": "github",
                         "xpi": "github",
                         "adhoc": "github",
                         "scriptworker": "github",
@@ -134,7 +137,10 @@ DEFAULT_CONFIG = immutabledict(
                         "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision",),
                         "mobile": ("mobile-1/decision", "mobile-3/decision",),
                         "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
+                        # TODO: Once 1563169 is resolved, this CoT product will be removed
                         "application-services": ("app-services-1/decision", "app-services-3/decision",),
+                        "app-services": ("app-services-1/decision", "app-services-3/decision",),
+                        "glean": ("glean-1/decision", "glean-3/decision",),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
                         "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision",),
@@ -151,7 +157,10 @@ DEFAULT_CONFIG = immutabledict(
                         "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images",),
                         "mobile": ("mobile-1/images", "mobile-3/images",),
                         "mpd001": ("mpd001-1/images", "mpd001-3/images"),
+                        # TODO: Once 1563169 is resolved, this CoT product will be removed
                         "application-services": ("app-services-1/images", "app-services-3/images",),
+                        "app-services": ("app-services-1/images", "app-services-3/images",),
+                        "glean": ("glean-1/images", "glean-3/images",),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
                         "adhoc": ("adhoc-1/images", "adhoc-3/images"),
                         "scriptworker": ("scriptworker-1/images", "scriptworker-3/images",),
@@ -219,10 +228,19 @@ DEFAULT_CONFIG = immutabledict(
                             }
                         ),
                     ),
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": (
                         immutabledict(
                             {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
                         ),
+                    ),
+                    "app-services": (
+                        immutabledict(
+                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
+                        ),
+                    ),
+                    "glean": (
+                        immutabledict({"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",)}),
                     ),
                     "xpi": (
                         immutabledict(
@@ -270,7 +288,22 @@ DEFAULT_CONFIG = immutabledict(
                         "github-release",
                     ),
                     "mpd001": ("cron", "github-pull-request", "github-push", "github-release"),
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": (
+                        # On staging releases, level 1 docker images may be built in the pull-request graph
+                        "github-pull-request",
+                        # Similarly, docker images can be built on regular push. This is usually the case
+                        # for level 3 images
+                        "github-release",
+                    ),
+                    "app-services": (
+                        # On staging releases, level 1 docker images may be built in the pull-request graph
+                        "github-pull-request",
+                        # Similarly, docker images can be built on regular push. This is usually the case
+                        # for level 3 images
+                        "github-release",
+                    ),
+                    "glean": (
                         # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
@@ -290,7 +323,10 @@ DEFAULT_CONFIG = immutabledict(
                     "thunderbird": "",
                     "mobile": "mozilla-mobile",
                     "mpd001": "mozilla-services",
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": "mozilla",
+                    "app-services": "mozilla",
+                    "glean": "mozilla",
                     "xpi": "mozilla-extensions",
                     "adhoc": "mozilla-releng",
                     "scriptworker": "mozilla-releng",
@@ -368,9 +404,12 @@ DEFAULT_CONFIG = immutabledict(
                             "project:mpd001:releng:signing:cert:release-signing": "mpd001-repo",
                         }
                     ),
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": immutabledict(
                         {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
+                    "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
+                    "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
                     "xpi": immutabledict(
                         {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
                     ),
@@ -437,7 +476,10 @@ DEFAULT_CONFIG = immutabledict(
                         }
                     ),
                     "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn-windows",)}),
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
+                    "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
+                    "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
                     "adhoc": immutabledict({"adhoc-signing-repos": ("/mozilla-releng/adhoc-signing", "/mozilla-releng/adhoc-manifest")}),
                     "scriptworker": immutabledict(
@@ -457,7 +499,10 @@ DEFAULT_CONFIG = immutabledict(
                     # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
                     "mpd001": "any",  # all allowed
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": "any",  # all allowed
+                    "app-services": "any",  # all allowed
+                    "glean": "any",  # all allowed
                     "xpi": "any",  # all allowed
                     "adhoc": "any",  # all allowed
                     "scriptworker": ("decision", "action", "docker-image"),
@@ -471,7 +516,10 @@ DEFAULT_CONFIG = immutabledict(
                     "thunderbird": "COMM",
                     "mobile": "MOBILE",
                     "mpd001": "MPD001",
+                    # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": "APPSERVICES",
+                    "app-services": "APPSERVICES",
+                    "glean": "GLEAN",
                     "xpi": "XPI",
                     "adhoc": "ADHOC",
                     "scriptworker": "SCRIPTWORKER",
