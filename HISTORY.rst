@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[35.0.0] - 2020-06-09
+---------------------
+
+Added
+~~~~~~~
+- Added `app-services` as cot_product in favor of `application-services` which will be retired
+- Added `glean` as cot_product to support taskgraph in https://github.com/mozilla/glean/
+
+Changed
+~~~~~~~
+- old docker-worker cot key invalid
+- production tests now require ``TASKCLUSTER_PROXY_URL`` to be set
+
 [34.3.0] - 2020-06-01
 ---------------------
 
