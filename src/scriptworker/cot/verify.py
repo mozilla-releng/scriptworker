@@ -11,7 +11,6 @@ import asyncio
 import logging
 import os
 import pprint
-import re
 import sys
 import tempfile
 from copy import deepcopy
