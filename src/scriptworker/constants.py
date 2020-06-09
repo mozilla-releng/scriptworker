@@ -240,9 +240,7 @@ DEFAULT_CONFIG = immutabledict(
                         ),
                     ),
                     "glean": (
-                        immutabledict(
-                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",)}
-                        ),
+                        immutabledict({"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",)}),
                     ),
                     "xpi": (
                         immutabledict(
@@ -410,12 +408,8 @@ DEFAULT_CONFIG = immutabledict(
                     "application-services": immutabledict(
                         {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
-                    "app-services": immutabledict(
-                        {"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}
-                    ),
-                    "glean": immutabledict(
-                        {"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}
-                    ),
+                    "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
+                    "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
                     "xpi": immutabledict(
                         {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
                     ),
