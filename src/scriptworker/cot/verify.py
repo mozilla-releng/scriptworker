@@ -1281,6 +1281,29 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
 
 
 # get_in_tree_template {{{1
+def build_taskcluster_yml_url(link):
+    """Build the url to the repo root ``.taskcluster.yml`` .
+
+    Args:
+        link (LinkOfTrust): the parent link to get the source url from.
+
+    Returns:
+        string: the ``.taskcluster.yml`` url
+
+    """
+    source_env_prefix = link.context.config["source_env_prefix"]
+    repo_url = get_repo(link.task, source_env_prefix)
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
+    revision = get_revision(link.task, source_env_prefix)
+    repo_parts = urlparse(repo_url)
+    if repo_parts.netloc == "github.com":
+        user, repo_name = extract_github_repo_owner_and_name(repo_url)
+        path_prefix = f"/{user}/{repo_name}/raw"
+    else:
+        path_prefix = f"{repo_parts.path}/raw-file"
+    return f"{repo_parts.scheme}://{repo_parts.netloc}{path_prefix}/{revision}/.taskcluster.yml"
+
+
 async def get_in_tree_template(link):
     """Get the in-tree json-e template for a given link.
 
@@ -1298,9 +1321,7 @@ async def get_in_tree_template(link):
 
     """
     context = link.context
-    source_url = get_source_url(link)
-    if not source_url.endswith((".yml", ".yaml")):
-        raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(link.name, source_url))
+    source_url = build_taskcluster_yml_url(link)
 
     auth = None
     if (
