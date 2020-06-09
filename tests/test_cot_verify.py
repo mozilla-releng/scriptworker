@@ -1495,6 +1495,12 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
     await cotverify.verify_parent_task_definition(mpd_chain, link)
 
 
+def test_build_taskcluster_yml_url_unknown_server(decision_link):
+    decision_link.task["payload"]["env"] = {"GECKO_HEAD_REPOSITORY": "https://unknown.server/fake-mozilla-central"}
+    with pytest.raises(CoTError):
+        cotverify.build_taskcluster_yml_url(decision_link)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("use_auth", (None, True))
 @pytest.mark.parametrize(
