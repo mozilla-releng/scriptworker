@@ -687,6 +687,9 @@ async def test_build_task_dependencies(chain, mocker):
                 "metadata": {},
             }
 
+    async def fake_task_defn(queue, task_id, **kwargs):
+        return await fake_task(task_id)
+
     def fake_find(task, name, _):
         if name.endswith("decision"):
             return []
@@ -700,6 +703,7 @@ async def test_build_task_dependencies(chain, mocker):
     chain.context.queue.task = fake_task
 
     mocker.patch.object(cotverify, "find_sorted_task_dependencies", new=fake_find)
+    mocker.patch.object(cotverify, "retry_get_task_definition", new=fake_task_defn)
     with pytest.raises(CoTError):
         length = chain.context.config["max_chain_length"]
         await cotverify.build_task_dependencies(
