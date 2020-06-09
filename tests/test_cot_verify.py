@@ -1495,26 +1495,35 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
     await cotverify.verify_parent_task_definition(mpd_chain, link)
 
 
+def test_build_taskcluster_yml_url_unknown_server(decision_link):
+    decision_link.task["payload"]["env"] = {"GECKO_HEAD_REPOSITORY": "https://unknown.server/fake-mozilla-central"}
+    with pytest.raises(CoTError):
+        cotverify.build_taskcluster_yml_url(decision_link)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("use_auth", (None, True))
 @pytest.mark.parametrize(
-    "source_url,expected_url",
+    "source_repo,revision,expected_url",
     (
         (
-            "https://github.com/mozilla-services/guardian-vpn/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "ssh://github.com/mozilla-services/guardian-vpn",
+            "330ea928b42ff2403fc99cd3e596d13294fe8775",
             "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
-            "ssh://git@github.com/mozilla-services/guardian-vpn/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "git@github.com:mozilla-services/guardian-vpn",
+            "330ea928b42ff2403fc99cd3e596d13294fe8775",
             "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
-            "https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml",
+            "https://hg.mozilla.org/ci/taskgraph-try",
+            "a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea",
             "https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml",
         ),
     ),
 )
-async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, source_url, expected_url):
+async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, source_repo, revision, expected_url):
 
     name = "decision"
     task_id = "VUTfOIPFQWaGHf7sIbgTEg"
@@ -1524,7 +1533,7 @@ async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, s
 
     async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
         assert url == expected_url
-        if use_auth and "github.com" in source_url:
+        if use_auth and "github.com" in source_repo:
             assert kwargs.get("auth")
             assert isinstance(kwargs["auth"], aiohttp.BasicAuth)
             assert kwargs["auth"].login == "fakegithubtoken"
@@ -1534,7 +1543,8 @@ async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, s
             return "some_template_no_auth"
 
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=mocked_load_url)
-    mocker.patch.object(cotverify, "get_source_url", new=lambda x: source_url)
+    mocker.patch.object(cotverify, "get_repo", new=lambda x, y: source_repo)
+    mocker.patch.object(cotverify, "get_revision", new=lambda x, y: revision)
 
     await cotverify.get_in_tree_template(link)
 

@@ -11,7 +11,6 @@ import asyncio
 import logging
 import os
 import pprint
-import re
 import sys
 import tempfile
 from copy import deepcopy
@@ -1281,6 +1280,32 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
 
 
 # get_in_tree_template {{{1
+def build_taskcluster_yml_url(link):
+    """Build the url to the repo root ``.taskcluster.yml`` .
+
+    Args:
+        link (LinkOfTrust): the parent link to get the source url from.
+
+    Returns:
+        string: the ``.taskcluster.yml`` url
+
+    """
+    source_env_prefix = link.context.config["source_env_prefix"]
+    repo_url = get_repo(link.task, source_env_prefix)
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
+    revision = get_revision(link.task, source_env_prefix)
+    repo_parts = urlparse(repo_url)
+    if repo_parts.netloc == "github.com":
+        user, repo_name = extract_github_repo_owner_and_name(repo_url)
+        url = f"https://raw.githubusercontent.com/{user}/{repo_name}/{revision}/.taskcluster.yml"
+    elif repo_parts.netloc == "hg.mozilla.org":
+        url = f"{repo_parts.scheme}://{repo_parts.netloc}{repo_parts.path}/raw-file/{revision}/.taskcluster.yml"
+    else:
+        raise CoTError("Unsupported VCS server!")
+    log.debug(f"{link.name} .taskcluster.yml is at {url}")
+    return url
+
+
 async def get_in_tree_template(link):
     """Get the in-tree json-e template for a given link.
 
@@ -1298,23 +1323,16 @@ async def get_in_tree_template(link):
 
     """
     context = link.context
-    source_url = get_source_url(link)
-    if not source_url.endswith((".yml", ".yaml")):
-        raise CoTError("{} source url {} doesn't end in .yml or .yaml!".format(link.name, source_url))
+    source_url = build_taskcluster_yml_url(link)
+    repo_url = get_repo(link.task, link.context.config["source_env_prefix"])
 
     auth = None
     if (
-        source_url.startswith("ssh://") or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"])
-    ) and "github.com" in source_url:
-        newurl = re.sub(
-            r"^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$",
-            r"https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>",
-            source_url,
-        )
-        log.info("Converted source_url ({}) to new url ({})".format(source_url, newurl))
-        source_url = newurl
-        if context.config.get("github_oauth_token"):
-            auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
+        (repo_url.startswith(("ssh://", "git@github.com")) or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]))
+        and "github.com" in repo_url
+        and context.config.get("github_oauth_token")
+    ):
+        auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
     tmpl = await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(link.name)), auth=auth)
     return tmpl
 
