@@ -1298,10 +1298,13 @@ def build_taskcluster_yml_url(link):
     repo_parts = urlparse(repo_url)
     if repo_parts.netloc == "github.com":
         user, repo_name = extract_github_repo_owner_and_name(repo_url)
-        path_prefix = f"/{user}/{repo_name}/raw"
+        url = f"https://raw.githubusercontent.com/{user}/{repo_name}/{revision}/.taskcluster.yml"
+    elif repo_parts.netloc == "hg.mozilla.org":
+        url = f"{repo_parts.scheme}://{repo_parts.netloc}{repo_parts.path}/raw-file/{revision}/.taskcluster.yml"
     else:
-        path_prefix = f"{repo_parts.path}/raw-file"
-    return f"{repo_parts.scheme}://{repo_parts.netloc}{path_prefix}/{revision}/.taskcluster.yml"
+        raise CoTError("Unsupported VCS server!")
+    log.debug(f"{link.name} .taskcluster.yml is at {url}")
+    return url
 
 
 async def get_in_tree_template(link):
@@ -1322,20 +1325,15 @@ async def get_in_tree_template(link):
     """
     context = link.context
     source_url = build_taskcluster_yml_url(link)
+    repo_url = get_repo(link.task, link.context.config["source_env_prefix"])
 
     auth = None
     if (
-        source_url.startswith("ssh://") or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"])
-    ) and "github.com" in source_url:
-        newurl = re.sub(
-            r"^(?:ssh://|https?://)(?:[^@/\:]*(?:\:[^@/\:]*)?@)?github.com(?:\:\d*)?/(?P<repopath>.*)/raw/(?P<sha>[a-zA-Z0-9]*)/(?P<filepath>.*)$",
-            r"https://raw.githubusercontent.com/\g<repopath>/\g<sha>/\g<filepath>",
-            source_url,
-        )
-        log.info("Converted source_url ({}) to new url ({})".format(source_url, newurl))
-        source_url = newurl
-        if context.config.get("github_oauth_token"):
-            auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
+        (repo_url.startswith(("ssh://", "git@github.com")) or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]))
+        and "github.com" in repo_url
+        and context.config.get("github_oauth_token")
+    ):
+        auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
     tmpl = await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(link.name)), auth=auth)
     return tmpl
 
