@@ -290,24 +290,33 @@ DEFAULT_CONFIG = immutabledict(
                     "mpd001": ("cron", "github-pull-request", "github-push", "github-release"),
                     # TODO: Once 1563169 is resolved, this CoT product will be removed
                     "application-services": (
+                        "action",
+                        "cron",
                         # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
                         # for level 3 images
+                        "github-push",
                         "github-release",
                     ),
                     "app-services": (
+                        "action",
+                        "cron",
                         # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
                         # for level 3 images
+                        "github-push",
                         "github-release",
                     ),
                     "glean": (
+                        "action",
+                        "cron",
                         # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
                         # for level 3 images
+                        "github-push",
                         "github-release",
                     ),
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
