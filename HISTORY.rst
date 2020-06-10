@@ -4,6 +4,18 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[35.1.0] - 2020-06-10
+---------------------
+
+Added
+~~~~~~~
+- Added `build_taskcluster_yml_url`
+
+Changed
+~~~~~~~
+- Allow for `github-push`, `action` and `cron` `tasks_for` in app-services and glean
+- We now build the `.taskcluster.yml` source url in `get_in_tree_template`, rather than rely on `task.metadata.source`
+
 [35.0.0] - 2020-06-09
 ---------------------
 
