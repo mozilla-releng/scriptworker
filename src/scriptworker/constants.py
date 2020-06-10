@@ -301,6 +301,7 @@ DEFAULT_CONFIG = immutabledict(
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
                         # for level 3 images
+                        "github-push",
                         "github-release",
                     ),
                     "glean": (
@@ -308,6 +309,7 @@ DEFAULT_CONFIG = immutabledict(
                         "github-pull-request",
                         # Similarly, docker images can be built on regular push. This is usually the case
                         # for level 3 images
+                        "github-push",
                         "github-release",
                     ),
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
