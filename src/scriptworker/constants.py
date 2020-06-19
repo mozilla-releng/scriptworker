@@ -441,12 +441,18 @@ DEFAULT_CONFIG = immutabledict(
                             # Which repos can perform release actions?
                             # XXX remove /projects/maple when we have a
                             #     different prod signing testing solution
-                            "all-release-branches": ("/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr68", "/projects/maple",),
+                            "all-release-branches": (
+                                "/releases/mozilla-beta",
+                                "/releases/mozilla-release",
+                                "/releases/mozilla-esr68",
+                                "/releases/mozilla-esr78",
+                                "/projects/maple",
+                            ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
                             "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
-                            "esr": ("/releases/mozilla-esr68",),
+                            "esr": ("/releases/mozilla-esr68", "/releases/mozilla-esr78",),
                             "esr68": ("/releases/mozilla-esr68",),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
@@ -459,18 +465,25 @@ DEFAULT_CONFIG = immutabledict(
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr68",
+                                "/releases/mozilla-esr78",
                                 "/projects/oak",
                                 "/projects/maple",
                             ),
-                            "all-production-branches": ("/mozilla-central", "/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr68",),
+                            "all-production-branches": (
+                                "/mozilla-central",
+                                "/releases/mozilla-beta",
+                                "/releases/mozilla-release",
+                                "/releases/mozilla-esr68",
+                                "/releases/mozilla-esr78",
+                            ),
                         }
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr68"),
+                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr68", "/releases/comm-esr78",),
                             "beta": ("/releases/comm-beta",),
-                            "esr": ("/releases/comm-esr68",),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr68"),
+                            "esr": ("/releases/comm-esr68", "/releases/comm-esr78",),
+                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr68", "/releases/comm-esr78",),
                             "nightly": ("/comm-central",),
                         }
                     ),
