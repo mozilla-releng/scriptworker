@@ -61,10 +61,38 @@ async def upload_artifacts(context, files):
         path = os.path.join(context.config["artifact_dir"], target_path)
         content_type, content_encoding = compress_artifact_if_supported(path)
         return asyncio.ensure_future(
-            retry_create_artifact(context, path, target_path=target_path, content_type=content_type, content_encoding=content_encoding)
+            retry_create_artifact(
+                context,
+                "s3",
+                path,
+                target_path=target_path,
+                content_type=content_type,
+                content_encoding=content_encoding,
+            )
         )
 
     tasks = list(map(to_upload_future, files))
+
+    log_artifact = None
+    for artifact in ["public/logs/live_backing.log", "public/logs/chain_of_trust.json"]:
+        if artifact in files:
+            log_artifact = artifact
+            break
+
+    if log_artifact:
+        tasks.append(
+            asyncio.ensure_future(
+                retry_create_artifact(
+                    context,
+                    "reference",
+                    url=context.queue.buildUrl(
+                        "getArtifact", context.task_id, context.run_id, log_artifact,
+                    ),
+                    target_path="public/logs/live.log",
+                    content_type="text/plain; charset=utf-8",
+                )
+            )
+        )
     await raise_future_exceptions(tasks)
 
 
@@ -120,20 +148,16 @@ def guess_content_type_and_encoding(path):
     return content_type, encoding
 
 
-# retry_create_artifact {{{1
-async def retry_create_artifact(*args, **kwargs):
-    """Retry create_artifact() calls.
-
-    Args:
-        *args: the args to pass on to create_artifact
-        **kwargs: the args to pass on to create_artifact
-
-    """
-    await retry_async(create_artifact, retry_exceptions=(ScriptWorkerRetryException, aiohttp.ClientError, asyncio.TimeoutError), args=args, kwargs=kwargs)
-
-
 # create_artifact {{{1
-async def create_artifact(context, path, target_path, content_type, content_encoding, storage_type="s3", expires=None):
+async def create_s3_artifact(
+    context,
+    path,
+    target_path,
+    content_type,
+    content_encoding,
+    storage_type="s3",
+    expires=None,
+):
     """Create an artifact and upload it.
 
     This should support s3 and azure out of the box; we'll need some tweaking
@@ -147,8 +171,6 @@ async def create_artifact(context, path, target_path, content_type, content_enco
             scriptworker.artifacts.guess_content_type_and_encoding()
         content_encoding (str): Encoding (per mimetypes' library) of the artifact. None is for no encoding. Values can
             be found via scriptworker.artifacts.guess_content_type_and_encoding()
-        storage_type (str, optional): the taskcluster storage type to use.
-            Defaults to 's3'
         expires (str, optional): datestring of when the artifact expires.
             Defaults to None.
 
@@ -156,7 +178,11 @@ async def create_artifact(context, path, target_path, content_type, content_enco
         ScriptWorkerRetryException: on failure.
 
     """
-    payload = {"storageType": storage_type, "expires": expires or get_expiration_arrow(context).isoformat(), "contentType": content_type}
+    payload = {
+        "storageType": "s3",
+        "expires": expires or get_expiration_arrow(context).isoformat(),
+        "contentType": content_type,
+    }
     args = [get_task_id(context.claim_task), get_run_id(context.claim_task), target_path, payload]
 
     tc_response = await context.temp_queue.createArtifact(*args)
@@ -187,6 +213,70 @@ def _craft_artifact_put_headers(content_type, encoding=None):
         headers[aiohttp.hdrs.CONTENT_ENCODING] = encoding
 
     return headers
+
+
+async def create_reference_artifact(
+    context, url, target_path, content_type, expires=None
+):
+    """Create an artifact and upload it.
+
+    This should support s3 and azure out of the box; we'll need some tweaking
+    if we want to support redirect/error artifacts.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        url (str): the url to redirect to
+        target_path (str):
+        content_type (str): Content type (MIME type) of the artifact.
+        expires (str, optional): datestring of when the artifact expires.
+            Defaults to None.
+
+    Raises:
+        ScriptWorkerRetryException: on failure.
+
+    """
+    payload = {
+        "storageType": "reference",
+        "expires": expires or get_expiration_arrow(context).isoformat(),
+        "contentType": content_type,
+        "url": url,
+    }
+    args = [
+        get_task_id(context.claim_task),
+        get_run_id(context.claim_task),
+        target_path,
+        payload,
+    ]
+
+    await context.temp_queue.createArtifact(*args)
+
+
+# retry_create_artifact {{{1
+ARTIFACT_HANDLERS = {
+    "s3": create_s3_artifact,
+    "reference": create_reference_artifact,
+}
+
+
+async def retry_create_artifact(context, storage_type, *args, **kwargs):
+    """Retry create_artifact() calls.
+
+    Args:
+        *args: the args to pass on to create_artifact
+        **kwargs: the args to pass on to create_artifact
+
+    """
+    handler = ARTIFACT_HANDLERS[storage_type]
+    await retry_async(
+        handler,
+        retry_exceptions=(
+            ScriptWorkerRetryException,
+            aiohttp.ClientError,
+            asyncio.TimeoutError,
+        ),
+        args=(context,) + args,
+        kwargs=kwargs,
+    )
 
 
 # get_artifact_url {{{1
@@ -234,7 +324,14 @@ def get_expiration_arrow(context):
 
 
 # download_artifacts {{{1
-async def download_artifacts(context, file_urls, parent_dir=None, session=None, download_func=download_file, valid_artifact_task_ids=None):
+async def download_artifacts(
+    context,
+    file_urls,
+    parent_dir=None,
+    session=None,
+    download_func=download_file,
+    valid_artifact_task_ids=None,
+):
     """Download artifacts in parallel after validating their URLs.
 
     Valid ``taskId``s for download include the task's dependencies and the

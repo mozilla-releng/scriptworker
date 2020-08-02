@@ -12,7 +12,7 @@ import scriptworker.artifacts as swartifacts
 from scriptworker.artifacts import (
     _craft_artifact_put_headers,
     compress_artifact_if_supported,
-    create_artifact,
+    create_s3_artifact,
     download_artifacts,
     get_and_check_single_upstream_artifact_full_path,
     get_artifact_url,
@@ -74,10 +74,10 @@ def test_expiration_arrow(context):
 async def test_upload_artifacts(context):
     create_artifact_paths = []
 
-    async def foo(_, path, **kwargs):
+    async def foo(_, storage_type, path, **kwargs):
         create_artifact_paths.append(path)
 
-    with mock.patch("scriptworker.artifacts.create_artifact", new=foo):
+    with mock.patch("scriptworker.artifacts.retry_create_artifact", new=foo):
         await upload_artifacts(context, ["one", "public/two"])
 
     assert create_artifact_paths == [os.path.join(context.config["artifact_dir"], "one"), os.path.join(context.config["artifact_dir"], "public/two")]
@@ -93,7 +93,7 @@ async def test_upload_artifacts_throws(context, mocker):
             raise exc("foo")
         return 0
 
-    mocker.patch("scriptworker.artifacts.create_artifact", new=mock_create_artifact)
+    mocker.patch("scriptworker.artifacts.retry_create_artifact", new=mock_create_artifact)
     with pytest.raises(ArithmeticError):
         await upload_artifacts(context, ["one", "public/two"])
 
@@ -139,7 +139,7 @@ async def test_create_artifact(context, fake_session, successful_queue):
     context.session = fake_session
     expires = arrow.utcnow().isoformat()
     context.temp_queue = successful_queue
-    await create_artifact(context, path, "public/env/one.txt", content_type="text/plain", content_encoding=None, expires=expires)
+    await create_s3_artifact(context, path, "public/env/one.txt", content_type="text/plain", content_encoding=None, expires=expires)
     assert successful_queue.info == [
         "createArtifact",
         ("taskId", "runId", "public/env/one.txt", {"storageType": "s3", "expires": expires, "contentType": "text/plain"}),
@@ -158,7 +158,7 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
     expires = arrow.utcnow().isoformat()
     with pytest.raises(ScriptWorkerRetryException):
         context.temp_queue = successful_queue
-        await create_artifact(context, path, "public/env/one.log", content_type="text/plain", content_encoding=None, expires=expires)
+        await create_s3_artifact(context, path, "public/env/one.log", content_type="text/plain", content_encoding=None, expires=expires)
 
 
 def test_craft_artifact_put_headers():

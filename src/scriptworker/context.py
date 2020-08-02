@@ -124,6 +124,12 @@ class Context(object):
         if self.claim_task:
             return self.claim_task["status"]["taskId"]
 
+    @property
+    def run_id(self):
+        """string: The running task's taskId."""
+        if self.claim_task:
+            return self.claim_task["runId"]
+
     def create_queue(self, credentials):
         """Create a taskcluster queue.
 
