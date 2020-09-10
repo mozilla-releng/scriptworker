@@ -23,8 +23,9 @@ import aiohttp
 import arrow
 import async_timeout
 import yaml
-from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 from taskcluster.client import createTemporaryCredentials
+
+from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
 log = logging.getLogger(__name__)
 

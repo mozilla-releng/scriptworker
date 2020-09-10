@@ -6,6 +6,7 @@ import re
 from aiomemoizettl import memoize_ttl
 from github3 import GitHub
 from github3.exceptions import GitHubException
+
 from scriptworker.exceptions import ConfigError
 from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request, retry_sync
 

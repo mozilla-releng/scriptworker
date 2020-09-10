@@ -32,14 +32,13 @@ AT_LEAST_PY38 = sys.version_info >= (3, 8)
 
 
 def read(path):
-    """Return the contents of a file.
-    """
+    """Return the contents of a file."""
     with open(path, "r", encoding="utf-8") as fh:
         return fh.read()
 
 
 def touch(path):
-    """ Create an empty file.  Different from the system 'touch' in that it
+    """Create an empty file.  Different from the system 'touch' in that it
     will overwrite an existing file.
     """
     with open(path, "w") as fh:

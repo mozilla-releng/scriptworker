@@ -14,6 +14,7 @@ import aiohttp
 import arrow
 import mock
 import pytest
+
 import scriptworker.worker as worker
 from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
@@ -176,9 +177,7 @@ async def test_mocker_run_tasks_noop(context, successful_queue, mocker):
 
 
 def _mocker_run_tasks_helper(mocker, exc, func_to_raise):
-    """Mock run_tasks for the test_mocker_run_tasks_* tests.
-
-    """
+    """Mock run_tasks for the test_mocker_run_tasks_* tests."""
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {"task_defn": True}}
 
     async def claim_work(*args, **kwargs):
@@ -215,9 +214,7 @@ def _mocker_run_tasks_helper(mocker, exc, func_to_raise):
 )
 @pytest.mark.asyncio
 async def test_mocker_run_tasks_caught_exception(context, successful_queue, mocker, func_to_raise, exc, expected):
-    """Raise an exception within the run_tasks try/excepts and return status.
-
-    """
+    """Raise an exception within the run_tasks try/excepts and return status."""
     _mocker_run_tasks_helper(mocker, exc, func_to_raise)
 
     context.queue = successful_queue
@@ -227,9 +224,7 @@ async def test_mocker_run_tasks_caught_exception(context, successful_queue, mock
 
 @pytest.mark.asyncio
 async def test_mocker_upload_artifacts_uncaught_exception(context, successful_queue, mocker):
-    """Raise an uncaught exception within the run_tasks try/excepts.
-
-    """
+    """Raise an uncaught exception within the run_tasks try/excepts."""
     _mocker_run_tasks_helper(mocker, OSError, "upload_artifacts")
 
     context.queue = successful_queue

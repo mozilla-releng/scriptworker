@@ -6,6 +6,7 @@ import tempfile
 import aiohttp
 import pytest
 import taskcluster.exceptions
+
 from scriptworker.config import apply_product_config, get_unfrozen_copy
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -126,9 +127,7 @@ def tmpdir2():
 
 
 async def _close_session(obj):
-    """Get rid of all the unclosed session warnings.
-
-    """
+    """Get rid of all the unclosed session warnings."""
     if not hasattr(obj, "session"):
         return
     if isinstance(obj.session, aiohttp.ClientSession):

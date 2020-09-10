@@ -12,9 +12,10 @@ from unittest.mock import MagicMock
 import aiohttp
 import jsone
 import pytest
+from immutabledict import immutabledict
+
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
-from immutabledict import immutabledict
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
@@ -211,6 +212,7 @@ def mobile_github_push_link(mobile_chain):
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
+        "MOBILE_BASE_REV": "somebaserevision",
         "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
         "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
         "MOBILE_HEAD_REV": "somerevision",
@@ -1162,6 +1164,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
     del context["as_slugid"]
     assert context == {
         "event": {
+            "before": "somebaserevision",
             "after": "somerevision",
             "pusher": {"email": "foo@example.tld"},
             "ref": "refs/heads/some-branch",

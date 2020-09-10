@@ -133,17 +133,40 @@ DEFAULT_CONFIG = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision",),
-                        "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision",),
-                        "mobile": ("mobile-1/decision", "mobile-3/decision",),
+                        "firefox": (
+                            "gecko-1/decision",
+                            "gecko-2/decision",
+                            "gecko-3/decision",
+                        ),
+                        "thunderbird": (
+                            "comm-1/decision",
+                            "comm-2/decision",
+                            "comm-3/decision",
+                        ),
+                        "mobile": (
+                            "mobile-1/decision",
+                            "mobile-3/decision",
+                        ),
                         "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
                         # TODO: Once 1563169 is resolved, this CoT product will be removed
-                        "application-services": ("app-services-1/decision", "app-services-3/decision",),
-                        "app-services": ("app-services-1/decision", "app-services-3/decision",),
-                        "glean": ("glean-1/decision", "glean-3/decision",),
+                        "application-services": (
+                            "app-services-1/decision",
+                            "app-services-3/decision",
+                        ),
+                        "app-services": (
+                            "app-services-1/decision",
+                            "app-services-3/decision",
+                        ),
+                        "glean": (
+                            "glean-1/decision",
+                            "glean-3/decision",
+                        ),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
-                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision",),
+                        "scriptworker": (
+                            "scriptworker-1/decision",
+                            "scriptworker-3/decision",
+                        ),
                     }
                 )
             }
@@ -153,17 +176,40 @@ DEFAULT_CONFIG = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images",),
-                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images",),
-                        "mobile": ("mobile-1/images", "mobile-3/images",),
+                        "firefox": (
+                            "gecko-1/images",
+                            "gecko-2/images",
+                            "gecko-3/images",
+                        ),
+                        "thunderbird": (
+                            "comm-1/images",
+                            "comm-2/images",
+                            "comm-3/images",
+                        ),
+                        "mobile": (
+                            "mobile-1/images",
+                            "mobile-3/images",
+                        ),
                         "mpd001": ("mpd001-1/images", "mpd001-3/images"),
                         # TODO: Once 1563169 is resolved, this CoT product will be removed
-                        "application-services": ("app-services-1/images", "app-services-3/images",),
-                        "app-services": ("app-services-1/images", "app-services-3/images",),
-                        "glean": ("glean-1/images", "glean-3/images",),
+                        "application-services": (
+                            "app-services-1/images",
+                            "app-services-3/images",
+                        ),
+                        "app-services": (
+                            "app-services-1/images",
+                            "app-services-3/images",
+                        ),
+                        "glean": (
+                            "glean-1/images",
+                            "glean-3/images",
+                        ),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
                         "adhoc": ("adhoc-1/images", "adhoc-3/images"),
-                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images",),
+                        "scriptworker": (
+                            "scriptworker-1/images",
+                            "scriptworker-3/images",
+                        ),
                     }
                 )
             }
@@ -452,7 +498,10 @@ DEFAULT_CONFIG = immutabledict(
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
                             "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
-                            "esr": ("/releases/mozilla-esr68", "/releases/mozilla-esr78",),
+                            "esr": (
+                                "/releases/mozilla-esr68",
+                                "/releases/mozilla-esr78",
+                            ),
                             "esr68": ("/releases/mozilla-esr68",),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
@@ -480,10 +529,22 @@ DEFAULT_CONFIG = immutabledict(
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr68", "/releases/comm-esr78",),
+                            "all-release-branches": (
+                                "/releases/comm-beta",
+                                "/releases/comm-esr68",
+                                "/releases/comm-esr78",
+                            ),
                             "beta": ("/releases/comm-beta",),
-                            "esr": ("/releases/comm-esr68", "/releases/comm-esr78",),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr68", "/releases/comm-esr78",),
+                            "esr": (
+                                "/releases/comm-esr68",
+                                "/releases/comm-esr78",
+                            ),
+                            "all-nightly-branches": (
+                                "/comm-central",
+                                "/releases/comm-beta",
+                                "/releases/comm-esr68",
+                                "/releases/comm-esr78",
+                            ),
                             "nightly": ("/comm-central",),
                         }
                     ),
@@ -507,7 +568,10 @@ DEFAULT_CONFIG = immutabledict(
                     "scriptworker": immutabledict(
                         {
                             "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
-                            "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts",),
+                            "all-production-repos": (
+                                "/mozilla-releng/scriptworker",
+                                "/mozilla-releng/scriptworker-scripts",
+                            ),
                         }
                     ),
                 }

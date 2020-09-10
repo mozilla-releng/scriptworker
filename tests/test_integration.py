@@ -11,12 +11,13 @@ import tempfile
 import aiohttp
 import arrow
 import pytest
+import slugid
+from asyncio_extras.contextmanager import async_contextmanager
+
 import scriptworker.artifacts as artifacts
 import scriptworker.log as swlog
 import scriptworker.utils as utils
 import scriptworker.worker as worker
-import slugid
-from asyncio_extras.contextmanager import async_contextmanager
 from scriptworker.config import CREDS_FILES, apply_product_config, get_unfrozen_copy, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -155,8 +156,7 @@ async def task_status(context, task_id):
 
 @async_contextmanager
 async def remember_cwd():
-    """http://stackoverflow.com/a/170174
-    """
+    """http://stackoverflow.com/a/170174"""
     curdir = os.getcwd()
     try:
         yield

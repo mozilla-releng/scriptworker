@@ -8,6 +8,7 @@ import tempfile
 import arrow
 import mock
 import pytest
+
 import scriptworker.artifacts as swartifacts
 from scriptworker.artifacts import (
     _craft_artifact_put_headers,

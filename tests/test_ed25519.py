@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 import scriptworker.ed25519 as swed25519
 from scriptworker.exceptions import ScriptWorkerEd25519Error
 from scriptworker.utils import read_from_file

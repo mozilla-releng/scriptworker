@@ -20,6 +20,8 @@ import aiohttp
 import dictdiffer
 import jsone
 from immutabledict import immutabledict
+from taskcluster.aio import Queue
+
 from scriptworker.artifacts import download_artifacts, get_artifact_url, get_optional_artifacts_per_task_id, get_single_upstream_artifact_full_path
 from scriptworker.config import apply_product_config, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
@@ -67,7 +69,6 @@ from scriptworker.utils import (
     write_to_file,
 )
 from scriptworker.version import __version_string__
-from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
 
@@ -1165,6 +1166,11 @@ async def _get_additional_github_push_jsone_context(decision_link):
     if committer_login == "web-flow":
         committer_login = commit_data["author"]["login"]
 
+    # This value could have been taken from `commit_data.parents[0]` too but
+    # it is more visible if picked up from `.taskcluster.yml` env vars
+    base_prefix = "{}_BASE_REV".format(context.config["source_env_prefix"])
+    before_hash = task["payload"]["env"].get(base_prefix)
+
     # Github users can have multiple emails. The commit_data contains
     # their primary email, but the task may contain a secondary email.
     # We may want to verify that this email is one of `login`'s email
@@ -1176,8 +1182,10 @@ async def _get_additional_github_push_jsone_context(decision_link):
     #
     # [1] https://developer.github.com/v3/repos/commits/#get-a-single-commit
     # [2] https://developer.github.com/v3/activity/events/types/#pushevent
+
     return {
         "event": {
+            "before": before_hash,
             "after": commit_hash,
             "pusher": {"email": task_email},
             "ref": get_branch(task, source_env_prefix),

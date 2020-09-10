@@ -16,12 +16,13 @@ from collections import Mapping
 from copy import deepcopy
 
 from immutabledict import immutabledict
+from yaml import safe_load
+
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.exceptions import ConfigError
 from scriptworker.log import update_logging_config
 from scriptworker.utils import load_json_or_yaml
-from yaml import safe_load
 
 log = logging.getLogger(__name__)
 

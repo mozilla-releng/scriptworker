@@ -18,6 +18,8 @@ from copy import deepcopy
 import aiohttp
 import taskcluster
 import taskcluster.exceptions
+from taskcluster.exceptions import TaskclusterFailure
+
 from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
@@ -30,7 +32,6 @@ from scriptworker.github import (
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import get_parts_of_url_path, retry_async
-from taskcluster.exceptions import TaskclusterFailure
 
 log = logging.getLogger(__name__)
 
