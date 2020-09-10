@@ -18,6 +18,7 @@
   ],
   "payload": {
     "env": {
+      "MPD001_BASE_REV": "330ea928b42ff2403fc99cd3e596d13294fe8775",
       "MPD001_BASE_REPOSITORY": "git@github.com:mozilla-services/guardian-vpn.git",
       "MPD001_HEAD_REPOSITORY": "git@github.com:mozilla-services/guardian-vpn.git",
       "MPD001_HEAD_REF": "refs/heads/releng-release",
