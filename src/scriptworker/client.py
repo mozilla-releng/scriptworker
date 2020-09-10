@@ -19,6 +19,7 @@ from urllib.parse import unquote
 
 import aiohttp
 import jsonschema
+
 from scriptworker.constants import STATUSES
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError

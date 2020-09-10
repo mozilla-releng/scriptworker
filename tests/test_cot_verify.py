@@ -12,9 +12,10 @@ from unittest.mock import MagicMock
 import aiohttp
 import jsone
 import pytest
+from immutabledict import immutabledict
+
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
-from immutabledict import immutabledict
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file

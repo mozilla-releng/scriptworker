@@ -8,8 +8,9 @@ from copy import deepcopy
 
 import mock
 import pytest
-import scriptworker.config as config
 from immutabledict import immutabledict
+
+import scriptworker.config as config
 from scriptworker.constants import DEFAULT_CONFIG
 
 # constants helpers and fixtures {{{1

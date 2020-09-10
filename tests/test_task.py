@@ -13,12 +13,13 @@ from unittest.mock import MagicMock
 import arrow
 import mock
 import pytest
+import taskcluster.exceptions
+from taskcluster.exceptions import TaskclusterFailure
+
 import scriptworker.log as log
 import scriptworker.task as swtask
-import taskcluster.exceptions
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.task_process import TaskProcess
-from taskcluster.exceptions import TaskclusterFailure
 
 from . import TIMEOUT_SCRIPT, noop_async, read
 

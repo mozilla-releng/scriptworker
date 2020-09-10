@@ -11,6 +11,7 @@ import time
 
 import mock
 import pytest
+
 import scriptworker.utils as utils
 from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException
 
@@ -40,8 +41,7 @@ retry_count = {}
 
 @pytest.fixture(scope="function")
 def datestring():
-    """Datestring constant.
-    """
+    """Datestring constant."""
     return "2016-04-16T03:46:24.958Z"
 
 

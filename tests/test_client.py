@@ -15,6 +15,7 @@ from unittest.mock import MagicMock
 import aiohttp
 import arrow
 import pytest
+
 import scriptworker.client as client
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context

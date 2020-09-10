@@ -18,9 +18,10 @@ from copy import deepcopy
 
 import aiohttp
 import arrow
+from taskcluster.aio import Queue
+
 from scriptworker.exceptions import CoTError
 from scriptworker.utils import load_json_or_yaml_from_url, makedirs
-from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
 

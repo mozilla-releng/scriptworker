@@ -55,8 +55,7 @@ with open(PATH) as filehandle:
 
 
 class Tox(TestCommand):
-    """http://bit.ly/1T0dwvG
-    """
+    """http://bit.ly/1T0dwvG"""
 
     user_options = [("tox-args=", "a", "Arguments to pass to tox")]
 
@@ -71,8 +70,9 @@ class Tox(TestCommand):
 
     def run_tests(self):
         # import here, cause outside the eggs aren't loaded
-        import tox
         import shlex
+
+        import tox
 
         args = self.tox_args
         if args:

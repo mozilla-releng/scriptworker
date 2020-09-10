@@ -14,6 +14,7 @@ from pathlib import Path
 import aiohttp
 import arrow
 import async_timeout
+
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_decision_task_id, get_run_id, get_task_id

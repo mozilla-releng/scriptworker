@@ -16,6 +16,7 @@ from typing import Any
 
 import aiohttp
 import arrow
+
 from scriptworker.artifacts import upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES

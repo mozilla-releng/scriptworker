@@ -20,6 +20,8 @@ import aiohttp
 import dictdiffer
 import jsone
 from immutabledict import immutabledict
+from taskcluster.aio import Queue
+
 from scriptworker.artifacts import download_artifacts, get_artifact_url, get_optional_artifacts_per_task_id, get_single_upstream_artifact_full_path
 from scriptworker.config import apply_product_config, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
@@ -67,7 +69,6 @@ from scriptworker.utils import (
     write_to_file,
 )
 from scriptworker.version import __version_string__
-from taskcluster.aio import Queue
 
 log = logging.getLogger(__name__)
 

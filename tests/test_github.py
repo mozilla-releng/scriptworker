@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from scriptworker import github
 from scriptworker.exceptions import ConfigError
 

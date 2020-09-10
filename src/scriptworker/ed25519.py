@@ -15,6 +15,7 @@ from binascii import Error as Base64Error
 from cryptography.exceptions import InvalidSignature, UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.exceptions import ScriptWorkerEd25519Error, ScriptWorkerException
 from scriptworker.utils import read_from_file

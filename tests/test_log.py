@@ -8,6 +8,7 @@ import os
 from asyncio.subprocess import PIPE
 
 import pytest
+
 import scriptworker.log as swlog
 
 from . import read

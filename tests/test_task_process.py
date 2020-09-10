@@ -3,6 +3,7 @@ import signal
 
 import pytest
 from mock import MagicMock, call
+
 from scriptworker.task_process import TaskProcess
 
 

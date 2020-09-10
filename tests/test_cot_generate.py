@@ -6,6 +6,7 @@ import logging
 import os
 
 import pytest
+
 import scriptworker.cot.generate as cot
 from scriptworker.exceptions import ScriptWorkerException
 

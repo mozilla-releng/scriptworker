@@ -10,14 +10,15 @@ import tempfile
 
 import aiohttp
 import pytest
+from asyncio_extras.contextmanager import async_contextmanager
+from taskcluster.aio import Index, Queue, Secrets
+
 import scriptworker.log as swlog
 import scriptworker.utils as utils
-from asyncio_extras.contextmanager import async_contextmanager
 from scriptworker.config import apply_product_config, get_unfrozen_copy, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
-from taskcluster.aio import Index, Queue, Secrets
 
 log = logging.getLogger(__name__)
 
@@ -222,11 +223,16 @@ async def test_verify_production_cot(branch_context):
         assert task_id, "{}: Can't get task_id from index {}!".format(branch_context["name"], branch_context["index"])
         if branch_context.get("task_label_to_task_type"):
             task_info = await get_completed_task_info_from_labels(task_id, branch_context["task_label_to_task_type"])
-            assert "check_task" not in branch_context, "{}: Can't disable check_task.".format(branch_context["name"],)
+            assert "check_task" not in branch_context, "{}: Can't disable check_task.".format(
+                branch_context["name"],
+            )
             for task_id, task_type in task_info.items():
                 name = "{} {}".format(branch_context["name"], task_type)
                 await verify_cot(name, task_id, task_type)
         else:
             await verify_cot(
-                branch_context["name"], task_id, branch_context["task_type"], branch_context.get("check_task", True),
+                branch_context["name"],
+                task_id,
+                branch_context["task_type"],
+                branch_context.get("check_task", True),
             )
