@@ -1167,8 +1167,8 @@ async def _get_additional_github_push_jsone_context(decision_link):
 
     # This value could have been taken from `commit_data.parents[0]` too but
     # it is more visible if picked up from `.taskcluster.yml` env vars
-    base_prefix = "{}_BASE_REV".format(context.config['source_env_prefix'])
-    before_hash = task['payload']['env'][base_prefix]
+    base_prefix = "{}_BASE_REV".format(context.config["source_env_prefix"])
+    before_hash = task["payload"]["env"][base_prefix]
 
     # Github users can have multiple emails. The commit_data contains
     # their primary email, but the task may contain a secondary email.
