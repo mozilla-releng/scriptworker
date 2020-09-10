@@ -4,17 +4,29 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[35.3.0] - 2020-09-10
+---------------------
+
+Fixed
+~~~~~
+- CoT now supports Github ``event.before`` in the jsone context.
+
+Changed
+~~~~~~~
+- Reformatted to fix black and isort
+
 [35.2.0] - 2020-06-19
+---------------------
 
 Added
-~~~~~~~~
+~~~~~
 - Added support for `esr78` for both `comm` and `gecko`
 
 [35.1.0] - 2020-06-10
 ---------------------
 
 Added
-~~~~~~~
+~~~~~
 - Added `build_taskcluster_yml_url`
 
 Changed
