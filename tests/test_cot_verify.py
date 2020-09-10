@@ -211,6 +211,7 @@ def mobile_github_push_link(mobile_chain):
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
+        "MOBILE_BASE_REV": "somebaserevision",
         "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
         "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/focus-android",
         "MOBILE_HEAD_REV": "somerevision",
@@ -1162,6 +1163,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
     del context["as_slugid"]
     assert context == {
         "event": {
+            "before": "somebaserevision",
             "after": "somerevision",
             "pusher": {"email": "foo@example.tld"},
             "ref": "refs/heads/some-branch",
