@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[X.Y.Z] - TBD
+-------------
+
+Removed
+~~~~~
+- CoT support for `application-services` as cleanup effort
+
 [35.3.0] - 2020-09-10
 ---------------------
 

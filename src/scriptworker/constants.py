@@ -117,8 +117,6 @@ DEFAULT_CONFIG = immutabledict(
                         "thunderbird": "hg",
                         "mobile": "github",
                         "mpd001": "github",
-                        # TODO: Once 1563169 is resolved, this CoT product will be removed
-                        "application-services": "github",
                         "app-services": "github",
                         "glean": "github",
                         "xpi": "github",
@@ -148,11 +146,6 @@ DEFAULT_CONFIG = immutabledict(
                             "mobile-3/decision",
                         ),
                         "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
-                        # TODO: Once 1563169 is resolved, this CoT product will be removed
-                        "application-services": (
-                            "app-services-1/decision",
-                            "app-services-3/decision",
-                        ),
                         "app-services": (
                             "app-services-1/decision",
                             "app-services-3/decision",
@@ -191,11 +184,6 @@ DEFAULT_CONFIG = immutabledict(
                             "mobile-3/images",
                         ),
                         "mpd001": ("mpd001-1/images", "mpd001-3/images"),
-                        # TODO: Once 1563169 is resolved, this CoT product will be removed
-                        "application-services": (
-                            "app-services-1/images",
-                            "app-services-3/images",
-                        ),
                         "app-services": (
                             "app-services-1/images",
                             "app-services-3/images",
@@ -274,12 +262,6 @@ DEFAULT_CONFIG = immutabledict(
                             }
                         ),
                     ),
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": (
-                        immutabledict(
-                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
-                        ),
-                    ),
                     "app-services": (
                         immutabledict(
                             {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
@@ -334,17 +316,6 @@ DEFAULT_CONFIG = immutabledict(
                         "github-release",
                     ),
                     "mpd001": ("cron", "github-pull-request", "github-push", "github-release"),
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": (
-                        "action",
-                        "cron",
-                        # On staging releases, level 1 docker images may be built in the pull-request graph
-                        "github-pull-request",
-                        # Similarly, docker images can be built on regular push. This is usually the case
-                        # for level 3 images
-                        "github-push",
-                        "github-release",
-                    ),
                     "app-services": (
                         "action",
                         "cron",
@@ -378,8 +349,6 @@ DEFAULT_CONFIG = immutabledict(
                     "thunderbird": "",
                     "mobile": "mozilla-mobile",
                     "mpd001": "mozilla-services",
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": "mozilla",
                     "app-services": "mozilla",
                     "glean": "mozilla",
                     "xpi": "mozilla-extensions",
@@ -458,10 +427,6 @@ DEFAULT_CONFIG = immutabledict(
                             "project:mpd001:releng:signing:cert:nightly-signing": "mpd001-repo",
                             "project:mpd001:releng:signing:cert:release-signing": "mpd001-repo",
                         }
-                    ),
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": immutabledict(
-                        {"project:mozilla:application-services:releng:beetmover:bucket:maven-production": "application-services-repo"}
                     ),
                     "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
                     "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
@@ -559,8 +524,6 @@ DEFAULT_CONFIG = immutabledict(
                         }
                     ),
                     "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn-windows",)}),
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": immutabledict({"application-services-repo": ("/mozilla/application-services",)}),
                     "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
                     "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
@@ -585,8 +548,6 @@ DEFAULT_CONFIG = immutabledict(
                     # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
                     "mpd001": "any",  # all allowed
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": "any",  # all allowed
                     "app-services": "any",  # all allowed
                     "glean": "any",  # all allowed
                     "xpi": "any",  # all allowed
@@ -602,8 +563,6 @@ DEFAULT_CONFIG = immutabledict(
                     "thunderbird": "COMM",
                     "mobile": "MOBILE",
                     "mpd001": "MPD001",
-                    # TODO: Once 1563169 is resolved, this CoT product will be removed
-                    "application-services": "APPSERVICES",
                     "app-services": "APPSERVICES",
                     "glean": "GLEAN",
                     "xpi": "XPI",
