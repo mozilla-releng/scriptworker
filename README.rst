@@ -28,7 +28,7 @@ Usage
 * Create a config file.  By default scriptworker will look in ``./scriptworker.yaml``, but this config path can be specified as the first and only commandline argument.  There is an `example config file`_, and all config items are specified in `scriptworker.constants.DEFAULT_CONFIG`_.
 
 .. _example config file: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker.yaml.tmpl
-.. _scriptworker.constants.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker/constants.py
+.. _scriptworker.constants.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/src/scriptworker/constants.py
 
 Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
 
