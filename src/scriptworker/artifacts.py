@@ -282,6 +282,8 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None, 
                     args=(context, file_url, abs_file_path),
                     retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
                     kwargs={"session": session},
+                    attempts=10,
+                    sleeptime_kwargs={"max_delay": 15},
                     log_exceptions=True,
                 )
             )
