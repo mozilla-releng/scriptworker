@@ -228,6 +228,7 @@ async def retry_async(
     args: Sequence[Any] = (),
     kwargs: Optional[Dict[str, Any]] = None,
     sleeptime_kwargs: Optional[Dict[str, Any]] = None,
+    log_exceptions: Optional[bool] = False,
 ) -> Any:
     """Retry ``func``, where ``func`` is an awaitable.
 
@@ -258,7 +259,8 @@ async def retry_async(
     while True:
         try:
             return await func(*args, **kwargs)
-        except retry_exceptions:
+        except retry_exceptions as exc:
+            log_exceptions and log.info(f"retry_async exception:\n{exc}")
             attempt += 1
             _check_number_of_attempts(attempt, attempts, func, "retry_async")
             await asyncio.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_async"))
