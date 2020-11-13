@@ -7,6 +7,7 @@ object, let's point to them from a single context object.
 
 Attributes:
     log (logging.Logger): the log object for the module.
+    DEFAULT_MAX_CONCURRENT_DOWNLOADS (int): default max concurrent downloads
 
 """
 import asyncio
@@ -24,6 +25,9 @@ from scriptworker.exceptions import CoTError
 from scriptworker.utils import load_json_or_yaml_from_url, makedirs
 
 log = logging.getLogger(__name__)
+
+
+DEFAULT_MAX_CONCURRENT_DOWNLOADS = 5
 
 
 class Context(object):
@@ -56,6 +60,7 @@ class Context(object):
     task = None
     temp_queue = None
     running_tasks = None
+    _download_semaphore = None
     _credentials = None
     _claim_task = None  # This assumes a single task per worker.
     _event_loop = None
@@ -229,3 +234,13 @@ class Context(object):
         if force or not self.projects:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.projects = await load_json_or_yaml_from_url(self, self.config["project_configuration_url"], os.path.join(tmpdirname, "projects.yml"))
+
+    @property
+    def download_semaphore(self):
+        if self._download_semaphore is None:
+            try:
+                max_concurrent_downloads = self.config.get("max_concurrent_downloads", DEFAULT_MAX_CONCURRENT_DOWNLOADS)
+            except (TypeError, KeyError, AttributeError):
+                max_concurrent_downloads = DEFAULT_MAX_CONCURRENT_DOWNLOADS
+            self._download_semaphore = asyncio.BoundedSemaphore(max_concurrent_downloads)
+        return self._download_semaphore

@@ -149,3 +149,12 @@ def test_bad_verify_task(claim_task, bad_path):
     context.task = {"payload": {"upstreamArtifacts": [{"taskId": "bar", "paths": ["baz", bad_path]}]}}
     with pytest.raises(CoTError):
         context.verify_task()
+
+
+@pytest.mark.asyncio
+async def test_download_semaphore():
+    context = swcontext.Context()
+    sem = context.download_semaphore
+    assert type(sem) == asyncio.BoundedSemaphore
+    assert sem._value == swcontext.DEFAULT_MAX_CONCURRENT_DOWNLOADS
+    assert sem is context.download_semaphore

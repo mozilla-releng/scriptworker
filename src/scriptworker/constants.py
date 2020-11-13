@@ -63,7 +63,7 @@ DEFAULT_CONFIG = immutabledict(
         "artifact_dir": "...",
         "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
         "artifact_upload_timeout": 60 * 20,
-        "aiohttp_max_connections": 15,
+        "max_concurrent_downloads": 5,
         # chain of trust settings
         "sign_chain_of_trust": True,
         "verify_chain_of_trust": False,  # TODO True

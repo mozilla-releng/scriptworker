@@ -884,3 +884,28 @@ def get_single_item_from_sequence(
     if append_sequence_to_error_message:
         error_message = "{}. Given: {}".format(error_message, sequence)
     raise ErrorClass(error_message)
+
+
+# semaphore_wrapper {{{1
+async def semaphore_wrapper(semaphore, coro):
+    """Wrap an async function with semaphores.
+
+    Usage::
+
+        semaphore = asyncio.Semaphore(10)  # max 10 concurrent
+        futures = []
+        futures.append(asyncio.ensure_future(semaphore_wrapper(
+            semaphore, do_something(arg1, arg2, kwarg1='foo')
+        )))
+        await raise_future_exceptions(futures)
+
+    Args:
+        semaphore (asyncio.Semaphore): the semaphore to wrap the action with
+        coro (coroutine): an asyncio coroutine
+
+    Returns:
+        the result of ``action``.
+
+    """
+    async with semaphore:
+        return await coro
