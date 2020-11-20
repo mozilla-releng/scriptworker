@@ -261,7 +261,7 @@ async def retry_async(
             return await func(*args, **kwargs)
         except retry_exceptions as exc:
             if log_exceptions:
-                log.info(f"retry_async exception:\n{type(exc)} {exc}")
+                log.warning(f"retry_async exception:\n{type(exc)} {exc}")
             attempt += 1
             _check_number_of_attempts(attempt, attempts, func, "retry_async")
             await asyncio.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_async"))
