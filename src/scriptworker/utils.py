@@ -228,6 +228,7 @@ async def retry_async(
     args: Sequence[Any] = (),
     kwargs: Optional[Dict[str, Any]] = None,
     sleeptime_kwargs: Optional[Dict[str, Any]] = None,
+    log_exceptions: Optional[bool] = False,
 ) -> Any:
     """Retry ``func``, where ``func`` is an awaitable.
 
@@ -258,7 +259,9 @@ async def retry_async(
     while True:
         try:
             return await func(*args, **kwargs)
-        except retry_exceptions:
+        except retry_exceptions as exc:
+            if log_exceptions:
+                log.warning(f"retry_async exception:\n{type(exc)} {exc}")
             attempt += 1
             _check_number_of_attempts(attempt, attempts, func, "retry_async")
             await asyncio.sleep(_define_sleep_time(sleeptime_kwargs, sleeptime_callback, attempt, func, "retry_async"))
@@ -881,3 +884,28 @@ def get_single_item_from_sequence(
     if append_sequence_to_error_message:
         error_message = "{}. Given: {}".format(error_message, sequence)
     raise ErrorClass(error_message)
+
+
+# semaphore_wrapper {{{1
+async def semaphore_wrapper(semaphore, coro):
+    """Wrap an async function with semaphores.
+
+    Usage::
+
+        semaphore = asyncio.Semaphore(10)  # max 10 concurrent
+        futures = []
+        futures.append(asyncio.ensure_future(semaphore_wrapper(
+            semaphore, do_something(arg1, arg2, kwarg1='foo')
+        )))
+        await raise_future_exceptions(futures)
+
+    Args:
+        semaphore (asyncio.Semaphore): the semaphore to wrap the action with
+        coro (coroutine): an asyncio coroutine
+
+    Returns:
+        the result of ``action``.
+
+    """
+    async with semaphore:
+        return await coro

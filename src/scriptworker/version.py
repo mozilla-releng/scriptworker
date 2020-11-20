@@ -46,7 +46,7 @@ def get_version_string(version: Union[ShortVerType, LongVerType]) -> str:
     if version_len == 3:
         version_string = "%d.%d.%d" % cast(ShortVerType, version)
     elif version_len == 4:
-        version_string = "%d.%d.%d%s" % cast(LongVerType, version)
+        version_string = "%d.%d.%d.%s" % cast(LongVerType, version)
     else:
         raise Exception("Version tuple is non-semver-compliant {} length!".format(version_len))
     return version_string
@@ -54,7 +54,7 @@ def get_version_string(version: Union[ShortVerType, LongVerType]) -> str:
 
 # 1}}}
 # Semantic versioning 2.0.0  http://semver.org/
-__version__ = (35, 3, 0)
+__version__ = (36, 0, 0)
 __version_string__ = get_version_string(__version__)
 
 

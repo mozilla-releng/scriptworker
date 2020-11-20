@@ -18,7 +18,7 @@ import async_timeout
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_decision_task_id, get_run_id, get_task_id
-from scriptworker.utils import add_enumerable_item_to_dict, download_file, get_loggable_url, raise_future_exceptions, retry_async
+from scriptworker.utils import add_enumerable_item_to_dict, download_file, get_loggable_url, raise_future_exceptions, retry_async, semaphore_wrapper
 
 log = logging.getLogger(__name__)
 
@@ -277,11 +277,16 @@ async def download_artifacts(context, file_urls, parent_dir=None, session=None, 
         files.append(abs_file_path)
         tasks.append(
             asyncio.ensure_future(
-                retry_async(
-                    download_func,
-                    args=(context, file_url, abs_file_path),
-                    retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
-                    kwargs={"session": session},
+                semaphore_wrapper(
+                    context.download_semaphore,
+                    retry_async(
+                        download_func,
+                        args=(context, file_url, abs_file_path),
+                        retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
+                        kwargs={"session": session},
+                        sleeptime_kwargs={"max_delay": 15},
+                        log_exceptions=True,
+                    ),
                 )
             )
         )

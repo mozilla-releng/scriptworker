@@ -210,8 +210,7 @@ async def async_main(context, credentials):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
     """
-    conn = aiohttp.TCPConnector(limit=context.config["aiohttp_max_connections"])
-    async with aiohttp.ClientSession(connector=conn) as session:
+    async with aiohttp.ClientSession() as session:
         context.session = session
         context.credentials = credentials
         await run_tasks(context)

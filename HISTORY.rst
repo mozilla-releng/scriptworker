@@ -7,9 +7,23 @@ This project adheres to `Semantic Versioning <http://semver.org/>`__.
 [X.Y.Z] - TBD
 -------------
 
-Removed
+[36.0.0] - 2020-11-20
+---------------------
+
+Added
 ~~~~~
-- CoT support for `application-services` as cleanup effort
+- Added ``semaphore_wrapper`` to easily use a semaphore for async coroutines.
+- Added ``context.download_semaphore`` to share a download semaphore.
+- Added ``max_concurrent_downloads`` pref, defaulting to 5.
+
+Fixed
+~~~~~
+- Fixed 4-part versions.
+
+Removed
+~~~~~~~
+- CoT support for ``application-services`` as cleanup effort
+- Removed ``aiohttp_max_connections`` in favor of ``max_concurrent_downloads``.
 
 [35.3.0] - 2020-09-10
 ---------------------
