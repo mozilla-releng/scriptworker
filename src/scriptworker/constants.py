@@ -402,8 +402,10 @@ DEFAULT_CONFIG = immutabledict(
                     ),
                     "mobile": immutabledict(
                         {
+                            "project:mobile:android-components:releng:github:project:android-components": "android-components-repo",
                             "project:mobile:android-components:releng:beetmover:bucket:maven-production": "android-components-repo",
                             "project:mobile:android-components:releng:beetmover:bucket:maven-snapshot-production": "android-components-repo",
+                            "project:mobile:fenix:releng:github:project:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:googleplay:product:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:beta-signing": "fenix-repo",

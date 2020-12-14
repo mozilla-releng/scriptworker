@@ -4,8 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-[X.Y.Z] - TBD
--------------
+[36.0.1] - 2020-12-14
+---------------------
+
+Added
+~~~~~
+- Added cot restricted scopes for mobile github tasks
 
 [36.0.0] - 2020-11-20
 ---------------------
