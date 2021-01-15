@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[36.0.2] - 2021-01-15
+---------------------
+
+Fixed
+~~~~~
+- Allowed for empty ``committer`` and ``author`` in github ``commit_data``
+
+
 [36.0.1] - 2020-12-14
 ---------------------
 
