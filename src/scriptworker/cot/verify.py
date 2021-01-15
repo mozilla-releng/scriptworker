@@ -1157,9 +1157,10 @@ async def _get_additional_github_push_jsone_context(decision_link):
     commit_hash = get_revision(task, source_env_prefix)
 
     github_repo = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
-    commit_data = await github_repo.get_commit(commit_hash) or {}
+    commit_data = await github_repo.get_commit(commit_hash)
 
-    committer_login = commit_data.get("committer", {}).get("login")
+    committer = commit_data["committer"] or {}
+    committer_login = committer.get("login")
     # https://github.com/mozilla-releng/scriptworker/issues/334: web-flow is the User used by
     #   GitHub to create some commits on github.com or the Github Desktop app. For sure, this user
     #   is not the one who triggered a push event. Let's fall back to the author login, instead.
@@ -1167,8 +1168,11 @@ async def _get_additional_github_push_jsone_context(decision_link):
     #   be set for bots or improperly set up accounts. If everything else matches, let's not
     #   get hung up on this.
     if committer_login in ("web-flow", None):
-        committer_login = commit_data.get("author", {}).get("login", "@@@unknown@@@")
-
+        author = commit_data.get("author") or {}
+        committer_login = author.get(
+            "login",
+            commit_data.get("commit", {}).get("author", {}).get("login", "@@@unknown@@@")
+        )
     # This value could have been taken from `commit_data.parents[0]` too but
     # it is more visible if picked up from `.taskcluster.yml` env vars
     base_prefix = "{}_BASE_REV".format(context.config["source_env_prefix"])
