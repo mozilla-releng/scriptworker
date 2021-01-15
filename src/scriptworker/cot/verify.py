@@ -1169,10 +1169,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     #   get hung up on this.
     if committer_login in ("web-flow", None):
         author = commit_data.get("author") or {}
-        committer_login = author.get(
-            "login",
-            commit_data.get("commit", {}).get("author", {}).get("login", "@@@unknown@@@")
-        )
+        committer_login = author.get("login", commit_data.get("commit", {}).get("author", {}).get("login", "@@@unknown@@@"))
     # This value could have been taken from `commit_data.parents[0]` too but
     # it is more visible if picked up from `.taskcluster.yml` env vars
     base_prefix = "{}_BASE_REV".format(context.config["source_env_prefix"])
