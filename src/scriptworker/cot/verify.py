@@ -1157,7 +1157,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     commit_hash = get_revision(task, source_env_prefix)
 
     github_repo = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
-    commit_data = await github_repo.get_commit(commit_hash)
+    commit_data = await github_repo.get_commit(commit_hash) or {}
 
     committer_login = commit_data.get("committer", {}).get("login")
     # https://github.com/mozilla-releng/scriptworker/issues/334: web-flow is the User used by
