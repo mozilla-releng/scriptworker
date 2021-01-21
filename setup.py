@@ -53,6 +53,9 @@ PATH = os.path.join(os.path.dirname(__file__), "version.json")
 with open(PATH) as filehandle:
     VERSION = json.load(filehandle)["version_string"]
 
+with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.in")) as f:
+    install_requires = f.readlines()
+
 
 class Tox(TestCommand):
     """http://bit.ly/1T0dwvG"""
@@ -102,7 +105,7 @@ setup(
     },
     zip_safe=False,
     license="MPL 2.0",
-    install_requires=reqs,
+    install_requires=install_requires,
     tests_require=tests_require,
     python_requires=">=3.6",
     cmdclass={"test": Tox},
