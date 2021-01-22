@@ -90,13 +90,6 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "firefox",
     },
     {
-        "name": "mozilla-esr68 nightly android",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "gecko.v2.mozilla-esr68.latest.firefox.decision-nightly-android",
-        "task_label_to_task_type": {"push-apk/opt": "pushapk"},
-        "cot_product": "firefox",
-    },
-    {
         "name": "mozilla-central win64 en-US repackage signing",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "gecko.v2.mozilla-central.shippable.latest.firefox.win64-shippable-repackage-signing",
@@ -114,13 +107,6 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "name": "mozilla-release win64 en-US repackage signing",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "gecko.v2.mozilla-release.shippable.latest.firefox.win64-shippable-repackage-signing",
-        "task_type": "signing",
-        "cot_product": "firefox",
-    },
-    {
-        "name": "mozilla-esr68 win64 en-US repackage signing",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "gecko.v2.mozilla-esr68.shippable.latest.firefox.win64-shippable-repackage-signing",
         "task_type": "signing",
         "cot_product": "firefox",
     },

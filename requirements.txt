@@ -1,0 +1,11 @@
+aiohttp>=3
+aiomemoizettl
+arrow
+cryptography>=2.6.1
+dictdiffer
+github3.py
+immutabledict
+jsonschema
+json-e>=2.5.0
+PyYAML
+taskcluster>=4.0.0

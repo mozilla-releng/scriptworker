@@ -7,6 +7,7 @@ include LICENSE
 include README.rst
 include config_example.json
 include pyproject.toml
+include requirements.txt
 include scriptworker.yaml.tmpl
 include version.json
 include tox.ini
