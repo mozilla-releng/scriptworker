@@ -18,20 +18,6 @@ if {"register", "upload"}.intersection(set(sys.argv)):
     )
     sys.exit(1)
 
-reqs = [
-    "aiohttp>=3",
-    "aiomemoizettl",
-    "arrow",
-    "cryptography>=2.6.1",
-    "dictdiffer",
-    "github3.py",
-    "immutabledict",
-    "jsonschema",
-    "json-e>=2.5.0",
-    "PyYAML",
-    "taskcluster>=4.0.0",
-]
-
 tests_require = [
     "asyncio_extras",
     # TODO Remove the condition on coverage once
@@ -53,7 +39,7 @@ PATH = os.path.join(os.path.dirname(__file__), "version.json")
 with open(PATH) as filehandle:
     VERSION = json.load(filehandle)["version_string"]
 
-with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.in")) as f:
+with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.txt")) as f:
     install_requires = f.readlines()
 
 
