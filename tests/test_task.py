@@ -520,6 +520,14 @@ async def test_reportException(context, successful_queue):
     assert successful_queue.info == ["reportException", ("taskId", "runId", {"reason": "worker-shutdown"}), {}]
 
 
+@pytest.mark.parametrize("exit_code", (-11, -15, 245, 241))
+@pytest.mark.asyncio
+async def test_reversed_statuses(context, successful_queue, exit_code):
+    context.temp_queue = successful_queue
+    await swtask.complete_task(context, exit_code)
+    assert successful_queue.info == ["reportException", ("taskId", "runId", {"reason": context.config["reversed_statuses"][exit_code]}), {}]
+
+
 # complete_task {{{1
 @pytest.mark.asyncio
 async def test_complete_task_409(context, unsuccessful_queue):
