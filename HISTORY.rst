@@ -4,6 +4,21 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[36.0.3] - 2021-02-05
+---------------------
+
+Added
+~~~~~
+- Added a ``requirements.txt`` with unpinned requirements, for ronin-puppet pinning.
+
+Changed
+~~~~~~~
+- Updated ``ignore_keys`` to include the coming ``taskQueueId``.
+
+Fixed
+~~~~~
+- Removed esr68 prod cot tests
+
 [36.0.2] - 2021-01-15
 ---------------------
 

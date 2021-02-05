@@ -876,7 +876,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
         CoTError: on failure
 
     """
-    ignore_keys = ("created", "deadline", "expires", "dependencies", "schedulerId")
+    ignore_keys = ("created", "deadline", "dependencies", "expires", "schedulerId", "taskQueueId")
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
