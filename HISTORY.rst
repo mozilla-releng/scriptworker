@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[36.0.4] - 2021-02-09
+---------------------
+Changed
+~~~~~~~
+- Updated ``ignore_keys`` to include the coming ``projectId``.
+- Updated tests to use ``iscript>=5``
+
 [36.0.3] - 2021-02-05
 ---------------------
 
