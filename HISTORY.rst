@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[36.0.5] - 2021-02-11
+---------------------
+Changed
+~~~~~~~
+- Updated ``ed25519_public_keys`` with new public keys
+
 [36.0.4] - 2021-02-09
 ---------------------
 Changed
