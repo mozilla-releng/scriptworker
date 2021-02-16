@@ -520,7 +520,7 @@ async def test_reportException(context, successful_queue):
     assert successful_queue.info == ["reportException", ("taskId", "runId", {"reason": "worker-shutdown"}), {}]
 
 
-@pytest.mark.parametrize("exit_code", (-11, -15, 245, 241))
+@pytest.mark.parametrize("exit_code", (245, 241))
 @pytest.mark.asyncio
 async def test_reversed_statuses(context, successful_queue, exit_code):
     context.temp_queue = successful_queue
