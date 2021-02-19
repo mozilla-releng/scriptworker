@@ -216,7 +216,7 @@ DEFAULT_CONFIG = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(maple|oak))(/|$)",
+                                    r"^(?P<path>/projects/(maple|oak|pine))(/|$)",
                                 ),
                             }
                         ),
@@ -371,12 +371,6 @@ DEFAULT_CONFIG = immutabledict(
                             "project:releng:beetmover:bucket:nightly": "all-nightly-branches",
                             "project:releng:beetmover:bucket:release": "all-release-branches",
                             "project:releng:bouncer:server:production": "all-production-branches",
-                            # Fennec rides the 68 train. This means, Fennec Nightly will first be shipped off
-                            # mozilla-central then mozilla-esr68. Fennec Beta and Release will move to
-                            # mozilla-esr68 too.
-                            "project:releng:googleplay:aurora": "esr68",
-                            "project:releng:googleplay:beta": "esr68",
-                            "project:releng:googleplay:release": "esr68",
                             "project:releng:signing:cert:nightly-signing": "all-nightly-branches",
                             "project:releng:signing:cert:release-signing": "all-release-branches",
                             "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
@@ -457,7 +451,6 @@ DEFAULT_CONFIG = immutabledict(
                             "all-release-branches": (
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr68",
                                 "/releases/mozilla-esr78",
                                 "/projects/maple",
                             ),
@@ -465,31 +458,28 @@ DEFAULT_CONFIG = immutabledict(
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
                             "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
-                            "esr": (
-                                "/releases/mozilla-esr68",
-                                "/releases/mozilla-esr78",
-                            ),
-                            "esr68": ("/releases/mozilla-esr68",),
+                            "esr": ("/releases/mozilla-esr78",),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
                             # XXX remove /projects/maple when we have a
                             #     different prod signing testing solution
                             # XXX remove /projects/oak when we no longer test updates against it
+                            # XXX remove /projects/pine when we no longer need
+                            #     nightly signing
                             "all-nightly-branches": (
                                 "/mozilla-central",
                                 "/releases/mozilla-unified",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr68",
                                 "/releases/mozilla-esr78",
-                                "/projects/oak",
                                 "/projects/maple",
+                                "/projects/oak",
+                                "/projects/pine",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr68",
                                 "/releases/mozilla-esr78",
                             ),
                         }
@@ -498,18 +488,13 @@ DEFAULT_CONFIG = immutabledict(
                         {
                             "all-release-branches": (
                                 "/releases/comm-beta",
-                                "/releases/comm-esr68",
                                 "/releases/comm-esr78",
                             ),
                             "beta": ("/releases/comm-beta",),
-                            "esr": (
-                                "/releases/comm-esr68",
-                                "/releases/comm-esr78",
-                            ),
+                            "esr": ("/releases/comm-esr78",),
                             "all-nightly-branches": (
                                 "/comm-central",
                                 "/releases/comm-beta",
-                                "/releases/comm-esr68",
                                 "/releases/comm-esr78",
                             ),
                             "nightly": ("/comm-central",),
