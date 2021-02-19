@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[37.0.0] - 2021-02-19
+---------------------
+Changed
+~~~~~~~
+- ``run_task`` now exits with the exit code from the task.
+- ``reversed_statuses`` works now, with statuses of 245 and 241.
+
 [36.0.5] - 2021-02-11
 ---------------------
 Changed

@@ -644,7 +644,7 @@ async def run_task(context, to_cancellable_process):
     if stopped_due_to_worker_shutdown:
         raise WorkerShutdownDuringTask
 
-    return 1 if exitcode != 0 else 0
+    return exitcode
 
 
 # reclaim_task {{{1
