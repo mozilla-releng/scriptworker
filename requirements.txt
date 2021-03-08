@@ -8,4 +8,4 @@ immutabledict
 jsonschema
 json-e>=2.5.0
 PyYAML
-taskcluster>=4.0.0
+taskcluster<40
