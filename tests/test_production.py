@@ -56,6 +56,11 @@ async def build_config(override, basedir):
 
 
 async def _get_github_token():
+    if os.environ.get("SCRIPTWORKER_GITHUB_TOKEN"):
+        return os.environ["SCRIPTWORKER_GITHUB_TOKEN"]
+    token = read_worker_creds(key="scriptworker_github_token")
+    if token:
+        return read_worker_creds(key="scriptworker_github_token")
     try:
         root_url = os.environ["TASKCLUSTER_PROXY_URL"]
     except KeyError as e:

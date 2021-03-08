@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[37.0.2] - 2021-03-08
+---------------------
+Fixed
+~~~~~
+- ``timestamp`` -> ``int_timestamp`` in arrow calls; set min arrow version to 1.0
+- production tests no longer require the taskcluster proxy.
+
 [37.0.1] - 2021-02-19
 ---------------------
 Changed
