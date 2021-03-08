@@ -181,7 +181,7 @@ def test_get_worker_type(task, result):
     (
         ("https://hg.mozilla.org/mozilla-central", "mozilla-central", False, "firefox"),
         ("https://hg.mozilla.org/projects/foo", "foo", True, "firefox"),
-        ("https://hg.mozilla.org/releases/mozilla-esr68", "mozilla-esr68", False, "firefox"),
+        ("https://hg.mozilla.org/releases/mozilla-esr78", "mozilla-esr78", False, "firefox"),
         ("https://hg.mozilla.org/try", "try", False, "firefox"),
         ("https://hg.mozilla.org/releases/unknown", "unknown", True, "firefox"),
         ("https://hg.mozilla.org/users/mozilla_hocat.ca/esr60-stage/", "", True, "firefox"),
@@ -473,10 +473,10 @@ async def test_run_task_timeout(context):
     # create all 6 files
     context.config["task_max_timeout"] = 5
 
-    pre = arrow.utcnow().timestamp
+    pre = arrow.utcnow().int_timestamp
     with pytest.raises(ScriptWorkerTaskException):
         await swtask.run_task(context, noop_to_cancellable_process)
-    post = arrow.utcnow().timestamp
+    post = arrow.utcnow().int_timestamp
     # I don't love these checks, because timing issues may cause this test
     # to be flaky. However, I don't want a non- or long- running test to pass.
     # Did this run at all?

@@ -26,7 +26,7 @@ from . import AT_LEAST_PY38, TIMEOUT_SCRIPT, create_async, create_finished_futur
 # constants helpers and fixtures {{{1
 @pytest.yield_fixture(scope="function")
 def context(rw_context):
-    rw_context.credentials_timestamp = arrow.utcnow().shift(minutes=-10).timestamp
+    rw_context.credentials_timestamp = arrow.utcnow().shift(minutes=-10).int_timestamp
     yield rw_context
 
 

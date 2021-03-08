@@ -122,7 +122,7 @@ class Context(object):
     def credentials(self, creds):
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
-        self.credentials_timestamp = arrow.utcnow().timestamp
+        self.credentials_timestamp = arrow.utcnow().int_timestamp
 
     @property
     def task_id(self):
