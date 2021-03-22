@@ -711,13 +711,7 @@ def get_parts_of_url_path(url):
 
 
 # load_json_or_yaml_from_url {{{1
-async def load_json_or_yaml_from_url(
-    context: Context,
-    url: str,
-    path: str,
-    overwrite: bool=True,
-    auth: Optional[str]=None
-) -> Dict[str, Any]:
+async def load_json_or_yaml_from_url(context: Context, url: str, path: str, overwrite: bool = True, auth: Optional[str] = None) -> Dict[str, Any]:
     """Retry a json/yaml file download, load it, then return its data.
 
     Args:

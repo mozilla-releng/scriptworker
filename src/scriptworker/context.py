@@ -232,7 +232,7 @@ class Context(object):
     def event_loop(self, event_loop: asyncio.AbstractEventLoop) -> None:
         self._event_loop = event_loop
 
-    async def populate_projects(self, force: bool=False) -> None:
+    async def populate_projects(self, force: bool = False) -> None:
         """Download the ``projects.yml`` file and populate ``self.projects``.
 
         This only sets it once, unless ``force`` is set.
