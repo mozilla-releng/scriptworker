@@ -22,9 +22,9 @@ import aiohttp
 import arrow
 from taskcluster.aio import Queue
 
+from scriptworker import task_process
 from scriptworker.exceptions import CoTError
 from scriptworker.utils import load_json_or_yaml_from_url, makedirs
-from scriptworker import task_process
 
 log = logging.getLogger(__name__)
 

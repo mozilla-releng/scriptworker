@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import IO, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
+from typing import IO, TYPE_CHECKING, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -25,8 +25,14 @@ import async_timeout
 import yaml
 from taskcluster.client import createTemporaryCredentials
 
-from scriptworker.context import Context
 from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
+
+if TYPE_CHECKING:
+    # Avoid circular import
+    from scriptworker.context import Context
+else:
+    Context = object
+
 
 log = logging.getLogger(__name__)
 
