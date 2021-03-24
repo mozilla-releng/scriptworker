@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import IO, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
+from typing import IO, TYPE_CHECKING, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
 from urllib.parse import unquote, urlparse
 
 import aiohttp
@@ -26,6 +26,13 @@ import yaml
 from taskcluster.client import createTemporaryCredentials
 
 from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
+
+if TYPE_CHECKING:
+    # Avoid circular import
+    from scriptworker.context import Context
+else:
+    Context = object
+
 
 log = logging.getLogger(__name__)
 
@@ -710,7 +717,7 @@ def get_parts_of_url_path(url):
 
 
 # load_json_or_yaml_from_url {{{1
-async def load_json_or_yaml_from_url(context, url, path, overwrite=True, auth=None):
+async def load_json_or_yaml_from_url(context: Context, url: str, path: str, overwrite: bool = True, auth: Optional[str] = None) -> Dict[str, Any]:
     """Retry a json/yaml file download, load it, then return its data.
 
     Args:

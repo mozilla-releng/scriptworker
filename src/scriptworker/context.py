@@ -16,11 +16,13 @@ import logging
 import os
 import tempfile
 from copy import deepcopy
+from typing import Any, Dict, Optional, cast
 
 import aiohttp
 import arrow
 from taskcluster.aio import Queue
 
+from scriptworker import task_process
 from scriptworker.exceptions import CoTError
 from scriptworker.utils import load_json_or_yaml_from_url, makedirs
 
@@ -52,24 +54,24 @@ class Context(object):
 
     """
 
-    config = None
-    credentials_timestamp = None
-    proc = None
-    queue = None
-    session = None
-    task = None
-    temp_queue = None
+    config: Optional[Dict[str, Any]] = None
+    credentials_timestamp: Optional[int] = None
+    proc: Optional[task_process.TaskProcess] = None
+    queue: Optional[Queue] = None
+    session: Optional[aiohttp.ClientSession] = None
+    task: Optional[Dict[str, Any]] = None
+    temp_queue: Optional[Queue] = None
     running_tasks = None
     _download_semaphore = None
-    _credentials = None
-    _claim_task = None  # This assumes a single task per worker.
+    _credentials: Optional[Dict[str, Any]] = None
+    _claim_task: Optional[Dict[str, Any]] = None  # This assumes a single task per worker.
     _event_loop = None
     _temp_credentials = None  # This assumes a single task per worker.
     _reclaim_task = None
     _projects = None
 
     @property
-    def claim_task(self):
+    def claim_task(self) -> Optional[Dict[str, Any]]:
         """dict: The current or most recent claimTask definition json from the queue.
 
         This contains the task definition, as well as other task-specific
@@ -83,7 +85,8 @@ class Context(object):
         return self._claim_task
 
     @claim_task.setter
-    def claim_task(self, claim_task):
+    def claim_task(self, claim_task: Optional[Dict[str, Any]]) -> None:
+        assert self.config
         self._claim_task = claim_task
         self.reclaim_task = None
         self.proc = None
@@ -92,21 +95,23 @@ class Context(object):
             self.verify_task()
             self.temp_credentials = claim_task["credentials"]
             path = os.path.join(self.config["work_dir"], "task.json")
+            assert self.task
             self.write_json(path, self.task, "Writing task file to {path}...")
         else:
             self.temp_credentials = None
             self.task = None
 
-    def verify_task(self):
+    def verify_task(self) -> None:
         """Run some task sanity checks on ``self.task``."""
+        assert self.task
         for upstream_artifact in self.task.get("payload", {}).get("upstreamArtifacts", []):
-            task_id = upstream_artifact["taskId"]
+            task_id: str = upstream_artifact["taskId"]
             for path in upstream_artifact["paths"]:
                 if os.path.isabs(path) or ".." in path:
                     raise CoTError("upstreamArtifacts taskId {} has illegal path {}!".format(task_id, path))
 
     @property
-    def credentials(self):
+    def credentials(self) -> Optional[Dict[str, Any]]:
         """dict: The current scriptworker credentials.
 
         These come from the config or CREDS_FILES or environment.
@@ -117,32 +122,36 @@ class Context(object):
         """
         if self._credentials:
             return dict(deepcopy(self._credentials))
+        return None
 
     @credentials.setter
-    def credentials(self, creds):
+    def credentials(self, creds: Optional[Dict[str, Any]]) -> None:
         self._credentials = creds
         self.queue = self.create_queue(self.credentials)
         self.credentials_timestamp = arrow.utcnow().int_timestamp
 
     @property
-    def task_id(self):
+    def task_id(self) -> Optional[str]:
         """string: The running task's taskId."""
         if self.claim_task:
-            return self.claim_task["status"]["taskId"]
+            return cast(str, self.claim_task["status"]["taskId"])
+        return None
 
-    def create_queue(self, credentials):
+    def create_queue(self, credentials: Optional[Dict[str, Any]]) -> Optional[Queue]:
         """Create a taskcluster queue.
 
         Args:
             credentials (dict): taskcluster credentials.
 
         """
+        assert self.config
         if credentials:
             session = self.session or aiohttp.ClientSession(loop=self.event_loop)
             return Queue(options={"credentials": credentials, "rootUrl": self.config["taskcluster_root_url"]}, session=session)
+        return None
 
     @property
-    def reclaim_task(self):
+    def reclaim_task(self) -> Optional[Dict[str, Any]]:
         """dict: The most recent reclaimTask definition.
 
         This contains the newest expiration time and the newest temp credentials.
@@ -157,13 +166,13 @@ class Context(object):
         return self._reclaim_task
 
     @reclaim_task.setter
-    def reclaim_task(self, value):
+    def reclaim_task(self, value: Optional[Dict[str, Any]]) -> None:
         self._reclaim_task = value
         if value is not None:
             self.temp_credentials = value["credentials"]
 
     @property
-    def temp_credentials(self):
+    def temp_credentials(self) -> Optional[Dict[str, Any]]:
         """dict: The latest temp credentials, or None if we haven't claimed a task yet.
 
         When setting, create ``self.temp_queue`` from the temp taskcluster creds.
@@ -171,13 +180,14 @@ class Context(object):
         """
         if self._temp_credentials:
             return dict(deepcopy(self._temp_credentials))
+        return None
 
     @temp_credentials.setter
-    def temp_credentials(self, credentials):
+    def temp_credentials(self, credentials: Optional[Dict[str, Any]]) -> None:
         self._temp_credentials = credentials
         self.temp_queue = self.create_queue(self.temp_credentials)
 
-    def write_json(self, path, contents, message):
+    def write_json(self, path: str, contents: Dict[str, Any], message: str) -> None:
         """Write json to disk.
 
         Args:
@@ -192,7 +202,7 @@ class Context(object):
             json.dump(contents, fh, indent=2, sort_keys=True)
 
     @property
-    def projects(self):
+    def projects(self) -> Optional[Dict[str, Any]]:
         """dict: The current contents of ``projects.yml``, which defines CI configuration.
 
         I'd love to auto-populate this; currently we need to set this from
@@ -201,13 +211,14 @@ class Context(object):
         """
         if self._projects:
             return dict(deepcopy(self._projects))
+        return None
 
     @projects.setter
-    def projects(self, projects):
+    def projects(self, projects: Optional[Dict[str, Any]]) -> None:
         self._projects = projects
 
     @property
-    def event_loop(self):
+    def event_loop(self) -> asyncio.AbstractEventLoop:
         """asyncio.BaseEventLoop: the running event loop.
 
         This fixture mainly exists to allow for overrides during unit tests.
@@ -218,10 +229,10 @@ class Context(object):
         return self._event_loop
 
     @event_loop.setter
-    def event_loop(self, event_loop):
+    def event_loop(self, event_loop: asyncio.AbstractEventLoop) -> None:
         self._event_loop = event_loop
 
-    async def populate_projects(self, force=False):
+    async def populate_projects(self, force: bool = False) -> None:
         """Download the ``projects.yml`` file and populate ``self.projects``.
 
         This only sets it once, unless ``force`` is set.
@@ -231,12 +242,14 @@ class Context(object):
                 is already defined. Defaults to False.
 
         """
+        assert self.config
         if force or not self.projects:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.projects = await load_json_or_yaml_from_url(self, self.config["project_configuration_url"], os.path.join(tmpdirname, "projects.yml"))
 
     @property
-    def download_semaphore(self):
+    def download_semaphore(self) -> asyncio.BoundedSemaphore:
+        assert self.config
         if self._download_semaphore is None:
             try:
                 max_concurrent_downloads = self.config.get("max_concurrent_downloads", DEFAULT_MAX_CONCURRENT_DOWNLOADS)
