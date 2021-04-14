@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[37.0.3] - 2021-04-14
+---------------------
+Changed
+~~~~~~~
+- Replaced the new docker-worker pubkey in ``ed25519_public_keys``: we never used the previous-new keypair, and we're rolling out this keypair.
+- Added mypy typing to ``scriptworker.context``
+
 [37.0.2] - 2021-03-08
 ---------------------
 Fixed
