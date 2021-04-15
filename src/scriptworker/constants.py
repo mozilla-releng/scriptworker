@@ -31,7 +31,7 @@ STATUSES = {
 #
 # When adding new complex config, make sure all `list`s are `tuple`s, and all
 # `dict`s are `immutabledict`s!  (This should get caught by config tests.)
-DEFAULT_CONFIG = immutabledict(
+DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
     {
         "taskcluster_root_url": os.environ.get("TASKCLUSTER_ROOT_URL", "https://firefox-ci-tc.services.mozilla.com/"),
         # Worker identification
