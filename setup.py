@@ -93,13 +93,13 @@ setup(
     license="MPL 2.0",
     install_requires=install_requires,
     tests_require=tests_require,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     cmdclass={"test": Tox},
     classifiers=(
         "Intended Audience :: Developers",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ),
 )
