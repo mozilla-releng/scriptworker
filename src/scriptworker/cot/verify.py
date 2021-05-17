@@ -53,6 +53,8 @@ from scriptworker.task import (
 )
 from scriptworker.utils import (
     add_enumerable_item_to_dict,
+    add_projectid,
+    add_taskqueueid,
     format_json,
     get_hash,
     get_loggable_url,
@@ -1596,6 +1598,15 @@ def compare_jsone_task_definition(parent_link, rebuilt_definitions):
         # them instead of keeping them with a None/{}/[] value.
         compare_definition = remove_empty_keys(compare_definition)
         runtime_definition = remove_empty_keys(parent_link.task)
+
+        # add projectId properties if they do not already appear
+        compare_definition = add_projectid(compare_definition)
+        runtime_definition = add_projectid(runtime_definition)
+
+        # add taskQueueId properties if they do not already appear, and
+        # remove provisionerId / workerType
+        compare_definition = add_taskqueueid(compare_definition)
+        runtime_definition = add_taskqueueid(runtime_definition)
 
         diff = list(dictdiffer.diff(compare_definition, runtime_definition))
         if diff:
