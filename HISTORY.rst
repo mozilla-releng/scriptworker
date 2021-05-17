@@ -4,6 +4,28 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[38.0.0] - 2021-05-17
+---------------------
+Removed
+~~~~~~~
+- Removed py36 support
+- Removed obsolete mobile production tests
+
+Added
+~~~~~
+- Added py39 support
+
+Changed
+~~~~~~~
+- Require ``immutabledict>=1.3.0`` to avoid typing bustage
+- Require ``taskcluster<41`` instead of ``taskcluster<40`` to match the latest cluster version
+- CoT verification now supports ``projectId`` and ``taskQueueId``.
+- Pinned to ``pytest-asyncio<0.15`` due to production test bustage
+
+Fixed
+~~~~~
+- Fixed immutabledict typing bustage
+
 [37.0.3] - 2021-04-14
 ---------------------
 Changed
