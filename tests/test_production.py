@@ -144,21 +144,6 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "mobile",
     },
     {
-        "name": "fenix production",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.fenix.fennec-production.latest.arm64-v8a",
-        "task_type": "signing",
-        "cot_product": "mobile",
-    },
-    {
-        "name": "fenix performance tests",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.fenix.performance-test.latest.arm64-v8a",
-        "task_type": "signing",
-        "cot_product": "mobile",
-        "check_task": False,  # These tasks run on level t workers.
-    },
-    {
         "name": "reference-browser nightly",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "mobile.v2.reference-browser.nightly.latest.arm64-v8a",
