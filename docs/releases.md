@@ -96,19 +96,8 @@ Someone with access to the scriptworker package on `pypi.python.org` needs to do
 
 That creates source tarball and wheel, and uploads it.
 
-## Puppet
+## Rollout
 
-Connect to Releng VPN.
+To roll out to the scriptworker kubernetes pools, wait for a few minutes after the pypi upload, run [pin.sh](https://github.com/mozilla-releng/scriptworker-scripts/blob/master/maintenance/pin.sh) to bump all the workers, get review on that change, then push to the `production` branch when you're ready to roll out. (Use the `production-___script` branches if you only want to update scriptworker on a subset of workers.) We'll see a notification in Slack `#releng-notifications` as each pool rolls out.
 
-Copy the wheel from `dist/` to `releng-puppet2.srv.releng.mdc1.mozilla.com`:
-
-```bash
-scp dist/scriptworker-$VERSION-py2.py3-none-any.whl releng-puppet2.srv.releng.mdc1.mozilla.com:
-ssh releng-puppet2.srv.releng.mdc1.mozilla.com
-cd /data/python/packages-3.x
-sudo mv -n ~/scriptworker-$VERSION-py2.py3-none-any.whl .
-```
-
-Bump the [scriptworker version](https://hg.mozilla.org/build/puppet/file/b67965cc83e6/modules/signing_scriptworker/manifests/init.pp#l43) in the appropriate scriptworker instance puppet configs.
-
-If desired, test in your [user environment](https://wiki.mozilla.org/ReleaseEngineering/PuppetAgain/HowTo/Set_up_a_user_environment) first.  Otherwise, get review, land, and merge to production.
+To roll out to the mac signers, get review for a patch like [this](https://github.com/mozilla-platform-ops/ronin_puppet/commit/d08be5473a425e12a3d865a038a3b6a9f71c1548) and merge. The mac signer maintainers will roll out to the `production-mac-signing` branch as appropriate. We don't get notifications anywhere, so we likely just need to give this a half hour or so to roll out.
