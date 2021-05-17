@@ -854,6 +854,42 @@ def remove_empty_keys(values, remove=({}, None, [], "null")):
     return values
 
 
+# add_projectid {{{1
+def add_projectid(task_def):
+    """Add a projectId property to a task, if none already exists, using
+    the Taskcluster default value of 'none'.
+
+    Args:
+        task_def (dict): the task definition
+
+    Returns:
+        task_def (dict): the task definition, with projectId
+    """
+    return {"projectId": "none", **task_def}
+
+
+# add_taskqueueid {{{1
+def add_taskqueueid(task_def):
+    """Add a taskQueueId property to a task, if none already exists, based
+    on the provisionerId and workerType.  Then remove those two properties.
+
+    Args:
+        task_def (dict): the task definition
+
+    Returns:
+        task_def (dict): the task definition, with taskQueueId
+    """
+    if "taskQueueId" not in task_def or "provisionerId" in task_def or "workerType" in task_def:
+        task_def = task_def.copy()
+    if "taskQueueId" not in task_def:
+        task_def["taskQueueId"] = task_def["provisionerId"] + "/" + task_def["workerType"]
+    if "provisionerId" in task_def:
+        del task_def["provisionerId"]
+    if "workerType" in task_def:
+        del task_def["workerType"]
+    return task_def
+
+
 # get_single_item_from_sequence {{{1
 def get_single_item_from_sequence(
     sequence,
