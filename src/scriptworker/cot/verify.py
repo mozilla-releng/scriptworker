@@ -164,6 +164,28 @@ class ChainOfTrust(object):
         """
         return self.task_type in DECISION_TASK_TYPES
 
+    def is_scope_in_restricted_scopes(self, scope, restricted_scopes):
+        """Determine if a scope matches in a list of restricted_scopes.
+           if one of the restricted scopes ends with '*', find a partial match.
+
+        Returns:
+            String: string of matching restricted_scope, if no match ""
+        """
+        match = []
+        for restricted in restricted_scopes:
+            if restricted.endswith("*"):
+                if scope.startswith(restricted.rstrip("*")):
+                    match.append(restricted)
+            elif scope == restricted:
+                match.append(restricted)
+
+        if len(match) > 1:
+            raise CoTError("Scope {} matches >1 restricted_scope: {}\n".format(scope, match))
+        elif len(match) == 1:
+            return match[0]
+        else:
+            return ""
+
     def has_restricted_scopes(self):
         """Determine if this task is requesting any restricted scopes.
 
@@ -171,7 +193,7 @@ class ChainOfTrust(object):
             bool: whether this task requested restricted scopes.
 
         """
-        return any((scope in self.context.config["cot_restricted_scopes"]) for scope in self.task["scopes"])
+        return any((self.is_scope_in_restricted_scopes(scope, self.context.config["cot_restricted_scopes"])) for scope in self.task["scopes"])
 
     def get_all_links_in_chain(self):
         """Return all links in the chain of trust, including the target task.
@@ -1907,9 +1929,10 @@ async def trace_back_to_tree(chain):
     # check for restricted scopes.
     my_repo = repos[chain]
     for scope in chain.task["scopes"]:
-        if scope in rules["scopes"]:
+        matched_scope = chain.is_scope_in_restricted_scopes(scope, rules["scopes"])
+        if matched_scope:
             log.info("Found privileged scope {}".format(scope))
-            level = rules["scopes"][scope]
+            level = rules["scopes"][matched_scope]
             if my_repo not in rules["trees"][level]:
                 errors.append("{} {}: repo {} not allowlisted for scope {}!".format(chain.name, chain.task_id, my_repo, scope))
     # verify all tasks w/ same decision_task_id have the same source repo.
