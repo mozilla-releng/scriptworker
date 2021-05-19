@@ -122,44 +122,24 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "xpi": "github",
                         "adhoc": "github",
                         "scriptworker": "github",
-                    },
-                ),
-            },
+                    }
+                )
+            }
         ),
         # decision task cot
         "valid_decision_worker_pools": immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": (
-                            "gecko-1/decision",
-                            "gecko-2/decision",
-                            "gecko-3/decision",
-                        ),
-                        "thunderbird": (
-                            "comm-1/decision",
-                            "comm-2/decision",
-                            "comm-3/decision",
-                        ),
-                        "mobile": (
-                            "mobile-1/decision",
-                            "mobile-3/decision",
-                        ),
+                        "firefox": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision"),
+                        "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision"),
+                        "mobile": ("mobile-1/decision", "mobile-3/decision"),
                         "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
-                        "app-services": (
-                            "app-services-1/decision",
-                            "app-services-3/decision",
-                        ),
-                        "glean": (
-                            "glean-1/decision",
-                            "glean-3/decision",
-                        ),
+                        "app-services": ("app-services-1/decision", "app-services-3/decision"),
+                        "glean": ("glean-1/decision", "glean-3/decision"),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
-                        "scriptworker": (
-                            "scriptworker-1/decision",
-                            "scriptworker-3/decision",
-                        ),
+                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision"),
                     }
                 )
             }
@@ -169,35 +149,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": (
-                            "gecko-1/images",
-                            "gecko-2/images",
-                            "gecko-3/images",
-                        ),
-                        "thunderbird": (
-                            "comm-1/images",
-                            "comm-2/images",
-                            "comm-3/images",
-                        ),
-                        "mobile": (
-                            "mobile-1/images",
-                            "mobile-3/images",
-                        ),
+                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images"),
+                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images"),
+                        "mobile": ("mobile-1/images", "mobile-3/images"),
                         "mpd001": ("mpd001-1/images", "mpd001-3/images"),
-                        "app-services": (
-                            "app-services-1/images",
-                            "app-services-3/images",
-                        ),
-                        "glean": (
-                            "glean-1/images",
-                            "glean-3/images",
-                        ),
+                        "app-services": ("app-services-1/images", "app-services-3/images"),
+                        "glean": ("glean-1/images", "glean-3/images"),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
                         "adhoc": ("adhoc-1/images", "adhoc-3/images"),
-                        "scriptworker": (
-                            "scriptworker-1/images",
-                            "scriptworker-3/images",
-                        ),
+                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images"),
                     }
                 )
             }
@@ -427,7 +387,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
                     "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
                     "xpi": immutabledict(
-                        {"project:xpi:signing:cert:release-signing": "xpi-manifest-repo", "project:xpi:ship-it:production": "xpi-manifest-repo"}
+                        {
+                            "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
+                            "project:xpi:releng:github:project:mozilla-extensions/*": "xpi-manifest-repo",
+                            "project:xpi:ship-it:production": "xpi-manifest-repo",
+                        }
                     ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
                     "scriptworker": immutabledict(
@@ -448,12 +412,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             # Which repos can perform release actions?
                             # XXX remove /projects/maple when we have a
                             #     different prod signing testing solution
-                            "all-release-branches": (
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr78",
-                                "/projects/maple",
-                            ),
+                            "all-release-branches": ("/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr78", "/projects/maple"),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
@@ -476,27 +435,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/projects/oak",
                                 "/projects/pine",
                             ),
-                            "all-production-branches": (
-                                "/mozilla-central",
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr78",
-                            ),
+                            "all-production-branches": ("/mozilla-central", "/releases/mozilla-beta", "/releases/mozilla-release", "/releases/mozilla-esr78"),
                         }
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": (
-                                "/releases/comm-beta",
-                                "/releases/comm-esr78",
-                            ),
+                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr78"),
                             "beta": ("/releases/comm-beta",),
                             "esr": ("/releases/comm-esr78",),
-                            "all-nightly-branches": (
-                                "/comm-central",
-                                "/releases/comm-beta",
-                                "/releases/comm-esr78",
-                            ),
+                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr78"),
                             "nightly": ("/comm-central",),
                         }
                     ),
@@ -518,10 +465,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "scriptworker": immutabledict(
                         {
                             "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
-                            "all-production-repos": (
-                                "/mozilla-releng/scriptworker",
-                                "/mozilla-releng/scriptworker-scripts",
-                            ),
+                            "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts"),
                         }
                     ),
                 }

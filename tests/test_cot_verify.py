@@ -2193,3 +2193,36 @@ async def test_get_scm_level(rw_context, project, level, raises):
             await cotverify.get_scm_level(rw_context, project)
     else:
         assert await cotverify.get_scm_level(rw_context, project) == level
+
+
+# tests for matching scopes with a partial match, implemented for xpi
+@pytest.mark.parametrize(
+    "scope, restricted_scopes, expected",
+    (
+        (
+            "project:xpi:signing:cert:release-signing",
+            ["project:xpi:ship-it:production", "project:xpi:signing:cert:release-signing"],
+            "project:xpi:signing:cert:release-signing",
+        ),
+        ("project:xpi:signing:cert:release", ["project:xpi:ship-it:production", "project:xpi:signing:cert:release-signing"], ""),
+        ("project:xpi:ship-it:production", ["project:xpi:ship-it:production"], "project:xpi:ship-it:production"),
+        (
+            "project:xpi:releng:github:project:mozilla-extensions/xpi-manifest",
+            ["project:xpi:releng:github:project:mozilla-extensions/*"],
+            "project:xpi:releng:github:project:mozilla-extensions/*",
+        ),
+        ("project:xpi:releng:github:project:mozilla-releng/xpi-manifest", ["project:xpi:releng:github:project:mozilla-extensions/*"], ""),
+        ("project:xpi:ship-it:production", ["project:xpi:ship-it:*"], "project:xpi:ship-it:*"),
+        ("project:xpi:ship-it:production", ["project:xpi:ship-it"], ""),
+        ("project:xpi:ship-it:production", ["project:xpi:ship-it:staging"], ""),
+        ("project:xpi:ship-it:*", ["project:xpi:ship-it:*"], "project:xpi:ship-it:*"),
+        ("project:xpi:ship-it", ["*project:xpi:ship-it"], ""),
+        ("project:xpi:ship-it:production", ["project:xpi:ship-it:production*", "project:xpi:ship-it:production"], "COTError"),
+    ),
+)
+def test_scope_in_restricted_scopes(chain, scope, restricted_scopes, expected):
+    if expected == "COTError":
+        with pytest.raises(CoTError):
+            chain.is_scope_in_restricted_scopes(scope, restricted_scopes)
+    else:
+        assert chain.is_scope_in_restricted_scopes(scope, restricted_scopes) is expected
