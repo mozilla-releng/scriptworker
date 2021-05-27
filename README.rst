@@ -38,7 +38,7 @@ Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.script
 Testing
 -------
 
-Without integration tests, install tox, then
+Without integration tests install tox, then
 
 ``NO_CREDENTIALS_TESTS=1 tox -e py36``
 
