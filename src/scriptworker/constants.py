@@ -80,9 +80,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "ed25519_private_key_path": "...",
         "ed25519_public_keys": immutabledict(
             {
-                "docker-worker": tuple(["tk/SjxY3mREARba6ODw7qReUoVWj0RgEIxBURkwcM4I=", "1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A="]),
-                "generic-worker": tuple(["6UPrVTyw0EPQV7bCEMXo+5jNR4clbK55JWG74bBJHZQ=", "tHBwAdz8mK6Fnh7RwmfVh6Kzv1suwp+CFW2fvvTLpwE="]),
-                "scriptworker": tuple(["DaEKQ79ZC/X+7O8zwm8iyhwTlgyjRSi/TDd63fh2JG0=", "N2fb7t0z06GxeidHYDZ63cz2wE2aDA4Hjm7u+FKladc="]),
+                "docker-worker": tuple(["1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A="]),
+                "generic-worker": tuple(["tHBwAdz8mK6Fnh7RwmfVh6Kzv1suwp+CFW2fvvTLpwE="]),
+                "scriptworker": tuple(["N2fb7t0z06GxeidHYDZ63cz2wE2aDA4Hjm7u+FKladc="]),
             }
         ),
         "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
