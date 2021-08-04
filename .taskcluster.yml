@@ -47,7 +47,7 @@ tasks:
            ['py39-cot', 'python:3.9', {
                 NO_CREDENTIALS_TESTS: '1',
             }, ['secrets:get:repo:github.com/mozilla-releng/scriptworker:github']],
-           ['lint', 'python:3.7', {}, []],
+           ['check', 'python:3.7', {}, []],
            ['mypy', 'python:3.7', {}, []]]
     each(py):
       taskId: "${as_slugid(py[0])}"
