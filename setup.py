@@ -20,9 +20,6 @@ if {"register", "upload"}.intersection(set(sys.argv)):
 
 tests_require = [
     "asyncio_extras",
-    # TODO Remove the condition on coverage once
-    # https://github.com/z4r/python-coveralls/issues/73 is fixed
-    "coverage<5",
     "flake8",
     "flake8_docstrings",
     "mock",

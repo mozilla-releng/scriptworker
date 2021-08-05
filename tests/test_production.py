@@ -139,7 +139,7 @@ VERIFY_COT_BRANCH_CONTEXTS = (
     {
         "name": "fenix beta",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.fenix.fennec-beta.latest.arm64-v8a",
+        "index": "mobile.v2.fenix.beta.latest.arm64-v8a",
         "task_type": "signing",
         "cot_product": "mobile",
     },
@@ -157,6 +157,20 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "task_type": "signing",
         "cot_product": "mobile",
         "check_task": False,  # These tasks run on level t workers.
+    },
+    {
+        "name": "adhoc-signing",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "adhoc.v2.adhoc-signing.2021-07-28-vpn-2.4.1-msi-2.release-signing.latest",
+        "task_type": "signing",
+        "cot_product": "adhoc",
+    },
+    {
+        "name": "xpi-manifest reset-search-default",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "xpi.v2.xpi-manifest.reset-search-default-extension.release-signing.latest",
+        "task_type": "signing",
+        "cot_product": "xpi",
     },
 )
 
