@@ -4,6 +4,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[39.0.0] - 2021-08-05
+---------------------
+Changed
+~~~~~~~
+- Removed old CoT keys
+- ``lint`` tox target renamed to ``check`` to match other releng repos
+- Tests now use ``coveralls`` instead of ``pytest-coveralls``
+- fixed ``fenix`` prod cot index; old one hadn't been updated in a year
+- added ``adhoc-signing`` and ``xpi-manifest`` cot index tests
+
 [38.2.0] - 2021-07-14
 ---------------------
 Changed
