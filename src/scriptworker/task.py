@@ -746,6 +746,6 @@ async def claim_work(context):
         "tasks": 1,
     }
     try:
-        return await context.queue.claimWork(context.config["provisioner_id"], context.config["worker_type"], payload)
+        return await context.queue.claimWork(f"{context.config['provisioner_id']}/{context.config['worker_type']}", payload)
     except (taskcluster.exceptions.TaskclusterFailure, aiohttp.ClientError, asyncio.TimeoutError) as exc:
         log.warning("{} {}".format(exc.__class__, exc))
