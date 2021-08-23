@@ -83,14 +83,14 @@ def mobile_chain_pull_request(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope="function")
-def mpd_chain(mpd_private_rw_context):
+def vpn_chain(vpn_private_rw_context):
     chain = _craft_chain(
-        mpd_private_rw_context,
-        scopes=["project:mpd001:releng:signing:cert:release-signing", "ignoreme"],
+        vpn_private_rw_context,
+        scopes=["project:mozillavpn:releng:signing:cert:release-signing", "ignoreme"],
         source_url="https://github.com/mozilla-foobar/private-repo/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
-    chain.context.task["payload"]["env"] = {"MPD001_HEAD_REPOSITORY": "https://github.com/mozilla-services/guardian-vpn"}
+    chain.context.task["payload"]["env"] = {"MOZILLAVPN_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/mozilla-vpn-client"}
     yield chain
 
 
@@ -1462,13 +1462,13 @@ async def test_verify_parent_task_definition(chain, name, task_id, path, decisio
         ),
     ),
 )
-async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path, decision_task_id, decision_path, mocker):
-    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+async def test_verify_parent_task_definition_vpn(vpn_chain, name, task_id, path, decision_task_id, decision_path, mocker):
+    link = cotverify.LinkOfTrust(vpn_chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     if task_id == decision_task_id:
         decision_link = link
     else:
-        decision_link = cotverify.LinkOfTrust(mpd_chain.context, "decision", decision_task_id)
+        decision_link = cotverify.LinkOfTrust(vpn_chain.context, "decision", decision_task_id)
         decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
     class MockedGitHubRepository(object):
@@ -1498,8 +1498,8 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
     mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
     mocker.patch.object(cotverify, "GitHubRepository", new=MockedGitHubRepository)
 
-    mpd_chain.links = list(set([decision_link, link]))
-    await cotverify.verify_parent_task_definition(mpd_chain, link)
+    vpn_chain.links = list(set([decision_link, link]))
+    await cotverify.verify_parent_task_definition(vpn_chain, link)
 
 
 def test_build_taskcluster_yml_url_unknown_server(decision_link):
@@ -1514,14 +1514,14 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
     "source_repo,revision,expected_url",
     (
         (
-            "ssh://github.com/mozilla-services/guardian-vpn",
+            "ssh://github.com/mozilla-mobile/mozilla-vpn-client",
             "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
-            "git@github.com:mozilla-services/guardian-vpn",
+            "git@github.com:mozilla-mobile/mozilla-vpn-client",
             "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
             "https://hg.mozilla.org/ci/taskgraph-try",
@@ -1530,13 +1530,13 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
         ),
     ),
 )
-async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, source_repo, revision, expected_url):
+async def test_get_in_tree_template_auth_morphing(vpn_chain, mocker, use_auth, source_repo, revision, expected_url):
 
     name = "decision"
     task_id = "VUTfOIPFQWaGHf7sIbgTEg"
     if not use_auth:
-        del mpd_chain.context.config["github_oauth_token"]
-    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+        del vpn_chain.context.config["github_oauth_token"]
+    link = cotverify.LinkOfTrust(vpn_chain.context, name, task_id)
 
     async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
         assert url == expected_url

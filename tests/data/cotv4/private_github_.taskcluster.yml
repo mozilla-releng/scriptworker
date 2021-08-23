@@ -12,12 +12,12 @@ tasks:
               branch: taskgraph-try
               revision: 1803b86431e9d43e82e214908c9a2ea93e14c225
               repository:
-                  name: mpd001
+                  name: mozillavpn
                   description: Private Github Stuff
-                  ssh_secret_name: "project/releng/mpd001-deploykey"
+                  ssh_secret_name: "project/releng/mozillavpn-deploykey"
               treeherder: false
-          trustDomain: mpd001
-          canonicalRepo: git@github.com:mozilla-services/guardian-vpn.git
+          trustDomain: mozillavpn
+          canonicalRepo: git@github.com:mozilla-mobile/mozilla-vpn-client.git
       in:
           $if: 'tasks_for in ["github-pull-request", "github-push", "action", "cron"]'
           then:
@@ -94,7 +94,7 @@ tasks:
                       else:
                           $if: 'tasks_for == "cron"'
                           then: '${ownTaskId}'
-                  repositoryPrefix: '${uppercase(taskgraph.repository.name)}'
+                  repositoryPrefix: MOZILLAVPN
               in:
                   $let:
                       level:
