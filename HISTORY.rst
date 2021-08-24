@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[40.0.0] - 2021-08-24
+---------------------
+Changed
+~~~~~~~
+- Removed unused `mpd001` trust domain
+- Added new `mozillavpn` trust domain
+
 [39.0.0] - 2021-08-05
 ---------------------
 Changed
