@@ -154,10 +154,10 @@ async def mobile_rw_context(event_loop):
 
 @pytest.mark.asyncio
 @pytest.yield_fixture(scope="function")
-async def mpd_private_rw_context(event_loop):
+async def vpn_private_rw_context(event_loop):
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product="mpd001", session=session, private=True)
+            context = _craft_rw_context(tmp, event_loop, cot_product="mozillavpn", session=session, private=True)
             yield context
 
 

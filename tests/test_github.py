@@ -17,8 +17,8 @@ def context(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope="function")
-def mpd_context(mpd_private_rw_context):
-    ctx = mpd_private_rw_context
+def vpn_context(vpn_private_rw_context):
+    ctx = vpn_private_rw_context
     ctx.task = {"taskGroupId": "bobo"}
     yield ctx
 
@@ -203,7 +203,7 @@ async def test_has_commit_landed_on_repository(context, github_repository, commi
 
 
 @pytest.mark.asyncio
-async def test_has_commit_landed_on_repository_private(mpd_context, github_repository):
+async def test_has_commit_landed_on_repository_private(vpn_context, github_repository):
     """For private repos we don't actually query against github.
 
     The API used is not formally available and needs authorization on private repos, but isn't clearly useful
@@ -214,11 +214,11 @@ async def test_has_commit_landed_on_repository_private(mpd_context, github_repos
     async def retry_request(_, url):
         assert False, "We should never have made a request"
 
-    assert await github_repository.has_commit_landed_on_repository(mpd_context, commitish) == True
+    assert await github_repository.has_commit_landed_on_repository(vpn_context, commitish) == True
 
 
 @pytest.mark.asyncio
-async def test_has_commit_landed_on_repository_cache(context, mpd_context, github_repository):
+async def test_has_commit_landed_on_repository_cache(context, vpn_context, github_repository):
     global retry_request_call_count
     retry_request_call_count = 0
 
