@@ -391,6 +391,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
                             "project:xpi:releng:github:project:mozilla-extensions/*": "xpi-manifest-repo",
                             "project:xpi:ship-it:production": "xpi-manifest-repo",
+                            "project:xpi:beetmover:bucket:release": "xpi-manifest-repo",
+                            "project:xpi:balrog:server:release": "xpi-manifest-repo",
                         }
                     ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
