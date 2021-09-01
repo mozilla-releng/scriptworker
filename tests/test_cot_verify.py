@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 from copy import deepcopy
+from functools import partial
 from unittest.mock import MagicMock
 
 import aiohttp
@@ -292,18 +293,18 @@ def get_cot(task_defn, task_id="task_id"):
     }
 
 
-async def cotv2_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
+async def cot_load_url(context, url, path, parent_path=None, **kwargs):
     if path.endswith("taskcluster.yml"):
         return load_json_or_yaml(os.path.join(parent_path, ".taskcluster.yml"), is_path=True, file_type="yaml")
     elif path.endswith("projects.yml"):
         return load_json_or_yaml(os.path.join(parent_path, "projects.yml"), is_path=True, file_type="yaml")
 
 
-async def cotv4_load_url(context, url, path, **kwargs):
-    return await cotv2_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs)
+cotv2_load_url = partial(cot_load_url, parent_path=COTV2_DIR)
+cotv4_load_url = partial(cot_load_url, parent_path=COTV4_DIR)
 
 
-def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
+def cot_load(string, is_path=False, parent_dir=None, **kwargs):
     if is_path:
         if string.endswith("parameters.yml"):
             return load_json_or_yaml(os.path.join(parent_dir, "parameters.yml"), is_path=True, file_type="yaml")
@@ -313,16 +314,16 @@ def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
         return load_json_or_yaml(string)
 
 
-def cotv4_load(string, **kwargs):
-    return cotv2_load(string, parent_dir=COTV4_DIR, **kwargs)
+cotv2_load = partial(cot_load, parent_dir=COTV2_DIR)
+cotv4_load = partial(cot_load, parent_dir=COTV4_DIR)
 
 
-async def cotv2_pushlog(_, parent_dir=COTV2_DIR):
+async def cot_pushlog(_, parent_dir=None):
     return load_json_or_yaml(os.path.join(parent_dir, "pushlog.json"), is_path=True)
 
 
-async def cotv4_pushlog(_):
-    return await cotv2_pushlog(parent_dir=COTV4_DIR)
+cotv2_pushlog = partial(cot_pushlog, parent_dir=COTV2_DIR)
+cotv4_pushlog = partial(cot_pushlog, parent_dir=COTV4_DIR)
 
 
 # dependent_task_ids {{{1
@@ -1353,18 +1354,12 @@ async def test_get_action_context_and_template(
     link.task = load_json_or_yaml(path, is_path=True)
     decision_link = cotverify.LinkOfTrust(chain.context, "decision", decision_task_id)
     decision_link.task = load_json_or_yaml(decision_path, is_path=True)
-    if parent_path == COTV4_DIR:
-        mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
-        mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
-        mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
-        mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
-    elif parent_path == COTV2_DIR:
-        mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv2_load_url)
-        mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv2_load_url)
-        mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv2_load)
-        mocker.patch.object(cotverify, "get_pushlog_info", new=cotv2_pushlog)
-    else:
-        assert False, "Unknown parent path {}!".format(parent_path)
+
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=partial(cot_load, parent_dir=parent_path))
+    mocker.patch.object(cotverify, "get_pushlog_info", new=partial(cot_pushlog, parent_dir=parent_path))
+
     chain.links = list(set([decision_link, link]))
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
