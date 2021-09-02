@@ -29,13 +29,10 @@ In conjunction with other best practices, like `separation of roles <https://en.
 Chain of Trust Versions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-1. Initial Chain of Trust implementation with GPG signatures: Initial `1.0.0b1 on 2016-11-14 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#100b1---2016-11-14>`_
-2. CoT v2: rebuild task definitions via json-e. `7.0.0 on 2018-01-18 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#700---2018-01-18>`_
-3. Generic action hook support. `12.0.0 on 2018-05-29 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1200---2018-05-29>`_
-4. Release promotion action hook support. `17.1.0 on 2018-12-28 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#1710---2018-12-28>`_
-5. ed25519 support; deprecate GPG support. `22.0.0 on 2019-03-07 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#2200---2019-03-07>`_
-6. drop support for gpg `23.0.0 on 2019-03-27 <https://github.com/mozilla-releng/scriptworker/blob/master/CHANGELOG.md#2300---2019-03-27>`_
-
-Planned future versions:
-
-* drop support for non-hook actions
+1. Initial Chain of Trust implementation with GPG signatures: Initial `1.0.0b1 on 2016-11-14 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#100b1---2016-11-14>`_
+2. CoT v2: rebuild task definitions via json-e. `7.0.0 on 2018-01-18 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#700---2018-01-18>`_
+3. Generic action hook support. `12.0.0 on 2018-05-29 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#1200---2018-05-29>`_
+4. Release promotion action hook support. `17.1.0 on 2018-12-28 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#1710---2018-12-28>`_
+5. ed25519 support; deprecate GPG support. `22.0.0 on 2019-03-07 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#2200---2019-03-07>`_
+6. drop support for gpg `23.0.0 on 2019-03-27 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#2300---2019-03-27>`_
+7. drop support for non-hook actions `41.0.0 on 2021-09-02 <https://github.com/mozilla-releng/scriptworker/blob/master/HISTORY.rst#4100---2021-09-02>`_

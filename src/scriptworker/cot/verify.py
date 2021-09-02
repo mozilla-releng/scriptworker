@@ -42,7 +42,6 @@ from scriptworker.task import (
     get_pull_request_number,
     get_push_date_time,
     get_repo,
-    get_repo_scope,
     get_revision,
     get_task_id,
     get_triggered_by,
@@ -1375,14 +1374,13 @@ async def get_in_tree_template(link):
 
 def _get_action_from_actions_json(all_actions, callback_name):
     for defn in all_actions:
-        if defn.get("kind") == "hook":
-            if defn.get("hookPayload", {}).get("decision", {}).get("action", {}).get("cb_name") == callback_name:
-                return defn
-        elif defn.get("kind") == "task":
-            if defn.get("task", {}).get("$let", {}).get("action", {}).get("cb_name") == callback_name:
-                return defn
-        else:
-            raise CoTError("Unknown action kind `{kind}` for action `{name}`.".format(kind=defn.get("kind", "<MISSING>"), name=defn.get("name", "<MISSING>")))
+        if defn.get("hookPayload", {}).get("decision", {}).get("action", {}).get("cb_name") == callback_name:
+            if defn.get("kind") != "hook":
+                raise CoTError(
+                    "Unknown action kind `{kind}` for action `{name}`.".format(kind=defn.get("kind", "<MISSING>"), name=defn.get("name", "<MISSING>"))
+                )
+
+            return defn
     raise CoTError("No action with {} callback found.".format(callback_name))
 
 
@@ -1461,37 +1459,29 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     action_name = get_action_callback_name(parent_link.task)
     action_defn = _get_action_from_actions_json(all_actions, action_name)
     jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
-    if "task" in action_defn and chain.context.config["min_cot_version"] <= 2:
-        tmpl = {"tasks": [action_defn["task"]]}
-    elif action_defn.get("kind") == "hook":
-        # action-hook.
-        in_tree_tmpl = await get_in_tree_template(decision_link)
-        action_perm = _get_action_perm(action_defn)
-        tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm)
 
-        # define the JSON-e context with which the hook's task template was
-        # rendered, defined at
-        # https://firefox-ci-tc.services.mozilla.com/docs/reference/core/hooks/firing-hooks#triggerhook
-        # This is created by working backward from the json-e context the
-        # .taskcluster.yml expects
-        jsone_context = {
-            "payload": _render_action_hook_payload(action_defn, jsone_context, parent_link),
-            "taskId": parent_link.task_id,
-            "now": jsone_context["now"],
-            "as_slugid": jsone_context["as_slugid"],
-            "clientId": jsone_context.get("clientId"),
-        }
-    elif action_defn.get("kind") == "task":
-        # XXX Get rid of this block when all actions are hooks
-        tmpl = await get_in_tree_template(decision_link)
-        for k in ("action", "push", "repository"):
-            jsone_context[k] = deepcopy(action_defn["hookPayload"]["decision"].get(k, {}))
-        jsone_context["action"]["repo_scope"] = get_repo_scope(parent_link.task, parent_link.name)
-    else:
+    if action_defn.get("kind") != "hook":
         raise CoTError(
             "Unknown action kind `{kind}` for action `{name}`.".format(kind=action_defn.get("kind", "<MISSING>"), name=action_defn.get("name", "<MISSING>"))
         )
 
+    # action-hook.
+    in_tree_tmpl = await get_in_tree_template(decision_link)
+    action_perm = _get_action_perm(action_defn)
+    tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm)
+
+    # define the JSON-e context with which the hook's task template was
+    # rendered, defined at
+    # https://firefox-ci-tc.services.mozilla.com/docs/reference/core/hooks/firing-hooks#triggerhook
+    # This is created by working backward from the json-e context the
+    # .taskcluster.yml expects
+    jsone_context = {
+        "payload": _render_action_hook_payload(action_defn, jsone_context, parent_link),
+        "taskId": parent_link.task_id,
+        "now": jsone_context["now"],
+        "as_slugid": jsone_context["as_slugid"],
+        "clientId": jsone_context.get("clientId"),
+    }
     return jsone_context, tmpl
 
 
