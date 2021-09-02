@@ -4,6 +4,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[41.0.0] - 2021-09-02
+---------------------
+Removed
+~~~~~~~
+- Support for non-hook actions in CoT
+
+Changed
+~~~~~~~
+- CoT bumped to version 7
+
 [40.0.0] - 2021-08-24
 ---------------------
 Changed
