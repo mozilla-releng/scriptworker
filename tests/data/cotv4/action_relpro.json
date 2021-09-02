@@ -9,7 +9,7 @@
     "tc-treeherder.v2.try.c5429a8112e41dfabe22da0d7d0876fe05a17e67.323126",
     "notify.email.taskcluster-notifications+action-task@mozilla.com.on-failed",
     "notify.email.taskcluster-notifications+action-task@mozilla.com.on-exception",
-    "index.gecko.v2.try.pushlog-id.323126.actions.FBoKTObySZeq25MnvJcSAA"
+    "index.gecko.v2.try.pushlog-id.323126.actions.LpCJV9wUQHSAm5SHyW4Olw"
   ],
   "priority": "very-low",
   "retries": 5,
