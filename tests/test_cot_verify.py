@@ -1322,7 +1322,7 @@ def test_get_action_perm(defn, expected):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path,parent_path," "expected_template_path,expected_context_path",
+    "name,task_id,path,decision_task_id,decision_path," "expected_template_path,expected_context_path",
     (
         (
             "action",
@@ -1330,24 +1330,13 @@ def test_get_action_perm(defn, expected):
             os.path.join(COTV4_DIR, "action_retrigger.json"),
             "c5nn2xbNS9mJxeVC0uNElg",
             os.path.join(COTV4_DIR, "decision_try.json"),
-            COTV4_DIR,
             os.path.join(COTV4_DIR, "retrigger_template.json"),
             os.path.join(COTV4_DIR, "retrigger_context.json"),
-        ),
-        (
-            "action",
-            "MP8uhRdMTjm__Q_sA0GTnA",
-            os.path.join(COTV2_DIR, "action_relpro.json"),
-            "VQU9QMO4Teq7zr91FhBusg",
-            os.path.join(COTV2_DIR, "decision_hg-push.json"),
-            COTV2_DIR,
-            os.path.join(COTV2_DIR, "cotv4_relpro_template.json"),
-            os.path.join(COTV2_DIR, "cotv4_relpro_context.json"),
         ),
     ),
 )
 async def test_get_action_context_and_template(
-    chain, name, task_id, path, decision_task_id, decision_path, parent_path, expected_template_path, expected_context_path, mocker
+    chain, name, task_id, path, decision_task_id, decision_path, expected_template_path, expected_context_path, mocker
 ):
     chain.context.config["min_cot_version"] = 3
     link = cotverify.LinkOfTrust(chain.context, name, task_id)
@@ -1355,10 +1344,10 @@ async def test_get_action_context_and_template(
     decision_link = cotverify.LinkOfTrust(chain.context, "decision", decision_task_id)
     decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
-    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
-    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
-    mocker.patch.object(cotverify, "load_json_or_yaml", new=partial(cot_load, parent_dir=parent_path))
-    mocker.patch.object(cotverify, "get_pushlog_info", new=partial(cot_pushlog, parent_dir=parent_path))
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
+    mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
 
     chain.links = list(set([decision_link, link]))
 
@@ -1407,7 +1396,7 @@ async def test_broken_action_context_and_template(chain, mocker):
 # verify_parent_task_definition {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path",
+    "name,task_id,path,decision_task_id,decision_path,parent_path",
     (
         (
             "decision",
@@ -1415,18 +1404,27 @@ async def test_broken_action_context_and_template(chain, mocker):
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
             "VQU9QMO4Teq7zr91FhBusg",
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
+            COTV2_DIR,
         ),
         (
             "action",
-            "MP8uhRdMTjm__Q_sA0GTnA",
-            os.path.join(COTV2_DIR, "action_relpro.json"),
+            "LpCJV9wUQHSAm5SHyW4Olw",
+            os.path.join(COTV4_DIR, "action_relpro.json"),
             "VQU9QMO4Teq7zr91FhBusg",
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
+            COTV4_DIR,
         ),
-        ("decision", "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json"), "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json")),
+        (
+            "decision",
+            "D4euZNyCRtuBci-fnsfn7A",
+            os.path.join(COTV2_DIR, "cron.json"),
+            "D4euZNyCRtuBci-fnsfn7A",
+            os.path.join(COTV2_DIR, "cron.json"),
+            COTV2_DIR,
+        ),
     ),
 )
-async def test_verify_parent_task_definition(chain, name, task_id, path, decision_task_id, decision_path, mocker):
+async def test_verify_parent_task_definition(chain, name, task_id, path, decision_task_id, decision_path, parent_path, mocker):
     link = cotverify.LinkOfTrust(chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     if task_id == decision_task_id:
@@ -1435,10 +1433,10 @@ async def test_verify_parent_task_definition(chain, name, task_id, path, decisio
         decision_link = cotverify.LinkOfTrust(chain.context, "decision", decision_task_id)
         decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
-    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv2_load_url)
-    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv2_load_url)
-    mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv2_load)
-    mocker.patch.object(cotverify, "get_pushlog_info", new=cotv2_pushlog)
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=partial(cot_load, parent_dir=parent_path))
+    mocker.patch.object(cotverify, "get_pushlog_info", new=partial(cot_pushlog, parent_dir=parent_path))
 
     chain.links = list(set([decision_link, link]))
     await cotverify.verify_parent_task_definition(chain, link)
@@ -1581,7 +1579,6 @@ async def test_no_match_in_actions_json(chain):
             {
                 "actions": [
                     {"name": "act", "kind": "hook", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
-                    {"name": "act2", "kind": "task", "task": {"$let": {"action": {"cb_name": "act2-callback"}}, "in": {}}},
                 ]
             }
         ),
@@ -1620,7 +1617,7 @@ async def test_unknown_action_kind(chain):
         json.dumps(
             {
                 "actions": [
-                    {"name": "magic", "kind": "magic"},
+                    {"name": "magic", "kind": "task", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
                     {"name": "act", "kind": "hook", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
                 ]
             }
