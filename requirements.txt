@@ -1,4 +1,4 @@
-aiohttp>=3
+aiohttp<4
 aiomemoizettl
 arrow>=1.0
 cryptography>=2.6.1
