@@ -2070,13 +2070,13 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     log.setLevel(level)
     logging.basicConfig(level=level)
     event_loop = event_loop or asyncio.get_event_loop()
+    if not opts.cleanup:
+        log.info("Artifacts will be in {}".format(tmp))
     try:
         event_loop.run_until_complete(_async_verify_cot_cmdln(opts, tmp))
     finally:
         if opts.cleanup:
             rm(tmp)
-        else:
-            log.info("Artifacts are in {}".format(tmp))
 
 
 # create_test_workdir {{{1
