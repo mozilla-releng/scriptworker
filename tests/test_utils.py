@@ -644,3 +644,28 @@ def test_fail_get_single_item_from_sequence(
             utils.get_single_item_from_sequence(list_, condition)
 
     assert str(exec_info.value) == expected_message
+
+
+# add_projectid {{{1
+@pytest.mark.parametrize(
+    "task, expected",
+    (
+        ({"foo": "bar"}, {"projectId": "none", "foo": "bar"}),
+        ({"projectId": "existing", "foo": "bar"}, {"projectId": "existing", "foo": "bar"}),
+    ),
+)
+def test_add_projectid(task, expected):
+    assert utils.add_projectid(task) == expected
+
+
+# add_taskqueueid {{{1
+@pytest.mark.parametrize(
+    "task, expected",
+    (
+        ({"provisionerId": "foo", "workerType": "bar"}, {"taskQueueId": "foo/bar"}),
+        ({"taskQueueId": "foo/bar", "provisionerId": "foo", "workerType": "bar"}, {"taskQueueId": "foo/bar"}),
+        ({"taskQueueId": "foo/bar"}, {"taskQueueId": "foo/bar"}),
+    ),
+)
+def test_addtaskqueueid(task, expected):
+    assert utils.add_taskqueueid(task) == expected
