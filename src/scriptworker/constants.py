@@ -335,9 +335,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:signing:cert:release-signing": "all-release-branches",
                             "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
                             "project:releng:flathub:firefox:stable": "release",
-                            "project:releng:snapcraft:firefox:beta": "beta-or-release",  # Needed on release for RCs
-                            "project:releng:snapcraft:firefox:candidate": "release",
-                            "project:releng:snapcraft:firefox:esr": "esr",
                             "project:releng:ship-it:production": "all-production-branches",
                             "project:releng:treescript:action:push": "all-production-branches",
                         }

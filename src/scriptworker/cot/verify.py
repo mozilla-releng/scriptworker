@@ -440,7 +440,6 @@ def get_valid_task_types():
             "decision": verify_parent_task,
             "docker-image": verify_docker_image_task,
             "pushapk": verify_scriptworker_task,
-            "pushsnap": verify_scriptworker_task,
             "shipit": verify_scriptworker_task,
             "signing": verify_scriptworker_task,
             "partials": verify_partials_task,
