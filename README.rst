@@ -42,6 +42,8 @@ Without integration tests, install tox, then
 
 ``NO_CREDENTIALS_TESTS=1 tox -e py36``
 
+Without any tests connecting to the net, then ``NO_TESTS_OVER_WIRE=1 tox -e py36``
+
 With integration tests, first create a client in the Taskcluster UI with the scopes::
 
     queue:cancel-task:test-dummy-scheduler/*
@@ -65,4 +67,4 @@ Then generate a no priviledge personal access token in Github for the scriptwork
     }
 
 
-then to run all tests: ``tox`` or without any tests connecting to the net, then ``NO_TESTS_OVER_WIRE=1 tox -e py36``
+then to run all tests: ``tox``
