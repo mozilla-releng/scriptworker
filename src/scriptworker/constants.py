@@ -375,7 +375,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
                             "project:mobile:focus-android:releng:github:project:focus-android": "focus-repo",
                             "project:mobile:focus-android:releng:googleplay:product:focus-android": "focus-repo",
-                            "project:mobile:focus-android:releng:signing:format:autograph_focus": "focus-repo",
                             # beta and nightly are signed with same key as production
                             "project:mobile:focus-android:releng:signing:cert:production-signing": "focus-repo",
                         }
