@@ -337,6 +337,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:flathub:firefox:stable": "release",
                             "project:releng:ship-it:production": "all-production-branches",
                             "project:releng:treescript:action:push": "all-production-branches",
+                            "project:releng:microsoftstore:beta": "beta",
+                            "project:releng:microsoftstore:release": "release",
                         }
                     ),
                     "thunderbird": immutabledict(
