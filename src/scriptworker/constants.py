@@ -371,10 +371,12 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-production-signing": "fennec-profile-manager-repo",
                             "project:mobile:firefox-tv:releng:googleplay:product:firefox-tv": "firefox-tv-repo",
                             "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
-                            "project:mobile:focus:googleplay:product:focus": "focus-repo",
-                            "project:mobile:focus:releng:signing:cert:release-signing": "focus-repo",
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
+                            "project:mobile:focus-android:releng:github:project:focus-android": "focus-repo",
+                            "project:mobile:focus-android:releng:googleplay:product:focus-android": "focus-repo",
+                            # beta and nightly are signed with same key as production
+                            "project:mobile:focus-android:releng:signing:cert:production-signing": "focus-repo",
                         }
                     ),
                     "mozillavpn": immutabledict(

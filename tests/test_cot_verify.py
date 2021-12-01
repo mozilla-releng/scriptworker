@@ -63,7 +63,7 @@ def try_chain(rw_context):
 def mobile_chain(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
-        scopes=["project:mobile:focus:releng:signing:cert:release-signing", "ignoreme"],
+        scopes=["project:mobile:focus-android:releng:signing:cert:production-signing", "ignoreme"],
         source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
