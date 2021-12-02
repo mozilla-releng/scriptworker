@@ -8,7 +8,7 @@ This project adheres to `Semantic Versioning <http://semver.org/>`__.
 ---------------------
 Removed
 ~~~~~~~
-- Removed obselete Focus scopes
+- Removed obsolete Focus scopes
 - Remove Pushsnap support
 
 Added
