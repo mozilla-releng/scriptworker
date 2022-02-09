@@ -179,7 +179,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(maple|oak|pine))(/|$)",
+                                    r"^(?P<path>/projects/(maple|oak|cedar|pine))(/|$)",
                                 ),
                             }
                         ),
@@ -438,6 +438,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             # XXX remove /projects/maple when we have a
                             #     different prod signing testing solution
                             # XXX remove /projects/oak when we no longer test updates against it
+                            # XXX remove /projects/cedar when we no longer need
                             # XXX remove /projects/pine when we no longer need
                             #     nightly signing
                             "all-nightly-branches": (
@@ -449,6 +450,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-esr91",
                                 "/projects/maple",
                                 "/projects/oak",
+                                "/projects/cedar",
                                 "/projects/pine",
                             ),
                             "all-production-branches": (
