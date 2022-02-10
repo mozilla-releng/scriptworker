@@ -57,10 +57,10 @@ def update_logging_config(context: Any, log_name: Optional[str] = None, file_nam
         # If we rotate the log file via logrotate.d, let's watch the file
         # so we can automatically close/reopen on move.
         handler = logging.handlers.WatchedFileHandler(path)  # type: ignore
-    elif context.config.get("log_max_bytes", 0) or context.config.get("log_max_backups", 0):
+    elif context.config.get("log_max_bytes"):
         handler = logging.handlers.RotatingFileHandler(  # type: ignore
             filename=path,
-            maxBytes=context.config.get("log_max_bytes", 0),
+            maxBytes=context.config["log_max_bytes"],
             backupCount=context.config.get("log_max_backups", 0),
         )
     else:
