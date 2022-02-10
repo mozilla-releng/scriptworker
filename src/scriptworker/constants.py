@@ -56,7 +56,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "task_max_timeout_status": STATUSES["intermittent-task"],
         "invalid_reclaim_status": STATUSES["intermittent-task"],
         "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
+        # Logging settings
         "verbose": True,
+        "log_max_bytes": 0,
+        "log_max_backups": 10,
         # Task settings
         "work_dir": "...",
         "log_dir": "...",
