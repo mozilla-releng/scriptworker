@@ -59,7 +59,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         # Logging settings
         "verbose": True,
         "log_max_bytes": 0,
-        "log_max_backups": 0,
+        "log_max_backups": 10,
         # Task settings
         "work_dir": "...",
         "log_dir": "...",

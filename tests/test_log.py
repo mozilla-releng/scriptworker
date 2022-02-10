@@ -115,3 +115,20 @@ def test_watched_log_file(rw_context):
     with open(path, "r") as fh:
         assert fh.read().rstrip() == "INFO - bar"
     close_handlers(log_name=rw_context.config["log_dir"])
+
+
+def test_rotating_log_file(rw_context):
+    # 500 should be enough to ~fill 2 files
+    MAX_SIZE = 500  # bytes
+    rw_context.config["watch_log_file"] = False
+    rw_context.config["log_max_bytes"] = MAX_SIZE
+    rw_context.config["log_max_backups"] = 1
+    rw_context.config["log_fmt"] = "%(levelname)s - %(message)s"
+    swlog.update_logging_config(rw_context, log_name=rw_context.config["log_dir"])
+    path = os.path.join(rw_context.config["log_dir"], "worker.log")
+    log = logging.getLogger(rw_context.config["log_dir"])
+    for x in range(30):
+        log.info(f"{x}" * x)
+    assert os.path.getsize(path) < MAX_SIZE
+    assert os.path.getsize(path + ".1") < MAX_SIZE
+    close_handlers(log_name=rw_context.config["log_dir"])
