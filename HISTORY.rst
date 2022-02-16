@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[42.1.0] - 2022-02-16
+---------------------
+Added
+~~~~~
+- Support for cedar project
+- Support for log rotation with RotatingFileHandler
+
 [42.0.0] - 2021-12-02
 ---------------------
 Removed
