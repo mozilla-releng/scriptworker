@@ -386,6 +386,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
                             "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
+                            "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
                         }
                     ),
                     "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
