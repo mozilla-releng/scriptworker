@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[42.2.0] - 2022-02-16
+---------------------
+Added
+~~~~~
+- Mozilla VPN to `cot_restricted_scopes`
+
 [42.1.0] - 2022-02-16
 ---------------------
 Added
