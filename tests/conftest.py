@@ -60,8 +60,7 @@ class UnsuccessfulQueue(object):
 
 
 @pytest.fixture(scope="function")
-def event_loop(request):
-    request.param
+def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
