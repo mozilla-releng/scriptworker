@@ -27,3 +27,8 @@ There is also a ``verify_ed25519_signature`` commandline tool. This takes
 a file path and a signature path, and verifies if the file was validly signed
 by a known valid level 3 key. It also takes an optional ``--pubkey PUBKEY``
 argument, which allows you to verify if the file was signed by that pubkey.
+
+Rotating the FirefoxCI CoT keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See `this mana page <https://mana.mozilla.org/wiki/pages/viewpage.action?spaceKey=RelEng&title=Chain+of+Trust+key+rotation>`__.
