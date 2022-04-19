@@ -32,7 +32,7 @@ If you're changing any dependencies, please update `setup.py`.
 If you add change the list of files that need to be packaged (either adding new files, or removing previous packaged files), modify `MANIFEST.in`.
 
 ### Versioning
-Modify `scriptworker/version.py` to set the `__version__` to the appropriate tuple.  This is either a 3- or 4-part tuple, e.g.
+Modify `src/scriptworker/version.py` to set the `__version__` to the appropriate tuple.  This is either a 3- or 4-part tuple, e.g.
 
 ```python
 # 0.10.0a1
@@ -49,7 +49,7 @@ Then run `version.py`:
 
 ```bash
 # Using the local venv python>=3.5,
-python scriptworker/version.py
+python src/scriptworker/version.py
 ```
 
 This will update `version.json`.  Verify both files look correct.

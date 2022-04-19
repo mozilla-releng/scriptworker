@@ -1,7 +1,7 @@
 {
   "provisionerId": "aws-provisioner-v1",
-  "workerType": "mpd001-3-decision",
-  "schedulerId": "mpd001-level-3",
+  "workerType": "mozillavpn-3-decision",
+  "schedulerId": "mozillavpn-level-3",
   "taskGroupId": "VUTfOIPFQWaGHf7sIbgTEg",
   "dependencies": [],
   "requires": "all-completed",
@@ -14,23 +14,23 @@
   "deadline": "2019-10-17T01:43:24.854Z",
   "expires": "2020-10-15T01:43:25.854Z",
   "scopes": [
-    "assume:repo:github.com/mozilla-services/guardian-vpn:branch:releng-release"
+    "assume:repo:github.com/mozilla-mobile/mozilla-vpn-client:branch:releng-release"
   ],
   "payload": {
     "env": {
-      "MPD001_BASE_REPOSITORY": "git@github.com:mozilla-services/guardian-vpn.git",
-      "MPD001_HEAD_REPOSITORY": "git@github.com:mozilla-services/guardian-vpn.git",
-      "MPD001_HEAD_REF": "refs/heads/releng-release",
-      "MPD001_HEAD_REV": "330ea928b42ff2403fc99cd3e596d13294fe8775",
-      "MPD001_REPOSITORY_TYPE": "git",
+      "MOZILLAVPN_BASE_REPOSITORY": "git@github.com:mozilla-mobile/mozilla-vpn-client.git",
+      "MOZILLAVPN_HEAD_REPOSITORY": "git@github.com:mozilla-mobile/mozilla-vpn-client.git",
+      "MOZILLAVPN_HEAD_REF": "refs/heads/releng-release",
+      "MOZILLAVPN_HEAD_REV": "330ea928b42ff2403fc99cd3e596d13294fe8775",
+      "MOZILLAVPN_REPOSITORY_TYPE": "git",
       "TASKGRAPH_BASE_REPOSITORY": "https://hg.mozilla.org/ci/taskgraph",
       "TASKGRAPH_HEAD_REPOSITORY": "https://hg.mozilla.org/ci/taskgraph-try",
       "TASKGRAPH_HEAD_REV": "1803b86431e9d43e82e214908c9a2ea93e14c225",
       "TASKGRAPH_REPOSITORY_TYPE": "hg",
-      "REPOSITORIES": "{\"mpd001\":\"Private Github Stuff\",\"taskgraph\":\"Taskgraph\"}",
+      "REPOSITORIES": "{\"mozillavpn\":\"Private Github Stuff\",\"taskgraph\":\"Taskgraph\"}",
       "HG_STORE_PATH": "/builds/worker/checkouts/hg-store",
       "ANDROID_SDK_ROOT": "/builds/worker/android-sdk",
-      "MPD001_SSH_SECRET_NAME": "project/releng/mpd001-deploykey"
+      "MOZILLAVPN_SSH_SECRET_NAME": "project/releng/mozillavpn-deploykey"
     },
     "features": {
       "taskclusterProxy": true,
@@ -40,13 +40,13 @@
     "maxRunTime": 1800,
     "command": [
       "/usr/local/bin/run-task",
-      "--mpd001-checkout=/builds/worker/checkouts/src",
+      "--mozillavpn-checkout=/builds/worker/checkouts/src",
       "--taskgraph-checkout=/builds/worker/checkouts/taskgraph",
       "--task-cwd=/builds/worker/checkouts/src",
       "--",
       "bash",
       "-cx",
-      "pip install --user /builds/worker/checkouts/taskgraph && ln -s /builds/worker/artifacts artifacts && ~/.local/bin/taskgraph decision --pushlog-id='0' --pushdate='0' --project='guardian-vpn' --message=\"\" --owner='callek@gmail.com' --level='3' --base-repository=\"$MPD001_BASE_REPOSITORY\" --head-repository=\"$MPD001_HEAD_REPOSITORY\" --head-ref=\"$MPD001_HEAD_REF\" --head-rev=\"$MPD001_HEAD_REV\" --repository-type=\"$MPD001_REPOSITORY_TYPE\" --tasks-for='github-push' \n"
+      "pip install --user /builds/worker/checkouts/taskgraph && ln -s /builds/worker/artifacts artifacts && ~/.local/bin/taskgraph decision --pushlog-id='0' --pushdate='0' --project='mozilla-vpn-client' --message=\"\" --owner='callek@gmail.com' --level='3' --base-repository=\"$MOZILLAVPN_BASE_REPOSITORY\" --head-repository=\"$MOZILLAVPN_HEAD_REPOSITORY\" --head-ref=\"$MOZILLAVPN_HEAD_REF\" --head-rev=\"$MOZILLAVPN_HEAD_REV\" --repository-type=\"$MOZILLAVPN_REPOSITORY_TYPE\" --tasks-for='github-push' \n"
     ],
     "artifacts": {
       "public": {
@@ -58,7 +58,7 @@
   },
   "metadata": {
     "owner": "callek@gmail.com",
-    "source": "https://github.com/mozilla-services/guardian-vpn/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+    "source": "https://github.com/mozilla-mobile/mozilla-vpn-client/raw/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
     "name": "Decision Task",
     "description": "The task that creates all of the other tasks in the task graph"
   },

@@ -30,7 +30,7 @@ Usage
 .. _example config file: https://github.com/mozilla-releng/scriptworker/blob/master/scriptworker.yaml.tmpl
 .. _scriptworker.constants.DEFAULT_CONFIG: https://github.com/mozilla-releng/scriptworker/blob/master/src/scriptworker/constants.py
 
-Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.scriptworker``, or in environment variables:  ``TASKCLUSTER_ACCESS_TOKEN``, ``TASKCLUSTER_CLIENT_ID``, and ``TASKCLUSTER_CERTIFICATE``.
+Credentials can live in ``./scriptworker.yaml``, ``./secrets.json``, ``~/.scriptworker``.
 
 * Launch: ``scriptworker [config_path]``
 
@@ -42,11 +42,9 @@ Without integration tests install tox, then
 
 ``NO_CREDENTIALS_TESTS=1 tox -e py36``
 
-Without any tests connecting ot the net, then
+Without any tests connecting to the net, then ``NO_TESTS_OVER_WIRE=1 tox -e py36``
 
-``NO_TESTS_OVER_WIRE=1 tox -e py36``
-
-With integration tests, first create a client with the scopes::
+With integration tests, first create a client in the Taskcluster UI with the scopes::
 
     queue:cancel-task:test-dummy-scheduler/*
     queue:claim-work:test-dummy-provisioner/dummy-worker-*
@@ -58,20 +56,15 @@ With integration tests, first create a client with the scopes::
     queue:task-group-id:test-dummy-scheduler/*
     queue:worker-id:test-dummy-workers/dummy-worker-*
 
-Then  create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
+Then generate a no priviledge personal access token in Github for the scriptworker_github_token (to avoid rate limiting) and create a ``./secrets.json`` or ``~/.scriptworker`` that looks like::
 
     {
         "integration_credentials": {
             "clientId": "...",
             "accessToken": "...",
-            "certificate": "..."
         }
+        "scriptworker_github_token": "..."
     }
 
 
-(``certificate`` is only specified if using temp creds)
-
-
-then
-
-``tox``
+then to run all tests: ``tox``

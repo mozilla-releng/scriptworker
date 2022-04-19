@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 from copy import deepcopy
+from functools import partial
 from unittest.mock import MagicMock
 
 import aiohttp
@@ -62,7 +63,7 @@ def try_chain(rw_context):
 def mobile_chain(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
-        scopes=["project:mobile:focus:releng:signing:cert:release-signing", "ignoreme"],
+        scopes=["project:mobile:focus-android:releng:signing:cert:production-signing", "ignoreme"],
         source_url="https://github.com/mozilla-mobile/focus-android/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
@@ -83,14 +84,14 @@ def mobile_chain_pull_request(mobile_rw_context):
 
 
 @pytest.yield_fixture(scope="function")
-def mpd_chain(mpd_private_rw_context):
+def vpn_chain(vpn_private_rw_context):
     chain = _craft_chain(
-        mpd_private_rw_context,
-        scopes=["project:mpd001:releng:signing:cert:release-signing", "ignoreme"],
+        vpn_private_rw_context,
+        scopes=["project:mozillavpn:releng:signing:cert:release-signing", "ignoreme"],
         source_url="https://github.com/mozilla-foobar/private-repo/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
-    chain.context.task["payload"]["env"] = {"MPD001_HEAD_REPOSITORY": "https://github.com/mozilla-services/guardian-vpn"}
+    chain.context.task["payload"]["env"] = {"MOZILLAVPN_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/mozilla-vpn-client"}
     yield chain
 
 
@@ -292,18 +293,18 @@ def get_cot(task_defn, task_id="task_id"):
     }
 
 
-async def cotv2_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
+async def cot_load_url(context, url, path, parent_path=None, **kwargs):
     if path.endswith("taskcluster.yml"):
         return load_json_or_yaml(os.path.join(parent_path, ".taskcluster.yml"), is_path=True, file_type="yaml")
     elif path.endswith("projects.yml"):
         return load_json_or_yaml(os.path.join(parent_path, "projects.yml"), is_path=True, file_type="yaml")
 
 
-async def cotv4_load_url(context, url, path, **kwargs):
-    return await cotv2_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs)
+cotv2_load_url = partial(cot_load_url, parent_path=COTV2_DIR)
+cotv4_load_url = partial(cot_load_url, parent_path=COTV4_DIR)
 
 
-def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
+def cot_load(string, is_path=False, parent_dir=None, **kwargs):
     if is_path:
         if string.endswith("parameters.yml"):
             return load_json_or_yaml(os.path.join(parent_dir, "parameters.yml"), is_path=True, file_type="yaml")
@@ -313,16 +314,16 @@ def cotv2_load(string, is_path=False, parent_dir=COTV2_DIR, **kwargs):
         return load_json_or_yaml(string)
 
 
-def cotv4_load(string, **kwargs):
-    return cotv2_load(string, parent_dir=COTV4_DIR, **kwargs)
+cotv2_load = partial(cot_load, parent_dir=COTV2_DIR)
+cotv4_load = partial(cot_load, parent_dir=COTV4_DIR)
 
 
-async def cotv2_pushlog(_, parent_dir=COTV2_DIR):
+async def cot_pushlog(_, parent_dir=None):
     return load_json_or_yaml(os.path.join(parent_dir, "pushlog.json"), is_path=True)
 
 
-async def cotv4_pushlog(_):
-    return await cotv2_pushlog(parent_dir=COTV4_DIR)
+cotv2_pushlog = partial(cot_pushlog, parent_dir=COTV2_DIR)
+cotv4_pushlog = partial(cot_pushlog, parent_dir=COTV4_DIR)
 
 
 # dependent_task_ids {{{1
@@ -1321,7 +1322,7 @@ def test_get_action_perm(defn, expected):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path,parent_path," "expected_template_path,expected_context_path",
+    "name,task_id,path,decision_task_id,decision_path," "expected_template_path,expected_context_path",
     (
         (
             "action",
@@ -1329,42 +1330,25 @@ def test_get_action_perm(defn, expected):
             os.path.join(COTV4_DIR, "action_retrigger.json"),
             "c5nn2xbNS9mJxeVC0uNElg",
             os.path.join(COTV4_DIR, "decision_try.json"),
-            COTV4_DIR,
             os.path.join(COTV4_DIR, "retrigger_template.json"),
             os.path.join(COTV4_DIR, "retrigger_context.json"),
-        ),
-        (
-            "action",
-            "MP8uhRdMTjm__Q_sA0GTnA",
-            os.path.join(COTV2_DIR, "action_relpro.json"),
-            "VQU9QMO4Teq7zr91FhBusg",
-            os.path.join(COTV2_DIR, "decision_hg-push.json"),
-            COTV2_DIR,
-            os.path.join(COTV2_DIR, "cotv4_relpro_template.json"),
-            os.path.join(COTV2_DIR, "cotv4_relpro_context.json"),
         ),
     ),
 )
 async def test_get_action_context_and_template(
-    chain, name, task_id, path, decision_task_id, decision_path, parent_path, expected_template_path, expected_context_path, mocker
+    chain, name, task_id, path, decision_task_id, decision_path, expected_template_path, expected_context_path, mocker
 ):
     chain.context.config["min_cot_version"] = 3
     link = cotverify.LinkOfTrust(chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     decision_link = cotverify.LinkOfTrust(chain.context, "decision", decision_task_id)
     decision_link.task = load_json_or_yaml(decision_path, is_path=True)
-    if parent_path == COTV4_DIR:
-        mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
-        mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
-        mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
-        mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
-    elif parent_path == COTV2_DIR:
-        mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv2_load_url)
-        mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv2_load_url)
-        mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv2_load)
-        mocker.patch.object(cotverify, "get_pushlog_info", new=cotv2_pushlog)
-    else:
-        assert False, "Unknown parent path {}!".format(parent_path)
+
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
+    mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
+
     chain.links = list(set([decision_link, link]))
 
     result = await cotverify.get_action_context_and_template(chain, link, decision_link)
@@ -1412,7 +1396,7 @@ async def test_broken_action_context_and_template(chain, mocker):
 # verify_parent_task_definition {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path",
+    "name,task_id,path,decision_task_id,decision_path,parent_path",
     (
         (
             "decision",
@@ -1420,18 +1404,27 @@ async def test_broken_action_context_and_template(chain, mocker):
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
             "VQU9QMO4Teq7zr91FhBusg",
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
+            COTV2_DIR,
         ),
         (
             "action",
-            "MP8uhRdMTjm__Q_sA0GTnA",
-            os.path.join(COTV2_DIR, "action_relpro.json"),
+            "LpCJV9wUQHSAm5SHyW4Olw",
+            os.path.join(COTV4_DIR, "action_relpro.json"),
             "VQU9QMO4Teq7zr91FhBusg",
             os.path.join(COTV2_DIR, "decision_hg-push.json"),
+            COTV4_DIR,
         ),
-        ("decision", "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json"), "D4euZNyCRtuBci-fnsfn7A", os.path.join(COTV2_DIR, "cron.json")),
+        (
+            "decision",
+            "D4euZNyCRtuBci-fnsfn7A",
+            os.path.join(COTV2_DIR, "cron.json"),
+            "D4euZNyCRtuBci-fnsfn7A",
+            os.path.join(COTV2_DIR, "cron.json"),
+            COTV2_DIR,
+        ),
     ),
 )
-async def test_verify_parent_task_definition(chain, name, task_id, path, decision_task_id, decision_path, mocker):
+async def test_verify_parent_task_definition(chain, name, task_id, path, decision_task_id, decision_path, parent_path, mocker):
     link = cotverify.LinkOfTrust(chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     if task_id == decision_task_id:
@@ -1440,10 +1433,10 @@ async def test_verify_parent_task_definition(chain, name, task_id, path, decisio
         decision_link = cotverify.LinkOfTrust(chain.context, "decision", decision_task_id)
         decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
-    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv2_load_url)
-    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv2_load_url)
-    mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv2_load)
-    mocker.patch.object(cotverify, "get_pushlog_info", new=cotv2_pushlog)
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=partial(cot_load_url, parent_path=parent_path))
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=partial(cot_load, parent_dir=parent_path))
+    mocker.patch.object(cotverify, "get_pushlog_info", new=partial(cot_pushlog, parent_dir=parent_path))
 
     chain.links = list(set([decision_link, link]))
     await cotverify.verify_parent_task_definition(chain, link)
@@ -1462,13 +1455,13 @@ async def test_verify_parent_task_definition(chain, name, task_id, path, decisio
         ),
     ),
 )
-async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path, decision_task_id, decision_path, mocker):
-    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+async def test_verify_parent_task_definition_vpn(vpn_chain, name, task_id, path, decision_task_id, decision_path, mocker):
+    link = cotverify.LinkOfTrust(vpn_chain.context, name, task_id)
     link.task = load_json_or_yaml(path, is_path=True)
     if task_id == decision_task_id:
         decision_link = link
     else:
-        decision_link = cotverify.LinkOfTrust(mpd_chain.context, "decision", decision_task_id)
+        decision_link = cotverify.LinkOfTrust(vpn_chain.context, "decision", decision_task_id)
         decision_link.task = load_json_or_yaml(decision_path, is_path=True)
 
     class MockedGitHubRepository(object):
@@ -1498,8 +1491,8 @@ async def test_verify_parent_task_definition_mpd(mpd_chain, name, task_id, path,
     mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
     mocker.patch.object(cotverify, "GitHubRepository", new=MockedGitHubRepository)
 
-    mpd_chain.links = list(set([decision_link, link]))
-    await cotverify.verify_parent_task_definition(mpd_chain, link)
+    vpn_chain.links = list(set([decision_link, link]))
+    await cotverify.verify_parent_task_definition(vpn_chain, link)
 
 
 def test_build_taskcluster_yml_url_unknown_server(decision_link):
@@ -1514,14 +1507,14 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
     "source_repo,revision,expected_url",
     (
         (
-            "ssh://github.com/mozilla-services/guardian-vpn",
+            "ssh://github.com/mozilla-mobile/mozilla-vpn-client",
             "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
-            "git@github.com:mozilla-services/guardian-vpn",
+            "git@github.com:mozilla-mobile/mozilla-vpn-client",
             "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-services/guardian-vpn/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
+            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
         ),
         (
             "https://hg.mozilla.org/ci/taskgraph-try",
@@ -1530,13 +1523,13 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
         ),
     ),
 )
-async def test_get_in_tree_template_auth_morphing(mpd_chain, mocker, use_auth, source_repo, revision, expected_url):
+async def test_get_in_tree_template_auth_morphing(vpn_chain, mocker, use_auth, source_repo, revision, expected_url):
 
     name = "decision"
     task_id = "VUTfOIPFQWaGHf7sIbgTEg"
     if not use_auth:
-        del mpd_chain.context.config["github_oauth_token"]
-    link = cotverify.LinkOfTrust(mpd_chain.context, name, task_id)
+        del vpn_chain.context.config["github_oauth_token"]
+    link = cotverify.LinkOfTrust(vpn_chain.context, name, task_id)
 
     async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
         assert url == expected_url
@@ -1586,7 +1579,6 @@ async def test_no_match_in_actions_json(chain):
             {
                 "actions": [
                     {"name": "act", "kind": "hook", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
-                    {"name": "act2", "kind": "task", "task": {"$let": {"action": {"cb_name": "act2-callback"}}, "in": {}}},
                 ]
             }
         ),
@@ -1625,7 +1617,7 @@ async def test_unknown_action_kind(chain):
         json.dumps(
             {
                 "actions": [
-                    {"name": "magic", "kind": "magic"},
+                    {"name": "magic", "kind": "task", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
                     {"name": "act", "kind": "hook", "hookPayload": {"decision": {"action": {"cb_name": "act-callback"}}}},
                 ]
             }

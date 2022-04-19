@@ -56,10 +56,16 @@ def update_logging_config(context: Any, log_name: Optional[str] = None, file_nam
     if context.config["watch_log_file"]:
         # If we rotate the log file via logrotate.d, let's watch the file
         # so we can automatically close/reopen on move.
-        handler = logging.handlers.WatchedFileHandler(path)
+        handler = logging.handlers.WatchedFileHandler(path)  # type: ignore
+    elif context.config["log_max_bytes"] and context.config["log_max_backups"]:
+        handler = logging.handlers.RotatingFileHandler(  # type: ignore
+            filename=path,
+            maxBytes=context.config["log_max_bytes"],
+            backupCount=context.config["log_max_backups"],
+        )
     else:
         # Avoid using WatchedFileHandler during scriptworker unittests
-        handler = logging.FileHandler(path)
+        handler = logging.FileHandler(path)  # type: ignore
     handler.setFormatter(formatter)
     top_level_logger.addHandler(handler)
     top_level_logger.addHandler(logging.NullHandler())

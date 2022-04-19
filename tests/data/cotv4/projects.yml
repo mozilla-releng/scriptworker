@@ -114,6 +114,19 @@ oak:
     taskcluster-docker-routes-v2: true
     taskcluster-cron: true
     taskcluster-push: true
+cedar:
+  repo: https://hg.mozilla.org/projects/cedar
+  repo_type: hg
+  access: scm_level_3
+  trust_domain: gecko
+  features:
+    gecko-roles: true
+    gecko-actions: true
+    buildbot: true
+    taskcluster-docker-routes-v1: true
+    taskcluster-docker-routes-v2: true
+    taskcluster-cron: true
+    taskcluster-push: true
 pine:
   repo: https://hg.mozilla.org/projects/pine
   repo_type: hg

@@ -56,7 +56,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "task_max_timeout_status": STATUSES["intermittent-task"],
         "invalid_reclaim_status": STATUSES["intermittent-task"],
         "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
+        # Logging settings
         "verbose": True,
+        "log_max_bytes": 0,
+        "log_max_backups": 10,
         # Task settings
         "work_dir": "...",
         "log_dir": "...",
@@ -116,7 +119,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "firefox": "hg",
                         "thunderbird": "hg",
                         "mobile": "github",
-                        "mpd001": "github",
+                        "mozillavpn": "github",
                         "app-services": "github",
                         "glean": "github",
                         "xpi": "github",
@@ -134,7 +137,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "firefox": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision"),
                         "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision"),
                         "mobile": ("mobile-1/decision", "mobile-3/decision"),
-                        "mpd001": ("mpd001-1/decision", "mpd001-3/decision"),
+                        "mozillavpn": ("mozillavpn-1/decision", "mozillavpn-3/decision"),
                         "app-services": ("app-services-1/decision", "app-services-3/decision"),
                         "glean": ("glean-1/decision", "glean-3/decision"),
                         "xpi": ("xpi-1/decision", "xpi-3/decision"),
@@ -152,7 +155,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images"),
                         "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images"),
                         "mobile": ("mobile-1/images", "mobile-3/images"),
-                        "mpd001": ("mpd001-1/images", "mpd001-3/images"),
+                        "mozillavpn": ("mozillavpn-1/images", "mozillavpn-3/images"),
                         "app-services": ("app-services-1/images", "app-services-3/images"),
                         "glean": ("glean-1/images", "glean-3/images"),
                         "xpi": ("xpi-1/images", "xpi-3/images"),
@@ -176,7 +179,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(maple|oak|pine))(/|$)",
+                                    r"^(?P<path>/projects/(maple|oak|cedar|pine))(/|$)",
                                 ),
                             }
                         ),
@@ -213,12 +216,12 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             }
                         ),
                     ),
-                    "mpd001": (
+                    "mozillavpn": (
                         immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-services/(?:guardian-vpn-windows))(/|.git|$)"]),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:mozilla-vpn-client))(/|.git|$)"]),
                             }
                         ),
                     ),
@@ -275,7 +278,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "github-push",
                         "github-release",
                     ),
-                    "mpd001": ("cron", "github-pull-request", "github-push", "github-release"),
+                    "mozillavpn": ("cron", "github-pull-request", "github-push", "github-release"),
                     "app-services": (
                         "action",
                         "cron",
@@ -308,7 +311,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "firefox": "",
                     "thunderbird": "",
                     "mobile": "mozilla-mobile",
-                    "mpd001": "mozilla-services",
+                    "mozillavpn": "mozilla-mobile",
                     "app-services": "mozilla",
                     "glean": "mozilla",
                     "xpi": "mozilla-extensions",
@@ -335,11 +338,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:signing:cert:release-signing": "all-release-branches",
                             "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
                             "project:releng:flathub:firefox:stable": "release",
-                            "project:releng:snapcraft:firefox:beta": "beta-or-release",  # Needed on release for RCs
-                            "project:releng:snapcraft:firefox:candidate": "release",
-                            "project:releng:snapcraft:firefox:esr": "esr",
                             "project:releng:ship-it:production": "all-production-branches",
                             "project:releng:treescript:action:push": "all-production-branches",
+                            "project:releng:microsoftstore:beta": "beta",
+                            "project:releng:microsoftstore:release": "release",
                         }
                     ),
                     "thunderbird": immutabledict(
@@ -372,16 +374,19 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-production-signing": "fennec-profile-manager-repo",
                             "project:mobile:firefox-tv:releng:googleplay:product:firefox-tv": "firefox-tv-repo",
                             "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
-                            "project:mobile:focus:googleplay:product:focus": "focus-repo",
-                            "project:mobile:focus:releng:signing:cert:release-signing": "focus-repo",
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
+                            "project:mobile:focus-android:releng:github:project:focus-android": "focus-repo",
+                            "project:mobile:focus-android:releng:googleplay:product:focus-android": "focus-repo",
+                            # beta and nightly are signed with same key as production
+                            "project:mobile:focus-android:releng:signing:cert:production-signing": "focus-repo",
                         }
                     ),
-                    "mpd001": immutabledict(
+                    "mozillavpn": immutabledict(
                         {
-                            "project:mpd001:releng:signing:cert:nightly-signing": "mpd001-repo",
-                            "project:mpd001:releng:signing:cert:release-signing": "mpd001-repo",
+                            "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
+                            "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
+                            "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
                         }
                     ),
                     "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
@@ -391,6 +396,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
                             "project:xpi:releng:github:project:mozilla-extensions/*": "xpi-manifest-repo",
                             "project:xpi:ship-it:production": "xpi-manifest-repo",
+                            "project:xpi:beetmover:bucket:release": "xpi-manifest-repo",
+                            "project:xpi:balrog:server:release": "xpi-manifest-repo",
                         }
                     ),
                     "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
@@ -432,6 +439,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             # XXX remove /projects/maple when we have a
                             #     different prod signing testing solution
                             # XXX remove /projects/oak when we no longer test updates against it
+                            # XXX remove /projects/cedar when we no longer need
                             # XXX remove /projects/pine when we no longer need
                             #     nightly signing
                             "all-nightly-branches": (
@@ -443,6 +451,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-esr91",
                                 "/projects/maple",
                                 "/projects/oak",
+                                "/projects/cedar",
                                 "/projects/pine",
                             ),
                             "all-production-branches": (
@@ -476,7 +485,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
                         }
                     ),
-                    "mpd001": immutabledict({"mpd001-repo": ("/mozilla-services/guardian-vpn-windows",)}),
+                    "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
                     "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
                     "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
                     "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
@@ -497,7 +506,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "thunderbird": ("decision", "action", "docker-image"),
                     # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
-                    "mpd001": "any",  # all allowed
+                    "mozillavpn": "any",  # all allowed
                     "app-services": "any",  # all allowed
                     "glean": "any",  # all allowed
                     "xpi": "any",  # all allowed
@@ -512,7 +521,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "firefox": "GECKO",
                     "thunderbird": "COMM",
                     "mobile": "MOBILE",
-                    "mpd001": "MPD001",
+                    "mozillavpn": "MOZILLAVPN",
                     "app-services": "APPSERVICES",
                     "glean": "GLEAN",
                     "xpi": "XPI",

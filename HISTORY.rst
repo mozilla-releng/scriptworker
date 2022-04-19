@@ -4,6 +4,50 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[42.2.0] - 2022-02-16
+---------------------
+Added
+~~~~~
+- Mozilla VPN to `cot_restricted_scopes`
+
+[42.1.0] - 2022-02-16
+---------------------
+Added
+~~~~~
+- Support for cedar project
+- Support for log rotation with RotatingFileHandler
+
+[42.0.0] - 2021-12-02
+---------------------
+Removed
+~~~~~~~
+- Removed obsolete Focus scopes
+- Remove Pushsnap support
+
+Added
+~~~~~~~
+- Added Focus for android scopes for github-script, signing-script and pushapk-script
+- Added xpi scopes for Beetmover and Balrog
+- Added microsoft store scopes for Firefox
+- Test coverage for utils and cleanup
+
+[41.0.0] - 2021-09-02
+---------------------
+Removed
+~~~~~~~
+- Support for non-hook actions in CoT
+
+Changed
+~~~~~~~
+- CoT bumped to version 7
+
+[40.0.0] - 2021-08-24
+---------------------
+Changed
+~~~~~~~
+- Removed unused `mpd001` trust domain
+- Added new `mozillavpn` trust domain
+
 [39.0.0] - 2021-08-05
 ---------------------
 Changed
