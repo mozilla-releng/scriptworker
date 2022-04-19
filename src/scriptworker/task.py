@@ -16,10 +16,10 @@ from asyncio.subprocess import PIPE
 from copy import deepcopy
 
 import aiohttp
-import taskcluster
 import taskcluster.exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
+import taskcluster
 from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (

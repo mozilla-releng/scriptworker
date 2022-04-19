@@ -9,9 +9,9 @@ from copy import deepcopy
 
 import mock
 import pytest
-import taskcluster
 
 import scriptworker.context as swcontext
+import taskcluster
 from scriptworker.exceptions import CoTError
 
 

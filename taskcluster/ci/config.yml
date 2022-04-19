@@ -1,0 +1,37 @@
+---
+trust-domain: scriptworker
+
+task-priority: high
+
+taskgraph:
+    register: scriptworker_taskgraph:register
+    repositories:
+        scriptworker:
+            name: "Scriptworker"
+            project-regex: scriptworker$
+            default-repository: https://github.com/mozilla-releng/scriptworker
+            default-ref: master
+            type: git
+
+workers:
+    aliases:
+        b-linux:
+            provisioner: scriptworker-{level}
+            implementation: docker-worker
+            os: linux
+            worker-type: 'b-linux'
+        images:
+            provisioner: scriptworker-{level}
+            implementation: docker-worker
+            os: linux
+            worker-type: 'images'
+
+notify:
+    email:
+        - release+scriptworker@mozilla.com
+    prefix: "[scriptworker]"
+
+private-artifact-prefix: releng/scriptworker
+
+scriptworker:
+    scope-prefix: project:scriptworker:releng
