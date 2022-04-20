@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+[XXX] - Unreleased
+---------------------
+Added
+~~~~~
+- Added config for `provisionprofile_dir` (Mac signing)
+
 [42.2.0] - 2022-02-16
 ---------------------
 Added

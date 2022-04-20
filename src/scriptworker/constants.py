@@ -67,6 +67,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "task_log_dir": "...",  # set this to ARTIFACT_DIR/public/logs
         "artifact_upload_timeout": 60 * 20,
         "max_concurrent_downloads": 5,
+        "provisionprofile_dir": "...",  # For apple signing
         # chain of trust settings
         "sign_chain_of_trust": True,
         "verify_chain_of_trust": False,  # TODO True
@@ -504,9 +505,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 {
                     "firefox": ("decision", "action", "docker-image"),
                     "thunderbird": ("decision", "action", "docker-image"),
+                    "mozillavpn": ("decision", "action", "docker-image"),
                     # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
-                    "mozillavpn": "any",  # all allowed
                     "app-services": "any",  # all allowed
                     "glean": "any",  # all allowed
                     "xpi": "any",  # all allowed
