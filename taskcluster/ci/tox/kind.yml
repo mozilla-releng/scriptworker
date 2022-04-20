@@ -63,21 +63,21 @@ jobs:
             NO_CREDENTIALS_TESTS: "1"
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
-    py38:
+    py38-cot:
         python-version: "3.8"
         targets: py38-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
-    py39:
+    py39-cot:
         python-version: "3.9"
         targets: py39-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
-    py310:
+    py310-cot:
         python-version: "3.10"
         targets: py310-cot
         env:
