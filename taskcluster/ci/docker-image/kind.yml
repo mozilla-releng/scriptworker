@@ -18,7 +18,7 @@ jobs:
     python3.9:
         definition: python
         args:
-            PYTHON_VERSION: "3.9.7"
+            PYTHON_VERSION: "3.9"
     python3.8:
         definition: python
         args:
