@@ -1,0 +1,72 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+loader: taskgraph.loader.transform:loader
+
+kind-dependencies:
+    - docker-image
+
+transforms:
+    - scriptworker_taskgraph.transforms.tox:transforms
+    - taskgraph.transforms.job:transforms
+    - taskgraph.transforms.task:transforms
+
+job-defaults:
+    description: "{name} tox-{targets}"
+    run-on-tasks-for: ["action", "github-pull-request", "github-push"]
+    attributes:
+        code-review: true
+    worker-type: b-linux
+    worker:
+        docker-image: {in-tree: 'python{python-version}'}
+        max-run-time: 1800
+    run:
+        using: run-task
+        cache-dotcache: false
+        checkout:
+            scriptworker: {}
+        # sparse-profile: str/none
+        # workdir:
+        cwd: '{checkout}'
+        command:
+            - sh
+            - -lxce
+            - >-
+              tox -e {targets}
+
+jobs:
+    py37:
+        python-version: "3.7"
+        targets: py37,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+    py38:
+        python-version: "3.8"
+        targets: py38,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+    py39:
+        python-version: "3.9"
+        targets: py39,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+    py310:
+        python-version: "3.10"
+        targets: py310,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+    py38-cot:
+        python-version: "3.8"
+        targets: py38-cot
+        env:
+            NO_CREDENTIALS_TESTS: "1"
+        scopes:
+            - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
+    py39-cot:
+        python-version: "3.9"
+        targets: py39-cot
+        env:
+            NO_CREDENTIALS_TESTS: "1"
+        scopes:
+            - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
