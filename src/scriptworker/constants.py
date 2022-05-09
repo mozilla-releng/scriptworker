@@ -424,6 +424,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
+                                "/releases/mozilla-esr102",
                                 "/projects/maple",
                             ),
                             # Limit things like pushapk to just these branches
@@ -433,6 +434,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "esr": (
                                 "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
+                                "/releases/mozilla-esr102",
                             ),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
@@ -449,6 +451,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
+                                "/releases/mozilla-esr102",
                                 "/projects/maple",
                                 "/projects/oak",
                                 "/projects/cedar",
@@ -460,6 +463,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
+                                "/releases/mozilla-esr102",
                             ),
                         }
                     ),
