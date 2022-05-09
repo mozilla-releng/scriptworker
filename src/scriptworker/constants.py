@@ -469,13 +469,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91"),
+                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91", "/releases/comm-esr102"),
                             "beta": ("/releases/comm-beta",),
                             "esr": (
                                 "/releases/comm-esr78",
                                 "/releases/comm-esr91",
+                                "/releases/comm-esr102",
                             ),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91"),
+                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91", "/releases/comm-esr102"),
                             "nightly": ("/comm-central",),
                         }
                     ),
