@@ -422,7 +422,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "all-release-branches": (
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
                                 "/projects/maple",
@@ -432,7 +431,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "beta": ("/releases/mozilla-beta",),
                             "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
                             "esr": (
-                                "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
                             ),
@@ -449,7 +447,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-unified",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
                                 "/projects/maple",
@@ -461,7 +458,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/mozilla-central",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
-                                "/releases/mozilla-esr78",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
                             ),
@@ -469,14 +465,13 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91", "/releases/comm-esr102"),
+                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr91", "/releases/comm-esr102"),
                             "beta": ("/releases/comm-beta",),
                             "esr": (
-                                "/releases/comm-esr78",
                                 "/releases/comm-esr91",
                                 "/releases/comm-esr102",
                             ),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr78", "/releases/comm-esr91", "/releases/comm-esr102"),
+                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr91", "/releases/comm-esr102"),
                             "nightly": ("/comm-central",),
                         }
                     ),
