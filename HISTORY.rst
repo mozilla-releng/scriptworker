@@ -4,6 +4,22 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.0.0 - 2022-05-12
+-------------------
+Added
+~~~~~
+- Added a new trusted generic-worker CoT key
+- Added esr102 support
+- Added py3.10 testing
+
+Changed
+~~~~~~~
+- Moved the repo automation to taskgraph
+
+Removed
+~~~~~~~
+- Removed esr78 support
+
 [42.2.0] - 2022-02-16
 ---------------------
 Added
