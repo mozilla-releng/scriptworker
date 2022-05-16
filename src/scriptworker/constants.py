@@ -92,7 +92,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "IxbFWmV+MwHRQFOO6TDUfSsYA1Og+M/fpkpjuX5X5gg=",
                     ]
                 ),
-                "scriptworker": tuple(["N2fb7t0z06GxeidHYDZ63cz2wE2aDA4Hjm7u+FKladc="]),
+                "scriptworker": tuple(
+                    [
+                        # 2021 key; remove when we've finished migrating to the new key
+                        "N2fb7t0z06GxeidHYDZ63cz2wE2aDA4Hjm7u+FKladc=",
+                        # 2022 key, RELENG-828
+                        "uJhnk8irgYrkrcxnJUdfIsJo3gntBL+jvZNhNt/pJ/0=",
+                    ]
+                ),
             }
         ),
         "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
