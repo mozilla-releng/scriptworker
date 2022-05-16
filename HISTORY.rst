@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.1.0 - 2022-05-16
+-------------------
+Added
+~~~~~
+- Added a new trusted scriptworker CoT key
+
 43.0.0 - 2022-05-12
 -------------------
 Added
