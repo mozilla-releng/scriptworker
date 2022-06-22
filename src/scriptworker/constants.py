@@ -193,7 +193,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(maple|oak|cedar|pine))(/|$)",
+                                    r"^(?P<path>/projects/(oak|pine))(/|$)",
                                 ),
                             }
                         ),
@@ -431,14 +431,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "firefox": immutabledict(
                         {
                             # Which repos can perform release actions?
-                            # XXX remove /projects/maple when we have a
-                            #     different prod signing testing solution
                             "all-release-branches": (
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
-                                "/projects/maple",
                             ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
@@ -450,10 +447,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
-                            # XXX remove /projects/maple when we have a
-                            #     different prod signing testing solution
                             # XXX remove /projects/oak when we no longer test updates against it
-                            # XXX remove /projects/cedar when we no longer need
                             # XXX remove /projects/pine when we no longer need
                             #     nightly signing
                             "all-nightly-branches": (
@@ -463,9 +457,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
-                                "/projects/maple",
                                 "/projects/oak",
-                                "/projects/cedar",
                                 "/projects/pine",
                             ),
                             "all-production-branches": (
