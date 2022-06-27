@@ -193,7 +193,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(oak|pine))(/|$)",
+                                    r"^(?P<path>/projects/(oak|pine|pine-stable))(/|$)",
                                 ),
                             }
                         ),
@@ -459,6 +459,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-esr102",
                                 "/projects/oak",
                                 "/projects/pine",
+                                "/projects/pine-stable",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
