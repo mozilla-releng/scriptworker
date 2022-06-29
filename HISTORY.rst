@@ -4,11 +4,15 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-43.2.0 - 2022-06-28
+43.2.0 - 2022-06-29
 -------------------
 Added
 ~~~~~
 - Added pine-stable support
+
+Changed
+~~~~~~~
+- Removed maple and cedar from the list of privileged branches
 
 43.1.0 - 2022-05-16
 -------------------
