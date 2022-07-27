@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.3.0 - 2022-07-27
+-------------------
+Added
+~~~~~
+- Added a new trusted docker-worker CoT key
+- Added mozillavpn beetmover scopes to `cot_restricted_scopes`
+
 43.2.0 - 2022-06-29
 -------------------
 Added
