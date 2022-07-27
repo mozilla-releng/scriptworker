@@ -161,7 +161,7 @@ VERIFY_COT_BRANCH_CONTEXTS = (
     {
         "name": "adhoc-signing",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "adhoc.v2.adhoc-signing.2021-07-28-vpn-2.4.1-msi-2.release-signing.latest",
+        "index": "adhoc.v2.adhoc-signing.bug1774221-3.release-signing.latest",
         "task_type": "signing",
         "cot_product": "adhoc",
     },
