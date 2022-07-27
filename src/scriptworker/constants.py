@@ -83,7 +83,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "ed25519_private_key_path": "...",
         "ed25519_public_keys": immutabledict(
             {
-                "docker-worker": tuple(["1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A="]),
+                "docker-worker": tuple(
+                    [
+                        # 2021 key; remove when we've finished migrating to the new key
+                        "1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A=",
+                        # 2022 key, RELENG-830
+                        "YM4whpr6pGNnF+LHUGWZPgDXiWOTdEQwctTr4LyeO/Q=",
+                    ]
+                ),
                 "generic-worker": tuple(
                     [
                         # 2021 key; remove when we've finished migrating to the new key
@@ -401,6 +408,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
                             "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
                             "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
+                            "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
                         }
                     ),
                     "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
