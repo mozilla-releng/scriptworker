@@ -88,7 +88,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         # 2021 key; remove when we've finished migrating to the new key
                         "1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A=",
                         # 2022 key, RELENG-830
-                        "YM4whpr6pGNnF+LHUGWZPgDXiWOTdEQwctTr4LyeO/Q=",
+                        "c6zbby2SGn6byDswZG3uBecdwz88paSkclUM3WepAL8=",
                     ]
                 ),
                 "generic-worker": tuple(
