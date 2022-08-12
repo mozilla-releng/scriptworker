@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.3.1 - 2022-08-12
+-------------------
+Fixed
+~~~~~
+- Replaced the 2022 docker-worker CoT key with a valid one
+
 43.3.0 - 2022-07-27
 -------------------
 Added
