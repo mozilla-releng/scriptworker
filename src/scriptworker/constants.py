@@ -360,7 +360,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
                             "project:releng:flathub:firefox:stable": "release",
                             "project:releng:ship-it:production": "all-production-branches",
-                            "project:releng:treescript:action:push": "all-production-branches",
+                            "project:releng:treescript:action:push": "all-production-branches-and-autoland",
                             "project:releng:microsoftstore:beta": "beta",
                             "project:releng:microsoftstore:release": "release",
                         }
@@ -475,6 +475,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr91",
                                 "/releases/mozilla-esr102",
+                            ),
+                            "all-production-branches-and-autoland": (
+                                "/mozilla-central",
+                                "/releases/mozilla-beta",
+                                "/releases/mozilla-release",
+                                "/releases/mozilla-esr91",
+                                "/releases/mozilla-esr102",
+                                "/integration/autoland",
                             ),
                         }
                     ),
