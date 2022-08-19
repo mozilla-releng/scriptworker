@@ -198,7 +198,9 @@ def mobile_github_pull_request_link(mobile_chain):
         mobile_chain, tasks_for="github-pull-request", source_url="https://github.com/JohanLorenzo/focus-android/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
-        "MOBILE_HEAD_BRANCH": "some-branch",
+        "MOBILE_BASE_REF": "main",
+        "MOBILE_BASE_REV": "baserev",
+        "MOBILE_HEAD_REF": "some-branch",
         "MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/focus-android",
         "MOBILE_HEAD_REV": "somerevision",
         "MOBILE_PULL_REQUEST_NUMBER": "1234",
@@ -1009,7 +1011,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
             {
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
-                "push": {"comment": " ", "owner": "some-user", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
+                "push": {"base_revision": "baserev", "comment": " ", "owner": "some-user", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
                 "repository": {"level": "1", "project": "mozilla-central", "url": None},
                 "taskId": None,
                 "tasks_for": "hg-push",
@@ -1022,7 +1024,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
                 "cron": {},
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
-                "push": {"comment": "", "owner": "cron", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
+                "push": {"base_revision": "baserev", "comment": "", "owner": "cron", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
                 "repository": {"level": "1", "project": "mozilla-central", "url": None},
                 "taskId": None,
                 "tasks_for": "cron",
@@ -1051,7 +1053,7 @@ async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, 
         return "1"
 
     async def get_pushlog_info(*args, **kwargs):
-        return {"pushes": {1: {"user": "some-user", "date": 1500000000, "changesets": [{"desc": " "}]}}}
+        return {"pushes": {1: {"user": "some-user", "date": 1500000000, "changesets": [{"desc": " ", "parents": ["baserev"]}]}}}
 
     mocker.patch.object(cotverify, "get_scm_level", get_scm_level)
     mocker.patch.object(cotverify, "get_pushlog_info", get_pushlog_info)
@@ -1168,6 +1170,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
             "before": "somebaserevision",
             "after": "somerevision",
             "pusher": {"email": "foo@example.tld"},
+            "base_ref": None,
             "ref": "refs/heads/some-branch",
             "repository": {
                 "full_name": "mozilla-mobile/focus-android",
@@ -1252,7 +1255,8 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
                         "full_name": "mozilla-mobile/focus-android",
                         "html_url": "https://github.com/mozilla-mobile/focus-android",
                         "name": "focus-android",
-                    }
+                    },
+                    "sha": "baserev",
                 },
                 "head": {
                     "ref": "some-branch",
@@ -1728,7 +1732,7 @@ async def test_verify_parent_task_definition_failed_tasks_for(chain, mocker):
 )
 async def test_get_additional_hg_push_jsone_context(chain, mocker, push_comment, task_comment, raises):
     async def fake_pushlog(*args):
-        return {"pushes": {"123": {"user": "myuser", "date": "mydate", "changesets": [{"desc": push_comment}]}}}
+        return {"pushes": {"123": {"user": "myuser", "date": "mydate", "changesets": [{"desc": push_comment, "parents": ["baserev"]}]}}}
 
     def fake_commit_msg(*args):
         return task_comment
@@ -1741,7 +1745,9 @@ async def test_get_additional_hg_push_jsone_context(chain, mocker, push_comment,
         with pytest.raises(CoTError):
             await cotverify._get_additional_hg_push_jsone_context(chain, chain)
     else:
-        expected = {"push": {"revision": "myrev", "comment": task_comment, "owner": "myuser", "pushlog_id": "123", "pushdate": "mydate"}}
+        expected = {
+            "push": {"base_revision": "baserev", "revision": "myrev", "comment": task_comment, "owner": "myuser", "pushlog_id": "123", "pushdate": "mydate"}
+        }
         assert expected == await cotverify._get_additional_hg_push_jsone_context(chain, chain)
 
 
@@ -1754,7 +1760,7 @@ async def test_get_additional_hg_cron_jsone_context(cron_link, mocker, push_comm
     chain = cron_link
 
     async def fake_pushlog(*args):
-        return {"pushes": {"123": {"user": "myuser", "date": "mydate", "changesets": [{"desc": push_comment}]}}}
+        return {"pushes": {"123": {"user": "myuser", "date": "mydate", "changesets": [{"desc": push_comment, "parents": ["baserev"]}]}}}
 
     def fake_commit_msg(*args):
         return push_comment
@@ -1763,7 +1769,10 @@ async def test_get_additional_hg_cron_jsone_context(cron_link, mocker, push_comm
     mocker.patch.object(cotverify, "get_pushlog_info", new=fake_pushlog)
     mocker.patch.object(cotverify, "get_commit_message", new=fake_commit_msg)
 
-    expected = {"cron": {}, "push": {"revision": "myrev", "comment": "", "owner": "cron", "pushlog_id": "123", "pushdate": "mydate"}}
+    expected = {
+        "cron": {},
+        "push": {"base_revision": "baserev", "revision": "myrev", "comment": "", "owner": "cron", "pushlog_id": "123", "pushdate": "mydate"},
+    }
     assert expected == await cotverify._get_additional_hg_cron_jsone_context(chain, chain)
 
 

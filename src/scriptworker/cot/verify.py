@@ -33,6 +33,8 @@ from scriptworker.log import contextual_log_handler
 from scriptworker.task import (
     get_action_callback_name,
     get_and_check_tasks_for,
+    get_base_branch,
+    get_base_revision,
     get_branch,
     get_commit_message,
     get_decision_task_id,
@@ -1037,8 +1039,18 @@ async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
 async def _get_additional_hgpush_info(decision_link):
     pushlog_info = await get_pushlog_info(decision_link)
     pushlog_id = list(pushlog_info["pushes"].keys())[0]
-    push_comment = pushlog_info["pushes"][pushlog_id]["changesets"][0]["desc"]
-    return {"id": pushlog_id, "comment": push_comment, "date": pushlog_info["pushes"][pushlog_id]["date"], "user": pushlog_info["pushes"][pushlog_id]["user"]}
+    changesets = pushlog_info["pushes"][pushlog_id]["changesets"]
+    first_revision = changesets[0]
+    tip_revision = changesets[-1]
+    push_comment = tip_revision["desc"]
+    base_rev = first_revision["parents"][0]
+    return {
+        "id": pushlog_id,
+        "comment": push_comment,
+        "date": pushlog_info["pushes"][pushlog_id]["date"],
+        "user": pushlog_info["pushes"][pushlog_id]["user"],
+        "base_rev": base_rev,
+    }
 
 
 async def _get_additional_hg_push_jsone_context(parent_link, decision_link):
@@ -1058,7 +1070,16 @@ async def _get_additional_hg_push_jsone_context(parent_link, decision_link):
             "Decision task {} comment doesn't match the push comment!\n"
             "Decision comment: \n{}\nPush comment: \n{}".format(decision_link.name, decision_comment, push_comment)
         )
-    return {"push": {"revision": rev, "comment": decision_comment, "owner": pushinfo["user"], "pushlog_id": pushinfo["id"], "pushdate": pushinfo["date"]}}
+    return {
+        "push": {
+            "base_revision": pushinfo["base_rev"],
+            "revision": rev,
+            "comment": decision_comment,
+            "owner": pushinfo["user"],
+            "pushlog_id": pushinfo["id"],
+            "pushdate": pushinfo["date"],
+        }
+    }
 
 
 async def _get_additional_github_releases_jsone_context(decision_link):
@@ -1163,6 +1184,8 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     # This becomes a problem if a staging release was kicked off and the PR got
     # updated in the meantime.
     pull_request_data["head"]["updated_at"] = get_push_date_time(task, source_env_prefix)
+    # Similarly, the base branch may get new commits by the time a PR job runs
+    pull_request_data["base"]["sha"] = get_base_revision(task, source_env_prefix)
 
     return {
         "event": {
@@ -1198,10 +1221,6 @@ async def _get_additional_github_push_jsone_context(decision_link):
     if committer_login in ("web-flow", None):
         author = commit_data.get("author") or {}
         committer_login = author.get("login", commit_data.get("commit", {}).get("author", {}).get("login", "@@@unknown@@@"))
-    # This value could have been taken from `commit_data.parents[0]` too but
-    # it is more visible if picked up from `.taskcluster.yml` env vars
-    base_prefix = "{}_BASE_REV".format(context.config["source_env_prefix"])
-    before_hash = task["payload"]["env"].get(base_prefix)
 
     # Github users can have multiple emails. The commit_data contains
     # their primary email, but the task may contain a secondary email.
@@ -1217,9 +1236,10 @@ async def _get_additional_github_push_jsone_context(decision_link):
 
     return {
         "event": {
-            "before": before_hash,
+            "before": get_base_revision(task, source_env_prefix),
             "after": commit_hash,
             "pusher": {"email": task_email},
+            "base_ref": get_base_branch(task, source_env_prefix),
             "ref": get_branch(task, source_env_prefix),
             "repository": {
                 "full_name": extract_github_repo_full_name(repo_url),
@@ -1243,7 +1263,14 @@ async def _get_additional_hg_cron_jsone_context(parent_link, decision_link):
 
     # On trees without pushlog support for cron some push values are
     # hardcoded in the .taskcluster.yml
-    jsone_context["push"] = {"revision": rev, "comment": "", "owner": "cron", "pushlog_id": pushinfo["id"], "pushdate": pushinfo["date"]}
+    jsone_context["push"] = {
+        "base_revision": pushinfo["base_rev"],
+        "revision": rev,
+        "comment": "",
+        "owner": "cron",
+        "pushlog_id": pushinfo["id"],
+        "pushdate": pushinfo["date"],
+    }
     return jsone_context
 
 
