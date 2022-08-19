@@ -128,6 +128,14 @@ def test_get_repo(repo):
         assert swtask.get_repo(task, "GECKO") is None
 
 
+@pytest.mark.parametrize("rev", (None, "revision!"))
+def test_get_base_revision(rev):
+    task = {"payload": {"env": {}}}
+    if rev:
+        task["payload"]["env"]["GECKO_BASE_REV"] = rev
+    assert swtask.get_base_revision(task, "GECKO") == rev
+
+
 # get_revision {{{1
 @pytest.mark.parametrize("rev", (None, "revision!"))
 def test_get_revision(rev):
@@ -135,6 +143,14 @@ def test_get_revision(rev):
     if rev:
         task["payload"]["env"]["GECKO_HEAD_REV"] = rev
     assert swtask.get_revision(task, "GECKO") == rev
+
+
+@pytest.mark.parametrize("branch", (None, "some-git-branch"))
+def test_get_base_branch(branch):
+    task = {"payload": {"env": {}}}
+    if branch:
+        task["payload"]["env"]["MOBILE_BASE_REF"] = branch
+    assert swtask.get_base_branch(task, "MOBILE") == branch
 
 
 @pytest.mark.parametrize("branch", (None, "some-git-branch"))
