@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.5.0 - 2022-08-23
+-------------------
+Added
+~~~~~
+- Added `BASE_REF` and `BASE_REV` to CoT verify.
+
 43.4.0 - 2022-08-16
 -------------------
 Added
