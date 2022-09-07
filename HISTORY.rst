@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.6.0 - 2022-09-07
+-------------------
+Added
+~~~~~
+- Allowed comm-central to use production bouncer scope
+
 43.5.0 - 2022-08-23
 -------------------
 Added
