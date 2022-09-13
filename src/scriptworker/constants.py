@@ -299,7 +299,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "github-push",
                         "github-release",
                     ),
-                    "mozillavpn": ("cron", "github-pull-request", "github-push", "github-release"),
+                    "mozillavpn": ("cron", "github-pull-request", "github-push", "github-release", "action"),
                     "app-services": (
                         "action",
                         "cron",
