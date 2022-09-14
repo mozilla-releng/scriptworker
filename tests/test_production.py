@@ -161,21 +161,30 @@ VERIFY_COT_BRANCH_CONTEXTS = (
     {
         "name": "adhoc-signing",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "adhoc.v2.adhoc-signing.bug1774221-3.release-signing.latest",
+        "index": "adhoc.v2.adhoc-signing.bug1799220.release-signing.latest",
         "task_type": "signing",
         "cot_product": "adhoc",
     },
-    {
-        "name": "xpi-manifest firefox-translations",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "xpi.v2.xpi-manifest.firefox-translations.release-signing.latest",
-        "task_type": "signing",
-        "cot_product": "xpi",
-    },
+    pytest.param(
+        {
+            "name": "xpi-manifest firefox-translations",
+            "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+            "index": "xpi.v2.xpi-manifest.firefox-translations.release-signing.latest",
+            "task_type": "signing",
+            "cot_product": "xpi",
+        },
+        # should start passing again once there has been a new release of the
+        # firefox-translations addon
+        marks=pytest.mark.xfail,
+    ),
 )
 
 
-@pytest.mark.parametrize("branch_context", VERIFY_COT_BRANCH_CONTEXTS, ids=[bc["name"] for bc in VERIFY_COT_BRANCH_CONTEXTS])
+def idfn(obj):
+    return obj["name"]
+
+
+@pytest.mark.parametrize("branch_context", VERIFY_COT_BRANCH_CONTEXTS, ids=idfn)
 @pytest.mark.asyncio
 async def test_verify_production_cot(branch_context):
     index = Index(options={"rootUrl": branch_context["taskcluster_root_url"]})

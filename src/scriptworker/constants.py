@@ -85,24 +85,18 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "docker-worker": tuple(
                     [
-                        # 2021 key; remove when we've finished migrating to the new key
-                        "1cnK7Qc2wjL9Dl7XTBgNE9Ns+NWHraCE5qfxblEKg8A=",
                         # 2022 key, RELENG-830
                         "YM4whpr6pGNnF+LHUGWZPgDXiWOTdEQwctTr4LyeO/Q=",
                     ]
                 ),
                 "generic-worker": tuple(
                     [
-                        # 2021 key; remove when we've finished migrating to the new key
-                        "tHBwAdz8mK6Fnh7RwmfVh6Kzv1suwp+CFW2fvvTLpwE=",
                         # 2022 key, RELENG-827
                         "IxbFWmV+MwHRQFOO6TDUfSsYA1Og+M/fpkpjuX5X5gg=",
                     ]
                 ),
                 "scriptworker": tuple(
                     [
-                        # 2021 key; remove when we've finished migrating to the new key
-                        "N2fb7t0z06GxeidHYDZ63cz2wE2aDA4Hjm7u+FKladc=",
                         # 2022 key, RELENG-828
                         "uJhnk8irgYrkrcxnJUdfIsJo3gntBL+jvZNhNt/pJ/0=",
                     ]
