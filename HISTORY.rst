@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+43.8.0 - TBD
+-------------------
+Added
+~~~~~
+- Restricted Android-Components scopes to both `android-components` and `firefox-android` repos
+
 43.7.0 - 2022-09-14
 -------------------
 Added
