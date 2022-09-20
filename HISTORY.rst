@@ -4,8 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-43.8.0 - TBD
--------------------
+44.0.0 - TBD
+------------
+Removed
+~~~~~~~
+- Removed esr91 support
+
 Added
 ~~~~~
 - Restricted Android-Components scopes to both `android-components` and `firefox-android` repos
