@@ -155,7 +155,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision"),
+                        "firefox": (
+                            "gecko-1/decision",
+                            "gecko-2/decision",
+                            "gecko-3/decision",
+                            "gecko-1/decision-gcp",
+                            "gecko-2/decision-gcp",
+                            "gecko-3/decision-gcp",
+                        ),
                         "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision"),
                         "mobile": ("mobile-1/decision", "mobile-3/decision"),
                         "mozillavpn": ("mozillavpn-1/decision", "mozillavpn-3/decision"),
