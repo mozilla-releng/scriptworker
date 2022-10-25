@@ -163,14 +163,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "gecko-2/decision-gcp",
                             "gecko-3/decision-gcp",
                         ),
-                        "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision"),
-                        "mobile": ("mobile-1/decision", "mobile-3/decision"),
-                        "mozillavpn": ("mozillavpn-1/decision", "mozillavpn-3/decision"),
-                        "app-services": ("app-services-1/decision", "app-services-3/decision"),
-                        "glean": ("glean-1/decision", "glean-3/decision"),
-                        "xpi": ("xpi-1/decision", "xpi-3/decision"),
-                        "adhoc": ("adhoc-1/decision", "adhoc-3/decision"),
-                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision"),
+                        "thunderbird": ("comm-1/decision", "comm-2/decision", "comm-3/decision", "comm-1/decision-gcp", "comm-2/decision-gcp", "comm-3/decision-gcp"),
+                        "mobile": ("mobile-1/decision", "mobile-3/decision", "mobile-1/decision-gcp", "mobile-3/decision-gcp"),
+                        "mozillavpn": ("mozillavpn-1/decision", "mozillavpn-3/decision", "mozillavpn-1/decision-gcp", "mozillavpn-3/decision-gcp"),
+                        "app-services": ("app-services-1/decision", "app-services-3/decision", "app-services-1/decision-gcp", "app-services-3/decision-gcp"),
+                        "glean": ("glean-1/decision", "glean-3/decision", "glean-1/decision-gcp", "glean-3/decision-gcp"),
+                        "xpi": ("xpi-1/decision", "xpi-3/decision", "xpi-1/decision-gcp", "xpi-3/decision-gcp"),
+                        "adhoc": ("adhoc-1/decision", "adhoc-3/decision", "adhoc-1/decision-gcp", "adhoc-3/decision-gcp"),
+                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision" "scriptworker-1/decision-gcp", "scriptworker-3/decision-gcp"),
                     }
                 )
             }
@@ -180,15 +180,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images"),
-                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images"),
-                        "mobile": ("mobile-1/images", "mobile-3/images"),
-                        "mozillavpn": ("mozillavpn-1/images", "mozillavpn-3/images"),
-                        "app-services": ("app-services-1/images", "app-services-3/images"),
-                        "glean": ("glean-1/images", "glean-3/images"),
-                        "xpi": ("xpi-1/images", "xpi-3/images"),
-                        "adhoc": ("adhoc-1/images", "adhoc-3/images"),
-                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images"),
+                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images", "gecko-1/images-gcp", "gecko-2/images-gcp", "gecko-3/images-gcp"),
+                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images", "comm-1/images-gcp", "comm-2/images-gcp", "comm-3/images-gcp"),
+                        "mobile": ("mobile-1/images", "mobile-3/images", "mobile-1/images-gcp", "mobile-3/images-gcp"),
+                        "mozillavpn": ("mozillavpn-1/images", "mozillavpn-3/images", "mozillavpn-1/images-gcp", "mozillavpn-3/images-gcp"),
+                        "app-services": ("app-services-1/images", "app-services-3/images", "app-services-1/images-gcp", "app-services-3/images-gcp"),
+                        "glean": ("glean-1/images", "glean-3/images", "glean-1/images-gcp", "glean-3/images-gcp"),
+                        "xpi": ("xpi-1/images", "xpi-3/images", "xpi-1/images-gcp", "xpi-3/images-gcp"),
+                        "adhoc": ("adhoc-1/images", "adhoc-3/images", "adhoc-1/images-gcp", "adhoc-3/images-gcp"),
+                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images", "scriptworker-1/images-gcp", "scriptworker-3/images-gcp"),
                     }
                 )
             }
