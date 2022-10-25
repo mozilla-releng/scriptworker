@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+44.2.0 - 2022-10-25
+-------------------
+Added
+~~~~~
+- Added GCP decision and images pools for all trust domains
+
 44.1.0 - 2022-10-25
 -------------------
 Added
