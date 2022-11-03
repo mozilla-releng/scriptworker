@@ -118,14 +118,14 @@ VERIFY_COT_BRANCH_CONTEXTS = (
     {
         "name": "android-components nightly",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.android-components.nightly.latest.browser-engine-gecko",
+        "index": "mobile.v2.firefox-android.nightly.latest.browser-engine-gecko",
         "task_type": "build",
         "cot_product": "mobile",
     },
     {
         "name": "android-components release",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.android-components.release.latest.browser-engine-gecko",
+        "index": "mobile.v2.firefox-android.release.latest.browser-engine-gecko",
         "task_type": "build",
         "cot_product": "mobile",
     },
