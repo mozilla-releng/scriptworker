@@ -238,9 +238,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     [
                                         r"^(?P<path>/mozilla-mobile/"
                                         "(?:"
-                                        # TODO Bug 1791397 - Remove A-C repo once it's migrated to the monorepo
-                                        "android-components"
-                                        "|fenix"
+                                        "fenix"
                                         "|fennec-profile-manager"
                                         "|firefox-android"
                                         "|firefox-tv"
@@ -399,11 +397,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-snapshot-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:signing:cert:release-signing": "firefox-android-repo",
-                            # TODO Bug 1791397 - Remove A-C scopes once it's migrated to the monorepo
-                            # (we will then do the same with Fenix and Focus-Android)
-                            "project:mobile:android-components:releng:github:project:android-components": "android-components-repo",
-                            "project:mobile:android-components:releng:beetmover:bucket:maven-production": "android-components-repo",
-                            "project:mobile:android-components:releng:beetmover:bucket:maven-snapshot-production": "android-components-repo",
                             "project:mobile:fenix:releng:github:project:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:googleplay:product:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
@@ -512,8 +505,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "mobile": immutabledict(
                         {
-                            # TODO Bug 1791397 - Remove A-C repo once it's migrated to the monorepo
-                            "android-components-repo": ("/mozilla-mobile/android-components",),
                             "fenix-repo": ("/mozilla-mobile/fenix",),
                             "fennec-profile-manager-repo": ("/mozilla-mobile/fennec-profile-manager",),
                             "firefox-android-repo": ("/mozilla-mobile/firefox-android",),
