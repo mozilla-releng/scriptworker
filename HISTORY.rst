@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+45.0.0 - 2022-11-23
+-------------------
+Removed
+~~~~~~~
+- Android-Components references. This repository is not supported anymore.
+
 44.2.0 - 2022-10-25
 -------------------
 Added
