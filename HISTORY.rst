@@ -8,7 +8,7 @@ This project adheres to `Semantic Versioning <http://semver.org/>`__.
 -------------------
 Removed
 ~~~~~~~
-- Android-Components references. This repository is not supported anymore.
+- References to the old `android-components` repository. Code now lives in `firefox-android`.
 
 44.2.0 - 2022-10-25
 -------------------
