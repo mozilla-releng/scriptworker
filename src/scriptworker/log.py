@@ -10,7 +10,7 @@ import logging.handlers
 import os
 from asyncio.streams import StreamReader
 from contextlib import contextmanager
-from typing import IO, Any, Generator, Iterator, Optional, Sequence, Union
+from typing import IO, Any, Generator, Iterator, Optional, Sequence, Union  # noqa
 
 from scriptworker.utils import makedirs, to_unicode
 

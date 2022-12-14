@@ -16,7 +16,7 @@ import re
 import shutil
 import time
 from copy import deepcopy
-from typing import IO, TYPE_CHECKING, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload
+from typing import IO, TYPE_CHECKING, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload  # noqa
 from urllib.parse import unquote, urlparse
 
 import aiohttp
