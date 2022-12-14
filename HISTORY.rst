@@ -4,6 +4,12 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+46.0.0 - 2022-12-14
+-------------------
+Removed
+~~~~~~~
+- 2021 Chain of Trust public key
+
 45.0.0 - 2022-11-23
 -------------------
 Removed
