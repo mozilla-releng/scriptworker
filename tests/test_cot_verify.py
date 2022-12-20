@@ -1216,7 +1216,11 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         assert pull_request_number == 1234
         return {
             "base": {
-                "repo": {"full_name": "mozilla-mobile/firefox-android", "html_url": "https://github.com/mozilla-mobile/firefox-android", "name": "firefox-android"}
+                "repo": {
+                    "full_name": "mozilla-mobile/firefox-android",
+                    "html_url": "https://github.com/mozilla-mobile/firefox-android",
+                    "name": "firefox-android",
+                }
             },
             "head": {
                 "ref": "some-branch",
@@ -1248,7 +1252,11 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
     assert context == {
         "event": {
             "action": "synchronize",
-            "repository": {"full_name": "mozilla-mobile/firefox-android", "html_url": "https://github.com/mozilla-mobile/firefox-android", "name": "firefox-android"},
+            "repository": {
+                "full_name": "mozilla-mobile/firefox-android",
+                "html_url": "https://github.com/mozilla-mobile/firefox-android",
+                "name": "firefox-android",
+            },
             "pull_request": {
                 "base": {
                     "repo": {
