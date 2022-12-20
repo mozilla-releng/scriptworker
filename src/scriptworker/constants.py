@@ -390,6 +390,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-snapshot-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:signing:cert:release-signing": "firefox-android-repo",
+                            "project:mobile:firefox-android:releng:signing:cert:production-signing": "firefox-android-repo",
+                            "project:mobile:firefox-android:releng:googleplay:product:focus-android": "firefox-android-repo",
                             "project:mobile:fenix:releng:github:project:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:googleplay:product:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
