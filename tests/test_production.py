@@ -130,6 +130,20 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "mobile",
     },
     {
+        "name": "focus nightly",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "mobile.v3.firefox-android.apks.focus-nightly.latest.x86_64",
+        "task_type": "signing",
+        "cot_product": "mobile",
+    },
+    {
+        "name": "focus beta",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "mobile.v3.firefox-android.apks.focus-beta.latest.x86_64",
+        "task_type": "signing",
+        "cot_product": "mobile",
+    },
+    {
         "name": "fenix nightly",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "mobile.v2.fenix.nightly.latest.arm64-v8a",
