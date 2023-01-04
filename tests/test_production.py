@@ -183,6 +183,13 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "task_type": "signing",
         "cot_product": "adhoc",
     },
+    {
+        "name": "app-services",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "project.application-services.cache.level-3.docker-images.v2.linux.latest",
+        "task_type": "docker-image",
+        "cot_product": "app-services",
+    },
     pytest.param(
         {
             "name": "xpi-manifest firefox-translations",
