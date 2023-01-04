@@ -236,7 +236,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                         "|fennec-profile-manager"
                                         "|firefox-android"
                                         "|firefox-tv"
-                                        "|focus-android"
                                         "|reference-browser"
                                         "))"
                                         "(/|.git|$)"
@@ -391,6 +390,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:beetmover:bucket:maven-snapshot-production": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:signing:cert:release-signing": "firefox-android-repo",
+                            "project:mobile:firefox-android:releng:signing:cert:production-signing": "firefox-android-repo",
+                            "project:mobile:firefox-android:releng:googleplay:product:focus-android": "firefox-android-repo",
                             "project:mobile:fenix:releng:github:project:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:googleplay:product:fenix": "fenix-repo",
                             "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
@@ -406,10 +407,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
-                            "project:mobile:focus-android:releng:github:project:focus-android": "focus-repo",
-                            "project:mobile:focus-android:releng:googleplay:product:focus-android": "focus-repo",
-                            # beta and nightly are signed with same key as production
-                            "project:mobile:focus-android:releng:signing:cert:production-signing": "focus-repo",
                         }
                     ),
                     "mozillavpn": immutabledict(
@@ -503,7 +500,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "fennec-profile-manager-repo": ("/mozilla-mobile/fennec-profile-manager",),
                             "firefox-android-repo": ("/mozilla-mobile/firefox-android",),
                             "firefox-tv-repo": ("/mozilla-mobile/firefox-tv",),
-                            "focus-repo": ("/mozilla-mobile/focus-android",),
                             "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
                         }
                     ),
