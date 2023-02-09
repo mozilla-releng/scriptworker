@@ -868,7 +868,6 @@ def test_is_artifact_optional(chain, upstream_artifacts, task_id, path, expected
 )
 @pytest.mark.asyncio
 async def test_get_all_artifacts_per_task_id(chain, decision_link, build_link, upstream_artifacts, expected, docker_image_link, mocker):
-
     chain.links = [decision_link, build_link, docker_image_link]
     assert expected == cotverify.get_all_artifacts_per_task_id(chain, upstream_artifacts)
 
@@ -1536,7 +1535,6 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
     ),
 )
 async def test_get_in_tree_template_auth_morphing(vpn_chain, mocker, use_auth, source_repo, revision, expected_url):
-
     name = "decision"
     task_id = "VUTfOIPFQWaGHf7sIbgTEg"
     if not use_auth:
@@ -1764,7 +1762,6 @@ async def test_get_additional_hg_push_jsone_context(chain, mocker, push_comment,
     "push_comment", ("foo bar baz", "try: a b c", "blah blah blah blah try: a b c", "blah blah blah blah\nlbah blha try: [a] b c\nblah blah")
 )
 async def test_get_additional_hg_cron_jsone_context(cron_link, mocker, push_comment):
-
     chain = cron_link
 
     async def fake_pushlog(*args):

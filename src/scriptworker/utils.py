@@ -508,6 +508,7 @@ def format_json(data):
 
 # load_json_or_yaml {{{1
 
+
 # The overload lets us say that exception=None may return None, but if exception kwarg
 # is omitted we don't actually ever return None (because on failure we raise an Exception)
 @overload

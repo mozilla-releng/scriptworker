@@ -64,7 +64,6 @@ def test_guess_content_type(mime_types):
 
 # get_expiration_arrow {{{1
 def test_expiration_arrow(context):
-
     # make sure time differences don't screw up the test
     expiration = get_expiration_arrow(context)
     assert expiration.isoformat() == context.task["expires"]
@@ -171,7 +170,6 @@ def test_craft_artifact_put_headers():
 # get_artifact_url {{{1
 @pytest.mark.parametrize("path", ("public/rel/path", "private/foo"))
 def test_get_artifact_url(path):
-
     expected = "https://netloc/v1/{}".format(path)
 
     def buildUrl(*args, **kwargs):
