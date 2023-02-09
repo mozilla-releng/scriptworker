@@ -297,7 +297,6 @@ class MockTaskProcess:
 
 @pytest.mark.asyncio
 async def test_run_tasks_no_cancel(context, mocker):
-
     expected_args = [(context, ["one", "public/two"]), None]
 
     async def fake_upload(*args, **kwargs):
