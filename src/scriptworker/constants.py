@@ -96,7 +96,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         # 2022 key, RELENG-827
                         "IxbFWmV+MwHRQFOO6TDUfSsYA1Og+M/fpkpjuX5X5gg=",
                         # Feb 2023 rotation, RELENG-1055
-                        "BMvbu338yOTjKk3UyUd6yK/P9D1L/LsTOSV5GL/WMkM=",
+                        "NSkHdX/EffmnuITcKHRTJXK3bNxuLFOUN8ErZOkRQGo=",
                     ]
                 ),
                 "scriptworker": tuple(
