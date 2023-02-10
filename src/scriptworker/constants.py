@@ -101,6 +101,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 ),
                 "scriptworker": tuple(
                     [
+                        # 2022 key, RELENG-828
+                        "uJhnk8irgYrkrcxnJUdfIsJo3gntBL+jvZNhNt/pJ/0=",
                         # Jan 2023 rotation key
                         "kG5eQqe8AuTIGqW55+6vTxxTansuTOU0drJS7C3VyPo=",
                     ]
