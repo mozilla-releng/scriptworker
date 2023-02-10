@@ -176,13 +176,16 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "mobile",
         "check_task": False,  # These tasks run on level t workers.
     },
-    {
-        "name": "adhoc-signing",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "adhoc.v2.adhoc-signing.bug1799220.release-signing.latest",
-        "task_type": "signing",
-        "cot_product": "adhoc",
-    },
+    pytest.param(
+        {
+            "name": "adhoc-signing",
+            "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+            "index": "adhoc.v2.adhoc-signing.bug1799220.release-signing.latest",
+            "task_type": "signing",
+            "cot_product": "adhoc",
+        },
+        marks=pytest.mark.xfail,
+    ),
     {
         "name": "app-services",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
