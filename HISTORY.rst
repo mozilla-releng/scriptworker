@@ -4,6 +4,22 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+47.0.0 - 2023-02-10
+-------------------
+Removed
+~~~~~~~
+- 2022 scriptworker Chain of Trust public keys
+
+Added
+~~~~~
+- 2023 generic-worker / docker-worker CoT keys
+
+46.0.1 - 2023-01-27
+-------------------
+Added
+~~~~~
+- 2023 scriptworker CoT public keys
+
 46.0.0 - 2022-12-14
 -------------------
 Removed
