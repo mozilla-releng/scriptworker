@@ -85,24 +85,18 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "docker-worker": tuple(
                     [
-                        # 2022 key, RELENG-830
-                        "YM4whpr6pGNnF+LHUGWZPgDXiWOTdEQwctTr4LyeO/Q=",
                         # Feb 2023 rotation, RELENG-1055
                         "Ts3wztzAV828NpyiC32PXdSXNxp3HyzFtSSmmhRgU+Y=",
                     ]
                 ),
                 "generic-worker": tuple(
                     [
-                        # 2022 key, RELENG-827
-                        "IxbFWmV+MwHRQFOO6TDUfSsYA1Og+M/fpkpjuX5X5gg=",
                         # Feb 2023 rotation, RELENG-1055
                         "NSkHdX/EffmnuITcKHRTJXK3bNxuLFOUN8ErZOkRQGo=",
                     ]
                 ),
                 "scriptworker": tuple(
                     [
-                        # 2022 key, RELENG-828
-                        "uJhnk8irgYrkrcxnJUdfIsJo3gntBL+jvZNhNt/pJ/0=",
                         # Jan 2023 rotation key
                         "kG5eQqe8AuTIGqW55+6vTxxTansuTOU0drJS7C3VyPo=",
                     ]
