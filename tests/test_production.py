@@ -146,18 +146,14 @@ VERIFY_COT_BRANCH_CONTEXTS = (
     {
         "name": "fenix nightly",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        # TODO: Bug 1803130 - Use mobile.v3.firefox-android.apks.fenix-nightly.latest.arm64-v8a
-        # once Fenix is migrated to the monorepo
-        "index": "mobile.v2.fenix.nightly.latest.arm64-v8a",
+        "index": "mobile.v3.firefox-android.apks.fenix-nightly.latest.arm64-v8a",
         "task_type": "signing",
         "cot_product": "mobile",
     },
     {
         "name": "fenix beta",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        # TODO: Bug 1803130 - Use mobile.v3.firefox-android.apks.fenix-beta.latest.arm64-v8a
-        # once Fenix is migrated to the monorepo
-        "index": "mobile.v2.fenix.beta.latest.arm64-v8a",
+        "index": "mobile.v3.firefox-android.apks.fenix-beta.latest.arm64-v8a",
         "task_type": "signing",
         "cot_product": "mobile",
     },
