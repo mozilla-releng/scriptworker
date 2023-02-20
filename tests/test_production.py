@@ -189,18 +189,13 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "task_type": "docker-image",
         "cot_product": "app-services",
     },
-    pytest.param(
-        {
-            "name": "xpi-manifest firefox-translations",
-            "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-            "index": "xpi.v2.xpi-manifest.firefox-translations.release-signing.latest",
-            "task_type": "signing",
-            "cot_product": "xpi",
-        },
-        # should start passing again once there has been a new release of the
-        # firefox-translations addon
-        marks=pytest.mark.xfail,
-    ),
+    {
+        "name": "xpi-manifest firefox-translations",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "xpi.v2.xpi-manifest.firefox-translations.release-signing.latest",
+        "task_type": "signing",
+        "cot_product": "xpi",
+    },
 )
 
 
