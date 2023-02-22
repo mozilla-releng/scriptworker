@@ -42,19 +42,19 @@ def _resolve_replace_string(item, field, subs):
 
 
 @transforms.add
-def replace_strings(config, jobs):
+def replace_strings(config, tasks):
     fields = [
         "description",
         "run.command",
         "worker.command",
         "worker.docker-image",
     ]
-    for job in jobs:
-        python_version = job.pop("python-version")
-        targets = job.pop("targets")
-        task = deepcopy(job)
+    for task in tasks:
+        python_version = task.pop("python-version")
+        targets = task.pop("targets")
+        task = deepcopy(task)
         subs = {
-            "name": job["name"],
+            "name": task["name"],
             "python-version": python_version,
             "targets": targets,
         }
@@ -64,15 +64,15 @@ def replace_strings(config, jobs):
 
 
 @transforms.add
-def update_env(config, jobs):
-    for job in jobs:
-        env = job.pop("env", {})
-        job["worker"].setdefault("env", {}).update(env)
-        yield job
+def update_env(config, tasks):
+    for task in tasks:
+        env = task.pop("env", {})
+        task["worker"].setdefault("env", {}).update(env)
+        yield task
 
 
 @transforms.add
-def add_dependencies(config, jobs):
+def add_dependencies(config, tasks):
     """Explicitly add the docker-image task as a dependency.
 
     This needs to be done before the `cached_tasks` transform, so we can't
@@ -81,10 +81,10 @@ def add_dependencies(config, jobs):
     From `build_docker_worker_payload`.
 
     """
-    for job in jobs:
-        image = job["worker"]["docker-image"]
+    for task in tasks:
+        image = task["worker"]["docker-image"]
         if isinstance(image, dict):
             if "in-tree" in image:
                 docker_image_task = "build-docker-image-" + image["in-tree"]
-                job.setdefault("dependencies", {})["docker-image"] = docker_image_task
-        yield job
+                task.setdefault("dependencies", {})["docker-image"] = docker_image_task
+        yield task
