@@ -232,8 +232,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     [
                                         r"^(?P<path>/mozilla-mobile/"
                                         "(?:"
-                                        "fenix"
-                                        "|fennec-profile-manager"
+                                        "fennec-profile-manager"
                                         "|firefox-android"
                                         "|firefox-tv"
                                         "|reference-browser"
@@ -392,14 +391,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-android:releng:signing:cert:release-signing": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:signing:cert:production-signing": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:googleplay:product:focus-android": "firefox-android-repo",
-                            "project:mobile:fenix:releng:github:project:fenix": "fenix-repo",
-                            "project:mobile:fenix:releng:googleplay:product:fenix": "fenix-repo",
-                            "project:mobile:fenix:releng:signing:cert:nightly-signing": "fenix-repo",
-                            "project:mobile:fenix:releng:signing:cert:beta-signing": "fenix-repo",
-                            "project:mobile:fenix:releng:signing:cert:production-signing": "fenix-repo",
-                            "project:mobile:fenix:releng:signing:cert:fennec-nightly-signing": "fenix-repo",
                             # Fennec Beta and Fennec Release share the same key
-                            "project:mobile:fenix:releng:signing:cert:fennec-production-signing": "fenix-repo",
                             "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-nightly-signing": "fennec-profile-manager-repo",
                             # Fennec Beta and Fennec Release share the same key
                             "project:mobile:fennec-profile-manager:releng:signing:cert:fennec-production-signing": "fennec-profile-manager-repo",
@@ -496,7 +488,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "mobile": immutabledict(
                         {
-                            "fenix-repo": ("/mozilla-mobile/fenix",),
                             "fennec-profile-manager-repo": ("/mozilla-mobile/fennec-profile-manager",),
                             "firefox-android-repo": ("/mozilla-mobile/firefox-android",),
                             "firefox-tv-repo": ("/mozilla-mobile/firefox-tv",),
