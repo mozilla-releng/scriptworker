@@ -228,9 +228,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                "path_regexes": tuple(
-                                    [r"^(?P<path>/mozilla-mobile/(?:firefox-android|firefox-tv|reference-browser))(/|.git|$)"]
-                                ),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:firefox-android|firefox-tv|reference-browser))(/|.git|$)"]),
                             }
                         ),
                     ),
