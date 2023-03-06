@@ -228,7 +228,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:firefox-android|firefox-tv|reference-browser))(/|.git|$)"]),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:firefox-android|reference-browser))(/|.git|$)"]),
                             }
                         ),
                     ),
@@ -380,8 +380,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mobile:firefox-android:releng:signing:cert:release-signing": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:signing:cert:production-signing": "firefox-android-repo",
                             "project:mobile:firefox-android:releng:googleplay:product:focus-android": "firefox-android-repo",
-                            "project:mobile:firefox-tv:releng:googleplay:product:firefox-tv": "firefox-tv-repo",
-                            "project:mobile:firefox-tv:releng:signing:cert:production-signing": "firefox-tv-repo",
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
                         }
@@ -474,7 +472,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "mobile": immutabledict(
                         {
                             "firefox-android-repo": ("/mozilla-mobile/firefox-android",),
-                            "firefox-tv-repo": ("/mozilla-mobile/firefox-tv",),
                             "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
                         }
                     ),
