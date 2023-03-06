@@ -173,7 +173,14 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "check_task": False,  # These tasks run on level t workers.
     },
     {
-        "name": "adhoc-signing",
+        "name": "adhoc-signing-task",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "adhoc.v2.adhoc-signing.test-mac.release-signing.latest",
+        "task_type": "signing",
+        "cot_product": "adhoc",
+    },
+    {
+        "name": "adhoc-signing-decision",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "adhoc.v2.adhoc-signing.latest.taskgraph.decision",
         "task_type": "decision",
