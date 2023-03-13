@@ -354,10 +354,7 @@ def guess_worker_impl(link):
 
     if task["payload"].get("image"):
         worker_impls.append("docker-worker")
-    if task["provisionerId"] in link.context.config["scriptworker_provisioners"]:
-        worker_impls.append("scriptworker")
-    # XXX while deprecated, "scriptworker-prov-v1" is still around for mac signing
-    if get_provisioner_id(task) == "scriptworker-prov-v1":
+    if get_provisioner_id(task) in link.context.config["scriptworker_provisioners"]:
         worker_impls.append("scriptworker")
     if task["payload"].get("mounts") is not None:
         worker_impls.append("generic-worker")
