@@ -347,33 +347,34 @@ def guess_worker_impl(link):
         CoTError: on inability to determine the worker implementation
 
     """
-    worker_impls = []
+    worker_impls = set()
     task = link.task
     name = link.name
     errors = []
 
     if task["payload"].get("image"):
-        worker_impls.append("docker-worker")
+        worker_impls.add("docker-worker")
     if get_provisioner_id(task) in link.context.config["scriptworker_provisioners"]:
-        worker_impls.append("scriptworker")
+        worker_impls.add("scriptworker")
     if task["payload"].get("mounts") is not None:
-        worker_impls.append("generic-worker")
+        worker_impls.add("generic-worker")
     if task["payload"].get("osGroups") is not None:
-        worker_impls.append("generic-worker")
+        worker_impls.add("generic-worker")
     if task.get("tags", {}).get("worker-implementation", {}):
-        worker_impls.append(task["tags"]["worker-implementation"])
+        worker_impls.add(task["tags"]["worker-implementation"])
 
     for scope in task["scopes"]:
         if scope.startswith("docker-worker:"):
-            worker_impls.append("docker-worker")
+            worker_impls.add("docker-worker")
 
     if not worker_impls:
         errors.append("guess_worker_impl: can't find a worker_impl for {}!\n{}".format(name, task))
-    if len(set(worker_impls)) > 1:
+    if len(worker_impls) > 1:
         errors.append("guess_worker_impl: too many matches for {}: {}!\n{}".format(name, set(worker_impls), task))
     raise_on_errors(errors)
-    log.debug("{} {} is {}".format(name, link.task_id, worker_impls[0]))
-    return worker_impls[0]
+    impl = worker_impls.pop()
+    log.debug("{} {} is {}".format(name, link.task_id, impl))
+    return impl
 
 
 # get_valid_worker_impls {{{1
