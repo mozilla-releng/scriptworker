@@ -206,9 +206,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "netlocs": ("hg.mozilla.org",),
                                 "path_regexes": (
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
-                                    r"^(?P<path>/integration/(autoland|fx-team|mozilla-inbound))(/|$)",
+                                    r"^(?P<path>/integration/autoland)(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    r"^(?P<path>/projects/(oak|pine|pine-stable))(/|$)",
                                 ),
                             }
                         ),
@@ -432,18 +431,12 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "esr": ("/releases/mozilla-esr102",),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
-                            # XXX remove /projects/oak when we no longer test updates against it
-                            # XXX remove /projects/pine when we no longer need
-                            #     nightly signing
                             "all-nightly-branches": (
                                 "/mozilla-central",
                                 "/releases/mozilla-unified",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
-                                "/projects/oak",
-                                "/projects/pine",
-                                "/projects/pine-stable",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
