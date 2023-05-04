@@ -208,6 +208,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/mozilla-(central|unified))(/|$)",
                                     r"^(?P<path>/integration/autoland)(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
+                                    r"^(?P<path>/projects/(birch))(/|$)",
                                 ),
                             }
                         ),
@@ -423,6 +424,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
+                                "/projects/birch",
                             ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
