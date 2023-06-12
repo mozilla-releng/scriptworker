@@ -392,7 +392,13 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
                         }
                     ),
-                    "app-services": immutabledict({"project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo"}),
+                    "app-services": immutabledict(
+                        {
+                            "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
+                            "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
+                            "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
+                        }
+                    ),
                     "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
                     "xpi": immutabledict(
                         {
