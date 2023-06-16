@@ -12,11 +12,11 @@ include scriptworker.yaml.tmpl
 include version.json
 include tox.ini
 
+exclude .readthedocs.yml
 exclude .taskcluster.yml
 exclude CODE_OF_CONDUCT.md
 exclude docs
 exclude mypi.ini
-exclude readthedocs.yml
 exclude requirements-docs.txt
 exclude tests
 
