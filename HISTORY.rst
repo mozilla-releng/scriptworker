@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+48.1.0 - 2023-06-19
+-------------------
+
+Added
+~~~~~
+- Add new application-services scopes to `cot_restricted_scopes`
+- Add esr115 support
+
 48.0.1 - 2023-05-04
 -------------------
 
