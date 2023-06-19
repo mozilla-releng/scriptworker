@@ -430,13 +430,20 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
+                                "/releases/mozilla-esr115",
                                 "/projects/birch",
                             ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
                             "beta": ("/releases/mozilla-beta",),
-                            "beta-or-release": ("/releases/mozilla-beta", "/releases/mozilla-release"),
-                            "esr": ("/releases/mozilla-esr102",),
+                            "beta-or-release": (
+                                "/releases/mozilla-beta",
+                                "/releases/mozilla-release",
+                            ),
+                            "esr": (
+                                "/releases/mozilla-esr102",
+                                "/releases/mozilla-esr115",
+                            ),
                             "nightly": ("/mozilla-central",),
                             # Which repos can do nightly signing?
                             "all-nightly-branches": (
@@ -445,28 +452,43 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
+                                "/releases/mozilla-esr115",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
+                                "/releases/mozilla-esr115",
                             ),
                             "all-production-branches-and-autoland": (
                                 "/mozilla-central",
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr102",
+                                "/releases/mozilla-esr115",
                                 "/integration/autoland",
                             ),
                         }
                     ),
                     "thunderbird": immutabledict(
                         {
-                            "all-release-branches": ("/releases/comm-beta", "/releases/comm-esr102"),
+                            "all-release-branches": (
+                                "/releases/comm-beta",
+                                "/releases/comm-esr102",
+                                "/releases/comm-esr115",
+                            ),
                             "beta": ("/releases/comm-beta",),
-                            "esr": ("/releases/comm-esr102",),
-                            "all-nightly-branches": ("/comm-central", "/releases/comm-beta", "/releases/comm-esr102"),
+                            "esr": (
+                                "/releases/comm-esr102",
+                                "/releases/comm-esr115",
+                            ),
+                            "all-nightly-branches": (
+                                "/comm-central",
+                                "/releases/comm-beta",
+                                "/releases/comm-esr102",
+                                "/releases/comm-esr102",
+                            ),
                             "nightly": ("/comm-central",),
                         }
                     ),
