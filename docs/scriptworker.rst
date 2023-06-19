@@ -5,7 +5,7 @@ Submodules
 ----------
 
 scriptworker.artifacts module
---------------------------
+-----------------------------
 
 .. automodule:: scriptworker.artifacts
     :members:
@@ -45,7 +45,7 @@ scriptworker.context module
     :show-inheritance:
 
 scriptworker.cot.generate module
----------------------------
+--------------------------------
 
 .. automodule:: scriptworker.cot.generate
     :members:
@@ -53,7 +53,7 @@ scriptworker.cot.generate module
     :show-inheritance:
 
 scriptworker.cot.verify module
----------------------------
+------------------------------
 
 .. automodule:: scriptworker.cot.verify
     :members:

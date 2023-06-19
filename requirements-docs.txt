@@ -1,8 +1,7 @@
 # Specifically for generating docs
--e .
 auxlib
 commonmark
-conda
+myst-parser
 recommonmark
 Sphinx
 sphinx_rtd_theme
