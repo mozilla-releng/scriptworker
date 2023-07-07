@@ -1,7 +1,9 @@
 # Specifically for generating docs
+.
 auxlib
 commonmark
 myst-parser
 recommonmark
-Sphinx
+# https://github.com/readthedocs/readthedocs.org/issues/10279
+Sphinx<7
 sphinx_rtd_theme
