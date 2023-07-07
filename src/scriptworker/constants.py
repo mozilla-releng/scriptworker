@@ -487,7 +487,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/comm-central",
                                 "/releases/comm-beta",
                                 "/releases/comm-esr102",
-                                "/releases/comm-esr102",
+                                "/releases/comm-esr115",
                             ),
                             "nightly": ("/comm-central",),
                         }
