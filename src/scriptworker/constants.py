@@ -370,6 +370,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:comm:thunderbird:releng:bouncer:server:production": "all-nightly-branches",
                             "project:comm:thunderbird:releng:signing:cert:nightly-signing": "all-nightly-branches",
                             "project:comm:thunderbird:releng:signing:cert:release-signing": "all-release-branches",
+                            "project:comm:thunderbird:releng:microsoftstore:beta": "beta",
+                            "project:comm:thunderbird:releng:microsoftstore:release": "release",
                         }
                     ),
                     "mobile": immutabledict(
