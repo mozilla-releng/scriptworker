@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+48.2.0 - 2023-07-27
+-------------------
+
+Added
+~~~~~
+- Add new Thunderbird scopes for Microsoft Store to `cot_restricted_scopes`
+
+
 48.1.1 - 2023-07-07
 -------------------
 
