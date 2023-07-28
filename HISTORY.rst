@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+48.3.0 - 2023-07-28
+-------------------
+
+Added
+~~~~~
+- Add `pine` project branch to `all-nightly-branches`
+
 48.2.0 - 2023-07-27
 -------------------
 
