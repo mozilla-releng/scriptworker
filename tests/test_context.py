@@ -156,6 +156,6 @@ async def test_download_semaphore():
     context = swcontext.Context()
     context.config = {"foo": "bar"}
     sem = context.download_semaphore
-    assert type(sem) == asyncio.BoundedSemaphore
+    assert isinstance(sem, asyncio.BoundedSemaphore)
     assert sem._value == swcontext.DEFAULT_MAX_CONCURRENT_DOWNLOADS
     assert sem is context.download_semaphore
