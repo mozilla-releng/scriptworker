@@ -435,6 +435,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-esr102",
                                 "/releases/mozilla-esr115",
                                 "/projects/birch",
+                                # Bug 1821839 hneiva using to test hardened signing
+                                "/projects/maple",
                             ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
