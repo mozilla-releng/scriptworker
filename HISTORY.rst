@@ -4,6 +4,15 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+48.4.0 - 2023-08-01
+-------------------
+
+Added
+~~~~~
+- Add `maple` project branch to `all-release-branches`
+- Fixes a minor flake8 issue in tests
+
+
 48.3.0 - 2023-07-28
 -------------------
 
