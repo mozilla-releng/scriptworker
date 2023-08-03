@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+48.5.0 - 2023-08-03
+-------------------
+
+Added
+~~~~~
+- Add `maple` to trusted vcs projects
+
+
 48.4.0 - 2023-08-01
 -------------------
 
