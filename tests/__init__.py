@@ -66,16 +66,13 @@ class FakeResponse(aiohttp.client_reqrep.ClientResponse):
             # fix aiohttp 1.1.0
             self._url_obj = yarl.URL(args[1])
 
-    @asyncio.coroutine
-    def text(self, *args, **kwargs):
+    async def text(self, *args, **kwargs):
         return json.dumps(self._payload)
 
-    @asyncio.coroutine
-    def json(self, *args, **kwargs):
+    async def json(self, *args, **kwargs):
         return self._payload
 
-    @asyncio.coroutine
-    def release(self):
+    async def release(self):
         return
 
     async def read(self, *args):
