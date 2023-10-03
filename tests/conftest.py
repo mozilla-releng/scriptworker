@@ -1,4 +1,3 @@
-import asyncio
 import functools
 import os.path
 import tempfile
@@ -70,8 +69,7 @@ def unsuccessful_queue():
     return UnsuccessfulQueue()
 
 
-@asyncio.coroutine
-def _fake_request(resp_status, method, url, *args, **kwargs):
+async def _fake_request(resp_status, method, url, *args, **kwargs):
     resp = FakeResponse(method, url, status=resp_status)
     resp._history = (FakeResponse(method, url, status=302),)
     return resp

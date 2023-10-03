@@ -40,10 +40,10 @@ async def write_file1(path):
 
 def write_files():
     loop = asyncio.get_event_loop()
-    tasks = [write_file1(sys.argv[1])]
+    task = write_file1(sys.argv[1])
     subprocess.Popen(["bash", BASH_SCRIPT, sys.argv[2]])
     subprocess.Popen("bash {} {}".format(BASH_SCRIPT, sys.argv[3]), shell=True)
-    loop.run_until_complete(asyncio.wait(tasks))
+    loop.run_until_complete(task)
 
 
 def main():

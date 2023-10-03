@@ -54,8 +54,8 @@ async def test_pipe_to_log(rw_context):
     proc = await asyncio.create_subprocess_exec("bash", "-c", cmd, stdout=PIPE, stderr=PIPE, stdin=None)
     tasks = []
     with swlog.get_log_filehandle(rw_context) as log_fh:
-        tasks.append(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh]))
-        tasks.append(swlog.pipe_to_log(proc.stdout, filehandles=[log_fh]))
+        tasks.append(asyncio.create_task(swlog.pipe_to_log(proc.stderr, filehandles=[log_fh])))
+        tasks.append(asyncio.create_task(swlog.pipe_to_log(proc.stdout, filehandles=[log_fh])))
         await asyncio.wait(tasks)
         await proc.wait()
     log_file = swlog.get_log_filename(rw_context)
