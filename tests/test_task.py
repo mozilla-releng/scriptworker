@@ -197,7 +197,7 @@ def test_get_worker_type(task, result):
     (
         ("https://hg.mozilla.org/mozilla-central", "mozilla-central", False, "firefox"),
         ("https://hg.mozilla.org/projects/foo", "foo", True, "firefox"),
-        ("https://hg.mozilla.org/releases/mozilla-esr102", "mozilla-esr102", False, "firefox"),
+        ("https://hg.mozilla.org/releases/mozilla-esr102", "mozilla-esr102", True, "firefox"),
         ("https://hg.mozilla.org/releases/mozilla-esr115", "mozilla-esr115", False, "firefox"),
         ("https://hg.mozilla.org/try", "try", False, "firefox"),
         ("https://hg.mozilla.org/releases/unknown", "unknown", True, "firefox"),
