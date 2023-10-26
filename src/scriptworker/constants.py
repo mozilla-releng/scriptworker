@@ -220,7 +220,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("hg.mozilla.org",),
-                                "path_regexes": (r"^(?P<path>/comm-central)(/|$)", r"^(?P<path>/releases/comm-(beta|esr\d+))(/|$)"),
+                                "path_regexes": (
+                                    r"^(?P<path>/comm-central)(/|$)",
+                                    r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)"),
                             }
                         ),
                     ),
@@ -365,6 +367,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
                             "project:comm:thunderbird:releng:balrog:server:beta": "beta",
+                            "project:comm:thunderbird:releng:balrog:server:release": "release",
                             "project:comm:thunderbird:releng:balrog:server:esr": "esr",
                             "project:comm:thunderbird:releng:beetmover:bucket:nightly": "all-nightly-branches",
                             "project:comm:thunderbird:releng:beetmover:bucket:release": "all-release-branches",
@@ -477,13 +480,16 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "all-release-branches": (
                                 "/releases/comm-beta",
+                                "/releases/comm-release",
                                 "/releases/comm-esr115",
                             ),
                             "beta": ("/releases/comm-beta",),
+                            "release": ("/releases/comm-release",),
                             "esr": ("/releases/comm-esr115",),
                             "all-nightly-branches": (
                                 "/comm-central",
                                 "/releases/comm-beta",
+                                "/releases/comm-release",
                                 "/releases/comm-esr115",
                             ),
                             "nightly": ("/comm-central",),
