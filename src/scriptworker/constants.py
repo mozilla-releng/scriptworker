@@ -220,9 +220,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("hg.mozilla.org",),
-                                "path_regexes": (
-                                    r"^(?P<path>/comm-central)(/|$)",
-                                    r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)"),
+                                "path_regexes": (r"^(?P<path>/comm-central)(/|$)", r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)"),
                             }
                         ),
                     ),
