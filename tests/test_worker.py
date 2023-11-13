@@ -20,7 +20,7 @@ from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.worker import RunTasks, do_run_task
 
-from . import AT_LEAST_PY38, TIMEOUT_SCRIPT, create_async, create_finished_future, create_slow_async, create_sync, noop_async, noop_sync
+from . import AT_LEAST_PY38, KILLED_SCRIPT, TIMEOUT_SCRIPT, create_async, create_finished_future, create_slow_async, create_sync, noop_async, noop_sync
 
 
 # constants helpers and fixtures {{{1
@@ -264,6 +264,27 @@ async def test_run_tasks_timeout(context, successful_queue, mocker):
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = await worker.run_tasks(context)
     assert status == context.config["task_max_timeout_status"]
+
+
+@pytest.mark.asyncio
+async def test_run_tasks_killed(context, successful_queue, mocker):
+    temp_dir = os.path.join(context.config["work_dir"], "killed")
+    task = {"foo": "bar", "credentials": {"a": "b"}, "task": {"task_defn": True}}
+    context.config["task_script"] = (sys.executable, KILLED_SCRIPT, temp_dir)
+    context.config["task_max_timeout"] = 1
+    context.queue = successful_queue
+
+    async def claim_work(*args, **kwargs):
+        return {"tasks": [task]}
+
+    mocker.patch.object(worker, "claim_work", new=claim_work)
+    mocker.patch.object(worker, "reclaim_task", new=noop_async)
+    mocker.patch.object(worker, "generate_cot", new=noop_sync)
+    mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch.object(worker, "upload_artifacts", new=noop_async)
+    mocker.patch.object(worker, "complete_task", new=noop_async)
+    status = await worker.run_tasks(context)
+    assert status == STATUSES["failure"]
 
 
 _MOCK_CLAIM_WORK_RETURN = {

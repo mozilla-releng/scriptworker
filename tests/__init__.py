@@ -28,6 +28,7 @@ ARTIFACT_SHAS = {
 }
 
 TIMEOUT_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "long_running.py")
+KILLED_SCRIPT = os.path.join(os.path.dirname(__file__), "data", "killed.py")
 AT_LEAST_PY38 = sys.version_info >= (3, 8)
 
 
