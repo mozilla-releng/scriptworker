@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import os.path
 import tempfile
