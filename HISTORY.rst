@@ -4,6 +4,24 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+49.0.0 - 2023-11-15
+-------------------
+
+Removed
+~~~~~~~
+- Removed `mozilla-esr102` and `comm-esr102` projects
+
+Added
+~~~~~
+- Python 3.11 is now tested and supported
+- Added Support for the `comm-release` project
+- Added new Thunderbird pushflatpak scopes to `cot_restricted_scopes`
+
+Fixed
+~~~~~
+- Tasks killed by a signal no longer report "success" to taskcluster
+
+
 48.5.0 - 2023-08-03
 -------------------
 
