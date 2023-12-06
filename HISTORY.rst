@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+49.1.0 - 2023-12-06
+-------------------
+
+Added
+~~~~~
+- New trusted CoT keys (Dec 2023 rotation)
+
+
 49.0.0 - 2023-11-15
 -------------------
 
