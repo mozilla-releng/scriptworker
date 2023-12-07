@@ -9,10 +9,10 @@ kind-dependencies:
 
 transforms:
     - scriptworker_taskgraph.transforms.tox:transforms
-    - taskgraph.transforms.job:transforms
+    - taskgraph.transforms.run:transforms
     - taskgraph.transforms.task:transforms
 
-job-defaults:
+task-defaults:
     description: "{name} tox-{targets}"
     run-on-tasks-for: ["action", "github-pull-request", "github-push"]
     attributes:
@@ -35,7 +35,7 @@ job-defaults:
             - >-
               tox -e {targets}
 
-jobs:
+tasks:
     py37:
         python-version: "3.7"
         targets: py37,check
