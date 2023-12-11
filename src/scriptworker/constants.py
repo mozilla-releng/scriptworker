@@ -371,7 +371,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
                             "project:comm:thunderbird:releng:balrog:server:beta": "beta",
-                            "project:comm:thunderbird:releng:balrog:server:release": "release",
+                            "project:comm:thunderbird:releng:balrog:server:release": "release-or-esr",
                             "project:comm:thunderbird:releng:balrog:server:esr": "esr",
                             "project:comm:thunderbird:releng:beetmover:bucket:nightly": "all-nightly-branches",
                             "project:comm:thunderbird:releng:beetmover:bucket:release": "all-release-branches",
@@ -379,9 +379,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:comm:thunderbird:releng:signing:cert:nightly-signing": "all-nightly-branches",
                             "project:comm:thunderbird:releng:signing:cert:release-signing": "all-release-branches",
                             "project:comm:thunderbird:releng:flathub:beta": "beta",
-                            "project:comm:thunderbird:releng:flathub:stable": "release",
+                            "project:comm:thunderbird:releng:flathub:stable": "release-or-esr",
                             "project:comm:thunderbird:releng:microsoftstore:beta": "beta",
-                            "project:comm:thunderbird:releng:microsoftstore:release": "release",
+                            "project:comm:thunderbird:releng:microsoftstore:release": "release-or-esr",
                         }
                     ),
                     "mobile": immutabledict(
@@ -489,6 +489,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                             "beta": ("/releases/comm-beta",),
                             "release": ("/releases/comm-release",),
+                            "release-or-esr": ("/releases/comm-release", "/releases/comm-esr115"),
                             "esr": ("/releases/comm-esr115",),
                             "all-nightly-branches": (
                                 "/comm-central",
