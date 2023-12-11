@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+49.1.1 - 2023-12-11
+-------------------
+
+Fixed
+~~~~~
+- Allow `comm-esr115` to handle thunderbird releases (fixes regression from 49.0.0)
+
+
 49.1.0 - 2023-12-06
 -------------------
 
