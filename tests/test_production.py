@@ -193,13 +193,6 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "task_type": "docker-image",
         "cot_product": "app-services",
     },
-    {
-        "name": "xpi-manifest firefox-translations",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "xpi.v2.xpi-manifest.firefox-translations.release-signing.latest",
-        "task_type": "signing",
-        "cot_product": "xpi",
-    },
 )
 
 
