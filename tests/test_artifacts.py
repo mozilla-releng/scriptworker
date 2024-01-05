@@ -29,7 +29,7 @@ from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTask
 from . import touch
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def context(rw_context):
     now = arrow.utcnow()
     rw_context.config["reclaim_interval"] = 0.001

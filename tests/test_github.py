@@ -8,22 +8,37 @@ import pytest
 from scriptworker import github
 from scriptworker.exceptions import ConfigError
 
+_CACHE = {}
 
-@pytest.yield_fixture(scope="function")
+
+@pytest.fixture(scope="session", autouse=True)
+async def mock_memoized_func():
+    # Memoize_ttl causes an issue with pytest-asyncio, so we copy the behavior to an in-memory cache
+    async def fetch(*args, **kwargs):
+        key = (args, tuple(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = await github._fetch_github_branch_commits_data_helper(*args, **kwargs)
+        return _CACHE[key]
+
+    with patch("scriptworker.github._fetch_github_branch_commits_data", fetch):
+        yield
+
+
+@pytest.fixture(scope="function")
 def context(mobile_rw_context):
     ctx = mobile_rw_context
     ctx.task = {"taskGroupId": "bobo"}
     yield ctx
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def vpn_context(vpn_private_rw_context):
     ctx = vpn_private_rw_context
     ctx.task = {"taskGroupId": "bobo"}
     yield ctx
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def github_repository(mocker):
     github_repository_mock = MagicMock()
     github_repository_mock.__name__ = "GithubRepositoryMock"
@@ -188,7 +203,6 @@ async def test_get_tag_hash(github_repository, tags, raises, expected):
         ("non-existing-tag", None, "", True, None),
     ),
 )
-@pytest.mark.asyncio
 async def test_has_commit_landed_on_repository(context, github_repository, commitish, expected_url, html_text, raises, expected):
     async def retry_request(_, url):
         assert url == expected_url
