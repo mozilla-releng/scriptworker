@@ -29,12 +29,12 @@ async def noop_to_cancellable_process(process):
 
 
 # constants helpers and fixtures {{{1
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def context(rw_context):
     yield _craft_context(rw_context)
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_context(mobile_rw_context):
     yield _craft_context(mobile_rw_context)
 

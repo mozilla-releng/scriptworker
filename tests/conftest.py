@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import os.path
 import tempfile
@@ -102,7 +103,7 @@ async def fake_session_404():
     await session.close()
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def tmpdir():
     """Yield a tmpdir that gets cleaned up afterwards.
 
@@ -113,7 +114,7 @@ def tmpdir():
         yield tmp
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def tmpdir2():
     """Yield a tmpdir that gets cleaned up afterwards.
 
@@ -132,41 +133,38 @@ async def _close_session(obj):
         await obj.session.close()
 
 
-@pytest.mark.asyncio
-@pytest.yield_fixture(scope="function")
-async def rw_context(event_loop):
+@pytest.fixture(scope="function")
+async def rw_context():
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product="firefox", session=session)
+            context = _craft_rw_context(tmp, cot_product="firefox", session=session)
             yield context
 
 
-@pytest.mark.asyncio
-@pytest.yield_fixture(scope="function")
-async def mobile_rw_context(event_loop):
+@pytest.fixture(scope="function")
+async def mobile_rw_context():
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product="mobile", session=session)
+            context = _craft_rw_context(tmp, cot_product="mobile", session=session)
             yield context
 
 
-@pytest.mark.asyncio
-@pytest.yield_fixture(scope="function")
-async def vpn_private_rw_context(event_loop):
+@pytest.fixture(scope="function")
+async def vpn_private_rw_context():
     async with aiohttp.ClientSession() as session:
         with tempfile.TemporaryDirectory() as tmp:
-            context = _craft_rw_context(tmp, event_loop, cot_product="mozillavpn", session=session, private=True)
+            context = _craft_rw_context(tmp, cot_product="mozillavpn", session=session, private=True)
             yield context
 
 
-def _craft_rw_context(tmp, event_loop, cot_product, session, private=False):
+def _craft_rw_context(tmp, cot_product, session, private=False):
     config = get_unfrozen_copy(DEFAULT_CONFIG)
     config["cot_product"] = cot_product
     context = Context()
     context.session = session
     context.config = apply_product_config(config)
     context.config["cot_job_type"] = "scriptworker"
-    for key, value in context.config.items():
+    for key, _ in context.config.items():
         if key.endswith("_dir"):
             context.config[key] = os.path.join(tmp, key)
             makedirs(context.config[key])
@@ -176,5 +174,5 @@ def _craft_rw_context(tmp, event_loop, cot_product, session, private=False):
         for rule in context.config["trusted_vcs_rules"]:
             rule["require_secret"] = True
     context.config["verbose"] = VERBOSE
-    context.event_loop = event_loop
+    context.event_loop = asyncio.new_event_loop()
     return context

@@ -24,7 +24,7 @@ from . import AT_LEAST_PY38, KILLED_SCRIPT, TIMEOUT_SCRIPT, create_async, create
 
 
 # constants helpers and fixtures {{{1
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def context(rw_context):
     rw_context.credentials_timestamp = arrow.utcnow().shift(minutes=-10).int_timestamp
     yield rw_context
@@ -497,7 +497,7 @@ async def test_run_tasks_cancel_right_before_cot(context, mocker):
     await run_tasks.invoke(context)
 
     if AT_LEAST_PY38:
-        assert mock_verify_chain_of_trust.cancelled()
+        assert await mock_verify_chain_of_trust.cancelled()
     else:
         assert verify_cot_future.cancelled()
     mock_run_task.assert_not_called()
