@@ -36,11 +36,6 @@ task-defaults:
               tox -e {targets}
 
 tasks:
-    py37:
-        python-version: "3.7"
-        targets: py37,check
-        env:
-            NO_TESTS_OVER_WIRE: "1"
     py38:
         python-version: "3.8"
         targets: py38,check
