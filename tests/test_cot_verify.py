@@ -49,17 +49,17 @@ def die_sync(*args, **kwargs):
     raise CoTError("x")
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def chain(rw_context):
     yield _craft_chain(rw_context, scopes=["project:releng:signing:cert:nightly-signing", "ignoreme"])
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def try_chain(rw_context):
     yield _craft_chain(rw_context, scopes=["project:releng:signing:cert:dep-signing", "ignoreme"])
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_chain(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
@@ -71,7 +71,7 @@ def mobile_chain(mobile_rw_context):
     yield chain
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_chain_pull_request(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
@@ -83,7 +83,7 @@ def mobile_chain_pull_request(mobile_rw_context):
     yield chain
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def vpn_chain(vpn_private_rw_context):
     chain = _craft_chain(
         vpn_private_rw_context,
@@ -112,12 +112,12 @@ def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-cen
     return cotverify.ChainOfTrust(context, "signing", task_id="my_task_id")
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def build_link(chain):
     yield _craft_build_link(chain)
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_build_link(chain):
     link = _craft_build_link(chain, source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml")
     link.task["payload"]["env"]["MOBILE_HEAD_REPOSITORY"] = "https://github.com/mozilla-mobile/firefox-android"
@@ -146,17 +146,17 @@ def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central"
     return link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def decision_link(chain):
     yield _craft_decision_link(chain, tasks_for="hg-push")
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def cron_link(chain):
     yield _craft_decision_link(chain, tasks_for="cron")
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def github_action_link(mobile_chain):
     link = cotverify.LinkOfTrust(mobile_chain.context, "action", "action_task_id")
     with open(os.path.join(COTV4_DIR, "action_github.json")) as fh:
@@ -164,7 +164,7 @@ def github_action_link(mobile_chain):
     yield link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_github_release_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-releases", source_url="https://github.com/mozilla-mobile/firefox-android/raw/v9000.0.1/.taskcluster.yml"
@@ -177,7 +177,7 @@ def mobile_github_release_link(mobile_chain):
     yield decision_link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_cron_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="cron", source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml"
@@ -192,7 +192,7 @@ def mobile_cron_link(mobile_chain):
     yield decision_link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_github_pull_request_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-pull-request", source_url="https://github.com/JohanLorenzo/firefox-android/raw/somerevision/.taskcluster.yml"
@@ -209,7 +209,7 @@ def mobile_github_pull_request_link(mobile_chain):
     yield decision_link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def mobile_github_push_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml"
@@ -242,7 +242,7 @@ def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org
     return link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def action_link(chain):
     link = cotverify.LinkOfTrust(chain.context, "action", "action_task_id")
     link.cot = {"taskId": "action_task_id", "environment": {"imageHash": "sha256:decision_image_sha"}}
@@ -261,7 +261,7 @@ def action_link(chain):
     yield link
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def docker_image_link(chain):
     link = cotverify.LinkOfTrust(chain.context, "docker-image", "docker_image_task_id")
     link.cot = {

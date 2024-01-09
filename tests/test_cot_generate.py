@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "data", "artifacts")
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.fixture(scope="function")
 def context(rw_context):
     ED25519_DIR = os.path.join(os.path.dirname(__file__), "data", "ed25519")
     rw_context.config["artifact_dir"] = ARTIFACT_DIR
