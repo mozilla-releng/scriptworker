@@ -209,7 +209,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     r"^(?P<path>/integration/autoland)(/|$)",
                                     r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
                                     # bug 1845368: a permanent project branch for testing updates
-                                    r"^(?P<path>/projects/(pine|maple))(/|$)",
+                                    r"^(?P<path>/projects/(larch|pine|maple))(/|$)",
                                 ),
                             }
                         ),
@@ -458,6 +458,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-esr115",
                                 # bug 1845368: a permanent project branch for testing updates
                                 "/projects/pine",
+                                "/projects/larch",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
