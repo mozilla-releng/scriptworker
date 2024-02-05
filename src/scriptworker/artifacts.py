@@ -4,6 +4,7 @@ Importing this script updates the mimetypes database. This maps some known exten
 in S3.
 
 """
+
 import asyncio
 import gzip
 import logging

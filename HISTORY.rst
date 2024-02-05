@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
 
+50.1.0 - 2024-02-02
+-------------------
+
+Added
+~~~~~
+- Add `larch` project branch to `all-nightly-branches`
+
+
 50.0.0 - 2024-01-09
 -------------------
 
