@@ -69,22 +69,3 @@ def update_env(config, jobs):
         env = job.pop("env", {})
         job["worker"].setdefault("env", {}).update(env)
         yield job
-
-
-@transforms.add
-def add_dependencies(config, jobs):
-    """Explicitly add the docker-image task as a dependency.
-
-    This needs to be done before the `cached_tasks` transform, so we can't
-    wait until the `build_docker_worker_payload` transform.
-
-    From `build_docker_worker_payload`.
-
-    """
-    for job in jobs:
-        image = job["worker"]["docker-image"]
-        if isinstance(image, dict):
-            if "in-tree" in image:
-                docker_image_task = "build-docker-image-" + image["in-tree"]
-                job.setdefault("dependencies", {})["docker-image"] = docker_image_task
-        yield job
