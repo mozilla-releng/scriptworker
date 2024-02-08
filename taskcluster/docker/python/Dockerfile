@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 ARG  PYTHON_VERSION
-FROM python:$PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim
 
 # Add worker user
 RUN mkdir /builds && \
@@ -12,9 +12,12 @@ RUN mkdir /builds && \
     mkdir /builds/worker/artifacts && \
     chown worker:worker /builds/worker/artifacts
 
-RUN pip install tox
-
 # %include-run-task
+
+RUN apt-get update \
+ && apt-get install -y --force-yes --no-install-recommends git \
+ && apt-get clean \
+ && pip install tox
 
 ENV SHELL=/bin/bash \
     HOME=/builds/worker \
