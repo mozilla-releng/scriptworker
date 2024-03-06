@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+50.2.0 - 2024-03-06
+-------------------
+
+Added
+~~~~~
+- Add new scriptworker scopes to `cot_restricted_scopes` for firefox-android's
+  migration to mozilla-central
+
 
 50.1.0 - 2024-02-02
 -------------------
