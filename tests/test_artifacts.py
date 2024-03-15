@@ -181,10 +181,10 @@ def test_get_artifact_url(path):
             return expected
 
     context = mock.MagicMock()
-    context.queue = mock.MagicMock()
-    context.queue.options = {"baseUrl": "https://netloc/"}
-    context.queue.buildUrl = buildUrl
-    context.queue.buildSignedUrl = buildSignedUrl
+    context.temp_queue = mock.MagicMock()
+    context.temp_queue.options = {"baseUrl": "https://netloc/"}
+    context.temp_queue.buildUrl = buildUrl
+    context.temp_queue.buildSignedUrl = buildSignedUrl
     assert get_artifact_url(context, "x", path) == expected
 
 

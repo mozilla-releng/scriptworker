@@ -49,8 +49,6 @@ class Context(object):
             containing the scriptworker credentials.
         session (aiohttp.ClientSession): the default aiohttp session
         task (dict): the task definition for the current task.
-        temp_queue (taskcluster.aio.Queue): the taskcluster Queue object
-            containing the task-specific temporary credentials.
 
     """
 
@@ -60,8 +58,8 @@ class Context(object):
     queue: Optional[Queue] = None
     session: Optional[aiohttp.ClientSession] = None
     task: Optional[Dict[str, Any]] = None
-    temp_queue: Optional[Queue] = None
     running_tasks = None
+    _temp_queue = None
     _download_semaphore = None
     _credentials: Optional[Dict[str, Any]] = None
     _claim_task: Optional[Dict[str, Any]] = None  # This assumes a single task per worker.
@@ -185,7 +183,10 @@ class Context(object):
     @temp_credentials.setter
     def temp_credentials(self, credentials: Optional[Dict[str, Any]]) -> None:
         self._temp_credentials = credentials
-        self.temp_queue = self.create_queue(self.temp_credentials)
+        if credentials is not None:
+            self.temp_queue = self.create_queue(self.temp_credentials)
+        else:
+            self.temp_queue = None
 
     def write_json(self, path: str, contents: Dict[str, Any], message: str) -> None:
         """Write json to disk.
@@ -231,6 +232,22 @@ class Context(object):
     @event_loop.setter
     def event_loop(self, event_loop: asyncio.AbstractEventLoop) -> None:
         self._event_loop = event_loop
+
+    @property
+    def temp_queue(self):
+        """dict: The queue for the current task.
+
+        These will have different sets of scopes than the worker queue.
+
+        """
+        if self._temp_queue:
+            return self._temp_queue
+        else:
+            return self.queue
+
+    @temp_queue.setter
+    def temp_queue(self, queue):
+        self._temp_queue = queue
 
     async def populate_projects(self, force: bool = False) -> None:
         """Download the ``projects.yml`` file and populate ``self.projects``.
