@@ -108,7 +108,9 @@ class Context(object):
             task_id: str = upstream_artifact["taskId"]
             for path in upstream_artifact["paths"]:
                 if os.path.isabs(path) or ".." in path:
-                    raise CoTError("upstreamArtifacts taskId {} has illegal path {}!".format(task_id, path))
+                    raise CoTError(f"upstreamArtifacts taskId {task_id} has illegal path {path}!")
+                if "*" in path and not upstream_artifact.get("optional", False):
+                    raise CoTError(f"upstreamArtifacts taskId {task_id} has globbed path {path} as a non-optional artifact!")
 
     @property
     def credentials(self) -> Optional[Dict[str, Any]]:

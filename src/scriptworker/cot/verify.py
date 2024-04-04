@@ -9,6 +9,7 @@ Attributes:
 
 import argparse
 import asyncio
+import fnmatch
 import logging
 import os
 import pprint
@@ -23,7 +24,13 @@ import jsone
 from immutabledict import immutabledict
 from taskcluster.aio import Queue
 
-from scriptworker.artifacts import download_artifacts, get_artifact_url, get_optional_artifacts_per_task_id, get_single_upstream_artifact_full_path
+from scriptworker.artifacts import (
+    download_artifacts,
+    get_artifact_url,
+    get_optional_artifacts_per_task_id,
+    get_single_upstream_artifact_full_path,
+    retry_list_latest_artifacts,
+)
 from scriptworker.config import apply_product_config, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -761,14 +768,28 @@ async def download_cot_artifacts(chain):
 
     mandatory_artifact_tasks = []
     optional_artifact_tasks = []
+    latest_artifacts = {}
     for task_id, paths in all_artifacts_per_task_id.items():
         for path in paths:
-            coroutine = asyncio.ensure_future(download_cot_artifact(chain, task_id, path))
+            if "*" in path:
+                # Paths with wildcards in them indicate that the concrete
+                # artifact names aren't known when the task definition is
+                # created. For these cases, we need to fetch the list of
+                # artifacts from the completed tasks and then determine
+                # which are needed based on the pattern given.
+                if not latest_artifacts.get(task_id):
+                    latest_artifacts[task_id] = (await retry_list_latest_artifacts(chain.context.queue, task_id))["artifacts"]
+                coroutines = []
+                for artifact in latest_artifacts[task_id]:
+                    if fnmatch.fnmatch(artifact["name"], path):
+                        coroutines.append(asyncio.ensure_future(download_cot_artifact(chain, task_id, artifact["name"])))
+            else:
+                coroutines = [asyncio.ensure_future(download_cot_artifact(chain, task_id, path))]
 
             if is_artifact_optional(chain, task_id, path):
-                optional_artifact_tasks.append(coroutine)
+                optional_artifact_tasks.extend(coroutines)
             else:
-                mandatory_artifact_tasks.append(coroutine)
+                mandatory_artifact_tasks.extend(coroutines)
 
     mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
     succeeded_optional_artifacts_paths, failed_optional_artifacts = await get_results_and_future_exceptions(optional_artifact_tasks)

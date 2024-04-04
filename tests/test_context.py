@@ -148,6 +148,7 @@ def test_verify_task():
     (
         [{"taskId": "bar", "paths": ["baz", "public/../../../blah"]}],
         [{"taskId": "bar", "paths": ["baz", "/abspath/foo"]}],
+        [{"taskId": "bar", "paths": ["*"], "optional": False}],
     ),
 )
 def test_bad_verify_task(upstream_artifacts):

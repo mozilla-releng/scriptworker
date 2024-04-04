@@ -825,6 +825,62 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
         assert sorted(result) == ["path1", "path2", "path3"]
 
 
+# download_cot_artifacts {{{1
+@pytest.mark.parametrize(
+    "upstreamArtifacts,expected",
+    (
+        ([{"taskId": "task_id", "paths": ["*"]}], ["foo", "bar", "baz", "live.log", "test.log"]),
+        ([{"taskId": "task_id", "paths": ["*.log"]}], ["live.log", "test.log"]),
+    ),
+)
+@pytest.mark.asyncio
+async def test_download_cot_artifacts_wildcard(chain, mocker, upstreamArtifacts, expected):
+    async def fake_download(x, y, path):
+        return path
+
+    async def fake_artifacts(*args, **kwargs):
+        return {
+            "artifacts": [
+                {
+                    "storageType": "s3",
+                    "name": "foo",
+                    "expires": "2025-03-01T16:04:04.463Z",
+                    "contentType": "text/plain",
+                },
+                {
+                    "storageType": "s3",
+                    "name": "bar",
+                    "expires": "2025-03-01T16:04:04.463Z",
+                    "contentType": "text/plain",
+                },
+                {
+                    "storageType": "s3",
+                    "name": "baz",
+                    "expires": "2025-03-01T16:04:04.463Z",
+                    "contentType": "text/plain",
+                },
+                {
+                    "storageType": "s3",
+                    "name": "live.log",
+                    "expires": "2025-03-01T16:04:04.463Z",
+                    "contentType": "text/plain",
+                },
+                {
+                    "storageType": "s3",
+                    "name": "test.log",
+                    "expires": "2025-03-01T16:04:04.463Z",
+                    "contentType": "text/plain",
+                },
+            ]
+        }
+
+    chain.task["payload"]["upstreamArtifacts"] = upstreamArtifacts
+    mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)
+    mocker.patch.object(cotverify, "retry_list_latest_artifacts", new=fake_artifacts)
+    result = await cotverify.download_cot_artifacts(chain)
+    assert sorted(result) == sorted(expected)
+
+
 # is_artifact_optional {{{1
 @pytest.mark.parametrize(
     "upstream_artifacts, task_id, path, expected",
