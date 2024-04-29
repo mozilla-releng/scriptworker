@@ -178,7 +178,7 @@ def get_parent_task_id(task):
 
 
 # get_repo {{{1
-def get_repo(task, source_env_prefix):
+def get_repo(task, source_env_prefix, repo_type="head"):
     """Get the repo for a task.
 
     Args:
@@ -191,7 +191,7 @@ def get_repo(task, source_env_prefix):
         None: if not defined for this task.
 
     """
-    repo = _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REPOSITORY")
+    repo = _extract_from_env_in_payload(task, f"{source_env_prefix}_{repo_type.upper()}_REPOSITORY")
     if repo is not None:
         repo = repo.rstrip("/")
     return repo

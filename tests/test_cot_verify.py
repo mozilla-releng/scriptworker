@@ -199,6 +199,7 @@ def mobile_github_pull_request_link(mobile_chain):
     )
     decision_link.task["payload"]["env"] = {
         "MOBILE_BASE_REF": "main",
+        "MOBILE_BASE_REPOSITORY": "https://github.com/mozilla-mobile/firefox-android",
         "MOBILE_BASE_REV": "baserev",
         "MOBILE_HEAD_REF": "some-branch",
         "MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser",
@@ -1205,11 +1206,24 @@ async def test_get_additional_git_action_jsone_context(github_action_link):
     }
 
 
-@pytest.mark.parametrize("is_fork", (True, False))
+@pytest.mark.parametrize(
+    "extra_env,extra_repo_definition,expected_use_parent",
+    (
+        pytest.param({}, {"fork": True}, True, id="fork with different base repo"),
+        pytest.param({}, {"fork": False}, False, id="no fork with different base repo"),
+        pytest.param({"MOBILE_BASE_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"}, {"fork": True}, False, id="fork with same base repo"),
+    ),
+)
 @pytest.mark.asyncio
-async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_pull_request, mobile_github_pull_request_link, is_fork):
+async def test_populate_jsone_context_github_pull_request(
+    mocker, mobile_chain_pull_request, mobile_github_pull_request_link, extra_env, extra_repo_definition, expected_use_parent
+):
     github_repo_mock = MagicMock()
-    github_repo_mock.definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}} if is_fork else {"fork": False}
+    repo_definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}}
+    repo_definition.update(extra_repo_definition)
+    github_repo_mock.definition = repo_definition
+
+    mobile_github_pull_request_link.task["payload"]["env"].update(extra_env)
 
     async def get_pull_request_mock(pull_request_number, *args, **kwargs):
         assert pull_request_number == 1234
@@ -1241,7 +1255,7 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
 
     github_repo_class_mock.assert_any_call("JohanLorenzo", "reference-browser", "fakegithubtoken")
 
-    if is_fork:
+    if expected_use_parent:
         github_repo_class_mock.assert_any_call(owner="mozilla-mobile", repo_name="reference-browser", token="fakegithubtoken")
         assert len(github_repo_class_mock.call_args_list) == 2
     else:

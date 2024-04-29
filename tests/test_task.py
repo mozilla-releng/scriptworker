@@ -118,14 +118,52 @@ def test_get_parent_task_id(set_parent):
 
 
 # get_repo {{{1
-@pytest.mark.parametrize("repo", (None, "https://hg.mozilla.org/mozilla-central", "https://hg.mozilla.org/mozilla-central/"))
-def test_get_repo(repo):
-    task = {"payload": {"env": {}}}
-    if repo:
-        task["payload"]["env"]["GECKO_HEAD_REPOSITORY"] = repo
-        assert swtask.get_repo(task, "GECKO") == "https://hg.mozilla.org/mozilla-central"
-    else:
-        assert swtask.get_repo(task, "GECKO") is None
+@pytest.mark.parametrize(
+    "repo,repo_type,expected",
+    (
+        pytest.param(None, None, None),
+        pytest.param(
+            "https://hg.mozilla.org/mozilla-central",
+            None,
+            "https://hg.mozilla.org/mozilla-central",
+        ),
+        pytest.param(
+            "https://hg.mozilla.org/mozilla-central/",
+            None,
+            "https://hg.mozilla.org/mozilla-central",
+        ),
+        pytest.param(
+            "https://hg.mozilla.org/mozilla-central",
+            "head",
+            "https://hg.mozilla.org/mozilla-central",
+        ),
+        pytest.param(
+            "https://hg.mozilla.org/mozilla-central",
+            "BASE",
+            "https://hg.mozilla.org/mozilla-central",
+        ),
+        pytest.param(
+            "https://hg.mozilla.org/mozilla-central",
+            "unknown",
+            None,
+        ),
+    ),
+)
+def test_get_repo(repo, repo_type, expected):
+    task = {
+        "payload": {
+            "env": {
+                "GECKO_BASE_REPOSITORY": repo,
+                "GECKO_HEAD_REPOSITORY": repo,
+            }
+        }
+    }
+
+    kwargs = {}
+    if repo_type:
+        kwargs["repo_type"] = repo_type
+
+    assert swtask.get_repo(task, "GECKO", **kwargs) == expected
 
 
 @pytest.mark.parametrize("rev", (None, "revision!"))

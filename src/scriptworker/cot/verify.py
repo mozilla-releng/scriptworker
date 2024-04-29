@@ -1167,6 +1167,8 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     context = decision_link.context
     source_env_prefix = context.config["source_env_prefix"]
     task = decision_link.task
+    base_repo_url = get_repo(task, source_env_prefix, repo_type="base")
+    base_repo_url = base_repo_url.replace("git@github.com:", "ssh://github.com/", 1)
     repo_url = get_repo(task, source_env_prefix)
     repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
@@ -1176,7 +1178,11 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     github_repo = GitHubRepository(repo_owner, repo_name, token)
     repo_definition = github_repo.definition
 
-    if repo_definition["fork"]:
+    # We need to query the repository where the pull request was made to extract
+    # pull request data. The pull request could be created on the same repo as
+    # the commit, or an upstream repo. We can compare the base and head repo URLs
+    # to infer where the pull request lives.
+    if repo_definition["fork"] and base_repo_url != repo_url:
         github_repo = GitHubRepository(owner=repo_definition["parent"]["owner"]["login"], repo_name=repo_definition["parent"]["name"], token=token)
 
     pull_request_data = await github_repo.get_pull_request(pull_request_number)
