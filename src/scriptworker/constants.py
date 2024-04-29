@@ -171,7 +171,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "glean": ("glean-1/decision", "glean-3/decision", "glean-1/decision-gcp", "glean-3/decision-gcp"),
                         "xpi": ("xpi-1/decision", "xpi-3/decision", "xpi-1/decision-gcp", "xpi-3/decision-gcp"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision", "adhoc-1/decision-gcp", "adhoc-3/decision-gcp"),
-                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision" "scriptworker-1/decision-gcp", "scriptworker-3/decision-gcp"),
+                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision", "scriptworker-1/decision-gcp", "scriptworker-3/decision-gcp"),
                     }
                 )
             }
