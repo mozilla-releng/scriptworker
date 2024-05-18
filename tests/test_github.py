@@ -285,13 +285,13 @@ def test_is_github_url(url, expected):
 @pytest.mark.parametrize(
     "repo_url, expected_user, expected_repo_name, raises",
     (
-        ("https://github.com/mozilla-mobile/firefox-android", "mozilla-mobile", "firefox-android", False),
-        ("https://github.com/mozilla-mobile/firefox-android.git", "mozilla-mobile", "firefox-android", False),
-        ("https://github.com/mozilla-releng/staging-firefox-android", "mozilla-releng", "staging-firefox-android", False),
+        ("https://github.com/mozilla-mobile/reference-browser", "mozilla-mobile", "reference-browser", False),
+        ("https://github.com/mozilla-mobile/reference-browser.git", "mozilla-mobile", "reference-browser", False),
+        ("https://github.com/mozilla-releng/staging-reference-browser", "mozilla-releng", "staging-reference-browser", False),
         (
-            "https://github.com/mozilla-releng/staging-firefox-android/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
+            "https://github.com/mozilla-releng/staging-reference-browser/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
             "mozilla-releng",
-            "staging-firefox-android",
+            "staging-reference-browser",
             False,
         ),
         ("https://hg.mozilla.org/mozilla-central", None, None, True),
@@ -308,12 +308,12 @@ def test_extract_github_repo_owner_and_name(repo_url, expected_user, expected_re
 @pytest.mark.parametrize(
     "repo_url, expected, raises",
     (
-        ("https://github.com/mozilla-mobile/firefox-android", "mozilla-mobile/firefox-android", False),
-        ("https://github.com/mozilla-mobile/firefox-android.git", "mozilla-mobile/firefox-android", False),
-        ("https://github.com/mozilla-releng/staging-firefox-android", "mozilla-releng/staging-firefox-android", False),
+        ("https://github.com/mozilla-mobile/reference-browser", "mozilla-mobile/reference-browser", False),
+        ("https://github.com/mozilla-mobile/reference-browser.git", "mozilla-mobile/reference-browser", False),
+        ("https://github.com/mozilla-releng/staging-reference-browser", "mozilla-releng/staging-reference-browser", False),
         (
-            "https://github.com/mozilla-releng/staging-firefox-android/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
-            "mozilla-releng/staging-firefox-android",
+            "https://github.com/mozilla-releng/staging-reference-browser/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
+            "mozilla-releng/staging-reference-browser",
             False,
         ),
         ("https://hg.mozilla.org/mozilla-central", None, True),
@@ -330,12 +330,12 @@ def test_extract_github_repo_full_name(repo_url, expected, raises):
 @pytest.mark.parametrize(
     "repo_url, expected, raises",
     (
-        ("https://github.com/mozilla-mobile/firefox-android", "git@github.com:mozilla-mobile/firefox-android.git", False),
-        ("https://github.com/mozilla-mobile/firefox-android.git", "git@github.com:mozilla-mobile/firefox-android.git", False),
-        ("https://github.com/mozilla-releng/staging-firefox-android", "git@github.com:mozilla-releng/staging-firefox-android.git", False),
+        ("https://github.com/mozilla-mobile/reference-browser", "git@github.com:mozilla-mobile/reference-browser.git", False),
+        ("https://github.com/mozilla-mobile/reference-browser.git", "git@github.com:mozilla-mobile/reference-browser.git", False),
+        ("https://github.com/mozilla-releng/staging-reference-browser", "git@github.com:mozilla-releng/staging-reference-browser.git", False),
         (
-            "https://github.com/mozilla-releng/staging-firefox-android/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
-            "git@github.com:mozilla-releng/staging-firefox-android.git",
+            "https://github.com/mozilla-releng/staging-reference-browser/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
+            "git@github.com:mozilla-releng/staging-reference-browser.git",
             False,
         ),
         ("https://hg.mozilla.org/mozilla-central", None, True),
@@ -353,20 +353,20 @@ def test_extract_github_repo_ssh_url(repo_url, expected, raises):
     "repo_url, expected_user, expected_repo_name, raises",
     (
         (
-            "https://github.com/mozilla-releng/staging-firefox-android/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
-            "https://github.com/mozilla-releng/staging-firefox-android",
+            "https://github.com/mozilla-releng/staging-reference-browser/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
+            "https://github.com/mozilla-releng/staging-reference-browser",
             "0123456789abcdef0123456789abcdef01234567",
             False,
         ),
         (
-            "https://github.com/mozilla-releng/staging-firefox-android.git/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
-            "https://github.com/mozilla-releng/staging-firefox-android",
+            "https://github.com/mozilla-releng/staging-reference-browser.git/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
+            "https://github.com/mozilla-releng/staging-reference-browser",
             "0123456789abcdef0123456789abcdef01234567",
             False,
         ),
-        ("https://github.com/mozilla-mobile/firefox-android", None, None, True),
-        ("https://github.com/mozilla-mobile/firefox-android.git", None, None, True),
-        ("https://github.com/mozilla-releng/staging-firefox-android", None, None, True),
+        ("https://github.com/mozilla-mobile/reference-browser", None, None, True),
+        ("https://github.com/mozilla-mobile/reference-browser.git", None, None, True),
+        ("https://github.com/mozilla-releng/staging-reference-browser", None, None, True),
         ("https://hg.mozilla.org/mozilla-central", None, None, True),
     ),
 )

@@ -63,11 +63,11 @@ def try_chain(rw_context):
 def mobile_chain(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
-        scopes=["project:mobile:firefox-android:releng:signing:cert:production-signing", "ignoreme"],
-        source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml",
+        scopes=["project:mobile:reference-browser:releng:signing:cert:release-signing", "ignoreme"],
+        source_url="https://github.com/mozilla-mobile/reference-browser/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
-    chain.context.task["payload"]["env"] = {"MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/firefox-android"}
+    chain.context.task["payload"]["env"] = {"MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser"}
     yield chain
 
 
@@ -75,11 +75,11 @@ def mobile_chain(mobile_rw_context):
 def mobile_chain_pull_request(mobile_rw_context):
     chain = _craft_chain(
         mobile_rw_context,
-        scopes=["project:mobile:firefox-android:releng:signing:cert:dep-signing", "ignoreme"],
-        source_url="https://github.com/JohanLorenzo/firefox-android/raw/somerevision/.taskcluster.yml",
+        scopes=["project:mobile:reference-browser:releng:signing:cert:dep-signing", "ignoreme"],
+        source_url="https://github.com/JohanLorenzo/reference-browser/raw/somerevision/.taskcluster.yml",
     )
     chain.context.config["github_oauth_token"] = "fakegithubtoken"
-    chain.context.task["payload"]["env"] = {"MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/firefox-android"}
+    chain.context.task["payload"]["env"] = {"MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"}
     yield chain
 
 
@@ -119,8 +119,8 @@ def build_link(chain):
 
 @pytest.fixture(scope="function")
 def mobile_build_link(chain):
-    link = _craft_build_link(chain, source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml")
-    link.task["payload"]["env"]["MOBILE_HEAD_REPOSITORY"] = "https://github.com/mozilla-mobile/firefox-android"
+    link = _craft_build_link(chain, source_url="https://github.com/mozilla-mobile/reference-browser/raw/somerevision/.taskcluster.yml")
+    link.task["payload"]["env"]["MOBILE_HEAD_REPOSITORY"] = "https://github.com/mozilla-mobile/reference-browser"
 
     yield link
 
@@ -167,11 +167,11 @@ def github_action_link(mobile_chain):
 @pytest.fixture(scope="function")
 def mobile_github_release_link(mobile_chain):
     decision_link = _craft_decision_link(
-        mobile_chain, tasks_for="github-releases", source_url="https://github.com/mozilla-mobile/firefox-android/raw/v9000.0.1/.taskcluster.yml"
+        mobile_chain, tasks_for="github-releases", source_url="https://github.com/mozilla-mobile/reference-browser/raw/v9000.0.1/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
         "MOBILE_HEAD_BRANCH": "releases/v9000.0",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/firefox-android",
+        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser",
         "MOBILE_HEAD_REV": "v9000.0.1",
     }
     yield decision_link
@@ -180,11 +180,11 @@ def mobile_github_release_link(mobile_chain):
 @pytest.fixture(scope="function")
 def mobile_cron_link(mobile_chain):
     decision_link = _craft_decision_link(
-        mobile_chain, tasks_for="cron", source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml"
+        mobile_chain, tasks_for="cron", source_url="https://github.com/mozilla-mobile/reference-browser/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
         "MOBILE_HEAD_BRANCH": "master",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/firefox-android",
+        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser",
         "MOBILE_HEAD_REV": "somerevision",
         "MOBILE_PUSH_DATE_TIME": "2019-02-01T12:00:00.000Z",
     }
@@ -195,13 +195,13 @@ def mobile_cron_link(mobile_chain):
 @pytest.fixture(scope="function")
 def mobile_github_pull_request_link(mobile_chain):
     decision_link = _craft_decision_link(
-        mobile_chain, tasks_for="github-pull-request", source_url="https://github.com/JohanLorenzo/firefox-android/raw/somerevision/.taskcluster.yml"
+        mobile_chain, tasks_for="github-pull-request", source_url="https://github.com/JohanLorenzo/reference-browser/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
         "MOBILE_BASE_REF": "main",
         "MOBILE_BASE_REV": "baserev",
         "MOBILE_HEAD_REF": "some-branch",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/firefox-android",
+        "MOBILE_HEAD_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser",
         "MOBILE_HEAD_REV": "somerevision",
         "MOBILE_PULL_REQUEST_NUMBER": "1234",
         "MOBILE_PUSH_DATE_TIME": "2019-02-01T12:00:00Z",
@@ -212,12 +212,12 @@ def mobile_github_pull_request_link(mobile_chain):
 @pytest.fixture(scope="function")
 def mobile_github_push_link(mobile_chain):
     decision_link = _craft_decision_link(
-        mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/firefox-android/raw/somerevision/.taskcluster.yml"
+        mobile_chain, tasks_for="github-push", source_url="https://github.com/mozilla-mobile/reference-browser/raw/somerevision/.taskcluster.yml"
     )
     decision_link.task["payload"]["env"] = {
         "MOBILE_BASE_REV": "somebaserevision",
         "MOBILE_HEAD_BRANCH": "refs/heads/some-branch",
-        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/firefox-android",
+        "MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser",
         "MOBILE_HEAD_REV": "somerevision",
         "MOBILE_PUSH_DATE_TIME": "1549022400",
     }
@@ -1087,16 +1087,16 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
 
     context = await cotverify.populate_jsone_context(mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for="github-release")
 
-    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "firefox-android", "fakegithubtoken")
+    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "reference-browser", "fakegithubtoken")
     del context["as_slugid"]
     assert context == {
         "event": {
             "action": "published",
             "repository": {
-                "clone_url": "https://github.com/mozilla-mobile/firefox-android.git",
-                "full_name": "mozilla-mobile/firefox-android",
-                "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                "name": "firefox-android",
+                "clone_url": "https://github.com/mozilla-mobile/reference-browser.git",
+                "full_name": "mozilla-mobile/reference-browser",
+                "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                "name": "reference-browser",
             },
             "release": {"tag_name": "v9000.0.1", "target_commitish": "releases/v9000", "published_at": "2019-02-01T12:00:00Z"},
             "sender": {"login": "some-user"},
@@ -1120,10 +1120,10 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         "cron": {"task_id": "cron-task-id"},
         "event": {
             "repository": {
-                "clone_url": "https://github.com/mozilla-mobile/firefox-android",
-                "full_name": "mozilla-mobile/firefox-android",
-                "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                "name": "firefox-android",
+                "clone_url": "https://github.com/mozilla-mobile/reference-browser",
+                "full_name": "mozilla-mobile/reference-browser",
+                "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                "name": "reference-browser",
             },
             "release": {"published_at": "2019-02-01T12:00:00.000Z", "tag_name": "somerevision", "target_commitish": "master"},
             "sender": {"login": "TaskclusterHook"},
@@ -1132,7 +1132,7 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         "ownTaskId": "decision_task_id",
         "taskId": None,
         "tasks_for": "cron",
-        "repository": {"url": "https://github.com/mozilla-mobile/firefox-android", "project": "firefox-android", "level": "3"},
+        "repository": {"url": "https://github.com/mozilla-mobile/reference-browser", "project": "reference-browser", "level": "3"},
         "push": {"branch": "master", "revision": "somerevision"},
     }
 
@@ -1162,7 +1162,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
 
     context = await cotverify.populate_jsone_context(mobile_chain, mobile_github_push_link, mobile_github_push_link, tasks_for="github-push")
 
-    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "firefox-android", "fakegithubtoken")
+    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "reference-browser", "fakegithubtoken")
     del context["as_slugid"]
     assert context == {
         "event": {
@@ -1172,11 +1172,11 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
             "base_ref": None,
             "ref": "refs/heads/some-branch",
             "repository": {
-                "full_name": "mozilla-mobile/firefox-android",
-                "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                "name": "firefox-android",
+                "full_name": "mozilla-mobile/reference-browser",
+                "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                "name": "reference-browser",
                 "pushed_at": "1549022400",
-                "ssh_url": "git@github.com:mozilla-mobile/firefox-android.git",
+                "ssh_url": "git@github.com:mozilla-mobile/reference-browser.git",
             },
             "sender": {"login": "some-user"},
         },
@@ -1209,25 +1209,25 @@ async def test_get_additional_git_action_jsone_context(github_action_link):
 @pytest.mark.asyncio
 async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_pull_request, mobile_github_pull_request_link, is_fork):
     github_repo_mock = MagicMock()
-    github_repo_mock.definition = {"fork": True, "parent": {"name": "firefox-android", "owner": {"login": "mozilla-mobile"}}} if is_fork else {"fork": False}
+    github_repo_mock.definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}} if is_fork else {"fork": False}
 
     async def get_pull_request_mock(pull_request_number, *args, **kwargs):
         assert pull_request_number == 1234
         return {
             "base": {
                 "repo": {
-                    "full_name": "mozilla-mobile/firefox-android",
-                    "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                    "name": "firefox-android",
+                    "full_name": "mozilla-mobile/reference-browser",
+                    "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                    "name": "reference-browser",
                 }
             },
             "head": {
                 "ref": "some-branch",
-                "repo": {"html_url": "https://github.com/JohanLorenzo/firefox-android"},
+                "repo": {"html_url": "https://github.com/JohanLorenzo/reference-browser"},
                 "sha": "somerevision",
                 "user": {"login": "some-user"},
             },
-            "html_url": "https://github.com/mozilla-mobile/firefox-android/pulls/1234",
+            "html_url": "https://github.com/mozilla-mobile/reference-browser/pulls/1234",
             "number": 1234,
             "title": "Some PR title",
         }
@@ -1239,10 +1239,10 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         mobile_chain_pull_request, mobile_github_pull_request_link, mobile_github_pull_request_link, tasks_for="github-pull-request"
     )
 
-    github_repo_class_mock.assert_any_call("JohanLorenzo", "firefox-android", "fakegithubtoken")
+    github_repo_class_mock.assert_any_call("JohanLorenzo", "reference-browser", "fakegithubtoken")
 
     if is_fork:
-        github_repo_class_mock.assert_any_call(owner="mozilla-mobile", repo_name="firefox-android", token="fakegithubtoken")
+        github_repo_class_mock.assert_any_call(owner="mozilla-mobile", repo_name="reference-browser", token="fakegithubtoken")
         assert len(github_repo_class_mock.call_args_list) == 2
     else:
         assert len(github_repo_class_mock.call_args_list) == 1
@@ -1252,29 +1252,29 @@ async def test_populate_jsone_context_github_pull_request(mocker, mobile_chain_p
         "event": {
             "action": "synchronize",
             "repository": {
-                "full_name": "mozilla-mobile/firefox-android",
-                "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                "name": "firefox-android",
+                "full_name": "mozilla-mobile/reference-browser",
+                "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                "name": "reference-browser",
             },
             "pull_request": {
                 "base": {
                     "repo": {
-                        "full_name": "mozilla-mobile/firefox-android",
-                        "html_url": "https://github.com/mozilla-mobile/firefox-android",
-                        "name": "firefox-android",
+                        "full_name": "mozilla-mobile/reference-browser",
+                        "html_url": "https://github.com/mozilla-mobile/reference-browser",
+                        "name": "reference-browser",
                     },
                     "sha": "baserev",
                 },
                 "head": {
                     "ref": "some-branch",
                     "sha": "somerevision",
-                    "repo": {"html_url": "https://github.com/JohanLorenzo/firefox-android"},
+                    "repo": {"html_url": "https://github.com/JohanLorenzo/reference-browser"},
                     "user": {"login": "some-user"},
                     "updated_at": "2019-02-01T12:00:00Z",
                 },
                 "title": "Some PR title",
                 "number": 1234,
-                "html_url": "https://github.com/mozilla-mobile/firefox-android/pulls/1234",
+                "html_url": "https://github.com/mozilla-mobile/reference-browser/pulls/1234",
             },
             "sender": {"login": "some-user"},
         },
@@ -2058,17 +2058,17 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, do
 @pytest.mark.parametrize(
     "source_url, raises",
     (
-        ("https://github.com/mozilla-mobile/firefox-android", False),
-        ("https://github.com/JohanLorenzo/firefox-android", True),
-        ("https://github.com/mitchhentges/firefox-android", True),
-        ("https://github.com/MihaiTabara/firefox-android", True),
+        ("https://github.com/mozilla-mobile/reference-browser", False),
+        ("https://github.com/JohanLorenzo/reference-browser", True),
+        ("https://github.com/mitchhentges/reference-browser", True),
+        ("https://github.com/MihaiTabara/reference-browser", True),
     ),
 )
 @pytest.mark.asyncio
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
     mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises, mocker
 ):
-    (source_url, raises) = ("https://github.com/mozilla-mobile/firefox-android", False)
+    (source_url, raises) = ("https://github.com/mozilla-mobile/reference-browser", False)
     mobile_github_release_link.task["metadata"]["source"] = source_url
     mobile_chain.links = [mobile_github_release_link, mobile_build_link]
     mocker.patch.object(mobile_chain, "is_try_or_pull_request", new=create_async(result=False))
