@@ -350,7 +350,7 @@ def test_extract_github_repo_ssh_url(repo_url, expected, raises):
 
 
 @pytest.mark.parametrize(
-    "repo_url, expected_user, expected_repo_name, raises",
+    "repo_url, expected_repo, expected_revision, raises",
     (
         (
             "https://github.com/mozilla-releng/staging-reference-browser/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml",
@@ -370,12 +370,12 @@ def test_extract_github_repo_ssh_url(repo_url, expected, raises):
         ("https://hg.mozilla.org/mozilla-central", None, None, True),
     ),
 )
-def test_extract_github_repo_and_revision_from_source_url(repo_url, expected_user, expected_repo_name, raises):
+def test_extract_github_repo_and_revision_from_source_url(repo_url, expected_repo, expected_revision, raises):
     if raises:
         with pytest.raises(ValueError):
             github.extract_github_repo_and_revision_from_source_url(repo_url)
     else:
-        assert github.extract_github_repo_and_revision_from_source_url(repo_url) == (expected_user, expected_repo_name)
+        assert github.extract_github_repo_and_revision_from_source_url(repo_url) == (expected_repo, expected_revision)
 
 
 @pytest.mark.parametrize(
