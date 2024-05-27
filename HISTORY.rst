@@ -4,6 +4,26 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.0.0 - 2024-05-27
+-------------------
+
+Added
+~~~~~
+
+- Values for ESR 128 to scriptworker constants
+
+Removed
+~~~~~~~
+
+- CoT support for the now archived mozilla-mobile/firefox-android repo
+
+Fixed
+~~~~~
+
+- CoT verification issue where parent repo was always used for PRs, even when
+  base repo was the same as head repo.
+- Typo in CoT constant enumerating scriptworker decision task pools.
+
 50.2.0 - 2024-03-06
 -------------------
 
