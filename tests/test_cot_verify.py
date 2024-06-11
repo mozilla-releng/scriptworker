@@ -1218,6 +1218,7 @@ async def test_get_additional_git_action_jsone_context(github_action_link):
             "somerevision",
             id="fork with same base repo",
         ),
+        pytest.param({}, {}, True, "someotherrevision", id="upstream task from different revision"),
     ),
 )
 @pytest.mark.asyncio

@@ -39,6 +39,7 @@ from scriptworker.task import (
     get_branch,
     get_commit_message,
     get_decision_task_id,
+    get_head_revision,
     get_parent_task_id,
     get_project,
     get_provisioner_id,
@@ -1193,6 +1194,10 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     pull_request_data["head"]["updated_at"] = get_push_date_time(task, source_env_prefix)
     # Similarly, the base branch may get new commits by the time a PR job runs
     pull_request_data["base"]["sha"] = get_base_revision(task, source_env_prefix)
+    # The head sha may also be different. This commonly happens in pull requests that
+    # have tasks that have cached tasks from an earlier revision of the PR, or even
+    # another PR altogether, upstream of one from the latest revision of the PR.
+    pull_request_data["head"]["sha"] = get_head_revision(task, source_env_prefix)
 
     return {
         "event": {
