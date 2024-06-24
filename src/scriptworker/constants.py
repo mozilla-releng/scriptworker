@@ -140,6 +140,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "xpi": "github",
                         "adhoc": "github",
                         "scriptworker": "github",
+                        "translations": "github",
                     }
                 )
             }
@@ -172,6 +173,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "xpi": ("xpi-1/decision", "xpi-3/decision", "xpi-1/decision-gcp", "xpi-3/decision-gcp"),
                         "adhoc": ("adhoc-1/decision", "adhoc-3/decision", "adhoc-1/decision-gcp", "adhoc-3/decision-gcp"),
                         "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision", "scriptworker-1/decision-gcp", "scriptworker-3/decision-gcp"),
+                        "translations": ("translations-1/decision-gcp",),
                     }
                 )
             }
@@ -190,6 +192,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "xpi": ("xpi-1/images", "xpi-3/images", "xpi-1/images-gcp", "xpi-3/images-gcp"),
                         "adhoc": ("adhoc-1/images", "adhoc-3/images", "adhoc-1/images-gcp", "adhoc-3/images-gcp"),
                         "scriptworker": ("scriptworker-1/images", "scriptworker-3/images", "scriptworker-1/images-gcp", "scriptworker-3/images-gcp"),
+                        "translations": ("translations-1/images-gcp",),
                     }
                 )
             }
@@ -277,6 +280,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             }
                         ),
                     ),
+                    "translations": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla/firefox-translations-training)(/|.git|$)"]),
+                            }
+                        ),
+                    ),
                 }
             )
         },
@@ -319,6 +331,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                     "adhoc": ("action", "github-pull-request", "github-push"),
                     "scriptworker": ("action", "cron", "github-pull-request", "github-push", "github-release"),
+                    "translations": ("action", "github-pull-request", "github-push"),
                 }
             )
         },
@@ -334,6 +347,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": "mozilla-extensions",
                     "adhoc": "mozilla-releng",
                     "scriptworker": "mozilla-releng",
+                    "translations": "mozilla",
                 }
             )
         },
@@ -420,6 +434,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
                             "project:scriptworker:pypi:production": "all-production-repos",
+                        }
+                    ),
+                    "translations": immutabledict(
+                        {
+                            "project:translations:releng:beetmover:bucket:release": "translations-repo",
                         }
                     ),
                 }
@@ -517,6 +536,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts"),
                         }
                     ),
+                    "translations": immutabledict(
+                        {
+                            "translations-repo": ("/mozilla/firefox-translations-training",),
+                        }
+                    ),
                 }
             )
         },
@@ -533,6 +557,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": "any",  # all allowed
                     "adhoc": "any",  # all allowed
                     "scriptworker": ("decision", "action", "docker-image"),
+                    "translations": "any",  # all allowed
                 }
             )
         },
@@ -548,6 +573,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": "XPI",
                     "adhoc": "ADHOC",
                     "scriptworker": "SCRIPTWORKER",
+                    "translations": "FIREFOX_TRANSLATIONS_TRAINING",
                 }
             )
         },
