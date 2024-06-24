@@ -34,7 +34,8 @@ Any task that generates artifacts for the scriptworker then needs to be inspecte
      [{
        "taskId": "upstream-task-id",
        "taskType": "build",  # for cot verification purposes
-       "paths": ["path/to/artifact1", "path/to/artifact2"],
+       # paths can be specific artifacts, or globbed patterns
+       "paths": ["path/to/artifact1", "path/to/artifact2", "path/to/globbed/artifacts/*", "path/to/partially/globbed/artifacts/*.zip"],
        "formats": ["gpg", "jar"]  # This is signing-specific for now; we could make formats optional, or use it for other task-specific info
      }, {
        ...
