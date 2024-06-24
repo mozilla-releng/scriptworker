@@ -4,6 +4,17 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.1.0 - 2024-06-24
+-------------------
+
+Added
+~~~~~
+- Values for Firefox Translations training repository scriptworker constants
+
+Fixed
+~~~~~
+- Ensure GitHub pull request head sha is set correctly during chain of trust verification
+
 60.0.0 - 2024-05-27
 -------------------
 
