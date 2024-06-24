@@ -10,6 +10,7 @@ This project adheres to `Semantic Versioning <http://semver.org/>`__.
 Added
 ~~~~~
 - Values for Firefox Translations training repository scriptworker constants
+- Support for deferring upstream artifact selection until runtime
 
 Fixed
 ~~~~~
