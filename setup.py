@@ -7,6 +7,8 @@ import sys
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
+project_dir = os.path.abspath(os.path.dirname(__file__))
+
 if {"register", "upload"}.intersection(set(sys.argv)):
     print(
         "                        ***** WARNING *****\n"
@@ -38,6 +40,9 @@ with open(PATH) as filehandle:
 
 with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "requirements.txt")) as f:
     install_requires = f.readlines()
+
+with open(os.path.join(project_dir, "README.rst")) as fh:
+    long_description = fh.read()
 
 
 class Tox(TestCommand):
@@ -71,6 +76,7 @@ setup(
     name="scriptworker",
     version=VERSION,
     description="TaskCluster Script Worker",
+    long_description=long_description,
     author="Mozilla Release Engineering",
     author_email="release+python@mozilla.com",
     url="https://github.com/mozilla-releng/scriptworker",
