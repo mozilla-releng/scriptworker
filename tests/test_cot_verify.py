@@ -1207,16 +1207,23 @@ async def test_get_additional_git_action_jsone_context(github_action_link):
 
 
 @pytest.mark.parametrize(
-    "extra_env,extra_repo_definition,expected_use_parent",
+    "extra_env,extra_repo_definition,expected_use_parent,latest_head_sha",
     (
-        pytest.param({}, {"fork": True}, True, id="fork with different base repo"),
-        pytest.param({}, {"fork": False}, False, id="no fork with different base repo"),
-        pytest.param({"MOBILE_BASE_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"}, {"fork": True}, False, id="fork with same base repo"),
+        pytest.param({}, {"fork": True}, True, "somerevision", id="fork with different base repo"),
+        pytest.param({}, {"fork": False}, False, "somerevision", id="no fork with different base repo"),
+        pytest.param(
+            {"MOBILE_BASE_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"},
+            {"fork": True},
+            False,
+            "somerevision",
+            id="fork with same base repo",
+        ),
+        pytest.param({}, {}, True, "someotherrevision", id="upstream task from different revision"),
     ),
 )
 @pytest.mark.asyncio
 async def test_populate_jsone_context_github_pull_request(
-    mocker, mobile_chain_pull_request, mobile_github_pull_request_link, extra_env, extra_repo_definition, expected_use_parent
+    mocker, mobile_chain_pull_request, mobile_github_pull_request_link, extra_env, extra_repo_definition, expected_use_parent, latest_head_sha
 ):
     github_repo_mock = MagicMock()
     repo_definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}}
@@ -1238,7 +1245,7 @@ async def test_populate_jsone_context_github_pull_request(
             "head": {
                 "ref": "some-branch",
                 "repo": {"html_url": "https://github.com/JohanLorenzo/reference-browser"},
-                "sha": "somerevision",
+                "sha": latest_head_sha,
                 "user": {"login": "some-user"},
             },
             "html_url": "https://github.com/mozilla-mobile/reference-browser/pulls/1234",
