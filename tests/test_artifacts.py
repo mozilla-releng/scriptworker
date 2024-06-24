@@ -280,6 +280,38 @@ def test_get_upstream_artifacts_full_paths_per_task_id(context):
     }
 
 
+@pytest.mark.parametrize(
+    "artifacts_to_create,artifact_filenames,pattern",
+    (
+        (("file_a1", "file_b1", "file_c1"), ("file_a1", "file_b1", "file_c1"), "*"),
+        (("file_a1", "file_b1", "file_c1", "foo.log", "bar.log"), ("foo.log", "bar.log"), "*.log"),
+    ),
+)
+def test_get_upstream_artifacts_full_paths_per_task_id_with_globs(context, artifacts_to_create, artifact_filenames, pattern):
+    context.task["payload"] = {
+        "upstreamArtifacts": [
+            {"paths": [pattern], "taskId": "dependency1", "taskType": "build"},
+        ]
+    }
+
+    for artifact in artifacts_to_create:
+        folder = os.path.join(context.config["work_dir"], "cot", "dependency1", "public")
+
+        try:
+            os.makedirs(os.path.join(folder))
+        except FileExistsError:
+            pass
+        touch(os.path.join(folder, artifact))
+
+    succeeded_artifacts, failed_artifacts = get_upstream_artifacts_full_paths_per_task_id(context)
+
+    # ensure deterministic sorting here...
+    assert "dependency1" in succeeded_artifacts
+    expected = set([os.path.join(context.config["work_dir"], "cot", "dependency1", "public", f) for f in artifact_filenames])
+    assert set(succeeded_artifacts["dependency1"]) == expected
+    assert failed_artifacts == {}
+
+
 def test_fail_get_upstream_artifacts_full_paths_per_task_id(context):
     context.task["payload"] = {"upstreamArtifacts": [{"paths": ["public/failed_mandatory_file"], "taskId": "failedDependency", "taskType": "signing"}]}
     with pytest.raises(ScriptWorkerTaskException):

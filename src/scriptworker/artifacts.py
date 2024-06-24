@@ -6,6 +6,7 @@ in S3.
 """
 
 import asyncio
+import fnmatch
 import gzip
 import logging
 import mimetypes
@@ -15,6 +16,7 @@ from pathlib import Path
 import aiohttp
 import arrow
 import async_timeout
+from taskcluster.exceptions import TaskclusterFailure
 
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
@@ -221,6 +223,16 @@ def get_artifact_url(context, task_id, path):
     return url
 
 
+# list_latest_artifacts {{{1
+async def list_latest_artifacts(queue, task_id, exception=TaskclusterFailure):
+    return await queue.listLatestArtifacts(task_id)
+
+
+async def retry_list_latest_artifacts(queue, task_id, exception=TaskclusterFailure, **kwargs):
+    kwargs.setdefault("retry_exceptions", tuple(set([TaskclusterFailure, exception])))
+    return await retry_async(list_latest_artifacts, args=(queue, task_id), kwargs={"exception": exception}, **kwargs)
+
+
 # get_expiration_arrow {{{1
 def get_expiration_arrow(context):
     """Return an arrow matching `context.task['expires']`.
@@ -321,8 +333,12 @@ def get_upstream_artifacts_full_paths_per_task_id(context):
     for task_id, paths in task_ids_and_relative_paths:
         for path in paths:
             try:
-                path_to_add = get_and_check_single_upstream_artifact_full_path(context, task_id, path)
-                add_enumerable_item_to_dict(dict_=upstream_artifacts_full_paths_per_task_id, key=task_id, item=path_to_add)
+                if "*" in path:
+                    for path_to_add in get_artifacts_matching_glob(context, task_id, path):
+                        add_enumerable_item_to_dict(dict_=upstream_artifacts_full_paths_per_task_id, key=task_id, item=path_to_add)
+                else:
+                    path_to_add = get_and_check_single_upstream_artifact_full_path(context, task_id, path)
+                    add_enumerable_item_to_dict(dict_=upstream_artifacts_full_paths_per_task_id, key=task_id, item=path_to_add)
             except ScriptWorkerTaskException:
                 if path in optional_artifacts_per_task_id.get(task_id, []):
                     log.warning('Optional artifact "{}" of task "{}" not found'.format(path, task_id))
@@ -417,3 +433,13 @@ def assert_is_parent(path, parent_dir):
     p2 = Path(os.path.realpath(parent_dir))
     if p1 != p2 and p2 not in p1.parents:
         raise ScriptWorkerTaskException("{} is not under {}!".format(p1, p2))
+
+
+def get_artifacts_matching_glob(context, task_id, pattern):
+    parent_dir = os.path.abspath(os.path.join(context.config["work_dir"], "cot", task_id))
+    matching = []
+    for root, _, files in os.walk(parent_dir):
+        for f in files:
+            if fnmatch.fnmatch(f, pattern):
+                matching.append(os.path.join(root, f))
+    return matching

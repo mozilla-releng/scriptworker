@@ -136,17 +136,24 @@ def test_set_event_loop(mocker):
     assert rw_context.event_loop is fake_loop
 
 
-def test_verify_task(claim_task):
+def test_verify_task():
     rw_context = swcontext.Context()
     rw_context.task = {"payload": {"upstreamArtifacts": [{"taskId": "foo", "paths": ["bar"]}]}}
     # should not throw
     rw_context.verify_task()
 
 
-@pytest.mark.parametrize("bad_path", ("/abspath/foo", "public/../../../blah"))
-def test_bad_verify_task(claim_task, bad_path):
+@pytest.mark.parametrize(
+    "upstream_artifacts",
+    (
+        [{"taskId": "bar", "paths": ["baz", "public/../../../blah"]}],
+        [{"taskId": "bar", "paths": ["baz", "/abspath/foo"]}],
+        [{"taskId": "bar", "paths": ["*"], "optional": False}],
+    ),
+)
+def test_bad_verify_task(upstream_artifacts):
     context = swcontext.Context()
-    context.task = {"payload": {"upstreamArtifacts": [{"taskId": "bar", "paths": ["baz", bad_path]}]}}
+    context.task = {"payload": {"upstreamArtifacts": upstream_artifacts}}
     with pytest.raises(CoTError):
         context.verify_task()
 
