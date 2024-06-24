@@ -230,6 +230,22 @@ def get_base_revision(task, source_env_prefix):
     return _extract_from_env_in_payload(task, source_env_prefix + "_BASE_REV")
 
 
+def get_head_revision(task, source_env_prefix):
+    """Get the base revision for a task.
+
+    Args:
+        obj (ChainOfTrust or LinkOfTrust): the trust object to inspect
+        source_env_prefix (str): The environment variable prefix that is used
+            to get repository information.
+
+    Returns:
+        str: the revision.
+        None: if not defined for this task.
+
+    """
+    return _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REV")
+
+
 def get_branch(task, source_env_prefix):
     """Get the branch on top of which the graph was made.
 
