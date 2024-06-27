@@ -25,7 +25,7 @@ from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, reclaim_task, run_task, worst_level
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import cleanup, filepaths_in_dir
+from scriptworker.utils import cleanup, filepaths_in_dir, scriptworker_session
 
 log = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ async def async_main(context, credentials):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
     """
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         context.session = session
         context.credentials = credentials
         await run_tasks(context)

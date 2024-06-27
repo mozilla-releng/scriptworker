@@ -78,6 +78,7 @@ from scriptworker.utils import (
     read_from_file,
     remove_empty_keys,
     rm,
+    scriptworker_session,
     write_to_file,
 )
 from scriptworker.version import __version_string__
@@ -2070,7 +2071,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
 
 # verify_cot_cmdln {{{1
 async def _async_verify_cot_cmdln(opts, tmp):
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         context = Context()
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))
@@ -2146,7 +2147,7 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
 
 # create_test_workdir {{{1
 async def _async_create_test_workdir(task_id, path, queue=None):
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         context = Context()
         context.session = session
         context.config = dict(deepcopy(DEFAULT_CONFIG))

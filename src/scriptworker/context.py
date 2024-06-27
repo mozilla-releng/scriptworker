@@ -24,7 +24,7 @@ from taskcluster.aio import Queue
 
 from scriptworker import task_process
 from scriptworker.exceptions import CoTError
-from scriptworker.utils import load_json_or_yaml_from_url, makedirs
+from scriptworker.utils import load_json_or_yaml_from_url, makedirs, scriptworker_session
 
 log = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ class Context(object):
         """
         assert self.config
         if credentials:
-            session = self.session or aiohttp.ClientSession(loop=self.event_loop)
+            session = self.session or scriptworker_session(loop=self.event_loop)
             return Queue(options={"credentials": credentials, "rootUrl": self.config["taskcluster_root_url"]}, session=session)
         return None
 

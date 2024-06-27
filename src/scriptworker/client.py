@@ -17,13 +17,12 @@ from asyncio import AbstractEventLoop
 from typing import Any, Awaitable, Callable, Dict, List, Match, NoReturn, Optional, Tuple
 from urllib.parse import unquote
 
-import aiohttp
 import jsonschema
 
 from scriptworker.constants import STATUSES
 from scriptworker.context import Context
 from scriptworker.exceptions import ScriptWorkerException, ScriptWorkerTaskException, TaskVerificationError
-from scriptworker.utils import load_json_or_yaml, match_url_regex
+from scriptworker.utils import load_json_or_yaml, match_url_regex, scriptworker_session
 
 log = logging.getLogger(__name__)
 
@@ -199,7 +198,7 @@ def _init_logging(context: Any) -> None:
 
 
 async def _handle_asyncio_loop(async_main: Callable[[Any], Awaitable[None]], context: Any) -> None:
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         context.session = session
         try:
             await async_main(context)
