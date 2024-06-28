@@ -10,7 +10,7 @@ import taskcluster.exceptions
 from scriptworker.config import apply_product_config, get_unfrozen_copy
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
-from scriptworker.utils import makedirs
+from scriptworker.utils import makedirs, scriptworker_session
 
 from . import VERBOSE, FakeResponse
 
@@ -79,7 +79,7 @@ async def _fake_request(resp_status, method, url, *args, **kwargs):
 @pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session():
-    session = aiohttp.ClientSession()
+    session = scriptworker_session()
     session._request = functools.partial(_fake_request, 200)
     yield session
     await session.close()
@@ -88,7 +88,7 @@ async def fake_session():
 @pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session_500():
-    session = aiohttp.ClientSession()
+    session = scriptworker_session()
     session._request = functools.partial(_fake_request, 500)
     yield session
     await session.close()
@@ -97,7 +97,7 @@ async def fake_session_500():
 @pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session_404():
-    session = aiohttp.ClientSession()
+    session = scriptworker_session()
     session._request = functools.partial(_fake_request, 404)
     yield session
     await session.close()
@@ -135,7 +135,7 @@ async def _close_session(obj):
 
 @pytest.fixture(scope="function")
 async def rw_context():
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         with tempfile.TemporaryDirectory() as tmp:
             context = _craft_rw_context(tmp, cot_product="firefox", session=session)
             yield context
@@ -143,7 +143,7 @@ async def rw_context():
 
 @pytest.fixture(scope="function")
 async def mobile_rw_context():
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         with tempfile.TemporaryDirectory() as tmp:
             context = _craft_rw_context(tmp, cot_product="mobile", session=session)
             yield context
@@ -151,7 +151,7 @@ async def mobile_rw_context():
 
 @pytest.fixture(scope="function")
 async def vpn_private_rw_context():
-    async with aiohttp.ClientSession() as session:
+    async with scriptworker_session() as session:
         with tempfile.TemporaryDirectory() as tmp:
             context = _craft_rw_context(tmp, cot_product="mozillavpn", session=session, private=True)
             yield context

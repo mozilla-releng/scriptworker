@@ -8,7 +8,6 @@ import logging
 import os
 import tempfile
 
-import aiohttp
 import arrow
 import pytest
 import slugid
@@ -105,7 +104,7 @@ async def get_context(config_override=None):
         context.config, credentials = build_config(config_override, basedir=tmp)
         swlog.update_logging_config(context)
         utils.cleanup(context)
-        async with aiohttp.ClientSession() as session:
+        async with utils.scriptworker_session() as session:
             context.session = session
             context.credentials = credentials
             yield context

@@ -25,6 +25,7 @@ import async_timeout
 import yaml
 from taskcluster.client import createTemporaryCredentials
 
+import scriptworker.version
 from scriptworker.exceptions import Download404, DownloadError, ScriptWorkerException, ScriptWorkerRetryException, ScriptWorkerTaskException
 
 if TYPE_CHECKING:
@@ -35,6 +36,12 @@ else:
 
 
 log = logging.getLogger(__name__)
+
+
+# scriptworker_session {{{1
+def scriptworker_session(*args, **kwargs):
+    kwargs.setdefault("headers", {}).setdefault("User-Agent", f"scriptworker {scriptworker.version.__version_string__}")
+    return aiohttp.ClientSession(*args, **kwargs)
 
 
 # request {{{1

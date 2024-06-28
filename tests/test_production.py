@@ -9,7 +9,6 @@ import re
 import tempfile
 from unittest.mock import patch
 
-import aiohttp
 import pytest
 from asyncio_extras.contextmanager import async_contextmanager
 from taskcluster.aio import Index, Queue, Secrets
@@ -95,7 +94,7 @@ async def get_context(config_override=None):
         credentials = read_integration_creds()
         swlog.update_logging_config(context)
         utils.cleanup(context)
-        async with aiohttp.ClientSession() as session:
+        async with utils.scriptworker_session() as session:
             context.session = session
             context.credentials = credentials
             yield context
