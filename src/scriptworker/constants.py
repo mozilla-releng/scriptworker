@@ -300,10 +300,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "mobile": (
                         "action",
                         "cron",
-                        # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
-                        # Similarly, docker images can be built on regular push. This is usually the case
-                        # for level 3 images
+                        "github-pull-request-untrusted",
                         "github-push",
                         "github-release",
                     ),
@@ -311,20 +309,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "app-services": (
                         "action",
                         "cron",
-                        # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
-                        # Similarly, docker images can be built on regular push. This is usually the case
-                        # for level 3 images
                         "github-push",
                         "github-release",
                     ),
                     "glean": (
                         "action",
                         "cron",
-                        # On staging releases, level 1 docker images may be built in the pull-request graph
                         "github-pull-request",
-                        # Similarly, docker images can be built on regular push. This is usually the case
-                        # for level 3 images
                         "github-push",
                         "github-release",
                     ),

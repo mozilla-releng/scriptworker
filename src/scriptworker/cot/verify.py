@@ -1346,7 +1346,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(await _get_additional_git_cron_jsone_context(decision_link))
         elif tasks_for == "action":
             jsone_context.update(await _get_additional_git_action_jsone_context(decision_link, parent_link))
-        elif tasks_for == "github-pull-request":
+        elif tasks_for in ("github-pull-request", "github-pull-request-untrusted"):
             jsone_context.update(await _get_additional_github_pull_request_jsone_context(decision_link))
         elif tasks_for == "github-push":
             jsone_context.update(await _get_additional_github_push_jsone_context(decision_link))

@@ -503,7 +503,7 @@ async def is_pull_request(context, task):
 
     This checks for the following things::
 
-        * ``task.extra.env.tasks_for`` == "github-pull-request"
+        * ``task.extra.env.tasks_for`` is "github-pull-request" or "github-pull-request-untrusted"
         * ``task.payload.env.MOBILE_HEAD_REPOSITORY`` doesn't come from an official repo
         * ``task.metadata.source`` doesn't come from an official repo, either
         * The last 2 items are landed on the official repo
@@ -525,7 +525,7 @@ async def is_pull_request(context, task):
     metadata_source_url = task["metadata"].get("source", "")
     repo_from_source_url, revision_from_source_url = extract_github_repo_and_revision_from_source_url(metadata_source_url)
 
-    conditions = [tasks_for == "github-pull-request"]
+    conditions = [tasks_for in ("github-pull-request", "github-pull-request-untrusted")]
     urls_revisions_and_can_skip = ((repo_url_from_payload, revision_from_payload, True), (repo_from_source_url, revision_from_source_url, False))
     for repo_url, revision, can_skip in urls_revisions_and_can_skip:
         # XXX In the case of scriptworker tasks, neither the repo nor the revision is defined
