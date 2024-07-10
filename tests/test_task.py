@@ -265,9 +265,11 @@ async def test_get_project(context, mobile_context, source_url, expected, raises
         ("mobile", "cron", False),
         ("mobile", "action", False),
         ("firefox", "github-pull-request", True),
+        ("firefox", "github-pull-request-untrusted", True),
         ("firefox", "github-push", True),
         ("firefox", "github-release", True),
         ("mobile", "github-pull-request", False),
+        ("mobile", "github-pull-request-untrusted", False),
         ("mobile", "github-push", False),
         ("mobile", "github-release", False),
         ("firefox", "foobar", True),
@@ -343,6 +345,16 @@ def test_is_try(task, source_env_prefix):
             {
                 "payload": {},
                 "extra": {"env": {"tasks_for": "github-pull-request"}},
+                "metadata": {"source": "https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml"},
+            },
+            True,
+            False,
+            True,
+        ),
+        (
+            {
+                "payload": {},
+                "extra": {"env": {"tasks_for": "github-pull-request-untrusted"}},
                 "metadata": {"source": "https://github.com/some-user/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml"},
             },
             True,
@@ -440,6 +452,7 @@ async def test_is_try_or_pull_request(mocker, context, mobile_context, context_t
     (
         ({"schedulerId": "taskcluster-github"}, True),
         ({"extra": {"tasks_for": "github-pull-request"}}, True),
+        ({"extra": {"tasks_for": "github-pull-request-untrusted"}}, True),
         ({"extra": {"tasks_for": "github-push"}}, True),
         ({"extra": {"tasks_for": "github-release"}}, True),
         ({"metadata": {"source": "https://github.com/some-owner/some-repo"}}, True),

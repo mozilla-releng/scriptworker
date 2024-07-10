@@ -1263,29 +1263,42 @@ async def test_get_additional_git_action_jsone_context(github_action_link):
 
 
 @pytest.mark.parametrize(
-    "extra_env,extra_repo_definition,expected_use_parent,latest_head_sha",
+    "extra_env,extra_repo_definition,expected_use_parent,latest_head_sha,tasks_for",
     (
-        pytest.param({}, {"fork": True}, True, "somerevision", id="fork with different base repo"),
-        pytest.param({}, {"fork": False}, False, "somerevision", id="no fork with different base repo"),
+        pytest.param({}, {"fork": True}, True, "somerevision", "github-pull-request", id="fork with different base repo"),
+        pytest.param({}, {"fork": False}, False, "somerevision", "github-pull-request", id="no fork with different base repo"),
         pytest.param(
             {"MOBILE_BASE_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"},
             {"fork": True},
             False,
             "somerevision",
+            "github-pull-request",
             id="fork with same base repo",
         ),
-        pytest.param({}, {}, True, "someotherrevision", id="upstream task from different revision"),
+        pytest.param({}, {}, True, "someotherrevision", "github-pull-request", id="upstream task from different revision"),
+        pytest.param({}, {"fork": True}, True, "somerevision", "github-pull-request-untrusted", id="fork with different base repo and untrusted PR"),
+        pytest.param({}, {"fork": False}, False, "somerevision", "github-pull-request-untrusted", id="no fork with different base repo and untrusted PR"),
+        pytest.param(
+            {"MOBILE_BASE_REPOSITORY": "https://github.com/JohanLorenzo/reference-browser"},
+            {"fork": True},
+            False,
+            "somerevision",
+            "github-pull-request-untrusted",
+            id="fork with same base repo and untrusted PR",
+        ),
+        pytest.param({}, {}, True, "someotherrevision", "github-pull-request-untrusted", id="upstream task from different revision and untrusted PR"),
     ),
 )
 @pytest.mark.asyncio
 async def test_populate_jsone_context_github_pull_request(
-    mocker, mobile_chain_pull_request, mobile_github_pull_request_link, extra_env, extra_repo_definition, expected_use_parent, latest_head_sha
+    mocker, mobile_chain_pull_request, mobile_github_pull_request_link, extra_env, extra_repo_definition, expected_use_parent, latest_head_sha, tasks_for
 ):
     github_repo_mock = MagicMock()
     repo_definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}}
     repo_definition.update(extra_repo_definition)
     github_repo_mock.definition = repo_definition
 
+    mobile_github_pull_request_link.task["extra"]["tasks_for"] = tasks_for
     mobile_github_pull_request_link.task["payload"]["env"].update(extra_env)
 
     async def get_pull_request_mock(pull_request_number, *args, **kwargs):
@@ -1313,7 +1326,7 @@ async def test_populate_jsone_context_github_pull_request(
     github_repo_class_mock = mocker.patch.object(cotverify, "GitHubRepository", return_value=github_repo_mock)
 
     context = await cotverify.populate_jsone_context(
-        mobile_chain_pull_request, mobile_github_pull_request_link, mobile_github_pull_request_link, tasks_for="github-pull-request"
+        mobile_chain_pull_request, mobile_github_pull_request_link, mobile_github_pull_request_link, tasks_for=tasks_for
     )
 
     github_repo_class_mock.assert_any_call("JohanLorenzo", "reference-browser", "fakegithubtoken")
@@ -1358,7 +1371,7 @@ async def test_populate_jsone_context_github_pull_request(
         "now": "2018-01-01T12:00:00.000Z",
         "ownTaskId": "decision_task_id",
         "taskId": None,
-        "tasks_for": "github-pull-request",
+        "tasks_for": tasks_for,
     }
 
 
