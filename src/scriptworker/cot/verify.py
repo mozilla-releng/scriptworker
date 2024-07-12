@@ -1043,12 +1043,17 @@ async def get_scm_level(context, project):
     """
     await context.populate_projects()
     config = context.projects[project]
-    if "access" in config:
+    if config["repo_type"] == "hg":
         return config["access"].replace("scm_level_", "")
-    elif "level" in config:
-        return str(config["level"])
-    else:
-        raise ValueError("Can't find level for project {}".format(project))
+    elif config["repo_type"] == "git":
+        # TODO: we should be using the branch that the task is actually
+        # being run on
+        default_branch = config.get("default_branch", "main")
+        for branch in config["branches"]:
+            if branch["name"] == default_branch:
+                return str(branch["level"])
+
+    raise ValueError("Can't find level for project {}".format(project))
 
 
 async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
