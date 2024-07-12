@@ -2278,11 +2278,16 @@ def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, rais
 
 
 @pytest.mark.parametrize(
-    "project,level,raises", (("mozilla-central", "3", False), ("no-such-project", None, True), ("fenix", "3", False), ("redo", None, True))
+    "project,level,raises", (("mozilla-central", "3", False), ("no-such-project", None, True), ("fenix", "3", False), ("vpn", "3", False), ("redo", None, True))
 )
 @pytest.mark.asyncio
 async def test_get_scm_level(rw_context, project, level, raises):
-    rw_context.projects = {"mozilla-central": {"access": "scm_level_3"}, "fenix": {"level": 3}, "redo": {}}
+    rw_context.projects = {
+        "mozilla-central": {"access": "scm_level_3", "repo_type": "hg"},
+        "fenix": {"branches": [{"name": "main", "level": 3}], "repo_type": "git"},
+        "vpn": {"branches": [{"name": "master", "level": 3}], "default_branch": "master", "repo_type": "git"},
+        "redo": {},
+    }
 
     if raises:
         with pytest.raises(Exception):
