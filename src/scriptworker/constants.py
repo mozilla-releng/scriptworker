@@ -103,7 +103,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 ),
             }
         ),
-        "project_configuration_url": "https://hg.mozilla.org/ci/ci-configuration/raw-file/default/projects.yml",
+        "project_configuration_url": "https://raw.githubusercontent.com/mozilla-releng/fxci-config/main/projects.yml",
         "pushlog_url": "{repo}/json-pushes?changeset={revision}&version=2&full=1",
         "chain_of_trust_hash_algorithm": "sha256",
         "cot_schema_path": os.path.join(os.path.dirname(__file__), "data", "cot_v1_schema.json"),
