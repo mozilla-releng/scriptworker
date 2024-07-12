@@ -4,6 +4,18 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.2.0 - 2024-07-12
+-------------------
+
+Added
+~~~~~
+- Set User-Agent in http requests (#661)
+- Support github-pull-request-untrusted in CoT verification (https://bugzilla.mozilla.org/show_bug.cgi?id=1906748)
+
+Fixed
+~~~~~
+- Pull project from the default branch in projects.yml (#665)
+
 60.1.0 - 2024-06-24
 -------------------
 
