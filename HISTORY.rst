@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.3.0 - 2024-07-15
+-------------------
+
+Fixed
+~~~~~
+- Pull projects.yml from GitHub instead of hg.mozilla.org (#666)
+
 60.2.0 - 2024-07-12
 -------------------
 
