@@ -97,6 +97,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 ),
                 "scriptworker": tuple(
                     [
+                        # Aug 2024 rotation (bug 1914904)
+                        "KO3FX9JnNga/XViTRBiUMHYnji9Fu3s332sU2lXjSwE=",
                         # Dec 2023 rotation (bug 1868558)
                         "jFmyvf3lQiiX0qIFxal5KgIIq6VpUBTQfAtD6hEi8Ms=",
                     ]
