@@ -10,6 +10,7 @@
    :caption: Table of Contents
    :maxdepth: 3
 
+   flow_of_control
    maintenance
    releases
    new_instance_types
