@@ -99,6 +99,7 @@ def _craft_chain(context, scopes, source_url="https://hg.mozilla.org/mozilla-cen
     context.config["scriptworker_provisioners"] = [context.config["provisioner_id"]]
     context.config["scriptworker_worker_types"] = [context.config["worker_type"]]
     context.task = {
+        "created": {"relative-datestamp": "0 seconds"},
         "scopes": scopes,
         "dependencies": ["decision_task_id"],
         "provisionerId": context.config["provisioner_id"],
@@ -133,6 +134,7 @@ def _craft_build_link(chain, source_url="https://hg.mozilla.org/mozilla-central"
         "schedulerId": "scheduler_id",
         "provisionerId": "provisioner",
         "workerType": "workerType",
+        "created": {"relative-datestamp": "0 seconds"},
         "scopes": [],
         "dependencies": ["some_task_id"],
         "metadata": {"source": source_url, "owner": "foo@example.tld"},
@@ -1001,34 +1003,12 @@ def test_verify_link_cot_signature_bad_sig(chain, mocker, build_link, ed25519_mo
         cotverify.verify_cot_signatures(chain)
 
 
-# _take_expires_out_from_artifacts_in_payload {{{1
-@pytest.mark.parametrize(
-    "payload, expected",
-    (
-        ({}, {}),
-        (
-            {"artifacts": {"public/build": {"path": "public/build", "expires": "2018-06-13T14:06:47.295419Z", "type": "directory"}}},
-            {"artifacts": {"public/build": {"path": "public/build", "type": "directory"}}},
-        ),
-        (
-            {"artifacts": [{"path": "public/build", "expires": "2018-06-13T14:06:47.295419Z", "type": "directory", "name": "public/build"}]},
-            {"artifacts": [{"path": "public/build", "type": "directory", "name": "public/build"}]},
-        ),
-    ),
-)
-def test_take_expires_out_from_artifacts_in_payload(payload, expected):
-    assert cotverify._take_expires_out_from_artifacts_in_payload(payload) == expected
-
-
-def test_wrong_take_expires_out_from_artifacts_in_payload():
-    with pytest.raises(CoTError):
-        cotverify._take_expires_out_from_artifacts_in_payload({"artifacts": 0})
-
-
 # verify_link_in_task_graph {{{1
 def test_verify_link_in_task_graph(chain, decision_link, build_link):
     chain.links = [decision_link, build_link]
     decision_link.task_graph = {build_link.task_id: {"task": deepcopy(build_link.task)}, chain.task_id: {"task": deepcopy(chain.task)}}
+    build_link.task["created"] = "1970-01-01T01:00:00.000Z"
+    chain.task["created"] = "1970-01-01T01:00:00.000Z"
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
     build_link.task["dependencies"].append("decision_task_id")
     cotverify.verify_link_in_task_graph(chain, decision_link, build_link)
@@ -1038,10 +1018,12 @@ def test_verify_link_in_task_graph(chain, decision_link, build_link):
 def test_verify_link_in_task_graph_exception(chain, decision_link, build_link, in_chain):
     chain.links = [decision_link, build_link]
     bad_task = deepcopy(build_link.task)
+    build_link.task["created"] = "1970-01-01T01:00:00.000Z"
     build_link.task["dependencies"].append("foo")
     bad_task["x"] = "y"
     build_link.task["x"] = "z"
     decision_link.task_graph = {chain.task_id: {"task": deepcopy(chain.task)}}
+    chain.task["created"] = "1970-01-01T01:00:00.000Z"
     if in_chain:
         decision_link.task_graph[build_link.task_id] = {"task": bad_task}
     with pytest.raises(CoTError):
@@ -1905,8 +1887,13 @@ async def test_verify_parent_task(chain, action_link, cron_link, decision_link, 
         build_link.decision_task_id = parent_link.decision_task_id
         build_link.parent_task_id = parent_link.task_id
 
+        build_task = deepcopy(build_link.task)
+        chain_task = deepcopy(chain.task)
+        build_link.task["created"] = "1970-01-01T01:00:00.000Z"
+        chain.task["created"] = "1970-01-01T01:00:00.000Z"
+
         def task_graph(*args, **kwargs):
-            return {build_link.task_id: {"task": deepcopy(build_link.task)}, chain.task_id: {"task": deepcopy(chain.task)}}
+            return {build_link.task_id: {"task": deepcopy(build_task)}, chain.task_id: {"task": deepcopy(chain_task)}}
 
         paths = [os.path.join(parent_link.cot_dir, "public", "task-graph.json"), os.path.join(decision_link.cot_dir, "public", "parameters.yml")]
         for path in paths:
