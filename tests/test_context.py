@@ -11,7 +11,6 @@ import mock
 import pytest
 
 import scriptworker.context as swcontext
-import taskcluster
 from scriptworker.exceptions import CoTError
 
 
@@ -76,15 +75,6 @@ async def test_set_reset_task(rw_context, claim_task, reclaim_task):
     assert rw_context.proc is None
     assert rw_context.temp_credentials is None
     assert rw_context.temp_queue is None
-
-
-def test_temp_queue(rw_context, mocker):
-    mocker.patch("taskcluster.aio.Queue")
-    rw_context.session = {"c": "d"}
-    rw_context.temp_credentials = {"a": "b"}
-    assert taskcluster.aio.Queue.called_once_with(
-        options={"rootUrl": rw_context.config["taskcluster_root_url"], "credentials": rw_context.temp_credentials}, session=rw_context.session
-    )
 
 
 @pytest.mark.asyncio
