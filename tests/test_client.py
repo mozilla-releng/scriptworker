@@ -140,6 +140,21 @@ def test_invalid_task(schema):
         client.validate_json_schema({"foo": task}, schema)
 
 
+def test_valid_task_format(schema):
+    with open(BASIC_TASK, "r") as fh:
+        task = json.load(fh)
+    task["payload"]["uri"] = "http://example.com"
+    client.validate_json_schema(task, schema)
+
+
+def test_invalid_task_format(schema):
+    with open(BASIC_TASK, "r") as fh:
+        task = json.load(fh)
+    task["payload"]["uri"] = "not-a-uri"
+    with pytest.raises(ScriptWorkerTaskException):
+        client.validate_json_schema(task, schema)
+
+
 _TASK_SCHEMA = {
     "title": "Task minimal schema",
     "type": "object",
