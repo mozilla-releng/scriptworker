@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.5.0 - 2024-11-27
+-------------------
+
+Added
+~~~~~
+- Support for `relative-datestamp` in arbitrary fields in task definitions (https://bugzilla.mozilla.org/show_bug.cgi?id=1933405)
+
 60.4.0 - 2024-08-27
 -------------------
 
