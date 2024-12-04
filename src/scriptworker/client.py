@@ -62,7 +62,8 @@ def validate_json_schema(data: Dict[str, Any], schema: Dict[str, Any], name: str
 
     """
     try:
-        jsonschema.validate(data, schema)
+        validator = jsonschema.validators.validator_for(schema)
+        jsonschema.validate(data, schema, validator, format_checker=validator.FORMAT_CHECKER)
     except jsonschema.exceptions.ValidationError as exc:
         raise ScriptWorkerTaskException("Can't validate {} schema!\n{}".format(name, str(exc)), exit_code=STATUSES["malformed-payload"])
 
