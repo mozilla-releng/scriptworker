@@ -4,6 +4,17 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.6.0 - 2025-01-08
+-------------------
+
+Added
+~~~~~
+- Support for validation of string format in json schemas (https://bugzilla.mozilla.org/show_bug.cgi?id=1933683)
+
+Fixed
+~~~~~
+- Update translations repo in constants (#676)
+
 60.5.0 - 2024-11-27
 -------------------
 
