@@ -287,7 +287,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla/firefox-translations-training)(/|.git|$)"]),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla/translations)(/|.git|$)"]),
                             }
                         ),
                     ),
@@ -532,7 +532,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "translations": immutabledict(
                         {
-                            "translations-repo": ("/mozilla/firefox-translations-training",),
+                            "translations-repo": ("/mozilla/translations",),
                         }
                     ),
                 }
@@ -567,7 +567,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": "XPI",
                     "adhoc": "ADHOC",
                     "scriptworker": "SCRIPTWORKER",
-                    "translations": "FIREFOX_TRANSLATIONS_TRAINING",
+                    "translations": "TRANSLATIONS",
                 }
             )
         },
