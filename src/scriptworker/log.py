@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for this module.
 
 """
+import asyncio
 import logging
 import logging.handlers
 import os
@@ -82,7 +83,14 @@ async def pipe_to_log(pipe: StreamReader, filehandles: Sequence[IO[str]] = (), l
 
     """
     while True:
-        line = await pipe.readline()  # type: Union[str, bytes]
+        try:
+            line = await pipe.readuntil()  # type: Union[str, bytes]
+        except asyncio.exceptions.IncompleteReadError as e:
+            line = e.partial
+        except asyncio.exceptions.LimitOverrunError:
+            # line too long
+            line = bytes(pipe._buffer)
+            pipe._buffer.clear()
         if line:
             line = to_unicode(line)
             log.log(level, line.rstrip())
