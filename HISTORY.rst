@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.6.1 - 2025-01-15
+-------------------
+
+Fixed
+~~~~~
+- Deadlock when the script standard output or error contains a line longer than 64kB (https://bugzilla.mozilla.org/show_bug.cgi?id=1941166)
+
 60.6.0 - 2025-01-08
 -------------------
 
