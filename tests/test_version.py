@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Test scriptworker/version.py
-"""
+"""Test scriptworker/version.py"""
 import json
 import os
 import tempfile

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.utils
-"""
+"""Test scriptworker.utils"""
 import asyncio
 import os
 import re
@@ -26,7 +25,7 @@ text = {
     "english": "The quick brown fox jumped over the lazy dog",
     # this hiragana pangram comes from http://www.columbia.edu/~fdc/utf8/
     "hiragana": "いろはにほへど　ちりぬるを\n" "わがよたれぞ　つねならむ\n" "うゐのおくやま　けふこえて\n" "あさきゆめみじ　ゑひもせず",
-    "poo": "Hello, \U0001F4A9!",
+    "poo": "Hello, \U0001f4a9!",
 }
 
 non_text = {
