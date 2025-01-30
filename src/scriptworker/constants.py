@@ -474,6 +474,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 # bug 1845368: a permanent project branch for testing updates
                                 "/projects/pine",
                                 "/projects/larch",
+                                "/projects/maple",
                             ),
                             "all-production-branches": (
                                 "/mozilla-central",
