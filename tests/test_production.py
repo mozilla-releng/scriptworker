@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Scriptworker production CoT verification tests.
-"""
+"""Scriptworker production CoT verification tests."""
 import json
 import logging
 import os

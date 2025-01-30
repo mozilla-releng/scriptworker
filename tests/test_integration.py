@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Scriptworker integration tests.
-"""
+"""Scriptworker integration tests."""
 import asyncio
 import json
 import logging

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.task
-"""
+"""Test scriptworker.task"""
 import asyncio
 import glob
 import json

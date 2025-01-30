@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.log
-"""
+"""Test scriptworker.log"""
 import asyncio
 import logging
 import os

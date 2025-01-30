@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
-"""Test scriptworker.cot.generate
-"""
+"""Test scriptworker.cot.generate"""
 import logging
 import os
 
