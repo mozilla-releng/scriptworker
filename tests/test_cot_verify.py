@@ -828,52 +828,37 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
 
 # download_cot_artifacts {{{1
 @pytest.mark.parametrize(
-    "upstreamArtifacts,expected",
+    "upstreamArtifacts,expected,artifact_prefix",
     (
-        ([{"taskId": "task_id", "paths": ["*"]}], ["foo", "bar", "baz", "live.log", "test.log"]),
-        ([{"taskId": "task_id", "paths": ["*.log"]}], ["live.log", "test.log"]),
+        ([{"taskId": "task_id", "paths": ["*"]}], ["foo", "bar", "baz", "live.log", "test.log"], None),
+        ([{"taskId": "task_id", "paths": ["*.log"]}], ["live.log", "test.log"], None),
+        ([{"taskId": "task_id", "paths": ["public/*"]}], ["public/foo", "public/bar", "public/baz", "public/live.log", "public/test.log"], "public"),
+        ([{"taskId": "task_id", "paths": ["public/*.log"]}], ["public/live.log", "public/test.log"], "public"),
     ),
 )
 @pytest.mark.asyncio
-async def test_download_cot_artifacts_wildcard(chain, mocker, upstreamArtifacts, expected):
+async def test_download_cot_artifacts_wildcard(chain, mocker, upstreamArtifacts, expected, artifact_prefix):
     async def fake_download(x, y, path):
         return path
 
     async def fake_artifacts(*args, **kwargs):
-        return {
-            "artifacts": [
+        artifacts = []
+        for name in ("foo", "bar", "baz", "live.log", "test.log"):
+            if artifact_prefix:
+                artifact_name = f"{artifact_prefix}/{name}"
+            else:
+                artifact_name = name
+
+            artifacts.append(
                 {
                     "storageType": "s3",
-                    "name": "foo",
+                    "name": artifact_name,
                     "expires": "2025-03-01T16:04:04.463Z",
                     "contentType": "text/plain",
-                },
-                {
-                    "storageType": "s3",
-                    "name": "bar",
-                    "expires": "2025-03-01T16:04:04.463Z",
-                    "contentType": "text/plain",
-                },
-                {
-                    "storageType": "s3",
-                    "name": "baz",
-                    "expires": "2025-03-01T16:04:04.463Z",
-                    "contentType": "text/plain",
-                },
-                {
-                    "storageType": "s3",
-                    "name": "live.log",
-                    "expires": "2025-03-01T16:04:04.463Z",
-                    "contentType": "text/plain",
-                },
-                {
-                    "storageType": "s3",
-                    "name": "test.log",
-                    "expires": "2025-03-01T16:04:04.463Z",
-                    "contentType": "text/plain",
-                },
-            ]
-        }
+                }
+            )
+
+        return {"artifacts": artifacts}
 
     chain.task["payload"]["upstreamArtifacts"] = upstreamArtifacts
     mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)
