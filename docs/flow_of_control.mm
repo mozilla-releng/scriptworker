@@ -15,7 +15,7 @@ sequenceDiagram
 	s->>s: execute task
 	s->>s: verify CoT
 	end
-	s->>ss: signingscript.main (in subprocess)
+	s->>ss: signingscript.main (via `signingscript` entry point in subprocess)
 	rect rgba(169, 226, 235, 255)
 	note left of ss: signingscript process
 	ss->>sc: sync_main(signingscript.async_main, config, ...)
