@@ -440,6 +440,7 @@ def get_artifacts_matching_glob(context, task_id, pattern):
     matching = []
     for root, _, files in os.walk(parent_dir):
         for f in files:
-            if fnmatch.fnmatch(f, pattern):
+            relpath = os.path.relpath(os.path.join(root, f), parent_dir)
+            if fnmatch.fnmatch(relpath, pattern):
                 matching.append(os.path.join(root, f))
     return matching

@@ -281,33 +281,37 @@ def test_get_upstream_artifacts_full_paths_per_task_id(context):
 
 
 @pytest.mark.parametrize(
-    "artifacts_to_create,artifact_filenames,pattern",
+    "artifacts_to_create,artifact_filenames,pattern,extra_dir",
     (
-        (("file_a1", "file_b1", "file_c1"), ("file_a1", "file_b1", "file_c1"), "*"),
-        (("file_a1", "file_b1", "file_c1", "foo.log", "bar.log"), ("foo.log", "bar.log"), "*.log"),
+        (("file_a1", "file_b1", "file_c1"), ("file_a1", "file_b1", "file_c1"), "*", None),
+        (("file_a1", "file_b1", "file_c1", "foo.log", "bar.log"), ("foo.log", "bar.log"), "*.log", None),
+        (("file_a1", "file_b1", "file_c1"), ("file_a1", "file_b1", "file_c1"), "public/*", "public"),
+        (("file_a1", "file_b1", "file_c1", "foo.log", "bar.log"), ("foo.log", "bar.log"), "public/*.log", "public"),
     ),
 )
-def test_get_upstream_artifacts_full_paths_per_task_id_with_globs(context, artifacts_to_create, artifact_filenames, pattern):
+def test_get_upstream_artifacts_full_paths_per_task_id_with_globs(context, artifacts_to_create, artifact_filenames, pattern, extra_dir):
     context.task["payload"] = {
         "upstreamArtifacts": [
             {"paths": [pattern], "taskId": "dependency1", "taskType": "build"},
         ]
     }
 
-    for artifact in artifacts_to_create:
-        folder = os.path.join(context.config["work_dir"], "cot", "dependency1", "public")
+    artifact_dir = os.path.join(context.config["work_dir"], "cot", "dependency1")
+    if extra_dir:
+        artifact_dir = os.path.join(artifact_dir, extra_dir)
 
+    for artifact in artifacts_to_create:
         try:
-            os.makedirs(os.path.join(folder))
+            os.makedirs(os.path.join(artifact_dir))
         except FileExistsError:
             pass
-        touch(os.path.join(folder, artifact))
+        touch(os.path.join(artifact_dir, artifact))
 
     succeeded_artifacts, failed_artifacts = get_upstream_artifacts_full_paths_per_task_id(context)
 
     # ensure deterministic sorting here...
     assert "dependency1" in succeeded_artifacts
-    expected = set([os.path.join(context.config["work_dir"], "cot", "dependency1", "public", f) for f in artifact_filenames])
+    expected = set([os.path.join(artifact_dir, f) for f in artifact_filenames])
     assert set(succeeded_artifacts["dependency1"]) == expected
     assert failed_artifacts == {}
 
