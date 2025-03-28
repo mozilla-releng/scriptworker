@@ -915,6 +915,33 @@ def verify_cot_signatures(chain):
         verify_link_ed25519_cot_signature(chain, link, unsigned_path, ed25519_signature_path)
 
 
+def filter_diff_keys(diff_result, ignore_keys):
+    """
+    Filter out diff items whose key path matches one of the dot-separated strings in ignore_keys.
+
+    Args:
+        diff_result: An iterable of diff items from dictdiffer.diff().
+        ignore_keys: A flat list of dot-separated keys to ignore (e.g., ["metadata.name"]).
+
+    Returns:
+        A list of diff items with ignored keys removed.
+    """
+    filtered_diff = []
+    for diff_item in diff_result:
+        _, path, _ = diff_item
+        # Create a dot-separated string from the path.
+        # Note: dictdiffer returns the path as a list for nested keys.
+        if isinstance(path, list):
+            path_str = ".".join(str(p) for p in path)
+        else:
+            path_str = str(path)
+        # Skip this diff item if its path matches one of the ignore keys.
+        if any(path_str == ignore_key or path_str.startswith(ignore_key + ".") for ignore_key in ignore_keys):
+            continue
+        filtered_diff.append(diff_item)
+    return filtered_diff
+
+
 # verify_task_in_task_graph {{{1
 def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     """Verify a given task_link's task against a given graph task definition.
@@ -932,7 +959,7 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
         CoTError: on failure
 
     """
-    ignore_keys = ("created", "deadline", "dependencies", "expires", "projectId", "schedulerId", "taskQueueId")
+    ignore_keys = ("created", "deadline", "dependencies", "expires", "projectId", "schedulerId", "taskQueueId", "metadata.name")
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
@@ -954,13 +981,27 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
     graph_task = resolve_timestamps(created, graph_defn["task"])
 
     # test all non-ignored key/value pairs in the task defn
-    for key, value in graph_task.items():
-        if key in ignore_keys:
-            continue
-        if value != runtime_defn[key]:
+    diff_result = list(dictdiffer.diff(graph_task, runtime_defn))
+    filtered_diff = filter_diff_keys(diff_result, ignore_keys)
+    for diff_type, path, change in filtered_diff:
+        print(diff_type, path, change)
+        # Build a dot-separated key string from the path
+        if isinstance(path, list):
+            key_str = ".".join(str(k) for k in path)
+        else:
+            key_str = str(path)
+        # The diff items represent addition/deletion/change
+        # The item value is a deep copy from the corresponding source or destination objects
+        if diff_type == "change":
+            expected, actual = change
             errors.append(
-                "{} {} {} differs!\n graph: {}\n task: {}".format(task_link.name, task_link.task_id, key, format_json(value), format_json(runtime_defn[key]))
+                "{} {} {} differs!\n graph: {}\n task: {}".format(task_link.name, task_link.task_id, key_str, format_json(expected), format_json(actual))
             )
+        elif diff_type == "add":
+            errors.append("{} {} has additions! {}".format(task_link.name, task_link.task_id, format_json(change)))
+        elif diff_type == "remove":
+            errors.append("{} {} has removals! {}".format(task_link.name, task_link.task_id, format_json(change)))
+
     raise_on_errors(errors, level=level)
 
 
