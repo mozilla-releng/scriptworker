@@ -45,7 +45,6 @@ def datestring():
 
 
 async def fail_first(*args, **kwargs):
-    global retry_count
     retry_count["fail_first"] += 1
     if retry_count["fail_first"] < 2:
         raise ScriptWorkerRetryException("first")
@@ -53,7 +52,6 @@ async def fail_first(*args, **kwargs):
 
 
 async def always_fail(*args, **kwargs):
-    global retry_count
     retry_count.setdefault("always_fail", 0)
     retry_count["always_fail"] += 1
     raise ScriptWorkerException("fail")
@@ -160,7 +158,6 @@ def test_calculate_sleep_time(attempt, kwargs, min_expected, max_expected):
 # retry_async {{{1
 @pytest.mark.asyncio
 async def test_retry_async_fail_first():
-    global retry_count
     retry_count["fail_first"] = 0
     status = await utils.retry_async(fail_first, sleeptime_kwargs={"delay_factor": 0})
     assert status == "yay"
@@ -169,7 +166,6 @@ async def test_retry_async_fail_first():
 
 @pytest.mark.asyncio
 async def test_retry_async_always_fail():
-    global retry_count
     retry_count["always_fail"] = 0
     with mock.patch("asyncio.sleep", new=fake_sleep):
         with pytest.raises(ScriptWorkerException):
@@ -179,11 +175,9 @@ async def test_retry_async_always_fail():
 
 
 def test_retry_sync_fail_first_and_blocks_the_main_process():
-    global retry_count
     retry_count["fail_first"] = 0
 
     def fail_first_sync(*args, **kwargs):
-        global retry_count
         retry_count["fail_first"] += 1
         if retry_count["fail_first"] < 2:
             raise ScriptWorkerRetryException("first")
@@ -199,11 +193,9 @@ def test_retry_sync_fail_first_and_blocks_the_main_process():
 
 
 def test_retry_sync_always_fail():
-    global retry_count
     retry_count["always_fail"] = 0
 
     def always_fail_sync(*args, **kwargs):
-        global retry_count
         retry_count.setdefault("always_fail", 0)
         retry_count["always_fail"] += 1
         raise ScriptWorkerException("fail")
@@ -217,8 +209,6 @@ def test_retry_sync_always_fail():
 
 @pytest.mark.asyncio
 async def test_retry_async_decorator_fail_first():
-    global retry_count
-
     @utils.retry_async_decorator(sleeptime_kwargs={"delay_factor": 0})
     async def decorated_fail_first(*args, **kwargs):
         return await fail_first(*args, **kwargs)
@@ -231,8 +221,6 @@ async def test_retry_async_decorator_fail_first():
 
 @pytest.mark.asyncio
 async def test_retry_async_decorator_always_fail_async():
-    global retry_count
-
     @utils.retry_async_decorator(sleeptime_kwargs={"delay_factor": 0})
     async def decorated_always_fail(*args, **kwargs):
         return await always_fail(*args, **kwargs)
