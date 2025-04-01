@@ -56,6 +56,16 @@ tasks:
         targets: py311,check
         env:
             NO_TESTS_OVER_WIRE: "1"
+    py312:
+        python-version: "3.12"
+        targets: py312,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+    py313:
+        python-version: "3.13"
+        targets: py313,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
     py38-cot:
         python-version: "3.8"
         targets: py38-cot
@@ -80,6 +90,20 @@ tasks:
     py311-cot:
         python-version: "3.11"
         targets: py311-cot
+        env:
+            NO_CREDENTIALS_TESTS: "1"
+        scopes:
+            - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
+    py312-cot:
+        python-version: "3.12"
+        targets: py312-cot
+        env:
+            NO_CREDENTIALS_TESTS: "1"
+        scopes:
+            - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
+    py313-cot:
+        python-version: "3.13"
+        targets: py313-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
         scopes:
