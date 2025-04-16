@@ -373,6 +373,16 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:treescript:action:push": "all-production-branches-and-autoland",
                             "project:releng:microsoftstore:beta": "beta",
                             "project:releng:microsoftstore:release": "release",
+                            # Note that the repositories in the scope are identifiers in Lando
+                            # and not necessarily individual repositories. For example, the Lando
+                            # "beta" repository is ultimately the `beta` branch of
+                            # https://github.com/mozilla-firefox/firefox.
+                            "project:releng:lando:repo:autoland": "autoland",
+                            "project:releng:lando:repo:nightly": "nightly",
+                            "project:releng:lando:repo:beta": "beta",
+                            "project:releng:lando:repo:release": "release",
+                            "project:releng:lando:repo:esr115": "esr115",
+                            "project:releng:lando:repo:esr128": "esr128",
                         }
                     ),
                     "thunderbird": immutabledict(
@@ -461,8 +471,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-beta",
                                 "/releases/mozilla-release",
                             ),
+                            "esr115": ("/releases/mozilla-esr115",),
+                            "esr128": ("/releases/mozilla-esr128",),
                             "esr": ("/releases/mozilla-esr115", "/releases/mozilla-esr128"),
                             "nightly": ("/mozilla-central",),
+                            "autoland": ("/integration/autoland",),
                             # Which repos can do nightly signing?
                             "all-nightly-branches": (
                                 "/mozilla-central",
