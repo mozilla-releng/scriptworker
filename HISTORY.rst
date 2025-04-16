@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.8.0 - 2025-04-16
+-------------------
+
+Added
+~~~~~
+- `cot_restricted_scopes` for landoscirpt (#691)
+
 60.7.1 - 2025-02-26
 -------------------
 
