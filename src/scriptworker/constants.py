@@ -406,6 +406,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         {
                             "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
                             "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
+                            "project:mobile:releng:treescript:action:push": "firefox-ios-repo",
                         }
                     ),
                     "mozillavpn": immutabledict(
@@ -531,6 +532,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "mobile": immutabledict(
                         {
                             "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
+                            "firefox-ios-repo": ("/mozilla-mobile/firefox-ios",),
                         }
                     ),
                     "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
