@@ -4,6 +4,15 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.9.0 - 2025-05-05
+-------------------
+
+Added
+~~~~~
+
+- Firefox iOS CoT scopes
+- Values for ESR 140 to scriptworker constants
+
 60.8.0 - 2025-04-16
 -------------------
 
