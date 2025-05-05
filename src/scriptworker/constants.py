@@ -383,6 +383,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:lando:repo:release": "release",
                             "project:releng:lando:repo:esr115": "esr115",
                             "project:releng:lando:repo:esr128": "esr128",
+                            "project:releng:lando:repo:esr140": "esr140",
                         }
                     ),
                     "thunderbird": immutabledict(
@@ -461,6 +462,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr115",
                                 "/releases/mozilla-esr128",
+                                "/releases/mozilla-esr140",
                                 "/projects/birch",
                                 # Bug 1821839 hneiva using to test hardened signing
                                 "/projects/maple",
@@ -474,7 +476,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                             "esr115": ("/releases/mozilla-esr115",),
                             "esr128": ("/releases/mozilla-esr128",),
-                            "esr": ("/releases/mozilla-esr115", "/releases/mozilla-esr128"),
+                            "esr140": ("/releases/mozilla-esr140",),
+                            "esr": ("/releases/mozilla-esr115", "/releases/mozilla-esr128", "/releases/mozilla-esr140"),
                             "nightly": ("/mozilla-central",),
                             "autoland": ("/integration/autoland",),
                             # Which repos can do nightly signing?
@@ -485,6 +488,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr115",
                                 "/releases/mozilla-esr128",
+                                "/releases/mozilla-esr140",
                                 # bug 1845368: a permanent project branch for testing updates
                                 "/projects/pine",
                                 "/projects/larch",
@@ -496,6 +500,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr115",
                                 "/releases/mozilla-esr128",
+                                "/releases/mozilla-esr140",
                             ),
                             "all-production-branches-and-autoland": (
                                 "/mozilla-central",
@@ -503,6 +508,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-release",
                                 "/releases/mozilla-esr115",
                                 "/releases/mozilla-esr128",
+                                "/releases/mozilla-esr140",
                                 "/integration/autoland",
                             ),
                         }
@@ -514,17 +520,19 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/comm-release",
                                 "/releases/comm-esr115",
                                 "/releases/comm-esr128",
+                                "/releases/comm-esr140",
                             ),
                             "beta": ("/releases/comm-beta",),
                             "release": ("/releases/comm-release",),
-                            "release-or-esr": ("/releases/comm-release", "/releases/comm-esr115", "/releases/comm-esr128"),
-                            "esr": ("/releases/comm-esr115", "/releases/comm-esr128"),
+                            "release-or-esr": ("/releases/comm-release", "/releases/comm-esr115", "/releases/comm-esr128", "/releases/comm-esr140"),
+                            "esr": ("/releases/comm-esr115", "/releases/comm-esr128", "/releases/comm-esr140"),
                             "all-nightly-branches": (
                                 "/comm-central",
                                 "/releases/comm-beta",
                                 "/releases/comm-release",
                                 "/releases/comm-esr115",
                                 "/releases/comm-esr128",
+                                "/releases/comm-esr140",
                             ),
                             "nightly": ("/comm-central",),
                         }
