@@ -246,6 +246,12 @@ async def test_unexpected_exception_catch_and_tell_taskcluster(context, successf
 
 @pytest.mark.asyncio
 async def test_run_tasks_timeout(context, successful_queue, mocker):
+    expected_args = [(context, ["one", "public/two", "public/logs/live_backing.log"]), None]
+
+    async def fake_upload(*args, **kwargs):
+        assert args == expected_args.pop(0)
+        return 0
+
     temp_dir = os.path.join(context.config["work_dir"], "timeout")
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {"task_defn": True}}
     context.config["task_script"] = (sys.executable, TIMEOUT_SCRIPT, temp_dir)
@@ -259,6 +265,7 @@ async def test_run_tasks_timeout(context, successful_queue, mocker):
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch("scriptworker.worker.filepaths_in_dir", create_sync(["one", "public/two", "public/logs/live_backing.log"]))
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = await worker.run_tasks(context)
@@ -267,6 +274,12 @@ async def test_run_tasks_timeout(context, successful_queue, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_killed(context, successful_queue, mocker):
+    expected_args = [(context, ["one", "public/two", "public/logs/live_backing.log"]), None]
+
+    async def fake_upload(*args, **kwargs):
+        assert args == expected_args.pop(0)
+        return 0
+
     temp_dir = os.path.join(context.config["work_dir"], "killed")
     task = {"foo": "bar", "credentials": {"a": "b"}, "task": {"task_defn": True}}
     context.config["task_script"] = (sys.executable, KILLED_SCRIPT, temp_dir)
@@ -280,6 +293,7 @@ async def test_run_tasks_killed(context, successful_queue, mocker):
     mocker.patch.object(worker, "reclaim_task", new=noop_async)
     mocker.patch.object(worker, "generate_cot", new=noop_sync)
     mocker.patch.object(worker, "prepare_to_run_task", new=noop_sync)
+    mocker.patch("scriptworker.worker.filepaths_in_dir", create_sync(["one", "public/two", "public/logs/live_backing.log"]))
     mocker.patch.object(worker, "upload_artifacts", new=noop_async)
     mocker.patch.object(worker, "complete_task", new=noop_async)
     status = await worker.run_tasks(context)
@@ -418,13 +432,20 @@ async def test_run_tasks_cancel_cot(context, mocker):
 
 @pytest.mark.asyncio
 async def test_run_tasks_cancel_run_tasks(context, mocker):
+    expected_args = [(context, ["one", "public/two", "public/logs/live_backing.log"]), None]
+
+    async def fake_upload(*args, **kwargs):
+        assert args == expected_args.pop(0)
+        return 0
+
     mocker.patch("scriptworker.worker.claim_work", create_async(_MOCK_CLAIM_WORK_RETURN))
     mocker.patch("scriptworker.worker.reclaim_task", noop_async)
     mocker.patch("scriptworker.worker.run_task", noop_async)
     mocker.patch("scriptworker.worker.generate_cot", noop_sync)
     mocker.patch("scriptworker.worker.cleanup", noop_sync)
+    mocker.patch("scriptworker.worker.filepaths_in_dir", create_sync(["one", "public/two", "public/logs/live_backing.log"]))
     mocker.patch("os.path.isfile", create_sync(True))
-    mocker.patch("scriptworker.worker.do_upload", new=create_async(result=0))
+    mocker.patch("scriptworker.worker.do_upload", new=fake_upload)
 
     mock_prepare_task = mocker.patch("scriptworker.worker.prepare_to_run_task")
     mock_complete_task = mocker.patch("scriptworker.worker.complete_task")

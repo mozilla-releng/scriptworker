@@ -7,7 +7,6 @@ Attributes:
 """
 import asyncio
 import logging
-import os
 import signal
 import socket
 import sys
@@ -135,11 +134,9 @@ class RunTasks:
                 reclaim_fut = context.event_loop.create_task(reclaim_task(context, context.task))
                 try:
                     status = await do_run_task(context, self._run_cancellable, self._to_cancellable_process)
-                    artifacts_paths = filepaths_in_dir(context.config["artifact_dir"])
                 except WorkerShutdownDuringTask:
-                    shutdown_artifact_paths = [os.path.join("public", "logs", log_file) for log_file in ["chain_of_trust.log", "live_backing.log"]]
-                    artifacts_paths = [path for path in shutdown_artifact_paths if os.path.isfile(os.path.join(context.config["artifact_dir"], path))]
                     status = STATUSES["worker-shutdown"]
+                artifacts_paths = filepaths_in_dir(context.config["artifact_dir"])
                 status = worst_level(status, await do_upload(context, artifacts_paths))
                 await complete_task(context, status)
                 reclaim_fut.cancel()
