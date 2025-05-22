@@ -41,7 +41,8 @@ def mobile_context(mobile_rw_context):
 def _craft_context(rw_context):
     rw_context.config["reclaim_interval"] = 0.001
     rw_context.config["task_max_timeout"] = 1
-    rw_context.config["task_script"] = ("bash", "-c", ">&2 echo bar && echo foo && exit 1")
+    rw_context.config["taskcluster_root_url"] = "https://tc"
+    rw_context.config["task_script"] = ("bash", "-c", ">&2 echo $TASK_ID && echo $RUN_ID && echo $TASKCLUSTER_ROOT_URL && exit 1")
     rw_context.claim_task = {
         "credentials": {"a": "b"},
         "status": {"taskId": "taskId"},
@@ -496,7 +497,7 @@ def test_prepare_to_run_task(context):
 async def test_run_task(context):
     status = await swtask.run_task(context, noop_to_cancellable_process)
     log_file = log.get_log_filename(context)
-    assert read(log_file) in ("bar\nfoo\nexit code: 1\n", "foo\nbar\nexit code: 1\n")
+    assert read(log_file) in ("taskId\nrunId\nhttps://tc\nexit code: 1\n", "taskId\nrunId\nhttps://tc\nexit code: 1\n")
     assert status == 1
 
 
