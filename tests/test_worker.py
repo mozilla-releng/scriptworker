@@ -25,7 +25,14 @@ from . import AT_LEAST_PY38, KILLED_SCRIPT, TIMEOUT_SCRIPT, create_async, create
 # constants helpers and fixtures {{{1
 @pytest.fixture(scope="function")
 def context(rw_context):
+    rw_context.config["taskcluster_root_url"] = "https://tc"
     rw_context.credentials_timestamp = arrow.utcnow().shift(minutes=-10).int_timestamp
+    rw_context.claim_task = {
+        "credentials": {"a": "b"},
+        "status": {"taskId": "taskId"},
+        "task": {"dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0"},
+        "runId": 0,
+    }
     yield rw_context
 
 

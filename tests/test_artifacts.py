@@ -39,7 +39,7 @@ def context(rw_context):
         "credentials": {"a": "b"},
         "status": {"taskId": "taskId"},
         "task": {"expires": now.shift(days=2).isoformat(), "dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0", "payload": {}},
-        "runId": "runId",
+        "runId": 0,
     }
     yield rw_context
 
@@ -142,7 +142,7 @@ async def test_create_artifact(context, fake_session, successful_queue):
     await create_artifact(context, path, "public/env/one.txt", content_type="text/plain", content_encoding=None, expires=expires)
     assert successful_queue.info == [
         "createArtifact",
-        ("taskId", "runId", "public/env/one.txt", {"storageType": "s3", "expires": expires, "contentType": "text/plain"}),
+        ("taskId", 0, "public/env/one.txt", {"storageType": "s3", "expires": expires, "contentType": "text/plain"}),
         {},
     ]
 
