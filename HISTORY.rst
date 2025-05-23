@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.10.0 - 2025-05-23
+--------------------
+
+Added
+~~~~~
+- upload all artifacts when SIGTERM is received (#696)
+- expose run id and taskcluster root url to scriptworkers (#698)
+
 60.9.0 - 2025-05-05
 -------------------
 
