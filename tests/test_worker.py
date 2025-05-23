@@ -31,7 +31,7 @@ def context(rw_context):
         "credentials": {"a": "b"},
         "status": {"taskId": "taskId"},
         "task": {"dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0"},
-        "runId": "runId",
+        "runId": 0,
     }
     yield rw_context
 

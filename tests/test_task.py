@@ -47,7 +47,7 @@ def _craft_context(rw_context):
         "credentials": {"a": "b"},
         "status": {"taskId": "taskId"},
         "task": {"dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0"},
-        "runId": "runId",
+        "runId": 0,
     }
     return rw_context
 
@@ -483,7 +483,7 @@ def test_is_action(task, expected):
 def test_prepare_to_run_task(context):
     claim_task = context.claim_task
     context.claim_task = None
-    expected = {"taskId": "taskId", "runId": "runId"}
+    expected = {"taskId": "taskId", "runId": 0}
     path = os.path.join(context.config["work_dir"], "current_task_info.json")
     assert swtask.prepare_to_run_task(context, claim_task) == expected
     assert os.path.exists(path)
@@ -497,7 +497,7 @@ def test_prepare_to_run_task(context):
 async def test_run_task(context):
     status = await swtask.run_task(context, noop_to_cancellable_process)
     log_file = log.get_log_filename(context)
-    assert read(log_file) in ("taskId\nrunId\nhttps://tc\nexit code: 1\n", "taskId\nrunId\nhttps://tc\nexit code: 1\n")
+    assert read(log_file) in ("taskId\n0\nhttps://tc\nexit code: 1\n", "taskId\n0\nhttps://tc\nexit code: 1\n")
     assert status == 1
 
 
@@ -571,21 +571,21 @@ async def test_run_task_timeout(context):
 async def test_reportCompleted(context, successful_queue):
     context.temp_queue = successful_queue
     await swtask.complete_task(context, 0)
-    assert successful_queue.info == ["reportCompleted", ("taskId", "runId"), {}]
+    assert successful_queue.info == ["reportCompleted", ("taskId", 0), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportFailed(context, successful_queue):
     context.temp_queue = successful_queue
     await swtask.complete_task(context, 1)
-    assert successful_queue.info == ["reportFailed", ("taskId", "runId"), {}]
+    assert successful_queue.info == ["reportFailed", ("taskId", 0), {}]
 
 
 @pytest.mark.asyncio
 async def test_reportException(context, successful_queue):
     context.temp_queue = successful_queue
     await swtask.complete_task(context, 2)
-    assert successful_queue.info == ["reportException", ("taskId", "runId", {"reason": "worker-shutdown"}), {}]
+    assert successful_queue.info == ["reportException", ("taskId", 0, {"reason": "worker-shutdown"}), {}]
 
 
 @pytest.mark.parametrize("exit_code", (245, 241))
@@ -593,7 +593,7 @@ async def test_reportException(context, successful_queue):
 async def test_reversed_statuses(context, successful_queue, exit_code):
     context.temp_queue = successful_queue
     await swtask.complete_task(context, exit_code)
-    assert successful_queue.info == ["reportException", ("taskId", "runId", {"reason": context.config["reversed_statuses"][exit_code]}), {}]
+    assert successful_queue.info == ["reportException", ("taskId", 0, {"reason": context.config["reversed_statuses"][exit_code]}), {}]
 
 
 # complete_task {{{1

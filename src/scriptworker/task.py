@@ -657,7 +657,7 @@ async def run_task(context, to_cancellable_process):
     """
     env = deepcopy(os.environ)
     env["TASK_ID"] = context.task_id or "None"
-    env["RUN_ID"] = get_run_id(context.claim_task)
+    env["RUN_ID"] = str(get_run_id(context.claim_task))
     env["TASKCLUSTER_ROOT_URL"] = context.config["taskcluster_root_url"]
     kwargs = {"stdout": PIPE, "stderr": PIPE, "stdin": None, "close_fds": True, "preexec_fn": lambda: os.setsid(), "env": env}  # pragma: no branch
 
