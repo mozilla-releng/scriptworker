@@ -25,7 +25,8 @@ tests_require = [
     "flake8",
     "flake8_docstrings",
     "mock",
-    "pytest",
+    # doesn't support python 3.8
+    "pytest<1.0",
     "pytest-asyncio",
     "pytest-cov",
     "pytest-mock",
