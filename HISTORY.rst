@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.10.1 - 2025-06-04
+--------------------
+
+Changed
+~~~~~~~
+- pin aiohttp to <3.12 to avoid OOM when uploading artifacts
+
 60.10.0 - 2025-05-23
 --------------------
 
