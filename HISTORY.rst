@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.10.2 - 2025-06-04
+--------------------
+
+Changed
+~~~~~~~
+- repin aiohttp>=3 to allow updating it again now that the OOM case from 60.10.1 is fixed
+
 60.10.1 - 2025-06-04
 --------------------
 
