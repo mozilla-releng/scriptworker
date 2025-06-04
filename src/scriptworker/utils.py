@@ -700,7 +700,7 @@ def get_loggable_url(url):
 
     """
     loggable_url = url or ""
-    for secret_string in ("bewit=", "AWSAccessKeyId=", "access_token="):
+    for secret_string in ("bewit=", "AWSAccessKeyId=", "access_token=", "Credential="):
         parts = loggable_url.split(secret_string)
         loggable_url = parts[0]
     if loggable_url != url:
