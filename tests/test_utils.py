@@ -517,6 +517,7 @@ async def test_load_json_or_yaml_from_url_auth(rw_context, mocker, overwrite, fi
         ("https://foo/bar?bewit=foobar", "https://foo/bar?<snip>"),
         ("https://bar/baz?AWSAccessKeyId=foobar", "https://bar/baz?<snip>"),
         ("https://bar/baz?access_token=foobar", "https://bar/baz?<snip>"),
+        ("https://bar/baz?X-Amz-Credential=s3kr1t", "https://bar/baz?X-Amz-<snip>"),
     ),
 )
 def test_get_loggable_url(url, expected):
