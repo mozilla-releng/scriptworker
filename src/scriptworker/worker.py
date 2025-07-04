@@ -239,8 +239,10 @@ def main(event_loop=None):
 
     async def _handle_sigusr1():
         """Stop accepting new tasks."""
-        log.info("SIGUSR1 received; no more tasks will be taken")
         nonlocal done
+
+        if not done:
+            log.info("SIGUSR1 received; no more tasks will be taken")
         done = True
 
     context.event_loop.add_signal_handler(signal.SIGTERM, lambda: asyncio.ensure_future(_handle_sigterm()))
