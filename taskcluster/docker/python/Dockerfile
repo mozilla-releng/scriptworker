@@ -2,8 +2,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-ARG  PYTHON_VERSION
-FROM python:${PYTHON_VERSION}-slim
+ARG PYTHON_VERSION
+ARG UV_VERSION
+FROM ghcr.io/astral-sh/uv:${UV_VERSION}-python${PYTHON_VERSION}-bookworm-slim
 
 # Add worker user
 RUN mkdir /builds && \

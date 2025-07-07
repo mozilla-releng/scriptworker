@@ -26,6 +26,7 @@ from immutabledict import immutabledict
 from taskcluster.aio import Queue
 from taskgraph.util.parameterization import resolve_timestamps
 
+from scriptworker import __version__
 from scriptworker.artifacts import (
     download_artifacts,
     get_artifact_url,
@@ -83,7 +84,6 @@ from scriptworker.utils import (
     scriptworker_session,
     write_to_file,
 )
-from scriptworker.version import __version_string__
 
 log = logging.getLogger(__name__)
 
@@ -2038,7 +2038,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         log_obj=scriptworker_log,
         formatter=AuditLogFormatter(fmt=chain.context.config["log_fmt"], datefmt=chain.context.config["log_datefmt"]),
     ):
-        log.info("Running scriptworker version {}".format(__version_string__))
+        log.info("Running scriptworker version {}".format(__version__))
         try:
             # build LinkOfTrust objects
             if check_task:
