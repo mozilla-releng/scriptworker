@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+60.10.3 - 2025-06-04
+--------------------
+
+Fixed
+~~~~~
+
+- Properly trim artifact related credentials from logs
+
+Changed
+~~~~~~~
+
+- Don't output logs about receiving SIGUSR1 more than once
+
 60.10.2 - 2025-06-04
 --------------------
 
