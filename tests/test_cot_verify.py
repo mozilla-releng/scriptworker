@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 from copy import deepcopy
 from functools import partial
 from unittest.mock import MagicMock
@@ -2259,6 +2260,7 @@ async def test_get_scm_level(rw_context, project, level, raises):
         "vpn": {"branches": [{"name": "master", "level": 3}], "default_branch": "master", "repo_type": "git"},
         "redo": {},
     }
+    rw_context._projects_timestamp = time.time()
 
     if raises:
         with pytest.raises(Exception):

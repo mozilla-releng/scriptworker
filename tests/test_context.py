@@ -88,15 +88,24 @@ async def test_projects(rw_context, mocker):
     assert rw_context.projects is None
     await rw_context.populate_projects()
     assert rw_context.projects == fake_projects
+    # never set, must be fetched
     assert fake_projects["count"] == 1
 
     await rw_context.populate_projects(force=True)
     assert rw_context.projects == fake_projects
+    # forced, must be fetched
     assert fake_projects["count"] == 2
 
     await rw_context.populate_projects()
     assert rw_context.projects == fake_projects
+    # already exists, and age is less than an hour, noop
     assert fake_projects["count"] == 2
+
+    rw_context._projects_timestamp = 0.0
+    await rw_context.populate_projects()
+    assert rw_context.projects == fake_projects
+    # age is more than an hour, must be fetched
+    assert fake_projects["count"] == 3
 
 
 def test_get_credentials(rw_context):
