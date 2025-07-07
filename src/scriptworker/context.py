@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 from copy import deepcopy
 from typing import Any, Dict, Optional, cast
 
@@ -30,6 +31,7 @@ log = logging.getLogger(__name__)
 
 
 DEFAULT_MAX_CONCURRENT_DOWNLOADS = 5
+PROJECTS_YML_MAX_AGE_SECONDS = 60 * 60 * 24  # 1 day
 
 
 class Context(object):
@@ -69,6 +71,8 @@ class Context(object):
     _temp_credentials = None  # This assumes a single task per worker.
     _reclaim_task = None
     _projects = None
+    # timestamp of when projects.yml was fetched by `populate_projects`
+    _projects_timestamp: float = 0.0
 
     @property
     def claim_task(self) -> Optional[Dict[str, Any]]:
@@ -237,7 +241,9 @@ class Context(object):
     async def populate_projects(self, force: bool = False) -> None:
         """Download the ``projects.yml`` file and populate ``self.projects``.
 
-        This only sets it once, unless ``force`` is set.
+        Unless ``force`` is set or it was last fetched over an hour ago this
+        method is a noop. (The latter is needed to avoid using a stale version
+        of this file on long lived workers forever.)
 
         Args:
             force (bool, optional): Re-run the download, even if ``self.projects``
@@ -245,9 +251,12 @@ class Context(object):
 
         """
         assert self.config
-        if force or not self.projects:
+        now = time.time()
+        last_fetched = now - self._projects_timestamp
+        if force or not self.projects or last_fetched > PROJECTS_YML_MAX_AGE_SECONDS:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 self.projects = await load_json_or_yaml_from_url(self, self.config["project_configuration_url"], os.path.join(tmpdirname, "projects.yml"))
+                self._projects_timestamp = now
 
     @property
     def download_semaphore(self) -> asyncio.BoundedSemaphore:
