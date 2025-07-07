@@ -33,7 +33,7 @@ task-defaults:
             - sh
             - -lxce
             - >-
-              tox -e {targets}
+              uv run tox -e {targets}
 
 tasks:
     py38:

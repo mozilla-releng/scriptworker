@@ -70,3 +70,7 @@ target/
 
 secrets.json
 scriptworker.yaml
+
+# uv
+.venv/
+uv.lock

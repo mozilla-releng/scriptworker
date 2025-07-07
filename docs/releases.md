@@ -26,33 +26,8 @@ Scriptworker follows [semver](http://semver.org/).  Essentially, increment the
 
 [Update the changelog](http://keepachangelog.com/) before making a new release.
 
-## Release files
-If you're changing any dependencies, please update `setup.py`.
-
-If you add change the list of files that need to be packaged (either adding new files, or removing previous packaged files), modify `MANIFEST.in`.
-
 ### Versioning
-Modify `src/scriptworker/version.py` to set the `__version__` to the appropriate tuple.  This is either a 3- or 4-part tuple, e.g.
-
-```python
-# 0.10.0a1
-__version__ = (0, 10, 0, "alpha1")
-
-# 1.0.0b2
-__version__ = (1, 0, 0, "beta2")
-
-# 0.9.3
-__version__ = (0, 9, 3)
-```
-
-Then run `version.py`:
-
-```bash
-# Using the local venv python>=3.5,
-python src/scriptworker/version.py
-```
-
-This will update `version.json`.  Verify both files look correct.
+Modify `pyproject.toml` and set the `version` field to the appropriate version.
 
 Commit this version bump along with the updates to the changelog.
 
