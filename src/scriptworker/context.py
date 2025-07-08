@@ -241,7 +241,7 @@ class Context(object):
     async def populate_projects(self, force: bool = False) -> None:
         """Download the ``projects.yml`` file and populate ``self.projects``.
 
-        Unless ``force`` is set or it was last fetched over an hour ago this
+        Unless ``force`` is set or it was last fetched over a day ago this
         method is a noop. (The latter is needed to avoid using a stale version
         of this file on long lived workers forever.)
 
