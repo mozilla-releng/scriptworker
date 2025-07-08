@@ -98,13 +98,13 @@ async def test_projects(rw_context, mocker):
 
     await rw_context.populate_projects()
     assert rw_context.projects == fake_projects
-    # already exists, and age is less than an hour, noop
+    # already exists, and age is less than a day, noop
     assert fake_projects["count"] == 2
 
     rw_context._projects_timestamp = 0.0
     await rw_context.populate_projects()
     assert rw_context.projects == fake_projects
-    # age is more than an hour, must be fetched
+    # age is more than a day, must be fetched
     assert fake_projects["count"] == 3
 
 
