@@ -6,15 +6,13 @@ authors = [
     { name = "Mozilla Release Engineering", email = "releng@mozilla.com" },
 ]
 readme = "README.rst"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
     "Intended Audience :: Developers",
     "Natural Language :: English",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
     "aiohttp>=3",
@@ -93,7 +91,7 @@ verify_ed25519_signature = "scriptworker.ed25519:verify_ed25519_signature_cmdln"
 
 [tool.black]
 line-length = 160
-target-version = ["py37", "py38", "py39"]
+target-version = ["py311", "py312", "py313"]
 include = '\.(wsgi|pyi?)$'
 exclude = '''
 /(
