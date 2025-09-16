@@ -4,6 +4,17 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+61.0.0 - 2025-09-16
+--------------------
+
+Changed
+~~~~~~~
+
+- Drop support for python < 3.11
+- Switch project to UV
+- Set a max age for projects.yml caching
+- Add cypress branch to all-nightly-branches
+
 60.10.3 - 2025-06-04
 --------------------
 

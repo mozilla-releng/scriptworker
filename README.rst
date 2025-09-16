@@ -40,9 +40,9 @@ Testing
 
 Without integration tests install tox, then
 
-``NO_CREDENTIALS_TESTS=1 tox -e py36``
+``NO_CREDENTIALS_TESTS=1 uv run tox -e py311``
 
-Without any tests connecting to the net, then ``NO_TESTS_OVER_WIRE=1 tox -e py36``
+Without any tests connecting to the net, then ``NO_TESTS_OVER_WIRE=1 uv run tox -e py311``
 
 With integration tests, first create a client in the Taskcluster UI with the scopes::
 
@@ -67,4 +67,4 @@ Then generate a no priviledge personal access token in Github for the scriptwork
     }
 
 
-then to run all tests: ``tox``
+then to run all tests: ``uv run tox``
