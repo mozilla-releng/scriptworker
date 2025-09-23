@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+61.1.0 - 2025-09-23
+-------------------
+
+Added
+~~~~~
+
+- allow cron tasks_for for translations project (#713)
+
 61.0.0 - 2025-09-16
 --------------------
 
