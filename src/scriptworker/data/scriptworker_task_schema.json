@@ -3,7 +3,12 @@
     "type": "object",
     "properties": {
         "payload": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+                "maxRunTime": {
+                    "type": "integer"
+                }
+            }
         }
     },
     "required": ["payload"]

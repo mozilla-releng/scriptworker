@@ -115,6 +115,15 @@ def get_run_id(claim_task):
     return claim_task["runId"]
 
 
+# get_task_maxruntime {{{1
+def get_task_maxruntime(task_def, max_timeout):
+    """Given a task definition, return the lower of max_timeout and maxRunTime if set"""
+    max_run_time = task_def["payload"].get("maxRunTime")
+    if max_run_time is None:
+        return max_timeout
+    return min(max_timeout, max_run_time)
+
+
 # get_action_callback_name {{{1
 def get_action_callback_name(task):
     """Get the callback name of an action task.
@@ -665,9 +674,9 @@ async def run_task(context, to_cancellable_process):
     env["TASKCLUSTER_ROOT_URL"] = context.config["taskcluster_root_url"]
     kwargs = {"stdout": PIPE, "stderr": PIPE, "stdin": None, "close_fds": True, "preexec_fn": lambda: os.setsid(), "env": env}  # pragma: no branch
 
+    timeout = get_task_maxruntime(context.task, context.config["task_max_timeout"])
     subprocess = await asyncio.create_subprocess_exec(*context.config["task_script"], **kwargs)
     context.proc = await to_cancellable_process(TaskProcess(subprocess))
-    timeout = context.config["task_max_timeout"]
 
     with get_log_filehandle(context) as log_filehandle:
         stderr_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle]))
@@ -675,7 +684,7 @@ async def run_task(context, to_cancellable_process):
         try:
             _, pending = await asyncio.wait([stderr_future, stdout_future], timeout=timeout)
             if pending:
-                message = "Exceeded task_max_timeout of {} seconds".format(timeout)
+                message = "Exceeded max run time of {} seconds".format(timeout)
                 log.warning(message)
                 await context.proc.stop()
                 raise ScriptWorkerTaskException(message, exit_code=context.config["task_max_timeout_status"])
