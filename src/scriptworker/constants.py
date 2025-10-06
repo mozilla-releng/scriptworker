@@ -325,7 +325,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
                     "adhoc": ("action", "github-pull-request", "github-push"),
                     "scriptworker": ("action", "cron", "github-pull-request", "github-push", "github-release"),
-                    "translations": ("action", "github-pull-request", "github-push"),
+                    "translations": ("action", "cron", "github-pull-request", "github-push"),
                 }
             )
         },

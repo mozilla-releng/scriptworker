@@ -1,6 +1,6 @@
 [project]
 name = "scriptworker"
-version = "61.0.0"
+version = "61.1.0"
 description = "Taskcluster scriptworker"
 authors = [
     { name = "Mozilla Release Engineering", email = "releng@mozilla.com" },
@@ -29,8 +29,17 @@ dependencies = [
     "taskcluster-taskgraph",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+docs = [
+    "auxlib",
+    "commonmark",
+    "myst-parser",
+    "recommonmark",
+    # https://github.com/readthedocs/readthedocs.org/issues/10279
+    "Sphinx<7",
+    "sphinx_rtd_theme",
+]
+dev = [
     "tox",
     "tox-uv",
     "aiohttp>=3",
@@ -51,17 +60,6 @@ dev-dependencies = [
     "aiohttp",
     "async_timeout",
     "types-PyYAML",
-]
-
-[dependency-groups]
-docs = [
-    "auxlib",
-    "commonmark",
-    "myst-parser",
-    "recommonmark",
-    # https://github.com/readthedocs/readthedocs.org/issues/10279
-    "Sphinx<7",
-    "sphinx_rtd_theme",
 ]
 
 [build-system]
