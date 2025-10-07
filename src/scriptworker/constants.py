@@ -357,7 +357,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:balrog:server:release": "release",
                             "project:releng:balrog:server:esr": "esr",
                             "project:releng:beetmover:bucket:nightly": "all-nightly-branches",
-                            "project:releng:beetmover:bucket:release": "all-release-branches",
+                            "project:releng:beetmover:bucket:release": "all-release-branches-and-autoland",
                             "project:releng:beetmover:bucket:maven-production": "all-production-branches",
                             "project:releng:beetmover:bucket:maven-nightly-production": "nightly",
                             "project:releng:bouncer:server:production": "all-production-branches",
@@ -466,6 +466,16 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/projects/birch",
                                 # Bug 1821839 hneiva using to test hardened signing
                                 "/projects/maple",
+                            ),
+                            "all-release-branches-and-autoland": (
+                                "/releases/mozilla-beta",
+                                "/releases/mozilla-release",
+                                "/releases/mozilla-esr115",
+                                "/releases/mozilla-esr128",
+                                "/releases/mozilla-esr140",
+                                "/projects/birch",
+                                "/projects/maple",
+                                "/integration/autoland",
                             ),
                             # Limit things like pushapk to just these branches
                             "release": ("/releases/mozilla-release",),
