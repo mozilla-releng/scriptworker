@@ -4,6 +4,18 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+61.2.0 - 2025-10-07
+-------------------
+
+Added
+~~~~~
+
+- Move dev dependencies to a dependency group
+- Allow autoland to use release beetmover bucket
+- Don't sleep in download timeout test
+- Validate claimed task definition against minimal schema
+- Respect maxRunTime specified in task payload
+
 61.1.0 - 2025-09-23
 -------------------
 
