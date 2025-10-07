@@ -20,6 +20,7 @@ import taskcluster.exceptions
 from taskcluster.exceptions import TaskclusterFailure
 
 import taskcluster
+from scriptworker.client import validate_json_schema
 from scriptworker.constants import get_reversed_statuses
 from scriptworker.exceptions import ScriptWorkerTaskException, WorkerShutdownDuringTask
 from scriptworker.github import (
@@ -31,7 +32,7 @@ from scriptworker.github import (
 )
 from scriptworker.log import get_log_filehandle, pipe_to_log
 from scriptworker.task_process import TaskProcess
-from scriptworker.utils import get_parts_of_url_path, retry_async
+from scriptworker.utils import get_parts_of_url_path, load_json_or_yaml, retry_async
 
 log = logging.getLogger(__name__)
 
@@ -112,6 +113,15 @@ def get_run_id(claim_task):
 
     """
     return claim_task["runId"]
+
+
+# get_task_maxruntime {{{1
+def get_task_maxruntime(task_def, max_timeout):
+    """Given a task definition, return the lower of max_timeout and maxRunTime if set"""
+    max_run_time = task_def["payload"].get("maxRunTime")
+    if max_run_time is None:
+        return max_timeout
+    return min(max_timeout, max_run_time)
 
 
 # get_action_callback_name {{{1
@@ -632,8 +642,11 @@ def prepare_to_run_task(context, claim_task):
         dict: the contents of `current_task_info.json`
 
     """
+    schema_path = os.path.join(os.path.dirname(__file__), "data", "scriptworker_task_schema.json")
+    schema = load_json_or_yaml(schema_path, is_path=True)
     current_task_info = {}
     context.claim_task = claim_task
+    validate_json_schema(context.task, schema)
     current_task_info["taskId"] = context.task_id
     current_task_info["runId"] = get_run_id(claim_task)
     log.info("Going to run taskId {taskId} runId {runId}!".format(**current_task_info))
@@ -661,9 +674,9 @@ async def run_task(context, to_cancellable_process):
     env["TASKCLUSTER_ROOT_URL"] = context.config["taskcluster_root_url"]
     kwargs = {"stdout": PIPE, "stderr": PIPE, "stdin": None, "close_fds": True, "preexec_fn": lambda: os.setsid(), "env": env}  # pragma: no branch
 
+    timeout = get_task_maxruntime(context.task, context.config["task_max_timeout"])
     subprocess = await asyncio.create_subprocess_exec(*context.config["task_script"], **kwargs)
     context.proc = await to_cancellable_process(TaskProcess(subprocess))
-    timeout = context.config["task_max_timeout"]
 
     with get_log_filehandle(context) as log_filehandle:
         stderr_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle]))
@@ -671,7 +684,7 @@ async def run_task(context, to_cancellable_process):
         try:
             _, pending = await asyncio.wait([stderr_future, stdout_future], timeout=timeout)
             if pending:
-                message = "Exceeded task_max_timeout of {} seconds".format(timeout)
+                message = "Exceeded max run time of {} seconds".format(timeout)
                 log.warning(message)
                 await context.proc.stop()
                 raise ScriptWorkerTaskException(message, exit_code=context.config["task_max_timeout_status"])

@@ -1,0 +1,15 @@
+{
+    "title": "Scriptworker task minimal schema",
+    "type": "object",
+    "properties": {
+        "payload": {
+            "type": "object",
+            "properties": {
+                "maxRunTime": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "required": ["payload"]
+}
