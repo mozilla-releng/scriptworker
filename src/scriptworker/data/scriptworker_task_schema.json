@@ -1,0 +1,10 @@
+{
+    "title": "Scriptworker task minimal schema",
+    "type": "object",
+    "properties": {
+        "payload": {
+            "type": "object"
+        }
+    },
+    "required": ["payload"]
+}
