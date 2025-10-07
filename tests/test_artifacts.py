@@ -209,7 +209,7 @@ async def test_download_artifacts(context):
 
 
 @pytest.mark.asyncio
-async def test_download_artifacts_timeout(context):
+async def test_download_artifacts_timeout(context, mocker):
     """
     If the download function encounters a timeout, then
     :py:func:`download_artifacts` will retry the download.
@@ -223,7 +223,9 @@ async def test_download_artifacts_timeout(context):
         if next(count) < 1:
             raise asyncio.TimeoutError()
 
+    sleep = mocker.patch("asyncio.sleep")
     result = await download_artifacts(context, urls, download_func=foo)
+    sleep.assert_called_once()
 
     assert sorted(result) == sorted(expected_paths)
 
