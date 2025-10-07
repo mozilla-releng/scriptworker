@@ -46,7 +46,7 @@ def _craft_context(rw_context):
     rw_context.claim_task = {
         "credentials": {"a": "b"},
         "status": {"taskId": "taskId"},
-        "task": {"dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0"},
+        "task": {"dependencies": ["dependency1", "dependency2"], "taskGroupId": "dependency0", "payload": {}},
         "runId": 0,
     }
     return rw_context

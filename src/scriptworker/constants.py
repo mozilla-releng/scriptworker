@@ -53,7 +53,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         # Report this status on max_timeout. `intermittent-task` will rerun the
         # task automatically. `internal-error` or other will require manual
         # intervention.
-        "task_max_timeout_status": STATUSES["intermittent-task"],
+        "task_max_timeout_status": STATUSES["failure"],
         "invalid_reclaim_status": STATUSES["intermittent-task"],
         "task_script": ("bash", "-c", "echo foo && sleep 19 && exit 1"),
         # Logging settings
