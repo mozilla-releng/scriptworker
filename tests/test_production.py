@@ -165,14 +165,6 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "cot_product": "mobile",
     },
     {
-        "name": "reference-browser master raptor aarch64",
-        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-        "index": "mobile.v2.reference-browser.raptor.latest.arm64-v8a",
-        "task_type": "signing",
-        "cot_product": "mobile",
-        "check_task": False,  # These tasks run on level t workers.
-    },
-    {
         "name": "adhoc-signing-decision",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
         "index": "adhoc.v2.adhoc-signing.latest.taskgraph.decision",
