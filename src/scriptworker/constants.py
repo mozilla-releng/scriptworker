@@ -87,6 +87,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     [
                         # Dec 2023 rotation (bug 1868558)
                         "kni6ts7z/MRkvs7i6+SF/T6UWj0hAJoHEcrgHB8BBR0=",
+                        # Dec 2023 rotation (bug 1868558) - d2g
+                        "Kz/aZIVeR6NP8gQU1U+2CCIZqvbd+4QCP6J63lflwik=",
                     ]
                 ),
                 "generic-worker": tuple(
