@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+61.3.0 - 2025-10-29
+-------------------
+
+Added
+~~~~~
+
+- docker-worker CoT artifacts can be signed with the generic-worker key (bug 1996810)
+
 61.2.0 - 2025-10-07
 -------------------
 
@@ -14,7 +22,11 @@ Added
 - Allow autoland to use release beetmover bucket
 - Don't sleep in download timeout test
 - Validate claimed task definition against minimal schema
-- Respect maxRunTime specified in task payload
+
+Changed
+~~~~~~~
+
+- Respect maxRunTime specified in task payload (breaking change)
 
 61.1.0 - 2025-09-23
 -------------------

@@ -29,7 +29,7 @@ Scriptworker follows [semver](http://semver.org/).  Essentially, increment the
 ### Versioning
 Modify `pyproject.toml` and set the `version` field to the appropriate version.
 
-Commit this version bump along with the updates to the changelog.
+Run `uv sync`, and commit this version bump along with the updates to the changelog.
 
 ## Create a Release
 
