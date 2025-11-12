@@ -7,6 +7,7 @@ Attributes:
     STATUSES (dict): maps taskcluster status (string) to exit code (int).
 
 """
+
 import os
 from typing import Any, Dict
 
@@ -123,7 +124,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             immutabledict(
                 {
                     "schemes": ("https",),
-                    "netlocs": ("firefox-ci-tc.services.mozilla.com", "stage.taskcluster.nonprod.cloudops.mozgcp.net"),
+                    "netlocs": (
+                        "firefox-ci-tc.services.mozilla.com",
+                        "stage.taskcluster.nonprod.cloudops.mozgcp.net",
+                    ),
                     "path_regexes": (r"^/api/queue/v1/task/(?P<taskId>[^/]+)(/runs/\\d+)?/artifacts/(?P<filepath>.*)$",),
                 }
             ),
@@ -135,16 +139,16 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
+                        "adhoc": "github",
+                        "app-services": "github",
                         "firefox": "hg",
-                        "thunderbird": "hg",
+                        "glean": "github",
                         "mobile": "github",
                         "mozillavpn": "github",
-                        "app-services": "github",
-                        "glean": "github",
-                        "xpi": "github",
-                        "adhoc": "github",
                         "scriptworker": "github",
+                        "thunderbird": "hg",
                         "translations": "github",
+                        "xpi": "github",
                     }
                 )
             }
@@ -154,6 +158,18 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
+                        "adhoc": (
+                            "adhoc-1/decision",
+                            "adhoc-3/decision",
+                            "adhoc-1/decision-gcp",
+                            "adhoc-3/decision-gcp",
+                        ),
+                        "app-services": (
+                            "app-services-1/decision",
+                            "app-services-3/decision",
+                            "app-services-1/decision-gcp",
+                            "app-services-3/decision-gcp",
+                        ),
                         "firefox": (
                             "gecko-1/decision",
                             "gecko-2/decision",
@@ -161,6 +177,30 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "gecko-1/decision-gcp",
                             "gecko-2/decision-gcp",
                             "gecko-3/decision-gcp",
+                        ),
+                        "glean": (
+                            "glean-1/decision",
+                            "glean-3/decision",
+                            "glean-1/decision-gcp",
+                            "glean-3/decision-gcp",
+                        ),
+                        "mobile": (
+                            "mobile-1/decision",
+                            "mobile-3/decision",
+                            "mobile-1/decision-gcp",
+                            "mobile-3/decision-gcp",
+                        ),
+                        "mozillavpn": (
+                            "mozillavpn-1/decision",
+                            "mozillavpn-3/decision",
+                            "mozillavpn-1/decision-gcp",
+                            "mozillavpn-3/decision-gcp",
+                        ),
+                        "scriptworker": (
+                            "scriptworker-1/decision",
+                            "scriptworker-3/decision",
+                            "scriptworker-1/decision-gcp",
+                            "scriptworker-3/decision-gcp",
                         ),
                         "thunderbird": (
                             "comm-1/decision",
@@ -170,14 +210,13 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "comm-2/decision-gcp",
                             "comm-3/decision-gcp",
                         ),
-                        "mobile": ("mobile-1/decision", "mobile-3/decision", "mobile-1/decision-gcp", "mobile-3/decision-gcp"),
-                        "mozillavpn": ("mozillavpn-1/decision", "mozillavpn-3/decision", "mozillavpn-1/decision-gcp", "mozillavpn-3/decision-gcp"),
-                        "app-services": ("app-services-1/decision", "app-services-3/decision", "app-services-1/decision-gcp", "app-services-3/decision-gcp"),
-                        "glean": ("glean-1/decision", "glean-3/decision", "glean-1/decision-gcp", "glean-3/decision-gcp"),
-                        "xpi": ("xpi-1/decision", "xpi-3/decision", "xpi-1/decision-gcp", "xpi-3/decision-gcp"),
-                        "adhoc": ("adhoc-1/decision", "adhoc-3/decision", "adhoc-1/decision-gcp", "adhoc-3/decision-gcp"),
-                        "scriptworker": ("scriptworker-1/decision", "scriptworker-3/decision", "scriptworker-1/decision-gcp", "scriptworker-3/decision-gcp"),
                         "translations": ("translations-1/decision-gcp",),
+                        "xpi": (
+                            "xpi-1/decision",
+                            "xpi-3/decision",
+                            "xpi-1/decision-gcp",
+                            "xpi-3/decision-gcp",
+                        ),
                     }
                 )
             }
@@ -187,16 +226,66 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
             {
                 "by-cot-product": immutabledict(
                     {
-                        "firefox": ("gecko-1/images", "gecko-2/images", "gecko-3/images", "gecko-1/images-gcp", "gecko-2/images-gcp", "gecko-3/images-gcp"),
-                        "thunderbird": ("comm-1/images", "comm-2/images", "comm-3/images", "comm-1/images-gcp", "comm-2/images-gcp", "comm-3/images-gcp"),
-                        "mobile": ("mobile-1/images", "mobile-3/images", "mobile-1/images-gcp", "mobile-3/images-gcp"),
-                        "mozillavpn": ("mozillavpn-1/images", "mozillavpn-3/images", "mozillavpn-1/images-gcp", "mozillavpn-3/images-gcp"),
-                        "app-services": ("app-services-1/images", "app-services-3/images", "app-services-1/images-gcp", "app-services-3/images-gcp"),
-                        "glean": ("glean-1/images", "glean-3/images", "glean-1/images-gcp", "glean-3/images-gcp"),
-                        "xpi": ("xpi-1/images", "xpi-3/images", "xpi-1/images-gcp", "xpi-3/images-gcp"),
-                        "adhoc": ("adhoc-1/images", "adhoc-3/images", "adhoc-1/images-gcp", "adhoc-3/images-gcp"),
-                        "scriptworker": ("scriptworker-1/images", "scriptworker-3/images", "scriptworker-1/images-gcp", "scriptworker-3/images-gcp"),
+                        "adhoc": (
+                            "adhoc-1/images",
+                            "adhoc-3/images",
+                            "adhoc-1/images-gcp",
+                            "adhoc-3/images-gcp",
+                        ),
+                        "app-services": (
+                            "app-services-1/images",
+                            "app-services-3/images",
+                            "app-services-1/images-gcp",
+                            "app-services-3/images-gcp",
+                        ),
+
+                        "firefox": (
+                            "gecko-1/images",
+                            "gecko-2/images",
+                            "gecko-3/images",
+                            "gecko-1/images-gcp",
+                            "gecko-2/images-gcp",
+                            "gecko-3/images-gcp",
+                        ),
+                        "glean": (
+                            "glean-1/images",
+                            "glean-3/images",
+                            "glean-1/images-gcp",
+                            "glean-3/images-gcp",
+                        ),
+                        "mobile": (
+                            "mobile-1/images",
+                            "mobile-3/images",
+                            "mobile-1/images-gcp",
+                            "mobile-3/images-gcp",
+                        ),
+                        "mozillavpn": (
+                            "mozillavpn-1/images",
+                            "mozillavpn-3/images",
+                            "mozillavpn-1/images-gcp",
+                            "mozillavpn-3/images-gcp",
+                        ),
+                        "scriptworker": (
+                            "scriptworker-1/images",
+                            "scriptworker-3/images",
+                            "scriptworker-1/images-gcp",
+                            "scriptworker-3/images-gcp",
+                        ),
+                        "thunderbird": (
+                            "comm-1/images",
+                            "comm-2/images",
+                            "comm-3/images",
+                            "comm-1/images-gcp",
+                            "comm-2/images-gcp",
+                            "comm-3/images-gcp",
+                        ),
                         "translations": ("translations-1/images-gcp",),
+                        "xpi": (
+                            "xpi-1/images",
+                            "xpi-3/images",
+                            "xpi-1/images-gcp",
+                            "xpi-3/images-gcp",
+                        ),
                     }
                 )
             }
@@ -206,6 +295,24 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "trusted_vcs_rules": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/(?:adhoc-signing|adhoc-manifest))(/|.git|$)"]),
+                            }
+                        ),
+                    ),
+                    "app-services": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",),
+                            }
+                        ),
+                    ),
                     "firefox": (
                         immutabledict(
                             {
@@ -221,13 +328,12 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             }
                         ),
                     ),
-                    # XXX We should also check the mozilla-central tree that is being used.
-                    "thunderbird": (
+                    "glean": (
                         immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
-                                "netlocs": ("hg.mozilla.org",),
-                                "path_regexes": (r"^(?P<path>/comm-central)(/|$)", r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",),
                             }
                         ),
                     ),
@@ -249,38 +355,25 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             }
                         ),
                     ),
-                    "app-services": (
-                        immutabledict(
-                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",)}
-                        ),
-                    ),
-                    "glean": (
-                        immutabledict({"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",)}),
-                    ),
-                    "xpi": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-extensions/xpi-manifest)(/|.git|$)"]),
-                            }
-                        ),
-                    ),
-                    "adhoc": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/(?:adhoc-signing|adhoc-manifest))(/|.git|$)"]),
-                            }
-                        ),
-                    ),
                     "scriptworker": (
                         immutabledict(
                             {
                                 "schemes": ("https", "ssh"),
                                 "netlocs": ("github.com",),
                                 "path_regexes": tuple([r"^(?P<path>/mozilla-releng/scriptworker(?:|-scripts))(/|.git|$)"]),
+                            }
+                        ),
+                    ),
+                    # XXX We should also check the mozilla-central tree that is being used.
+                    "thunderbird": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("hg.mozilla.org",),
+                                "path_regexes": (
+                                    r"^(?P<path>/comm-central)(/|$)",
+                                    r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)",
+                                ),
                             }
                         ),
                     ),
@@ -293,14 +386,37 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             }
                         ),
                     ),
+                    "xpi": (
+                        immutabledict(
+                            {
+                                "schemes": ("https", "ssh"),
+                                "netlocs": ("github.com",),
+                                "path_regexes": tuple([r"^(?P<path>/mozilla-extensions/xpi-manifest)(/|.git|$)"]),
+                            }
+                        ),
+                    ),
                 }
             )
         },
         "valid_tasks_for": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": ("action", "github-pull-request", "github-push"),
+                    "app-services": (
+                        "action",
+                        "cron",
+                        "github-pull-request",
+                        "github-push",
+                        "github-release",
+                    ),
                     "firefox": ("hg-push", "cron", "action"),
-                    "thunderbird": ("hg-push", "cron", "action"),
+                    "glean": (
+                        "action",
+                        "cron",
+                        "github-pull-request",
+                        "github-push",
+                        "github-release",
+                    ),
                     "mobile": (
                         "action",
                         "cron",
@@ -309,41 +425,50 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "github-push",
                         "github-release",
                     ),
-                    "mozillavpn": ("cron", "github-pull-request", "github-push", "github-release", "action"),
-                    "app-services": (
+                    "mozillavpn": (
+                        "cron",
+                        "github-pull-request",
+                        "github-push",
+                        "github-release",
+                        "action",
+                    ),
+                    "scriptworker": (
                         "action",
                         "cron",
                         "github-pull-request",
                         "github-push",
                         "github-release",
                     ),
-                    "glean": (
+                    "thunderbird": ("hg-push", "cron", "action"),
+                    "translations": (
+                        "action",
+                        "cron",
+                        "github-pull-request",
+                        "github-push",
+                    ),
+                    "xpi": (
                         "action",
                         "cron",
                         "github-pull-request",
                         "github-push",
                         "github-release",
                     ),
-                    "xpi": ("action", "cron", "github-pull-request", "github-push", "github-release"),
-                    "adhoc": ("action", "github-pull-request", "github-push"),
-                    "scriptworker": ("action", "cron", "github-pull-request", "github-push", "github-release"),
-                    "translations": ("action", "cron", "github-pull-request", "github-push"),
                 }
             )
         },
         "official_github_repos_owner": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": "mozilla-releng",
+                    "app-services": "mozilla",
                     "firefox": "",
-                    "thunderbird": "",
+                    "glean": "mozilla",
                     "mobile": "mozilla-mobile",
                     "mozillavpn": "mozilla-mobile",
-                    "app-services": "mozilla",
-                    "glean": "mozilla",
-                    "xpi": "mozilla-extensions",
-                    "adhoc": "mozilla-releng",
                     "scriptworker": "mozilla-releng",
+                    "thunderbird": "",
                     "translations": "mozilla",
+                    "xpi": "mozilla-extensions",
                 }
             )
         },
@@ -351,6 +476,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "cot_restricted_scopes": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
+                    "app-services": immutabledict(
+                        {
+                            "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
+                            "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
+                            "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
+                        }
+                    ),
                     "firefox": immutabledict(
                         {
                             "project:releng:addons.mozilla.org:server:production": "all-release-branches",
@@ -387,6 +520,28 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:lando:repo:esr140": "esr140",
                         }
                     ),
+                    "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
+                    "mobile": immutabledict(
+                        {
+                            "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
+                            "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
+                            "project:mobile:releng:treescript:action:push": "firefox-ios-repo",
+                        }
+                    ),
+                    "mozillavpn": immutabledict(
+                        {
+                            "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
+                            "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
+                            "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
+                            "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
+                        }
+                    ),
+                    "scriptworker": immutabledict(
+                        {
+                            "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
+                            "project:scriptworker:pypi:production": "all-production-repos",
+                        }
+                    ),
                     "thunderbird": immutabledict(
                         {
                             "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
@@ -404,29 +559,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:comm:thunderbird:releng:microsoftstore:release": "release-or-esr",
                         }
                     ),
-                    "mobile": immutabledict(
+                    "translations": immutabledict(
                         {
-                            "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
-                            "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
-                            "project:mobile:releng:treescript:action:push": "firefox-ios-repo",
+                            "project:translations:releng:beetmover:bucket:release": "translations-repo",
                         }
                     ),
-                    "mozillavpn": immutabledict(
-                        {
-                            "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
-                            "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
-                            "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
-                            "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
-                        }
-                    ),
-                    "app-services": immutabledict(
-                        {
-                            "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
-                            "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
-                            "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
-                        }
-                    ),
-                    "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
                     "xpi": immutabledict(
                         {
                             "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
@@ -436,18 +573,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:xpi:balrog:server:release": "xpi-manifest-repo",
                         }
                     ),
-                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
-                    "scriptworker": immutabledict(
-                        {
-                            "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
-                            "project:scriptworker:pypi:production": "all-production-repos",
-                        }
-                    ),
-                    "translations": immutabledict(
-                        {
-                            "project:translations:releng:beetmover:bucket:release": "translations-repo",
-                        }
-                    ),
                 }
             )
         },
@@ -455,6 +580,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "cot_restricted_trees": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": immutabledict(
+                        {
+                            "adhoc-signing-repos": (
+                                "/mozilla-releng/adhoc-signing",
+                                "/mozilla-releng/adhoc-manifest",
+                            )
+                        }
+                    ),
+                    "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
                     "firefox": immutabledict(
                         {
                             # Which repos can perform release actions?
@@ -485,7 +619,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                             "esr115": ("/releases/mozilla-esr115",),
                             "esr140": ("/releases/mozilla-esr140",),
-                            "esr": ("/releases/mozilla-esr115", "/releases/mozilla-esr140"),
+                            "esr": (
+                                "/releases/mozilla-esr115",
+                                "/releases/mozilla-esr140",
+                            ),
                             "nightly": ("/mozilla-central",),
                             "autoland": ("/integration/autoland",),
                             # Which repos can do nightly signing?
@@ -519,6 +656,23 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                         }
                     ),
+                    "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
+                    "mobile": immutabledict(
+                        {
+                            "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
+                            "firefox-ios-repo": ("/mozilla-mobile/firefox-ios",),
+                        }
+                    ),
+                    "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
+                    "scriptworker": immutabledict(
+                        {
+                            "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
+                            "all-production-repos": (
+                                "/mozilla-releng/scriptworker",
+                                "/mozilla-releng/scriptworker-scripts",
+                            ),
+                        }
+                    ),
                     "thunderbird": immutabledict(
                         {
                             "all-release-branches": (
@@ -529,7 +683,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             ),
                             "beta": ("/releases/comm-beta",),
                             "release": ("/releases/comm-release",),
-                            "release-or-esr": ("/releases/comm-release", "/releases/comm-esr115", "/releases/comm-esr140"),
+                            "release-or-esr": (
+                                "/releases/comm-release",
+                                "/releases/comm-esr115",
+                                "/releases/comm-esr140",
+                            ),
                             "esr": ("/releases/comm-esr115", "/releases/comm-esr140"),
                             "all-nightly-branches": (
                                 "/comm-central",
@@ -541,61 +699,45 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "nightly": ("/comm-central",),
                         }
                     ),
-                    "mobile": immutabledict(
-                        {
-                            "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
-                            "firefox-ios-repo": ("/mozilla-mobile/firefox-ios",),
-                        }
-                    ),
-                    "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
-                    "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
-                    "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
-                    "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
-                    "adhoc": immutabledict({"adhoc-signing-repos": ("/mozilla-releng/adhoc-signing", "/mozilla-releng/adhoc-manifest")}),
-                    "scriptworker": immutabledict(
-                        {
-                            "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
-                            "all-production-repos": ("/mozilla-releng/scriptworker", "/mozilla-releng/scriptworker-scripts"),
-                        }
-                    ),
                     "translations": immutabledict(
                         {
                             "translations-repo": ("/mozilla/translations",),
                         }
                     ),
+                    "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
                 }
             )
         },
         "prebuilt_docker_image_task_types": {
             "by-cot-product": immutabledict(
                 {
+                    "app-services": "any",  # all allowed
+                    "adhoc": "any",  # all allowed
                     "firefox": ("decision", "action", "docker-image"),
-                    "thunderbird": ("decision", "action", "docker-image"),
+                    "glean": "any",  # all allowed
                     # XXX now that we're on taskgraph, we should limit these.
                     "mobile": "any",  # all allowed
                     "mozillavpn": "any",  # all allowed
-                    "app-services": "any",  # all allowed
-                    "glean": "any",  # all allowed
-                    "xpi": "any",  # all allowed
-                    "adhoc": "any",  # all allowed
                     "scriptworker": ("decision", "action", "docker-image"),
+                    "thunderbird": ("decision", "action", "docker-image"),
                     "translations": "any",  # all allowed
+                    "xpi": "any",  # all allowed
                 }
             )
         },
         "source_env_prefix": {
             "by-cot-product": immutabledict(
                 {
+                    "adhoc": "ADHOC",
+                    "app-services": "APPSERVICES",
                     "firefox": "GECKO",
-                    "thunderbird": "COMM",
+                    "glean": "GLEAN",
                     "mobile": "MOBILE",
                     "mozillavpn": "MOZILLAVPN",
-                    "app-services": "APPSERVICES",
-                    "glean": "GLEAN",
-                    "xpi": "XPI",
-                    "adhoc": "ADHOC",
                     "scriptworker": "SCRIPTWORKER",
+                    "thunderbird": "COMM",
                     "translations": "TRANSLATIONS",
+                    "xpi": "XPI",
                 }
             )
         },
