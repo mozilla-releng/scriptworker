@@ -141,6 +141,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     {
                         "adhoc": "github",
                         "app-services": "github",
+                        "enterprise": "github",
                         "firefox": "hg",
                         "glean": "github",
                         "mobile": "github",
@@ -170,6 +171,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "app-services-1/decision-gcp",
                             "app-services-3/decision-gcp",
                         ),
+                        "enterprise": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision"),
                         "firefox": (
                             "gecko-1/decision",
                             "gecko-2/decision",
@@ -238,7 +240,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "app-services-1/images-gcp",
                             "app-services-3/images-gcp",
                         ),
-
+                        "enterprise": ("gecko-1/images", "gecko-2/images", "gecko-3/images"),
                         "firefox": (
                             "gecko-1/images",
                             "gecko-2/images",
@@ -311,6 +313,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "netlocs": ("github.com",),
                                 "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",),
                             }
+                        ),
+                    ),
+                    "enterprise": (
+                        immutabledict(
+                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/enterprise-firefox)(/|.git|$)",)}
                         ),
                     ),
                     "firefox": (
@@ -409,6 +416,13 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "github-push",
                         "github-release",
                     ),
+                    "enterprise": (
+                        "action",
+                        "cron",
+                        "github-pull-request",
+                        "github-push",
+                        "github-release",
+                    ),
                     "firefox": ("hg-push", "cron", "action"),
                     "glean": (
                         "action",
@@ -461,6 +475,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 {
                     "adhoc": "mozilla-releng",
                     "app-services": "mozilla",
+                    "enterprise": "mozilla",
                     "firefox": "",
                     "glean": "mozilla",
                     "mobile": "mozilla-mobile",
@@ -482,6 +497,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
                             "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
                             "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
+                        }
+                    ),
+                    "enterprise": immutabledict(
+                        {
+                            "project:releng:signing:cert:nightly-signing": "enterprise-firefox-repo",
+                            "project:releng:signing:cert:release-signing": "enterprise-firefox-repo",
+                            "project:releng:signing:cert:production-signing": "enterprise-firefox-repo",
+                            "project:releng:signing:cert:fennec-production-signing": "enterprise-firefox-repo",
                         }
                     ),
                     "firefox": immutabledict(
@@ -589,6 +612,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         }
                     ),
                     "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
+                    "enterprise": immutabledict({"enterprise-firefox-repo": ("/mozilla/enterprise-firefox",)}),
                     "firefox": immutabledict(
                         {
                             # Which repos can perform release actions?
@@ -713,6 +737,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 {
                     "app-services": "any",  # all allowed
                     "adhoc": "any",  # all allowed
+                    "enterprise": ("decision", "action", "docker-image"),
                     "firefox": ("decision", "action", "docker-image"),
                     "glean": "any",  # all allowed
                     # XXX now that we're on taskgraph, we should limit these.
@@ -730,6 +755,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 {
                     "adhoc": "ADHOC",
                     "app-services": "APPSERVICES",
+                    "enterprise": "GECKO",
                     "firefox": "GECKO",
                     "glean": "GLEAN",
                     "mobile": "MOBILE",
