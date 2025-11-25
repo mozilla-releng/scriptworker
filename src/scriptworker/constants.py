@@ -171,7 +171,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "app-services-1/decision-gcp",
                             "app-services-3/decision-gcp",
                         ),
-                        "enterprise": ("gecko-1/decision", "gecko-2/decision", "gecko-3/decision"),
+                        "enterprise": (
+                            "enterprise-1/decision",
+                            "enterprise-2/decision",
+                            "enterprise-3/decision",
+                        ),
                         "firefox": (
                             "gecko-1/decision",
                             "gecko-2/decision",
@@ -240,7 +244,11 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "app-services-1/images-gcp",
                             "app-services-3/images-gcp",
                         ),
-                        "enterprise": ("gecko-1/images", "gecko-2/images", "gecko-3/images"),
+                        "enterprise": (
+                            "enterprise-1/images",
+                            "enterprise-2/images",
+                            "enterprise-3/images",
+                        ),
                         "firefox": (
                             "gecko-1/images",
                             "gecko-2/images",
@@ -502,10 +510,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                     ),
                     "enterprise": immutabledict(
                         {
-                            "project:releng:signing:cert:nightly-signing": "enterprise-firefox-repo",
-                            "project:releng:signing:cert:release-signing": "enterprise-firefox-repo",
-                            "project:releng:signing:cert:production-signing": "enterprise-firefox-repo",
-                            "project:releng:signing:cert:fennec-production-signing": "enterprise-firefox-repo",
+                            "project:enterprise:releng:signing:cert:nightly-signing": "enterprise-firefox-repo",
+                            "project:enterprise:releng:signing:cert:release-signing": "enterprise-firefox-repo",
+                            "project:enterprise:releng:signing:cert:production-signing": "enterprise-firefox-repo",
+                            "project:enterprise:releng:signing:cert:fennec-production-signing": "enterprise-firefox-repo",
                         }
                     ),
                     "firefox": immutabledict(
