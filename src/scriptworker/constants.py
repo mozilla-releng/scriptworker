@@ -459,6 +459,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "cron",
                         "github-pull-request",
                         "github-push",
+                        "pr-action",
                     ),
                     "xpi": (
                         "action",
