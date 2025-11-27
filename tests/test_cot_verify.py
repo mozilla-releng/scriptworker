@@ -167,6 +167,14 @@ def github_action_link(mobile_chain):
 
 
 @pytest.fixture(scope="function")
+def github_pr_action_link(mobile_chain):
+    link = cotverify.LinkOfTrust(mobile_chain.context, "action", "pr_action_task_id")
+    with open(os.path.join(COTV4_DIR, "pr_action_github.json")) as fh:
+        link.task = json.load(fh)
+    yield link
+
+
+@pytest.fixture(scope="function")
 def mobile_github_release_link(mobile_chain):
     decision_link = _craft_decision_link(
         mobile_chain, tasks_for="github-releases", source_url="https://github.com/mozilla-mobile/reference-browser/raw/v9000.0.1/.taskcluster.yml"
@@ -1419,7 +1427,7 @@ async def test_get_action_context_and_template(
 
     chain.links = list(set([decision_link, link]))
 
-    result = await cotverify.get_action_context_and_template(chain, link, decision_link)
+    result = await cotverify.get_action_context_and_template(chain, link, decision_link, "action")
     log.info("result:\n{}".format(result))
     with open(expected_template_path) as fh:
         fake_template = json.load(fh)
@@ -1458,7 +1466,7 @@ async def test_broken_action_context_and_template(chain, mocker):
     chain.links = list(set([decision_link, link]))
 
     with pytest.raises(CoTError, match="Unknown action kind .BROKEN BROKEN BROKEN"):
-        await cotverify.get_action_context_and_template(chain, link, decision_link)
+        await cotverify.get_action_context_and_template(chain, link, decision_link, "action")
 
 
 # verify_parent_task_definition {{{1
@@ -1653,7 +1661,7 @@ async def test_no_match_in_actions_json(chain):
 
     chain.links = list(set([decision_link, link]))
     with pytest.raises(CoTError, match="No action with .* callback found."):
-        await cotverify.get_action_context_and_template(chain, link, decision_link)
+        await cotverify.get_action_context_and_template(chain, link, decision_link, "action")
 
 
 @pytest.mark.asyncio
@@ -1693,7 +1701,48 @@ async def test_unknown_action_kind(chain):
 
     chain.links = list(set([decision_link, link]))
     with pytest.raises(CoTError, match="Unknown action kind"):
-        await cotverify.get_action_context_and_template(chain, link, decision_link)
+        await cotverify.get_action_context_and_template(chain, link, decision_link, "action")
+
+
+@pytest.mark.asyncio
+async def test_populate_jsone_context_github_pr_action(mobile_chain, github_pr_action_link, mobile_github_push_link):
+    """Test that pr-action jsone context is populated correctly."""
+    context = await cotverify.populate_jsone_context(mobile_chain, github_pr_action_link, mobile_github_push_link, tasks_for="pr-action")
+    del context["as_slugid"]
+    assert context == {
+        "now": "2019-10-21T23:36:07.490Z",
+        "ownTaskId": "pr_action_task_id",
+        "taskId": None,
+        "tasks_for": "pr-action",
+        "taskGroupId": "decision_task_id",
+        "input": {
+            "build_number": 1,
+            "do_not_optimize": [],
+            "previous_graph_ids": [],
+            "rebuild_kinds": [],
+            "release_promotion_flavor": "build",
+            "version": "",
+            "xpi_name": "multipreffer",
+        },
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_pr_action_context_and_template(mocker, mobile_chain, github_pr_action_link, mobile_github_push_link):
+    """Test that pr-action tasks generate correct context and template with pr-action specific values."""
+    mobile_chain.context.config["min_cot_version"] = 3
+
+    mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
+
+    mobile_chain.links = list(set([mobile_github_push_link, github_pr_action_link]))
+
+    context, template = await cotverify.get_action_context_and_template(mobile_chain, github_pr_action_link, mobile_github_push_link, "pr-action")
+
+    # Verify the template has pr-action specific values
+    assert template["$let"]["tasks_for"] == "pr-action"
+    assert "pr-action" in template["$let"]["action"]["repo_scope"]
 
 
 @pytest.mark.asyncio
