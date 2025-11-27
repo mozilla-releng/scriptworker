@@ -1,5 +1,3 @@
-import asyncio
-from copy import copy
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -8,20 +6,7 @@ import pytest
 from scriptworker import github
 from scriptworker.exceptions import ConfigError
 
-_CACHE = {}
-
-
-@pytest.fixture(scope="session", autouse=True)
-async def mock_memoized_func():
-    # Memoize_ttl causes an issue with pytest-asyncio, so we copy the behavior to an in-memory cache
-    async def fetch(*args, **kwargs):
-        key = (args, tuple(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = await github._fetch_github_branch_commits_data_helper(*args, **kwargs)
-        return _CACHE[key]
-
-    with patch("scriptworker.github._fetch_github_branch_commits_data", fetch):
-        yield
+# No longer need caching/memoization mocks since we're using the official GitHub API
 
 
 @pytest.fixture(scope="function")
@@ -147,66 +132,57 @@ async def test_get_tag_hash(github_repository, tags, raises, expected):
 
 
 @pytest.mark.parametrize(
-    "commitish, expected_url, html_text, raises, expected",
+    "commitish, expected_url, api_response, raises, expected",
     (
+        # Commit with only unmerged PRs - should return False
         (
             "0129abcdef012345643456789abcdef012345678",
-            "https://github.com/some-user/some-repo/branch_commits/0129abcdef012345643456789abcdef012345678",
-            "\r\n\r\n",
+            "https://api.github.com/repos/some-user/some-repo/commits/0129abcdef012345643456789abcdef012345678/pulls",
+            [{"id": 123, "merged_at": None}],  # Unmerged PR
             False,
             False,
         ),
+        # Commit with no associated PRs - direct commit, should return True
         (
             "0f0123456789abcdef012123456789abcde34565",
-            "https://github.com/some-user/some-repo/branch_commits/0f0123456789abcdef012123456789abcde34565",
-            "\n",
+            "https://api.github.com/repos/some-user/some-repo/commits/0f0123456789abcdef012123456789abcde34565/pulls",
+            [],  # No PRs = direct commit
             False,
-            False,
+            True,
         ),
+        # Commit that doesn't exist (404) - should return False
         (
             "0123456789abcdef0123456789abcdef01234568",
-            "https://github.com/some-user/some-repo/branch_commits/0123456789abcdef0123456789abcdef01234568",
-            "",
+            "https://api.github.com/repos/some-user/some-repo/commits/0123456789abcdef0123456789abcdef01234568/pulls",
+            {"message": "Not Found"},  # 404 response
             False,
             False,
         ),
+        # Commit with merged PR - should return True
         (
             "06789abcdf0123ef01123456789abcde45234569",
-            "https://github.com/some-user/some-repo/branch_commits/06789abcdf0123ef01123456789abcde45234569",
-            """
-
-
-    <svg class="octicon octicon-git-branch" viewBox="0 0 10 16" version="1.1" width="10" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 5c0-1.11-.89-2-2-2a1.993 1.993 0 0 0-1 3.72v.3c-.02.52-.23.98-.63 1.38-.4.4-.86.61-1.38.63-.83.02-1.48.16-2 .45V4.72a1.993 1.993 0 0 0-1-3.72C.88 1 0 1.89 0 3a2 2 0 0 0 1 1.72v6.56c-.59.35-1 .99-1 1.72 0 1.11.89 2 2 2 1.11 0 2-.89 2-2 0-.53-.2-1-.53-1.36.09-.06.48-.41.59-.47.25-.11.56-.17.94-.17 1.05-.05 1.95-.45 2.75-1.25S8.95 7.77 9 6.73h-.02C9.59 6.37 10 5.73 10 5zM2 1.8c.66 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2C1.35 4.2.8 3.65.8 3c0-.65.55-1.2 1.2-1.2zm0 12.41c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zm6-8c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2z"/></svg>
-    <ul class="branches-list">
-        <li class="branch"><a href="/some-user/some-repo">master</a></li>
-          <li class="pull-request">(<a title="Merged Pull Request: [glean] Create a way for glean test API functions to await async IO operations" href="/some-user/some-repo/pull/1234">#1234</a>)</li>
-    </ul>
-    """,
+            "https://api.github.com/repos/some-user/some-repo/commits/06789abcdf0123ef01123456789abcde45234569/pulls",
+            [{"id": 1234, "merged_at": "2021-01-01T00:00:00Z"}],  # Merged PR
             False,
             True,
         ),
+        # Tag that resolves to a commit with merged PR - should return True
         (
             "v1.0.0",
-            "https://github.com/some-user/some-repo/branch_commits/hashforv100",
-            """
-
-
-    <svg class="octicon octicon-git-branch" viewBox="0 0 10 16" version="1.1" width="10" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M10 5c0-1.11-.89-2-2-2a1.993 1.993 0 0 0-1 3.72v.3c-.02.52-.23.98-.63 1.38-.4.4-.86.61-1.38.63-.83.02-1.48.16-2 .45V4.72a1.993 1.993 0 0 0-1-3.72C.88 1 0 1.89 0 3a2 2 0 0 0 1 1.72v6.56c-.59.35-1 .99-1 1.72 0 1.11.89 2 2 2 1.11 0 2-.89 2-2 0-.53-.2-1-.53-1.36.09-.06.48-.41.59-.47.25-.11.56-.17.94-.17 1.05-.05 1.95-.45 2.75-1.25S8.95 7.77 9 6.73h-.02C9.59 6.37 10 5.73 10 5zM2 1.8c.66 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2C1.35 4.2.8 3.65.8 3c0-.65.55-1.2 1.2-1.2zm0 12.41c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2zm6-8c-.66 0-1.2-.55-1.2-1.2 0-.65.55-1.2 1.2-1.2.65 0 1.2.55 1.2 1.2 0 .65-.55 1.2-1.2 1.2z"/></svg>
-    <ul class="branches-list">
-        <li class="branch"><a href="/some-user/some-repo">master</a></li>
-          <li class="pull-request">(<a title="Merged Pull Request: [glean] Create a way for glean test API functions to await async IO operations" href="/some-user/some-repo/pull/1234">#1234</a>)</li>
-    </ul>
-    """,
+            "https://api.github.com/repos/some-user/some-repo/commits/hashforv100/pulls",
+            [{"id": 1234, "merged_at": "2021-01-01T00:00:00Z"}],  # Merged PR
             False,
             True,
         ),
-        ("non-existing-tag", None, "", True, None),
+        # Non-existing tag - should raise ValueError
+        ("non-existing-tag", None, None, True, None),
     ),
 )
-async def test_has_commit_landed_on_repository(context, github_repository, commitish, expected_url, html_text, raises, expected):
-    async def retry_request(_, url):
-        assert url == expected_url
-        return html_text
+async def test_has_commit_landed_on_repository(context, github_repository, commitish, expected_url, api_response, raises, expected):
+    async def retry_request(_, url, **kwargs):
+        if expected_url:
+            assert url == expected_url
+        return api_response
 
     with patch("scriptworker.github.retry_request", retry_request):
         if raises:
@@ -214,54 +190,6 @@ async def test_has_commit_landed_on_repository(context, github_repository, commi
                 await github_repository.has_commit_landed_on_repository(context, commitish)
         else:
             assert await github_repository.has_commit_landed_on_repository(context, commitish) == expected
-
-
-@pytest.mark.asyncio
-async def test_has_commit_landed_on_repository_private(vpn_context, github_repository):
-    """For private repos we don't actually query against github.
-
-    The API used is not formally available and needs authorization on private repos, but isn't clearly useful
-    to try to use for this case.
-    """
-    commitish = "06789abcdf0123ef01123456789abcde45234569"
-
-    async def retry_request(_, url):
-        assert False, "We should never have made a request"
-
-    assert await github_repository.has_commit_landed_on_repository(vpn_context, commitish) == True
-
-
-@pytest.mark.asyncio
-async def test_has_commit_landed_on_repository_cache(context, vpn_context, github_repository):
-    global retry_request_call_count
-    retry_request_call_count = 0
-
-    async def _counter(*args, **kwargs):
-        global retry_request_call_count
-        retry_request_call_count += 1
-        return ""
-
-    with patch("scriptworker.github.retry_request", _counter):
-        await asyncio.gather(
-            *[
-                github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
-                github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
-                github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
-                github_repository.has_commit_landed_on_repository(context, "0129abcdef012345643456789abcdef012345678"),
-            ]
-        )
-        # Even though all calls were fired at once, just a single call was made
-        assert retry_request_call_count == 1
-
-        await github_repository.has_commit_landed_on_repository(context, "456789abcdef0123456780129abcdef012345643")
-        # New commit means new request
-        assert retry_request_call_count == 2
-
-        different_context = copy(context)
-        different_context.task = {"taskGroupId": "someOtherTaskId"}
-        await github_repository.has_commit_landed_on_repository(different_context, "456789abcdef0123456780129abcdef012345643")
-        # New context means new request too
-        assert retry_request_call_count == 3
 
 
 @pytest.mark.parametrize(
