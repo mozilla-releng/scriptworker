@@ -2,8 +2,8 @@
 Scriptworker Readme
 ===================
 
-.. image:: https://travis-ci.org/mozilla-releng/scriptworker.svg?branch=master
-    :target: https://travis-ci.org/mozilla-releng/scriptworker
+.. image:: https://firefox-ci-tc.services.mozilla.com/api/github/v1/repository/mozilla-releng/scriptworker/main/badge.svg
+    :target: https://firefox-ci-tc.services.mozilla.com/api/github/v1/repository/mozilla-releng/scriptworker/main/latest
 
 .. image:: https://coveralls.io/repos/github/mozilla-releng/scriptworker/badge.svg?branch=master
     :target: https://coveralls.io/github/mozilla-releng/scriptworker?branch=master
