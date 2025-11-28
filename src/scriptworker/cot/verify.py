@@ -1340,7 +1340,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(await _get_additional_github_releases_jsone_context(decision_link))
         elif tasks_for == "cron":
             jsone_context.update(await _get_additional_git_cron_jsone_context(decision_link))
-        elif tasks_for == "action":
+        elif tasks_for in ("action", "pr-action"):
             jsone_context.update(await _get_additional_git_action_jsone_context(decision_link, parent_link))
         elif tasks_for in ("github-pull-request", "github-pull-request-untrusted"):
             jsone_context.update(await _get_additional_github_pull_request_jsone_context(decision_link))
@@ -1446,7 +1446,7 @@ def _get_action_from_actions_json(all_actions, callback_name):
     raise CoTError("No action with {} callback found.".format(callback_name))
 
 
-def _wrap_action_hook_with_let(tmpl, action_perm):
+def _wrap_action_hook_with_let(tmpl, action_perm, tasks_for):
     """Construct the hook task template body.
 
     Given the content of .taskcluster.yml, construct the task template that
@@ -1457,14 +1457,14 @@ def _wrap_action_hook_with_let(tmpl, action_perm):
     """
     return {
         "$let": {
-            "tasks_for": "action",
+            "tasks_for": tasks_for,
             "action": {
                 "name": "${payload.decision.action.name}",
                 "title": "${payload.decision.action.title}",
                 "description": "${payload.decision.action.description}",
                 "taskGroupId": "${payload.decision.action.taskGroupId}",
                 "symbol": "${payload.decision.action.symbol}",
-                "repo_scope": "assume:repo:${payload.decision.repository.url[8:]}:action:" + action_perm,
+                "repo_scope": "assume:repo:${payload.decision.repository.url[8:]}:" + tasks_for + ":" + action_perm,
                 "action_perm": action_perm,
                 "cb_name": "${payload.decision.action.cb_name}",
             },
@@ -1502,15 +1502,14 @@ def _get_action_perm(action_defn):
     return action_perm
 
 
-async def get_action_context_and_template(chain, parent_link, decision_link):
+async def get_action_context_and_template(chain, parent_link, decision_link, tasks_for):
     """Get the appropriate json-e context and template for an action task.
 
     Args:
         chain (ChainOfTrust): the chain of trust.
         parent_link (LinkOfTrust): the parent link to test.
         decision_link (LinkOfTrust): the parent link's decision task link.
-        tasks_for (str): the reason the parent link was created (cron,
-            hg-push, action)
+        tasks_for (str): the reason the parent link was created (action or pr-action)
 
     Returns:
         (dict, dict): the json-e context and template.
@@ -1520,7 +1519,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     all_actions = load_json_or_yaml(actions_path, is_path=True)["actions"]
     action_name = get_action_callback_name(parent_link.task)
     action_defn = _get_action_from_actions_json(all_actions, action_name)
-    jsone_context = await populate_jsone_context(chain, parent_link, decision_link, "action")
+    jsone_context = await populate_jsone_context(chain, parent_link, decision_link, tasks_for)
 
     if action_defn.get("kind") != "hook":
         raise CoTError(
@@ -1530,7 +1529,7 @@ async def get_action_context_and_template(chain, parent_link, decision_link):
     # action-hook.
     in_tree_tmpl = await get_in_tree_template(decision_link)
     action_perm = _get_action_perm(action_defn)
-    tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm)
+    tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm, tasks_for)
 
     # define the JSON-e context with which the hook's task template was
     # rendered, defined at
@@ -1562,8 +1561,8 @@ async def get_jsone_context_and_template(chain, parent_link, decision_link, task
         (dict, dict): the json-e context and template.
 
     """
-    if tasks_for == "action":
-        jsone_context, tmpl = await get_action_context_and_template(chain, parent_link, decision_link)
+    if tasks_for in ("action", "pr-action"):
+        jsone_context, tmpl = await get_action_context_and_template(chain, parent_link, decision_link, tasks_for)
     else:
         tmpl = await get_in_tree_template(decision_link)
         jsone_context = await populate_jsone_context(chain, parent_link, decision_link, tasks_for)
@@ -1598,7 +1597,7 @@ async def verify_parent_task_definition(chain, parent_link):
         tasks_for = get_and_check_tasks_for(chain.context, parent_link.task, "{} {}: ".format(parent_link.name, parent_link.task_id))
         jsone_context, tmpl = await get_jsone_context_and_template(chain, parent_link, decision_link, tasks_for)
         rebuilt_definitions = jsone.render(tmpl, jsone_context)
-        if tasks_for == "action":
+        if tasks_for in ("action", "pr-action"):
             check_and_update_action_task_group_id(parent_link, decision_link, rebuilt_definitions)
     except jsone.JSONTemplateError as e:
         log.exception("JSON-e error while rebuilding {} task definition!".format(parent_link.name))
