@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.2.0 - 2025-11-28
+-------------------
+
+Added
+~~~~~
+
+- support `pr-action` `tasks_for` when rebuilding task definitions (#730)
+
 62.1.0 - 2025-11-26
 -------------------
 
