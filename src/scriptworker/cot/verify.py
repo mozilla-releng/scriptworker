@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import datetime
 import fnmatch
+import hashlib
 import logging
 import os
 import pprint
@@ -1007,7 +1008,8 @@ async def get_pushlog_info(decision_link):
     context = decision_link.context
     pushlog_url = context.config["pushlog_url"].format(repo=repo, revision=rev)
     log.info("Pushlog url {}".format(pushlog_url))
-    file_path = os.path.join(context.config["work_dir"], "{}_push_log.json".format(decision_link.name))
+    url_hash = hashlib.sha1(pushlog_url.encode("ascii")).hexdigest()
+    file_path = os.path.join(context.config["work_dir"], f"{url_hash}_push_log.json")
     pushlog_info = await load_json_or_yaml_from_url(context, pushlog_url, file_path, overwrite=False)
     if len(pushlog_info["pushes"]) != 1:
         log.warning("Pushlog error: expected a single push at {} but got {}!".format(pushlog_url, pushlog_info["pushes"]))
@@ -1430,7 +1432,8 @@ async def get_in_tree_template(link):
         and context.config.get("github_oauth_token")
     ):
         auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
-    tmpl = await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(link.name)), auth=auth)
+    url_hash = hashlib.sha1(source_url.encode("ascii")).hexdigest()
+    tmpl = await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(url_hash)), auth=auth)
     return tmpl
 
 
