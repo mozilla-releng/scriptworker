@@ -3,7 +3,6 @@
 import logging
 import re
 
-from aiomemoizettl import memoize_ttl
 from github3 import GitHub
 from github3.exceptions import GitHubException
 
@@ -35,6 +34,9 @@ class GitHubRepository:
             dict: a representation of the repo definition
 
         """
+        self._owner = owner
+        self._repo_name = repo_name
+        self._token = token
         github = retry_sync(GitHub, kwargs={"token": token}, sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
         self._github_repository = retry_sync(github.repository, args=(owner, repo_name), sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
 
@@ -110,6 +112,11 @@ class GitHubRepository:
     async def has_commit_landed_on_repository(self, context, revision):
         """Tell if a commit was landed on the repository or if it just comes from a pull request.
 
+        This method uses the official GitHub REST API to check if a commit has been merged
+        into the repository. It queries the /repos/{owner}/{repo}/commits/{sha}/pulls endpoint
+        to determine if the commit is associated with any merged pull requests, or if it was
+        directly committed to the repository.
+
         Args:
             context (scriptworker.context.Context): the scriptworker context.
             revision (str): the commit hash or the tag name.
@@ -118,42 +125,58 @@ class GitHubRepository:
             bool: True if the commit is present in one of the branches of the main repository
 
         """
-        if any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]):
-            # This check uses unofficial API on github, which we can't easily
-            # check for private repos, assume its true in the private case.
-            log.info("has_commit_landed_on_repository() not implemented for private" "repositories, assume True")
-            return True
-
-        # Revision may be a tag name. `branch_commits` doesn't work on tags
+        # Revision may be a tag name. Convert tags to commit hashes
         if not _is_git_full_hash(revision):
             revision = await self.get_tag_hash(tag_name=revision)
 
-        html_text = await _fetch_github_branch_commits_data(context, self._github_repository.html_url, revision)
+        # Use the official GitHub REST API to check if commit has landed
+        # GET /repos/{owner}/{repo}/commits/{sha}/pulls
+        api_url = f"https://api.github.com/repos/{self._owner}/{self._repo_name}/commits/{revision}/pulls"
 
-        # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
-        # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
-        # represents the branches on which the given revision is present.
-        return html_text != ""
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
 
+        # Add authentication if token is available
+        if self._token:
+            headers["Authorization"] = f"Bearer {self._token}"
 
-# TODO Use memoize_ttl() as decorator once https://github.com/michalc/aiomemoizettl/issues/2 is done
-async def _fetch_github_branch_commits_data_helper(context, repo_html_url, revision):
-    url = "/".join((repo_html_url.rstrip("/"), "branch_commits", revision))
-    log.info('Cache does not exist for URL "{}" (in this context), fetching it...'.format(url))
-    html_text = await retry_request(context, url)
-    return html_text.strip()
+        log.info(f"Checking if commit {revision} has landed on {self._owner}/{self._repo_name}")
 
+        try:
+            # Query the GitHub API for pull requests associated with this commit
+            pull_requests = await retry_request(
+                context, api_url, return_type="json", headers=headers, good=(200, 404)  # 404 means commit doesn't exist in repo at all
+            )
 
-# XXX memoize_ttl() uses all function parameters to create a key that stores its cache.
-# This means new contexts cannot use the memoized value, even though they're calling the same
-# repo and revision. jlorenzo tried to take the context out of the memoize_ttl() call, but
-# whenever the cache is invalidated, request() doesn't work anymore because the session carried
-# by the context has been long closed.
-# Therefore, the defined TTL has 2 purposes:
-#  a. it memoizes calls for the time of a single cot_verify() run
-#  b. it clears the cache automatically, so we don't have to manually invalidate it.
-_BRANCH_COMMITS_CACHE_TTL_IN_SECONDS = 10 * 60  # 10 minutes
-_fetch_github_branch_commits_data = memoize_ttl(_fetch_github_branch_commits_data_helper, get_ttl=lambda _: _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS)
+            # If we got a 404, the commit doesn't exist in this repository
+            # This is handled by checking the type of response
+            if isinstance(pull_requests, dict) and pull_requests.get("message") == "Not Found":
+                log.info(f"Commit {revision} not found in repository")
+                return False
+
+            # If no pull requests are associated with this commit, it was directly committed
+            # to the repository (not from a PR), so it has landed
+            if not pull_requests:
+                log.info(f"Commit {revision} was directly committed (no associated PRs)")
+                return True
+
+            # If there are pull requests, check if any of them are merged
+            # A merged PR means the commit has landed on the main repository
+            has_merged_pr = any(pr.get("merged_at") is not None for pr in pull_requests)
+
+            if has_merged_pr:
+                log.info(f"Commit {revision} has landed via merged PR")
+            else:
+                log.info(f"Commit {revision} only exists in unmerged PRs")
+
+            return has_merged_pr
+
+        except Exception as e:
+            log.error(f"Error checking if commit {revision} has landed: {e}")
+            # In case of errors, assume the commit hasn't landed to be safe
+            return False
 
 
 def is_github_url(url):
