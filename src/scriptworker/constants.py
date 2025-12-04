@@ -589,7 +589,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:comm:thunderbird:releng:flathub:stable": "release-or-esr",
                             "project:comm:thunderbird:releng:microsoftstore:beta": "beta",
                             "project:comm:thunderbird:releng:microsoftstore:release": "release",
-                            "project:comm:thunderbird:releng:microsoftstore:esr": "esr"
+                            "project:comm:thunderbird:releng:microsoftstore:esr": "esr",
                         }
                     ),
                     "translations": immutabledict(
