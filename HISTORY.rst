@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.2.3 - 2025-12-04
+-------------------
+
+Fixed
+~~~~~
+
+- Added some Thunderbird CoT restricted scopes
+
 62.2.2 - 2025-12-02
 -------------------
 
