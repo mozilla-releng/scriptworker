@@ -867,7 +867,7 @@ async def test_download_cot_artifacts_wildcard(chain, mocker, upstreamArtifacts,
                 }
             )
 
-        return {"artifacts": artifacts}
+        return artifacts
 
     chain.task["payload"]["upstreamArtifacts"] = upstreamArtifacts
     mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)

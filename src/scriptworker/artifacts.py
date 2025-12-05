@@ -224,13 +224,19 @@ def get_artifact_url(context, task_id, path):
 
 
 # list_latest_artifacts {{{1
-async def list_latest_artifacts(queue, task_id, exception=TaskclusterFailure):
-    return await queue.listLatestArtifacts(task_id)
+async def list_latest_artifacts(queue, task_id):
+    artifacts = []
+
+    def pagination_handler(response):
+        artifacts.extend(response["artifacts"])
+
+    await queue.listLatestArtifacts(task_id, paginationHandler=pagination_handler)
+    return artifacts
 
 
 async def retry_list_latest_artifacts(queue, task_id, exception=TaskclusterFailure, **kwargs):
     kwargs.setdefault("retry_exceptions", tuple(set([TaskclusterFailure, exception])))
-    return await retry_async(list_latest_artifacts, args=(queue, task_id), kwargs={"exception": exception}, **kwargs)
+    return await retry_async(list_latest_artifacts, args=(queue, task_id), **kwargs)
 
 
 # get_expiration_arrow {{{1
