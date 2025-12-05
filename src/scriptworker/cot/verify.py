@@ -783,7 +783,7 @@ async def download_cot_artifacts(chain):
                 # artifacts from the completed tasks and then determine
                 # which are needed based on the pattern given.
                 if not latest_artifacts.get(task_id):
-                    latest_artifacts[task_id] = (await retry_list_latest_artifacts(chain.context.queue, task_id))["artifacts"]
+                    latest_artifacts[task_id] = await retry_list_latest_artifacts(chain.context.queue, task_id)
                 coroutines = []
                 for artifact in latest_artifacts[task_id]:
                     if fnmatch.fnmatch(artifact["name"], path):
