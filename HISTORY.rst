@@ -4,13 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
-62.2.3 - 2025-12-04
+62.2.3 - 2025-12-05
 -------------------
 
 Fixed
 ~~~~~
 
 - Added some Thunderbird CoT restricted scopes
+- Downloading wildcard artifacts from tasks with over a thousand artifacts
 
 62.2.2 - 2025-12-02
 -------------------
