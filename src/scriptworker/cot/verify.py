@@ -2099,7 +2099,7 @@ def verify_cot_cmdln(args=None, event_loop=None):
             ``sys.argv[1:]`` .  Defaults to None.
 
         event_loop (asyncio.events.AbstractEventLoop): the event loop to use.
-            If ``None``, use ``asyncio.get_event_loop()``. Defaults to ``None``.
+            If ``None``, use ``asyncio.new_event_loop()``. Defaults to ``None``.
 
     """
     args = args or sys.argv[1:]
@@ -2129,7 +2129,7 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     level = logging.DEBUG if opts.verbose else logging.INFO
     log.setLevel(level)
     logging.basicConfig(level=level)
-    event_loop = event_loop or asyncio.get_event_loop()
+    event_loop = event_loop or asyncio.new_event_loop()
     if not opts.cleanup:
         log.info("Artifacts will be in {}".format(tmp))
     try:
@@ -2178,7 +2178,7 @@ def create_test_workdir(args=None, event_loop=None):
             ``sys.argv[1:]`` .  Defaults to None.
 
         event_loop (asyncio.events.AbstractEventLoop): the event loop to use.
-            If ``None``, use ``asyncio.get_event_loop()``. Defaults to ``None``.
+            If ``None``, use ``asyncio.new_event_loop()``. Defaults to ``None``.
 
     """
     args = args or sys.argv[1:]
@@ -2203,6 +2203,6 @@ This is helpful in manually testing a *script run.""")
             sys.exit(1)
         rm(opts.path)
     makedirs(opts.path)
-    event_loop = event_loop or asyncio.get_event_loop()
+    event_loop = event_loop or asyncio.new_event_loop()
     event_loop.run_until_complete(_async_create_test_workdir(opts.task_id, opts.path))
     log.info("Done.")
