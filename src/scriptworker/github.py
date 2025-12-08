@@ -141,6 +141,8 @@ _BRANCH_COMMITS_CACHE = {}
 
 
 async def _fetch_github_branch_commits_data(context, repo_html_url, revision):
+    # Include context identity because different contexts carry
+    # different HTTP sessions that may be closed independently.
     cache_key = (id(context), repo_html_url, revision)
 
     if cache_key in _BRANCH_COMMITS_CACHE:
