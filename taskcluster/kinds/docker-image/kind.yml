@@ -12,7 +12,7 @@ transforms:
 
 task-defaults:
   args:
-    UV_VERSION: "0.7.9"
+    UV_VERSION: "0.9.16"
 
 tasks:
     python3.14:
