@@ -23,7 +23,7 @@ def launch_second_instances():
     if not os.path.exists(temp_dir):
         os.makedirs(temp_dir)
     job1 = subprocess.Popen([sys.executable, __file__, os.path.join(temp_dir, "one"), os.path.join(temp_dir, "two"), os.path.join(temp_dir, "three")])
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     job2 = asyncio.create_subprocess_exec(
         sys.executable, __file__, os.path.join(temp_dir, "four"), os.path.join(temp_dir, "five"), os.path.join(temp_dir, "six")
     )
@@ -39,7 +39,7 @@ async def write_file1(path):
 
 
 def write_files():
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     task = write_file1(sys.argv[1])
     subprocess.Popen(["bash", BASH_SCRIPT, sys.argv[2]])
     subprocess.Popen("bash {} {}".format(BASH_SCRIPT, sys.argv[3]), shell=True)
