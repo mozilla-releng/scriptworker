@@ -7,7 +7,6 @@ import logging
 import os
 import re
 import tempfile
-from unittest.mock import patch
 
 import pytest
 from asyncio_extras.contextmanager import async_contextmanager
@@ -15,7 +14,6 @@ from taskcluster.aio import Index, Queue, Secrets
 
 import scriptworker.log as swlog
 import scriptworker.utils as utils
-from scriptworker import github
 from scriptworker.config import apply_product_config, get_unfrozen_copy, read_worker_creds
 from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
@@ -25,20 +23,6 @@ log = logging.getLogger(__name__)
 
 # constants helpers and fixtures {{{1
 pytestmark = [pytest.mark.skipif(os.environ.get("NO_TESTS_OVER_WIRE"), reason="NO_TESTS_OVER_WIRE: skipping production CoT verification test")]
-_CACHE = {}
-
-
-@pytest.fixture(scope="session", autouse=True)
-async def mock_memoized_func():
-    # Memoize_ttl causes an issue with pytest-asyncio, so we copy the behavior to an in-memory cache
-    async def fetch(*args, **kwargs):
-        key = (args, tuple(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = await github._fetch_github_branch_commits_data_helper(*args, **kwargs)
-        return _CACHE[key]
-
-    with patch("scriptworker.github._fetch_github_branch_commits_data", fetch):
-        yield
 
 
 def read_integration_creds():
