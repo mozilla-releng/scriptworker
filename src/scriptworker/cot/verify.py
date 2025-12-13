@@ -2133,7 +2133,7 @@ SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the r
     level = logging.DEBUG if opts.verbose else logging.INFO
     log.setLevel(level)
     logging.basicConfig(level=level)
-    event_loop = event_loop or asyncio.get_event_loop()
+    event_loop = event_loop or asyncio.new_event_loop()
     if not opts.cleanup:
         log.info("Artifacts will be in {}".format(tmp))
     try:
