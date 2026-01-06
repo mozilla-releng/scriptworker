@@ -216,7 +216,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "comm-2/decision-gcp",
                             "comm-3/decision-gcp",
                         ),
-                        "translations": ("translations-1/decision-gcp",),
+                        "translations": (
+                            "translations-1/decision",
+                            "translations-1/decision-gcp",
+                        ),
                         "xpi": (
                             "xpi-1/decision",
                             "xpi-3/decision",
