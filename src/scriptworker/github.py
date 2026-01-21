@@ -1,9 +1,9 @@
 """GitHub helper functions."""
 
+import asyncio
 import logging
 import re
 
-from aiomemoizettl import memoize_ttl
 from github3 import GitHub
 from github3.exceptions import GitHubException
 
@@ -136,24 +136,36 @@ class GitHubRepository:
         return html_text != ""
 
 
-# TODO Use memoize_ttl() as decorator once https://github.com/michalc/aiomemoizettl/issues/2 is done
-async def _fetch_github_branch_commits_data_helper(context, repo_html_url, revision):
-    url = "/".join((repo_html_url.rstrip("/"), "branch_commits", revision))
-    log.info('Cache does not exist for URL "{}" (in this context), fetching it...'.format(url))
-    html_text = await retry_request(context, url)
-    return html_text.strip()
-
-
-# XXX memoize_ttl() uses all function parameters to create a key that stores its cache.
-# This means new contexts cannot use the memoized value, even though they're calling the same
-# repo and revision. jlorenzo tried to take the context out of the memoize_ttl() call, but
-# whenever the cache is invalidated, request() doesn't work anymore because the session carried
-# by the context has been long closed.
-# Therefore, the defined TTL has 2 purposes:
-#  a. it memoizes calls for the time of a single cot_verify() run
-#  b. it clears the cache automatically, so we don't have to manually invalidate it.
 _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS = 10 * 60  # 10 minutes
-_fetch_github_branch_commits_data = memoize_ttl(_fetch_github_branch_commits_data_helper, get_ttl=lambda _: _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS)
+_BRANCH_COMMITS_CACHE = {}
+
+
+async def _fetch_github_branch_commits_data(context, repo_html_url, revision):
+    cache_key = (id(context), repo_html_url, revision)
+
+    if cache_key in _BRANCH_COMMITS_CACHE:
+        return await _BRANCH_COMMITS_CACHE[cache_key]
+
+    future = asyncio.get_running_loop().create_future()
+    _BRANCH_COMMITS_CACHE[cache_key] = future
+
+    try:
+        url = "/".join((repo_html_url.rstrip("/"), "branch_commits", revision))
+        html_text = await retry_request(context, url)
+        result = html_text.strip()
+        future.set_result(result)
+        asyncio.get_running_loop().call_later(
+            _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS,
+            _BRANCH_COMMITS_CACHE.pop,
+            cache_key,
+            None,
+        )
+    except BaseException as e:
+        _BRANCH_COMMITS_CACHE.pop(cache_key, None)
+        future.set_exception(e)
+        raise
+
+    return result
 
 
 def is_github_url(url):
