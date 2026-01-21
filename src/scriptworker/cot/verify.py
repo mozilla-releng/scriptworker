@@ -934,6 +934,8 @@ def verify_task_in_task_graph(task_link, graph_defn, level=logging.CRITICAL):
 
     """
     ignore_keys = ("created", "deadline", "dependencies", "expires", "projectId", "schedulerId", "taskQueueId")
+    if is_action(task_link.task):
+        ignore_keys = tuple(*ignore_keys, "metadata.name")
     errors = []
     runtime_defn = deepcopy(task_link.task)
     # dependencies
