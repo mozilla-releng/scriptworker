@@ -14,7 +14,7 @@ transforms:
 
 task-defaults:
     description: "{name} tox-{targets}"
-    run-on-tasks-for: ["action", "github-pull-request", "github-push"]
+    run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     attributes:
         code-review: true
     worker-type: b-linux
@@ -59,6 +59,7 @@ tasks:
         targets: py311-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-push"]
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
     py312-cot:
@@ -66,6 +67,7 @@ tasks:
         targets: py312-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-push"]
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
     py313-cot:
@@ -73,5 +75,6 @@ tasks:
         targets: py313-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-push"]
         scopes:
             - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
