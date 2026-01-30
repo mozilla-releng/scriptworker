@@ -719,8 +719,12 @@ async def download_cot_artifact(chain, task_id, path):
     link = chain.get_link(task_id)
     log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
     if not link.cot:
-        log.warning('Chain of Trust for "{}" in {} does not exist. See above log for more details. \
-Skipping download of this artifact'.format(path, task_id))
+        log.warning(
+            'Chain of Trust for "{}" in {} does not exist. See above log for more details. \
+Skipping download of this artifact'.format(
+                path, task_id
+            )
+        )
         return
 
     if path not in link.cot["artifacts"]:
@@ -2101,7 +2105,8 @@ def verify_cot_cmdln(args=None, event_loop=None):
 
     """
     args = args or sys.argv[1:]
-    parser = argparse.ArgumentParser(description="""Verify a given task's chain of trust.
+    parser = argparse.ArgumentParser(
+        description="""Verify a given task's chain of trust.
 
 Given a task's `task_id`, get its task definition, then trace its chain of
 trust back to the tree.  This doesn't verify chain of trust artifact signatures,
@@ -2113,7 +2118,8 @@ To use, first either set your taskcluster creds in your env http://bit.ly/2eDMa6
 or in the CREDS_FILES http://bit.ly/2fVMu0A
 
 If you are verifying against a private github repo, please also set in environment
-SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the repo""")
+SCRIPTWORKER_GITHUB_OAUTH_TOKEN to an OAUTH token with read permissions to the repo"""
+    )
     parser.add_argument("task_id", help="the task id to test")
     parser.add_argument("--task-type", help="the task type to test", choices=sorted(get_valid_task_types().keys()), required=True)
     parser.add_argument("--cleanup", help="clean up the temp dir afterwards", dest="cleanup", action="store_true", default=False)
@@ -2180,13 +2186,15 @@ def create_test_workdir(args=None, event_loop=None):
 
     """
     args = args or sys.argv[1:]
-    parser = argparse.ArgumentParser(description="""Populate a test `work_dir`.
+    parser = argparse.ArgumentParser(
+        description="""Populate a test `work_dir`.
 
 Given a scriptworker task's `task_id`, get its task definition, write it to
 `./work/task.json`, then download its `upstreamArtifacts` and put them in
 `./work/cot/TASK_ID/PATH`.
 
-This is helpful in manually testing a *script run.""")
+This is helpful in manually testing a *script run."""
+    )
     parser.add_argument("--path", help="relative path to the work_dir", default="work")
     parser.add_argument("--overwrite", help="overwrite an existing work_dir", action="store_true")
     parser.add_argument("task_id", help="the task id to test")
