@@ -50,7 +50,6 @@ dev = [
     "flake8_docstrings",
     "isort>=5",
     "mock",
-    "pydocstyle==3.0.0",
     "pytest",
     "pytest-asyncio<1.0",
     "pytest-mock",
