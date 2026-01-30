@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Test scriptworker.config"""
+
 import json
 import os
 from copy import deepcopy

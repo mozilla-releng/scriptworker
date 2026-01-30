@@ -10,6 +10,7 @@ Attributes:
     DEFAULT_MAX_CONCURRENT_DOWNLOADS (int): default max concurrent downloads
 
 """
+
 import asyncio
 import json
 import logging

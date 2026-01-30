@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Test scriptworker.cot.verify"""
+
 import json
 import logging
 import os
@@ -2179,7 +2180,7 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, do
 async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_scopes(
     mobile_chain, mobile_github_release_link, mobile_build_link, source_url, raises, mocker
 ):
-    (source_url, raises) = ("https://github.com/mozilla-mobile/reference-browser", False)
+    source_url, raises = ("https://github.com/mozilla-mobile/reference-browser", False)
     mobile_github_release_link.task["metadata"]["source"] = source_url
     mobile_chain.links = [mobile_github_release_link, mobile_build_link]
     mocker.patch.object(mobile_chain, "is_try_or_pull_request", new=create_async(result=False))

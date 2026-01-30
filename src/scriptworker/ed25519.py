@@ -5,6 +5,7 @@ Attributes:
     log (logging.Logger): the log object for the module
 
 """
+
 import argparse
 import base64
 import functools
@@ -140,13 +141,11 @@ def verify_ed25519_signature_cmdln(args=None, exception=SystemExit):
 
     """
     args = args or sys.argv[1:]
-    parser = argparse.ArgumentParser(
-        description="""Verify an ed25519 signature from the command line.
+    parser = argparse.ArgumentParser(description="""Verify an ed25519 signature from the command line.
 
 Given a file and its detached signature, verify that it has been signed with
 a valid key. This key can be specified on the command line; otherwise we'll
-default to ``config['ed25519_public_keys']``."""
-    )
+default to ``config['ed25519_public_keys']``.""")
     parser.add_argument("--pubkey", help="path to a base64-encoded ed25519 pubkey, optional")
     parser.add_argument("file_path")
     parser.add_argument("sig_path")

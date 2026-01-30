@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Test scriptworker.utils"""
+
 import asyncio
 import os
 import re
