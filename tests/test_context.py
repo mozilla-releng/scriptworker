@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 """Test scriptworker.context"""
+
 import asyncio
 import json
 import os

@@ -5,6 +5,7 @@ This script doesn't currently reuse the functions in `scriptworker.ed25519`, for
 easier standalone use. It could easily be a `console_script` though.
 
 """
+
 from __future__ import print_function
 
 import base64
