@@ -14,7 +14,6 @@ transforms:
 
 task-defaults:
     description: "{name} tox-{targets}"
-    run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     attributes:
         code-review: true
     worker-type: b-linux
@@ -39,21 +38,25 @@ tasks:
     check:
         python-version: "3.13"
         targets: check
+        run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     py311:
         python-version: "3.11"
         targets: py311
         env:
             NO_TESTS_OVER_WIRE: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     py312:
         python-version: "3.12"
         targets: py312
         env:
             NO_TESTS_OVER_WIRE: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     py313:
         python-version: "3.13"
         targets: py313
         env:
             NO_TESTS_OVER_WIRE: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     py311-cot:
         python-version: "3.11"
         targets: py311-cot
