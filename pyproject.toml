@@ -51,7 +51,7 @@ dev = [
     "isort>=5",
     "mock",
     "pytest",
-    "pytest-asyncio<1.0",
+    "pytest-asyncio<1.4",
     "pytest-mock",
     "pytest-random-order",
     "mypy",
