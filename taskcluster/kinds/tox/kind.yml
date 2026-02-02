@@ -22,7 +22,7 @@ task-defaults:
         max-run-time: 1800
     run:
         using: run-task
-        cache-dotcache: false
+        use-caches: [checkout,uv]
         checkout:
             scriptworker: {}
         # sparse-profile: str/none
