@@ -35,8 +35,7 @@ docs = [
     "commonmark",
     "myst-parser",
     "recommonmark",
-    # https://github.com/readthedocs/readthedocs.org/issues/10279
-    "Sphinx<10",
+    "Sphinx",
     "sphinx_rtd_theme",
 ]
 dev = [
