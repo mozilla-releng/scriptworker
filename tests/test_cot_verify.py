@@ -2222,7 +2222,7 @@ async def test_verify_chain_of_trust(chain, exc, check_task, mocker):
 # verify_cot_cmdln {{{1
 @pytest.mark.parametrize("args", (("x", "--task-type", "signing", "--cleanup"), ("x", "--task-type", "balrog")))
 @pytest.mark.parametrize("use_github_token", (False, True))
-def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_token, monkeypatch):
+def test_verify_cot_cmdln(chain, args, tmpdir, mocker, use_github_token, monkeypatch):
     if use_github_token:
         monkeypatch.setenv("SCRIPTWORKER_GITHUB_OAUTH_TOKEN", "sometoken")
     context = MagicMock()
@@ -2250,7 +2250,7 @@ def test_verify_cot_cmdln(chain, args, tmpdir, mocker, event_loop, use_github_to
     mocker.patch.object(cotverify, "retry_get_task_definition", new=noop_async)
     mocker.patch.object(cotverify, "verify_chain_of_trust", new=noop_async)
 
-    cotverify.verify_cot_cmdln(args=args, event_loop=event_loop)
+    cotverify.verify_cot_cmdln(args=args)
 
 
 # create_test_workdir {{{1
@@ -2275,7 +2275,7 @@ async def test_async_create_test_workdir(mocker, tmpdir):
 
 
 @pytest.mark.parametrize("exists, overwrite, raises", ((True, True, False), (False, False, False), (False, True, False), (True, False, True)))
-def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, raises):
+def test_create_test_workdir(mocker, tmpdir, exists, overwrite, raises):
     """``create_test_workdir`` fails if ``path`` exists and ``--overwrite`` isn't
     passed. Otherwise we call ``_async_create_test_workdir`` with the appropriate
     args.
@@ -2294,9 +2294,9 @@ def test_create_test_workdir(mocker, event_loop, tmpdir, exists, overwrite, rais
         makedirs(work_dir)
     if raises:
         with pytest.raises(SystemExit):
-            cotverify.create_test_workdir(args=args, event_loop=event_loop)
+            cotverify.create_test_workdir(args=args)
     else:
-        cotverify.create_test_workdir(args=args, event_loop=event_loop)
+        cotverify.create_test_workdir(args=args)
 
 
 @pytest.mark.parametrize(

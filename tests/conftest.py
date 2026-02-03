@@ -76,7 +76,6 @@ async def _fake_request(resp_status, method, url, *args, **kwargs):
     return resp
 
 
-@pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session():
     session = scriptworker_session()
@@ -85,7 +84,6 @@ async def fake_session():
     await session.close()
 
 
-@pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session_500():
     session = scriptworker_session()
@@ -94,7 +92,6 @@ async def fake_session_500():
     await session.close()
 
 
-@pytest.mark.asyncio
 @pytest.fixture(scope="function")
 async def fake_session_404():
     session = scriptworker_session()
