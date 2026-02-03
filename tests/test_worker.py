@@ -38,7 +38,7 @@ def context(rw_context):
 
 
 # main {{{1
-def test_main(mocker, context, event_loop):
+def test_main(mocker, context):
     config = dict(context.config)
     config["poll_interval"] = 1
     creds = {"fake_creds": True}
@@ -57,15 +57,16 @@ def test_main(mocker, context, event_loop):
         mocker.patch.object(worker, "async_main", new=foo)
         mocker.patch.object(sys, "argv", new=["x", tmp])
         with pytest.raises(ScriptWorkerException):
-            worker.main(event_loop=event_loop)
+            worker.main()
     finally:
         os.remove(tmp)
 
 
 @pytest.mark.parametrize("running", (True, False))
-def test_main_running_sigterm(mocker, context, event_loop, running):
+def test_main_running_sigterm(mocker, context, running):
     """Test that sending SIGTERM causes the main loop to stop after the next
     call to async_main."""
+    event_loop = asyncio.get_event_loop()
     run_tasks_cancelled = event_loop.create_future()
 
     class MockRunTasks:
@@ -97,9 +98,10 @@ def test_main_running_sigterm(mocker, context, event_loop, running):
 
 
 @pytest.mark.parametrize("running", (True, False))
-def test_main_running_sigusr1(mocker, context, event_loop, running):
+def test_main_running_sigusr1(mocker, context, running):
     """Test that sending SIGUSR1 causes the main loop to stop after the next
     call to async_main without cancelling the task."""
+    event_loop = asyncio.get_event_loop()
     run_tasks_cancelled = event_loop.create_future()
 
     class MockRunTasks:
