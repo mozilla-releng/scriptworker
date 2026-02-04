@@ -57,6 +57,12 @@ tasks:
         env:
             NO_TESTS_OVER_WIRE: "1"
         run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
+    py314:
+        python-version: "3.14"
+        targets: py314,check
+        env:
+            NO_TESTS_OVER_WIRE: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-pull-request-untrusted", "github-push"]
     py311-cot:
         python-version: "3.11"
         targets: py311-cot
@@ -76,6 +82,14 @@ tasks:
     py313-cot:
         python-version: "3.13"
         targets: py313-cot
+        env:
+            NO_CREDENTIALS_TESTS: "1"
+        run-on-tasks-for: ["action", "github-pull-request", "github-push"]
+        scopes:
+            - secrets:get:repo:github.com/mozilla-releng/scriptworker:github
+    py314-cot:
+        python-version: "3.14"
+        targets: py314-cot
         env:
             NO_CREDENTIALS_TESTS: "1"
         run-on-tasks-for: ["action", "github-pull-request", "github-push"]

@@ -8,20 +8,12 @@ import pytest
 from scriptworker import github
 from scriptworker.exceptions import ConfigError
 
-_CACHE = {}
 
-
-@pytest.fixture(scope="session", autouse=True)
-async def mock_memoized_func():
-    # Memoize_ttl causes an issue with pytest-asyncio, so we copy the behavior to an in-memory cache
-    async def fetch(*args, **kwargs):
-        key = (args, tuple(kwargs.items()))
-        if key not in _CACHE:
-            _CACHE[key] = await github._fetch_github_branch_commits_data_helper(*args, **kwargs)
-        return _CACHE[key]
-
-    with patch("scriptworker.github._fetch_github_branch_commits_data", fetch):
-        yield
+@pytest.fixture(autouse=True)
+def clear_github_cache():
+    github._BRANCH_COMMITS_CACHE.clear()
+    yield
+    github._BRANCH_COMMITS_CACHE.clear()
 
 
 @pytest.fixture(scope="function")
