@@ -1171,7 +1171,7 @@ async def _get_additional_git_cron_jsone_context(decision_link):
             "sender": {"login": user},
         },
         # Taskgraph cron contexts mirror hg-push contexts
-        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name)},
+        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name), "type": "git"},
         "push": {"revision": revision, "branch": branch},
     }
 
@@ -1359,8 +1359,10 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(await _get_additional_hg_action_jsone_context(parent_link, decision_link))
         elif tasks_for == "hg-push":
             jsone_context.update(await _get_additional_hg_push_jsone_context(parent_link, decision_link))
+            jsone_context["repository"]["type"] = "hg"
         elif tasks_for == "cron":
             jsone_context.update(await _get_additional_hg_cron_jsone_context(parent_link, decision_link))
+            jsone_context["repository"]["type"] = "hg"
         else:
             raise CoTError('Unknown tasks_for "{}" for hg cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     else:

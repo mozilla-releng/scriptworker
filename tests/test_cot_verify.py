@@ -1044,7 +1044,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
                 "push": {"base_revision": "baserev", "comment": " ", "owner": "some-user", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
-                "repository": {"level": "1", "project": "mozilla-central", "url": None},
+                "repository": {"level": "1", "project": "mozilla-central", "url": None, "type": "hg"},
                 "taskId": None,
                 "tasks_for": "hg-push",
             },
@@ -1057,7 +1057,7 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
                 "now": "2018-01-01T12:00:00.000Z",
                 "ownTaskId": "decision_task_id",
                 "push": {"base_revision": "baserev", "comment": "", "owner": "cron", "pushdate": 1500000000, "pushlog_id": 1, "revision": None},
-                "repository": {"level": "1", "project": "mozilla-central", "url": None},
+                "repository": {"level": "1", "project": "mozilla-central", "url": None, "type": "hg"},
                 "taskId": None,
                 "tasks_for": "cron",
             },
@@ -1165,7 +1165,7 @@ async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, h
         "ownTaskId": "decision_task_id",
         "taskId": None,
         "tasks_for": "cron",
-        "repository": {"url": "https://github.com/mozilla-mobile/reference-browser", "project": "reference-browser", "level": "3"},
+        "repository": {"url": "https://github.com/mozilla-mobile/reference-browser", "project": "reference-browser", "level": "3", "type": "git"},
         "push": {"branch": "master", "revision": "somerevision"},
     }
 
