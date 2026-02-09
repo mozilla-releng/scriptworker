@@ -292,7 +292,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "comm-2/images-gcp",
                             "comm-3/images-gcp",
                         ),
-                        "translations": ("translations-1/images-gcp",),
+                        "translations": (
+                            "translations-1/images",
+                            "translations-1/images-gcp",
+                        ),
                         "xpi": (
                             "xpi-1/images",
                             "xpi-3/images",
