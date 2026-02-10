@@ -4,6 +4,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.4.0 - 2026-02-10
+-------------------
+
+Added
+~~~~~
+
+- add repository type to jsone context for cron and hg-push tasks (#763)
+- add support for python 3.14 (#744)
+- `translations-1/images` is a valid pool for images tasks (#773)
+
 62.3.0 - 2026-01-06
 -------------------
 
