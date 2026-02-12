@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.5.0 - 2026-02-12
+-------------------
+
+Added
+~~~~~
+
+- Allow `pr-actions` `tasks_for` in the `enterprise` trust domain (#775)
+
 62.4.0 - 2026-02-10
 -------------------
 
