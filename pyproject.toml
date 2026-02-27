@@ -1,6 +1,6 @@
 [project]
 name = "scriptworker"
-version = "62.5.0"
+version = "62.6.0"
 description = "Taskcluster scriptworker"
 authors = [
     { name = "Mozilla Release Engineering", email = "releng@mozilla.com" },

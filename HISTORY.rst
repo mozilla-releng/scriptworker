@@ -4,6 +4,20 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.6.0 - 2026-02-27
+-------------------
+
+Added
+~~~~~
+
+- Chain of Trust ignores the `priority` field from task definitions, since it can now be changed by `changeTaskPriority`/`changeTaskGroupPriority` API
+  calls (https://github.com/taskcluster/taskcluster-rfcs/blob/main/rfcs/0190-queue-change-task-run-priority.md) (#779)
+
+Fixed
+~~~~~
+
+- support for python 3.14 (#781)
+
 62.5.0 - 2026-02-12
 -------------------
 
