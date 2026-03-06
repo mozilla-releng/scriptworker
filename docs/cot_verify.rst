@@ -65,4 +65,13 @@ Scriptworker:
 
 Once all verification passes, it launches the task script.  If chain of trust verification fails, it exits before launching the task script.
 
+Extra data and assumptions
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Some of the information necessary for rebuilding decision task definitions can't be independently re-generated at verification time; for these cases, we rely on additional data in the original task definition itself.  That means the project's `.taskcluster.yml` needs to store that information for CoT to find it, and that `.taskcluster.yml` shouldn't make security-relevant decisions based on it.  These bits are:
+
+- in action tasks, `task.extra.action.context` should contain the action's `taskGroupId`, `taskId` and `input`, plus any other bits of context used by `.taskcluster.yml`, e.g. `clientId`; `task.extra.parent` should contain its parent task's `taskId` (pointing at either a decision task or another action task).
+- in decision tasks for cron jobs, `task.extra.cron` should be a copy of the `cron` object passed to the task, containing `task_id`, `job_name`, `job_symbol` and `quoted_args`
+- in all cases, `task.extra.tasks_for` contains the `tasks_for` value.
+
 .. _json-e: https://github.com/taskcluster/json-e
