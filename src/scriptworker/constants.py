@@ -539,7 +539,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "project:releng:signing:cert:release-signing": "all-release-branches",
                             "project:releng:signing:cert:production-signing": "all-production-branches",
                             "project:releng:signing:cert:fennec-production-signing": "beta-or-release",
-                            "project:releng:flathub:firefox:beta": "beta-or-release",  # Needed on release for RCs
+                            "project:releng:flathub:firefox:beta": "beta",
                             "project:releng:flathub:firefox:stable": "release",
                             "project:releng:googleplay:product:focus-android": "all-production-branches",
                             "project:releng:googleplay:product:fenix": "all-production-branches",
