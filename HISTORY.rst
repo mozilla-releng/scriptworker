@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+62.7.0 - 2026-03-18
+-------------------
+
+Added
+~~~~~
+
+- New pushflathub scopes `{prefix}:{channel}:{appid}` for firefox and thunderbird
+
+Removed
+~~~~~~~
+
+- No longer needed flathub-beta scopes from mozilla-release
+
 62.6.0 - 2026-02-27
 -------------------
 
