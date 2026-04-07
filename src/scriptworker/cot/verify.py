@@ -1565,8 +1565,10 @@ async def get_jsone_context_and_template(chain, parent_link, decision_link, task
     if tasks_for in ("action", "pr-action"):
         jsone_context, tmpl = await get_action_context_and_template(chain, parent_link, decision_link, tasks_for)
     else:
-        tmpl = await get_in_tree_template(decision_link)
-        jsone_context = await populate_jsone_context(chain, parent_link, decision_link, tasks_for)
+        tmpl, jsone_context = await asyncio.gather(
+            get_in_tree_template(decision_link),
+            populate_jsone_context(chain, parent_link, decision_link, tasks_for),
+        )
     return jsone_context, tmpl
 
 
