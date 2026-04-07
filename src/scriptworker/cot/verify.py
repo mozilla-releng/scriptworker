@@ -1805,14 +1805,14 @@ async def verify_task_types(chain):
     """
     valid_task_types = get_valid_task_types()
     task_count = {}
+    tasks = []
     for obj in chain.get_all_links_in_chain():
         task_type = obj.task_type
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, task_type))
         task_count.setdefault(task_type, 0)
         task_count[task_type] += 1
-        # Run tests synchronously for now.  We can parallelize if efficiency
-        # is more important than a single simple logfile.
-        await valid_task_types[task_type](chain, obj)
+        tasks.append(valid_task_types[task_type](chain, obj))
+    await asyncio.gather(*tasks)
     return task_count
 
 
@@ -1882,12 +1882,12 @@ async def verify_worker_impls(chain):
 
     """
     valid_worker_impls = get_valid_worker_impls()
+    tasks = []
     for obj in chain.get_all_links_in_chain():
         worker_impl = obj.worker_impl
         log.info("Verifying {} {} as a {} task...".format(obj.name, obj.task_id, worker_impl))
-        # Run tests synchronously for now.  We can parallelize if efficiency
-        # is more important than a single simple logfile.
-        await valid_worker_impls[worker_impl](chain, obj)
+        tasks.append(valid_worker_impls[worker_impl](chain, obj))
+    await asyncio.gather(*tasks)
 
 
 # get_source_url {{{1
