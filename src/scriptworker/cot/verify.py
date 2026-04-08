@@ -619,8 +619,8 @@ def _sort_dependencies_by_name_then_task_id(dependencies):
 
 
 # build_task_dependencies {{{1
-async def build_link(chain, task_name, task_id):
-    """Build a LinkOfTrust and add it to the chain.
+async def add_link(chain, task_name, task_id):
+    """Fetch a task definition and add it as a LinkOfTrust to the chain.
 
     Args:
         chain (ChainOfTrust): the chain of trust to add to.
@@ -633,14 +633,11 @@ async def build_link(chain, task_name, task_id):
     """
     link = LinkOfTrust(chain.context, task_name, task_id)
     json_path = link.get_artifact_full_path("task.json")
-    task_defn = await retry_get_task_definition(chain.context.queue, task_id, exception=CoTError)
-    link.task = task_defn
+    link.task = await retry_get_task_definition(chain.context.queue, task_id, exception=CoTError)
     chain.links.append(link)
-    # write task json to disk
     makedirs(os.path.dirname(json_path))
     with open(json_path, "w") as fh:
-        fh.write(format_json(task_defn))
-    await build_task_dependencies(chain, task_defn, task_name, task_id)
+        fh.write(format_json(link.task))
 
 
 async def build_task_dependencies(chain, task, name, my_task_id):
@@ -661,9 +658,21 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         raise CoTError("Too deep recursion!\n{}".format(name))
     sorted_dependencies = find_sorted_task_dependencies(task, name, my_task_id)
 
+    seen = set(chain.dependent_task_ids())
+    new_deps = []
     for task_name, task_id in sorted_dependencies:
-        if task_id not in chain.dependent_task_ids():
-            await build_link(chain, task_name, task_id)
+        if task_id not in seen:
+            seen.add(task_id)
+            new_deps.append((task_name, task_id))
+
+    if not new_deps:
+        return
+
+    await asyncio.gather(*[add_link(chain, task_name, task_id) for task_name, task_id in new_deps])
+
+    for task_name, task_id in new_deps:
+        link = chain.get_link(task_id)
+        await build_task_dependencies(chain, link.task, task_name, task_id)
 
 
 # download_cot {{{1
@@ -2044,9 +2053,8 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         try:
             # build LinkOfTrust objects
             if check_task:
-                await build_link(chain, chain.name, chain.task_id)
-            else:
-                await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+                await add_link(chain, chain.name, chain.task_id)
+            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
             # download the signed chain of trust artifacts
             await download_cot(chain)
             # verify the signatures and populate the ``link.cot``s
