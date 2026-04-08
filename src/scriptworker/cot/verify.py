@@ -640,7 +640,7 @@ async def add_link(chain, task_name, task_id):
         fh.write(format_json(link.task))
 
 
-async def build_task_dependencies(chain, task, name, my_task_id):
+async def build_task_dependencies(chain, task, name, my_task_id, seen=None):
     """Recursively build the task dependencies of a task.
 
     Args:
@@ -648,6 +648,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         task (dict): the task definition to operate on.
         name (str): the name of the task to operate on.
         my_task_id (str): the taskId of the task to operate on.
+        seen (set): shared set of already-seen task IDs to avoid duplicates
 
     Raises:
         CoTError: on failure.
@@ -658,7 +659,8 @@ async def build_task_dependencies(chain, task, name, my_task_id):
         raise CoTError("Too deep recursion!\n{}".format(name))
     sorted_dependencies = find_sorted_task_dependencies(task, name, my_task_id)
 
-    seen = set(chain.dependent_task_ids())
+    if seen is None:
+        seen = set(chain.dependent_task_ids())
     new_deps = []
     for task_name, task_id in sorted_dependencies:
         if task_id not in seen:
@@ -670,9 +672,7 @@ async def build_task_dependencies(chain, task, name, my_task_id):
 
     await asyncio.gather(*[add_link(chain, task_name, task_id) for task_name, task_id in new_deps])
 
-    for task_name, task_id in new_deps:
-        link = chain.get_link(task_id)
-        await build_task_dependencies(chain, link.task, task_name, task_id)
+    await asyncio.gather(*[build_task_dependencies(chain, chain.get_link(task_id).task, task_name, task_id, seen) for task_name, task_id in new_deps])
 
 
 # download_cot {{{1
