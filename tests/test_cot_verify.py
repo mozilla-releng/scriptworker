@@ -2208,7 +2208,7 @@ async def test_verify_chain_of_trust(chain, exc, check_task, mocker):
         if exc is not None:
             raise exc("blah")
 
-    for func in ("build_task_dependencies", "build_link", "download_cot", "download_cot_artifacts", "verify_task_types", "verify_worker_impls"):
+    for func in ("build_task_dependencies", "add_link", "download_cot", "download_cot_artifacts", "verify_task_types", "verify_worker_impls"):
         mocker.patch.object(cotverify, func, new=noop_async)
     mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
     mocker.patch.object(cotverify, "trace_back_to_tree", new=maybe_die)
