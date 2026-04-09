@@ -362,6 +362,12 @@ async def test_get_all_links_in_chain(chain, decision_link, build_link):
     chain.links = [build_link, decision_link]
     assert set(chain.get_all_links_in_chain()) == set([decision_link, build_link])
 
+    # Ensure we don't return the root twice when `check_task` is True for non decision tasks
+    chain.task_type = "signing"
+    self_link = cotverify.LinkOfTrust(chain.context, chain.name, chain.task_id)
+    chain.links = [build_link, decision_link, self_link]
+    assert set(chain.get_all_links_in_chain()) == set([build_link, decision_link, self_link])
+
 
 # is_try {{{1
 @pytest.mark.asyncio
