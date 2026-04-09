@@ -4,6 +4,24 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.0.0 - 2026-04-09
+-------------------
+
+Changed
+~~~~~~~
+
+- Parallelized several steps of Chain of Trust verification, significantly
+  improving end-to-end times. As a result, `scriptworker.cot.verify.build_link`
+  has been renamed to `scriptworker.cot.verify.add_link` and no longer recurses
+  into dependencies . One should call `build_task_dependencies` after adding
+  the link to walk the graph.
+
+Fixed
+~~~~~
+
+- The root task isn't verified twice anymore when using `check_task=True` in
+  `verify_chain_of_trust` on non decision tasks.
+
 62.7.0 - 2026-03-18
 -------------------
 
