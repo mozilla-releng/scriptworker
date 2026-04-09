@@ -222,7 +222,7 @@ class ChainOfTrust(object):
             list: of all ``LinkOfTrust``s to verify.
 
         """
-        if self.is_decision() and self.get_link(self.task_id):
+        if self.task_id in self.dependent_task_ids():
             return self.links
         return [self] + self.links
 
