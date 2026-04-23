@@ -521,7 +521,7 @@ def format_json(data):
 # is omitted we don't actually ever return None (because on failure we raise an Exception)
 @overload
 def load_json_or_yaml(
-    string: str, is_path: Optional[bool] = ..., file_type: Optional[str] = ..., exception: Type[BaseException] = ..., message: str = ...
+    string: str, is_path: Optional[bool] = ..., file_type: Optional[str] = ..., exception: Type[BaseException] = ..., message: Optional[str] = ...
 ) -> Dict[str, Any]:  # pragma: no cover
     ...
 
@@ -532,7 +532,7 @@ def load_json_or_yaml(
     is_path: Optional[bool] = False,
     file_type: Optional[str] = "json",
     exception: Optional[Type[BaseException]] = ScriptWorkerTaskException,
-    message: str = "Failed to load %(file_type)s: %(exc)s",
+    message: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:  # pragma: no cover
     ...
 
@@ -542,7 +542,7 @@ def load_json_or_yaml(
     is_path: Optional[bool] = False,
     file_type: Optional[str] = "json",
     exception: Optional[Type[BaseException]] = ScriptWorkerTaskException,
-    message: str = "Failed to load %(file_type)s: %(exc)s",
+    message: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Load json or yaml from a filehandle or string, and raise a custom exception on failure.
 
@@ -552,8 +552,10 @@ def load_json_or_yaml(
         file_type (str, optional): either "json" or "yaml". Defaults to "json".
         exception (exception, optional): the exception to raise on failure.
             If None, don't raise an exception.  Defaults to ScriptWorkerTaskException.
-        message (str, optional): the message to use for the exception.
-            Defaults to "Failed to load %(file_type)s: %(exc)s"
+        message (str, optional): override the exception message. Supports the
+            ``%(file_type)s``, ``%(exc)s``, and ``%(path)s`` placeholders (the
+            latter is empty when ``is_path=False``). Defaults to a message that
+            includes the path when ``is_path=True``, otherwise one that omits it.
 
     Returns:
         dict: the data from the string.
@@ -578,7 +580,13 @@ def load_json_or_yaml(
         return contents
     except (OSError, ValueError, yaml.scanner.ScannerError) as exc:
         if exception is not None:
-            repl_dict = {"exc": str(exc), "file_type": file_type}
+            if message is None:
+                raise exception(
+                    f"Failed to load {file_type} from {string}: {exc}"
+                    if is_path
+                    else f"Failed to load {file_type}: {exc}"
+                )
+            repl_dict = {"exc": str(exc), "file_type": file_type, "path": string if is_path else ""}
             raise exception(message % repl_dict)
     return None
 
@@ -753,7 +761,13 @@ async def load_json_or_yaml_from_url(context: Context, url: str, path: str, over
         kwargs = {"auth": auth}
     if not overwrite or not os.path.exists(path):
         await retry_async(download_file, args=(context, url, path), kwargs=kwargs, retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError))
-    return load_json_or_yaml(path, is_path=True, file_type=file_type)
+    loggable_url = get_loggable_url(url)
+    return load_json_or_yaml(
+        path,
+        is_path=True,
+        file_type=file_type,
+        message=f"Failed to load {file_type} from {loggable_url} (cached at {path}): %(exc)s",
+    )
 
 
 # match_url_path_callback {{{1
