@@ -443,6 +443,47 @@ async def test_download_file_404(rw_context, fake_session_404, tmpdir, auth):
         await utils.download_file(rw_context, "url", path, session=fake_session_404, auth=auth)
 
 
+@pytest.mark.asyncio
+async def test_download_file_rejects_html_when_non_html_expected(rw_context, fake_session, tmpdir):
+    """An HTML response raises DownloadError when a non-HTML content-type was expected."""
+
+    async def html_request(method, url, *args, **kwargs):
+        resp = FakeResponse(method, url, status=200)
+        resp._headers = {"Content-Type": "text/html; charset=utf-8"}
+        return resp
+
+    fake_session._request = html_request
+    path = os.path.join(tmpdir, "foo.json")
+    with pytest.raises(DownloadError, match="HTML"):
+        await utils.download_file(rw_context, "url", path, session=fake_session, expected_content_type="application/json")
+    assert not os.path.exists(path)
+
+
+@pytest.mark.asyncio
+async def test_load_json_or_yaml_from_url_retries_on_parse_failure(rw_context, mocker, tmpdir):
+    """A parse failure invalidates the cache and triggers a re-download."""
+    path = os.path.join(tmpdir, "out.json")
+    call_count = {"n": 0}
+
+    async def flaky_download(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None, expected_content_type=None):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # First attempt: write garbage JSON
+            with open(abs_filename, "w") as fh:
+                fh.write("not valid json {")
+        else:
+            with open(abs_filename, "w") as fh:
+                fh.write('{"ok": true}')
+
+    # Neutralize retry_async backoff so the test is fast
+    mocker.patch.object(utils, "calculate_sleep_time", return_value=0)
+    mocker.patch.object(utils, "download_file", new=flaky_download)
+
+    result = await utils.load_json_or_yaml_from_url(rw_context, "url", path)
+    assert result == {"ok": True}
+    assert call_count["n"] == 2
+
+
 # format_json {{{1
 def test_format_json():
     expected = "\n".join(["{", '  "a": 1,', '  "b": [', "    4,", "    3,", "    2", "  ],", '  "c": {', '    "d": 5', "  }", "}"])
@@ -474,7 +515,7 @@ def test_load_json_or_yaml(string, is_path, exception, raises, result):
 async def test_load_json_or_yaml_from_url(rw_context, mocker, overwrite, file_type, tmpdir):
     called_with_auth = []
 
-    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None):
+    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None, expected_content_type=None):
         called_with_auth.append(auth == "someAuth")
         return
 
@@ -495,7 +536,7 @@ async def test_load_json_or_yaml_from_url(rw_context, mocker, overwrite, file_ty
 async def test_load_json_or_yaml_from_url_auth(rw_context, mocker, overwrite, file_type, tmpdir):
     called_with_auth = []
 
-    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None):
+    async def mocked_download_file(rw_context, url, abs_filename, session=None, chunk_size=128, auth=None, expected_content_type=None):
         called_with_auth.append(auth == "someAuth")
         return
 

@@ -581,11 +581,7 @@ def load_json_or_yaml(
     except (OSError, ValueError, yaml.scanner.ScannerError) as exc:
         if exception is not None:
             if message is None:
-                raise exception(
-                    f"Failed to load {file_type} from {string}: {exc}"
-                    if is_path
-                    else f"Failed to load {file_type}: {exc}"
-                )
+                raise exception(f"Failed to load {file_type} from {string}: {exc}" if is_path else f"Failed to load {file_type}: {exc}")
             repl_dict = {"exc": str(exc), "file_type": file_type, "path": string if is_path else ""}
             raise exception(message % repl_dict)
     return None
@@ -660,7 +656,7 @@ async def _log_download_error(resp, msg):
         log.debug("Redirect history %s: %s; body=%s", get_loggable_url(str(h.url)), h.status, (await h.text())[:1000])
 
 
-async def download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None):
+async def download_file(context, url, abs_filename, session=None, chunk_size=128, auth=None, expected_content_type=None):
     """Download a file, async.
 
     Args:
@@ -671,6 +667,16 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
             None, use context.session.  Defaults to None.
         chunk_size (int, optional): the chunk size to read from the response
             at a time.  Default is 128.
+        expected_content_type (str, optional): if set, raise ``DownloadError``
+            when the server returns an ``HTML`` response and ``expected_content_type``
+            is something other than HTML. Narrow by design — servers vary too
+            much for a strict match — but catches the common
+            "error page instead of the JSON/YAML/artifact we asked for" case.
+
+    Raises:
+        DownloadError: on non-200 status, or an HTML response when
+            ``expected_content_type`` was not HTML.
+        Download404: on 404 status.
 
     """
     session = session or context.session
@@ -683,10 +689,15 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
     async with session.get(url, auth=auth) as resp:
         if resp.status == 404:
             await _log_download_error(resp, "404 downloading %(url)s: %(status)s; body=%(body)s")
-            raise Download404("{} status {}!".format(loggable_url, resp.status))
+            raise Download404(f"{loggable_url} status {resp.status}!")
         elif resp.status != 200:
             await _log_download_error(resp, "Failed to download %(url)s: %(status)s; body=%(body)s")
-            raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
+            raise DownloadError(f"{loggable_url} status {resp.status} is not 200!")
+        if expected_content_type:
+            actual_content_type = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+            if actual_content_type == "text/html" and "html" not in expected_content_type.lower():
+                await _log_download_error(resp, "HTML response for %(url)s (expected non-HTML): %(status)s; body=%(body)s")
+                raise DownloadError(f"{loggable_url}: expected Content-Type {expected_content_type!r} but got HTML; treating as an error page")
         makedirs(parent_dir)
         with open(abs_filename, "wb") as fd:
             while True:
@@ -737,6 +748,11 @@ def get_parts_of_url_path(url):
 async def load_json_or_yaml_from_url(context: Context, url: str, path: str, overwrite: bool = True, auth: Optional[str] = None) -> Dict[str, Any]:
     """Retry a json/yaml file download, load it, then return its data.
 
+    Download and parse are combined into a single retry unit: if parsing the
+    downloaded file fails (e.g. truncated body, an HTML error page, a Cloud
+    Storage transcoding glitch), the cached file is deleted and the download
+    is retried.
+
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         url (str): the url to download
@@ -753,20 +769,41 @@ async def load_json_or_yaml_from_url(context: Context, url: str, path: str, over
     """
     if path.endswith("json"):
         file_type = "json"
+        expected_content_type = "application/json"
     else:
         file_type = "yaml"
+        expected_content_type = "application/yaml"
 
-    kwargs = {}
+    download_kwargs = {"expected_content_type": expected_content_type}
     if auth:
-        kwargs = {"auth": auth}
-    if not overwrite or not os.path.exists(path):
-        await retry_async(download_file, args=(context, url, path), kwargs=kwargs, retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError))
+        download_kwargs["auth"] = auth
     loggable_url = get_loggable_url(url)
-    return load_json_or_yaml(
-        path,
-        is_path=True,
-        file_type=file_type,
-        message=f"Failed to load {file_type} from {loggable_url} (cached at {path}): %(exc)s",
+
+    async def _download_and_parse():
+        # Pre-existing cache semantics (despite the misleading parameter
+        # name): ``overwrite=True`` uses an existing file when present;
+        # ``overwrite=False`` always (re)downloads.
+        if not overwrite or not os.path.exists(path):
+            await download_file(context, url, path, **download_kwargs)
+        try:
+            return load_json_or_yaml(path, is_path=True, file_type=file_type)
+        except ScriptWorkerTaskException as exc:
+            log.warning(
+                "Failed to parse %s from %s (cached at %s); invalidating cache and retrying: %s",
+                file_type,
+                loggable_url,
+                path,
+                exc,
+            )
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+            raise DownloadError(f"parse failure for {loggable_url}: {exc}")
+
+    return await retry_async(
+        _download_and_parse,
+        retry_exceptions=(DownloadError, aiohttp.ClientError, asyncio.TimeoutError),
     )
 
 
