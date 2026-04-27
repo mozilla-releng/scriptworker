@@ -16,6 +16,7 @@ import random
 import re
 import shutil
 import time
+import uuid
 from copy import deepcopy
 from typing import IO, TYPE_CHECKING, Any, Awaitable, Callable, Dict, Match, Optional, Sequence, Tuple, Type, Union, cast, overload  # noqa
 from urllib.parse import unquote, urlparse
@@ -680,12 +681,21 @@ async def download_file(context, url, abs_filename, session=None, chunk_size=128
             await _log_download_error(resp, "Failed to download %(url)s: %(status)s; body=%(body)s")
             raise DownloadError("{} status {} is not 200!".format(loggable_url, resp.status))
         makedirs(parent_dir)
-        with open(abs_filename, "wb") as fd:
-            while True:
-                chunk = await resp.content.read(chunk_size)
-                if not chunk:
-                    break
-                fd.write(chunk)
+        tmp_filename = "{}.{}.part".format(abs_filename, uuid.uuid4().hex)
+        try:
+            with open(tmp_filename, "wb") as fd:
+                while True:
+                    chunk = await resp.content.read(chunk_size)
+                    if not chunk:
+                        break
+                    fd.write(chunk)
+            os.replace(tmp_filename, abs_filename)
+        except Exception:
+            try:
+                os.unlink(tmp_filename)
+            except OSError:
+                pass
+            raise
     log.info("Done")
 
 
