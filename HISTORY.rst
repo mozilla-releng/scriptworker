@@ -4,6 +4,13 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.0.1 - 2026-04-27
+
+Fixed
+~~~~~
+
+- File corruption caused by parallel downloads (#792)
+
 63.0.0 - 2026-04-09
 -------------------
 
