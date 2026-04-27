@@ -443,6 +443,63 @@ async def test_download_file_404(rw_context, fake_session_404, tmpdir, auth):
         await utils.download_file(rw_context, "url", path, session=fake_session_404, auth=auth)
 
 
+@pytest.mark.asyncio
+async def test_download_file_atomic_no_partial_on_failure(rw_context, fake_session, tmpdir):
+    path = os.path.join(tmpdir, "foo")
+
+    async def boom(*_args, **_kwargs):
+        raise RuntimeError("kaboom")
+
+    with mock.patch.object(FakeResponse, "read", boom):
+        with pytest.raises(RuntimeError):
+            await utils.download_file(rw_context, "url", path, session=fake_session)
+
+    assert os.listdir(tmpdir) == []
+
+
+@pytest.mark.asyncio
+async def test_download_file_atomic_concurrent_no_corruption(rw_context, tmpdir):
+    # We have to make sure we exceed any kind of buffer so make the payloads really large
+    # We use different sizes here to help with triggering the problem by yielding between chunks
+    payload_a = b"A" * (4 * 1024 * 1024)
+    payload_b = b"B" * (3 * 1024 * 1024 + 1234)
+    chunk_size = 4096
+
+    class _YieldingResponse(FakeResponse):
+        async def read(self, *args):
+            # Give control back to the event loop between chunks
+            await asyncio.sleep(0)
+            if self.resp:
+                return self.resp.pop(0)
+
+    def _session(payload):
+        async def _req(method, url, *_args, **_kwargs):
+            resp = _YieldingResponse(method, url, status=200)
+            resp.resp = [payload[i : i + chunk_size] for i in range(0, len(payload), chunk_size)]
+            return resp
+
+        sess = utils.scriptworker_session()
+        sess._request = _req
+        return sess
+
+    path = os.path.join(tmpdir, "foo")
+    sa, sb = _session(payload_a), _session(payload_b)
+    try:
+        await asyncio.gather(
+            utils.download_file(rw_context, "url", path, session=sa, chunk_size=chunk_size),
+            utils.download_file(rw_context, "url", path, session=sb, chunk_size=chunk_size),
+        )
+    finally:
+        await sa.close()
+        await sb.close()
+
+    with open(path, "rb") as fh:
+        contents = fh.read()
+
+    assert contents in (payload_a, payload_b)
+    assert os.listdir(tmpdir) == ["foo"]
+
+
 # format_json {{{1
 def test_format_json():
     expected = "\n".join(["{", '  "a": 1,', '  "b": [', "    4,", "    3,", "    2", "  ],", '  "c": {', '    "d": 5', "  }", "}"])
