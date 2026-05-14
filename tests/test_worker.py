@@ -255,6 +255,90 @@ async def test_unexpected_exception_catch_and_tell_taskcluster(context, successf
 
 
 @pytest.mark.asyncio
+async def test_verify_chain_of_trust_failure_creates_link_artifact(context, mocker):
+    """When verify_chain_of_trust fails, a link artifact is created pointing live_backing.log -> chain_of_trust.log."""
+    context.config["verify_chain_of_trust"] = True
+    cot_log = os.path.join(context.config["task_log_dir"], "chain_of_trust.log")
+    os.makedirs(context.config["task_log_dir"], exist_ok=True)
+    with open(cot_log, "w") as f:
+        f.write("CoT verification error details")
+
+    link_calls = []
+
+    async def fake_create_link(context, target_path, link_to, content_type, expires=None):
+        link_calls.append({"target_path": target_path, "link_to": link_to, "content_type": content_type})
+
+    def fail():
+        raise ScriptWorkerException("CoT failure")
+
+    async def run(coroutine):
+        await coroutine
+
+    mocker.patch.object(worker, "create_link_artifact", new=fake_create_link)
+    mocker.patch.object(worker, "ChainOfTrust", new=lambda *args, **kwargs: None)
+    mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
+    status = await do_run_task(context, run, lambda x: x)
+    assert status == ScriptWorkerException.exit_code
+    assert link_calls == [
+        {
+            "target_path": "public/logs/live_backing.log",
+            "link_to": "public/logs/chain_of_trust.log",
+            "content_type": "text/plain",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_failure_no_cot_log(context, mocker):
+    """If chain_of_trust.log doesn't exist when verify fails, no link artifact is created and do_run_task doesn't crash."""
+    context.config["verify_chain_of_trust"] = True
+    os.makedirs(context.config["task_log_dir"], exist_ok=True)
+
+    link_calls = []
+
+    async def fake_create_link(*args, **kwargs):
+        link_calls.append(kwargs)
+
+    def fail():
+        raise ScriptWorkerException("CoT failure")
+
+    async def run(coroutine):
+        await coroutine
+
+    mocker.patch.object(worker, "create_link_artifact", new=fake_create_link)
+    mocker.patch.object(worker, "ChainOfTrust", new=lambda *args, **kwargs: None)
+    mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
+    status = await do_run_task(context, run, lambda x: x)
+    assert status == ScriptWorkerException.exit_code
+    assert link_calls == []
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_failure_link_error_does_not_mask(context, mocker):
+    """If create_link_artifact itself fails, the original CoT exception is still raised and the task is still marked failed."""
+    context.config["verify_chain_of_trust"] = True
+    cot_log = os.path.join(context.config["task_log_dir"], "chain_of_trust.log")
+    os.makedirs(context.config["task_log_dir"], exist_ok=True)
+    with open(cot_log, "w") as f:
+        f.write("CoT verification error details")
+
+    async def fake_create_link(*args, **kwargs):
+        raise RuntimeError("createArtifact failed")
+
+    def fail():
+        raise ScriptWorkerException("CoT failure")
+
+    async def run(coroutine):
+        await coroutine
+
+    mocker.patch.object(worker, "create_link_artifact", new=fake_create_link)
+    mocker.patch.object(worker, "ChainOfTrust", new=lambda *args, **kwargs: None)
+    mocker.patch.object(worker, "verify_chain_of_trust", new=fail)
+    status = await do_run_task(context, run, lambda x: x)
+    assert status == ScriptWorkerException.exit_code
+
+
+@pytest.mark.asyncio
 async def test_run_tasks_timeout(context, successful_queue, mocker):
     expected_args = [(context, ["one", "public/two", "public/logs/live_backing.log"]), None]
 

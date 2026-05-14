@@ -40,6 +40,11 @@ def test_get_log_filename(rw_context):
     assert log_file == os.path.join(rw_context.config["task_log_dir"], "live_backing.log")
 
 
+def test_get_chain_of_trust_log_filename(rw_context):
+    log_file = swlog.get_chain_of_trust_log_filename(rw_context)
+    assert log_file == os.path.join(rw_context.config["task_log_dir"], "chain_of_trust.log")
+
+
 def test_get_log_filehandle(rw_context, text):
     log_file = swlog.get_log_filename(rw_context)
     with swlog.get_log_filehandle(rw_context) as log_fh:

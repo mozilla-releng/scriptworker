@@ -115,6 +115,19 @@ def get_log_filename(context: Any) -> str:
     return os.path.join(context.config["task_log_dir"], "live_backing.log")
 
 
+def get_chain_of_trust_log_filename(context: Any) -> str:
+    """Get the chain of trust verification log file path.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+
+    Returns:
+        string: chain of trust log file path
+
+    """
+    return os.path.join(context.config["task_log_dir"], "chain_of_trust.log")
+
+
 @contextmanager
 def get_log_filehandle(context: Any) -> Iterator[IO[str]]:
     """Open the log and error filehandles.

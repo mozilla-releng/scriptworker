@@ -8,6 +8,7 @@ Attributes:
 
 import asyncio
 import logging
+import os
 import signal
 import socket
 import sys
@@ -17,12 +18,13 @@ from typing import Any
 import aiohttp
 import arrow
 
-from scriptworker.artifacts import upload_artifacts
+from scriptworker.artifacts import create_link_artifact, upload_artifacts
 from scriptworker.config import get_context_from_cmdln
 from scriptworker.constants import STATUSES
 from scriptworker.cot.generate import generate_cot
 from scriptworker.cot.verify import ChainOfTrust, verify_chain_of_trust
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
+from scriptworker.log import get_chain_of_trust_log_filename
 from scriptworker.task import claim_work, complete_task, prepare_to_run_task, reclaim_task, run_task, worst_level
 from scriptworker.task_process import TaskProcess
 from scriptworker.utils import cleanup, filepaths_in_dir, scriptworker_session
@@ -53,7 +55,21 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
     try:
         if context.config["verify_chain_of_trust"]:
             chain = ChainOfTrust(context, context.config["cot_job_type"])
-            await run_cancellable(verify_chain_of_trust(chain))
+            try:
+                await run_cancellable(verify_chain_of_trust(chain))
+            except Exception:
+                # Point live_backing.log at chain_of_trust.log so Treeherder parses the CoT failure
+                if os.path.exists(get_chain_of_trust_log_filename(context)):
+                    try:
+                        await create_link_artifact(
+                            context,
+                            target_path="public/logs/live_backing.log",
+                            link_to="public/logs/chain_of_trust.log",
+                            content_type="text/plain",
+                        )
+                    except Exception as link_exc:
+                        log.exception("Failed to create live_backing.log link artifact: {}".format(link_exc))
+                raise
         status = await run_task(context, to_cancellable_process)
         generate_cot(context)
     except asyncio.CancelledError:

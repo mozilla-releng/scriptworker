@@ -41,7 +41,7 @@ from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
 from scriptworker.github import GitHubRepository, extract_github_repo_full_name, extract_github_repo_owner_and_name, extract_github_repo_ssh_url
-from scriptworker.log import contextual_log_handler
+from scriptworker.log import contextual_log_handler, get_chain_of_trust_log_filename
 from scriptworker.task import (
     get_action_callback_name,
     get_and_check_tasks_for,
@@ -729,10 +729,7 @@ async def download_cot_artifact(chain, task_id, path):
     link = chain.get_link(task_id)
     log.debug("Verifying {} is in {} cot artifacts...".format(path, task_id))
     if not link.cot:
-        log.warning(
-            'Chain of Trust for "{}" in {} does not exist. See above log for more details. \
-Skipping download of this artifact'.format(path, task_id)
-        )
+        log.warning(f'Chain of Trust for "{path}" in {task_id} does not exist. See above log for more details. Skipping download of this artifact.')
         return
 
     if path not in link.cot["artifacts"]:
@@ -2045,7 +2042,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         CoTError: on failure
 
     """
-    log_path = os.path.join(chain.context.config["task_log_dir"], "chain_of_trust.log")
+    log_path = get_chain_of_trust_log_filename(chain.context)
     scriptworker_log = logging.getLogger("scriptworker")
     with contextual_log_handler(
         chain.context,

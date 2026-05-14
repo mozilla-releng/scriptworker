@@ -183,6 +183,29 @@ async def create_artifact(context, path, target_path, content_type, content_enco
                     raise ScriptWorkerRetryException("Bad status {}".format(resp.status))
 
 
+async def create_link_artifact(context, target_path, link_to, content_type, expires=None):
+    """Create a Taskcluster link artifact that redirects to another artifact in the same task.
+
+    Args:
+        context (scriptworker.context.Context): the scriptworker context.
+        target_path (str): the artifact name to create (e.g., ``public/logs/live_backing.log``).
+        link_to (str): the artifact name to link to (e.g., ``public/logs/chain_of_trust.log``).
+        content_type (str): Content type (MIME type) of the linked artifact.
+        expires (str, optional): ISO datestring of when the artifact expires.
+            Defaults to ``context.task["expires"]``.
+
+    """
+    payload = {
+        "storageType": "link",
+        "expires": expires or get_expiration_arrow(context).isoformat(),
+        "contentType": content_type,
+        "artifact": link_to,
+    }
+    args = [get_task_id(context.claim_task), get_run_id(context.claim_task), target_path, payload]
+    log.info("Creating link artifact {} -> {}".format(target_path, link_to))
+    await context.temp_queue.createArtifact(*args)
+
+
 def _craft_artifact_put_headers(content_type, encoding=None):
     log.debug("{} {}".format(content_type, encoding))
     headers = {aiohttp.hdrs.CONTENT_TYPE: content_type}
