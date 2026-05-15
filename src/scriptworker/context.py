@@ -261,6 +261,7 @@ class Context(object):
 
     @property
     def download_semaphore(self) -> asyncio.BoundedSemaphore:
+        """Return a lazily-built semaphore limiting concurrent downloads to ``max_concurrent_downloads``."""
         assert self.config
         if self._download_semaphore is None:
             try:

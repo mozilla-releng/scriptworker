@@ -1,9 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-"""
-Tox-specific transforms
-"""
+"""Tox-specific transforms."""
 
 from copy import deepcopy
 
@@ -43,6 +41,7 @@ def _resolve_replace_string(item, field, subs):
 
 @transforms.add
 def replace_strings(config, jobs):
+    """Substitute python-version / targets / name placeholders in selected job fields."""
     fields = [
         "description",
         "run.command",
@@ -65,6 +64,7 @@ def replace_strings(config, jobs):
 
 @transforms.add
 def update_env(config, jobs):
+    """Merge each job's ``env`` mapping into its worker ``env`` and drop the top-level key."""
     for job in jobs:
         env = job.pop("env", {})
         job["worker"].setdefault("env", {}).update(env)

@@ -37,7 +37,8 @@ def read_integration_creds():
     creds = read_worker_creds(key="integration_credentials")
     if creds:
         return creds
-    raise Exception("""To run integration tests, put your worker-test clientId creds, in json format,
+    raise Exception(
+        """To run integration tests, put your worker-test clientId creds, in json format,
 in one of these files:
 
     {files}
@@ -54,7 +55,8 @@ with the format
 
 This clientId will need the scope assume:project:taskcluster:worker-test-scopes
 
-To skip integration tests, set the environment variable NO_CREDENTIALS_TESTS""".format(files=CREDS_FILES))
+To skip integration tests, set the environment variable NO_CREDENTIALS_TESTS""".format(files=CREDS_FILES)
+    )
 
 
 def build_config(override, basedir):

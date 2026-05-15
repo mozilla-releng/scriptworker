@@ -1,15 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
-
+"""Scriptworker taskgraph extensions."""
 
 from importlib import import_module
 
 
 def register(graph_config):
-    """
-    Import all modules that are siblings of this one, triggering decorators in
-    the process.
+    """Import all sibling modules to trigger their decorator-based registration.
+
+    Imports each sibling module so its top-level decorators (e.g. transforms) run.
     """
     _import_modules(
         [

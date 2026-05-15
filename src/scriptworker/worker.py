@@ -104,7 +104,7 @@ class RunTasks:
     """Manages processing of Taskcluster tasks."""
 
     def __init__(self):
-        """Constructor."""
+        """Initialize the task-processing state."""
         self.future = None
         self.task_process = None
         self.is_cancelled = False

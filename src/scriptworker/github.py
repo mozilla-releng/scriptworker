@@ -121,7 +121,7 @@ class GitHubRepository:
         if any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]):
             # This check uses unofficial API on github, which we can't easily
             # check for private repos, assume its true in the private case.
-            log.info("has_commit_landed_on_repository() not implemented for private" "repositories, assume True")
+            log.info("has_commit_landed_on_repository() not implemented for private repositories, assume True")
             return True
 
         # Revision may be a tag name. `branch_commits` doesn't work on tags
@@ -293,7 +293,7 @@ def is_github_repo_owner_the_official_one(context, repo_owner):
     official_repo_owner = context.config["official_github_repos_owner"]
     if not official_repo_owner:
         raise ConfigError(
-            "This worker does not have a defined owner for official GitHub repositories. " 'Given "official_github_repos_owner": {}'.format(official_repo_owner)
+            'This worker does not have a defined owner for official GitHub repositories. Given "official_github_repos_owner": {}'.format(official_repo_owner)
         )
 
     return official_repo_owner == repo_owner

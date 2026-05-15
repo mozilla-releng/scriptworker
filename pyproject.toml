@@ -43,11 +43,8 @@ dev = [
     "tox-uv",
     "aiohttp>=3",
     "asyncio_extras",
-    "black",
     "coveralls",
-    "flake8",
-    "flake8_docstrings",
-    "isort>=5",
+    "ruff",
     "mock",
     "pytest",
     "pytest-asyncio",
@@ -85,34 +82,24 @@ verify_cot = "scriptworker.cot.verify:verify_cot_cmdln"
 create_test_workdir = "scriptworker.cot.verify:create_test_workdir"
 verify_ed25519_signature = "scriptworker.ed25519:verify_ed25519_signature_cmdln"
 
-[tool.black]
+[tool.ruff]
 line-length = 160
-target-version = ["py311", "py312", "py313"]
-include = '\.(wsgi|pyi?)$'
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | \.cache
-  | \.cache_py3
-  | _build
-  | buck-out
-  | build
-  | dist
-  | ui
-)/
-'''
+target-version = "py311"
+extend-exclude = [
+    "docs"
+]
 
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-line_length = 160
+[tool.ruff.lint]
+# F = pyflakes, E/W = pycodestyle, I = isort, D = pydocstyle
+select = ["F", "E", "W", "I", "D"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"tests/test_github.py" = ["D", "E501"]  # ignore long lines in test_github.py
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
