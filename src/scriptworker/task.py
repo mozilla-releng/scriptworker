@@ -117,7 +117,7 @@ def get_run_id(claim_task):
 
 # get_task_maxruntime {{{1
 def get_task_maxruntime(task_def, max_timeout):
-    """Given a task definition, return the lower of max_timeout and maxRunTime if set"""
+    """Given a task definition, return the lower of max_timeout and maxRunTime if set."""
     max_run_time = task_def["payload"].get("maxRunTime")
     if max_run_time is None:
         return max_timeout

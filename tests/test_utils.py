@@ -25,7 +25,7 @@ text = {
     # some basic utf-8 test strings - these should all pass
     "english": "The quick brown fox jumped over the lazy dog",
     # this hiragana pangram comes from http://www.columbia.edu/~fdc/utf8/
-    "hiragana": "いろはにほへど　ちりぬるを\n" "わがよたれぞ　つねならむ\n" "うゐのおくやま　けふこえて\n" "あさきゆめみじ　ゑひもせず",
+    "hiragana": "いろはにほへど　ちりぬるを\nわがよたれぞ　つねならむ\nうゐのおくやま　けふこえて\nあさきゆめみじ　ゑひもせず",
     "poo": "Hello, \U0001f4a9!",
 }
 

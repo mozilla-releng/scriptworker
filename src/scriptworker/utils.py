@@ -42,6 +42,7 @@ log = logging.getLogger(__name__)
 
 # scriptworker_session {{{1
 def scriptworker_session(*args, **kwargs):
+    """Return an ``aiohttp.ClientSession`` with the scriptworker User-Agent header set."""
     kwargs.setdefault("headers", {}).setdefault("User-Agent", f"scriptworker {scriptworker.__version__}")
     return aiohttp.ClientSession(*args, **kwargs)
 
@@ -875,8 +876,9 @@ def remove_empty_keys(values, remove=({}, None, [], "null")):
 
 # add_projectid {{{1
 def add_projectid(task_def):
-    """Add a projectId property to a task, if none already exists, using
-    the Taskcluster default value of 'none'.
+    """Add a projectId property to a task, if none already exists.
+
+    Uses the Taskcluster default value of 'none'.
 
     Args:
         task_def (dict): the task definition
@@ -889,8 +891,9 @@ def add_projectid(task_def):
 
 # add_taskqueueid {{{1
 def add_taskqueueid(task_def):
-    """Add a taskQueueId property to a task, if none already exists, based
-    on the provisionerId and workerType.  Then remove those two properties.
+    """Add a taskQueueId property to a task, if none already exists.
+
+    Builds the value from the provisionerId and workerType, then removes those two properties.
 
     Args:
         task_def (dict): the task definition

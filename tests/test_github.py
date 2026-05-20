@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from scriptworker import github
-from scriptworker.exceptions import ConfigError
+from scriptworker.exceptions import ConfigError, ScriptWorkerRetryException
 
 
 @pytest.fixture(autouse=True)
@@ -220,7 +220,7 @@ async def test_has_commit_landed_on_repository_private(vpn_context, github_repos
     async def retry_request(_, url):
         assert False, "We should never have made a request"
 
-    assert await github_repository.has_commit_landed_on_repository(vpn_context, commitish) == True
+    assert await github_repository.has_commit_landed_on_repository(vpn_context, commitish)
 
 
 @pytest.mark.asyncio

@@ -1405,7 +1405,7 @@ def test_get_action_perm(defn, expected):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "name,task_id,path,decision_task_id,decision_path," "expected_template_path,expected_context_path",
+    "name,task_id,path,decision_task_id,decision_path,expected_template_path,expected_context_path",
     (
         (
             "action",

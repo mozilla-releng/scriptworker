@@ -225,6 +225,7 @@ def get_artifact_url(context, task_id, path):
 
 # list_latest_artifacts {{{1
 async def list_latest_artifacts(queue, task_id):
+    """List all artifacts for the latest run of a task, following pagination."""
     artifacts = []
 
     def pagination_handler(response):
@@ -235,6 +236,7 @@ async def list_latest_artifacts(queue, task_id):
 
 
 async def retry_list_latest_artifacts(queue, task_id, exception=TaskclusterFailure, **kwargs):
+    """Retry ``list_latest_artifacts`` on transient Taskcluster failures."""
     kwargs.setdefault("retry_exceptions", tuple(set([TaskclusterFailure, exception])))
     return await retry_async(list_latest_artifacts, args=(queue, task_id), **kwargs)
 
@@ -442,6 +444,7 @@ def assert_is_parent(path, parent_dir):
 
 
 def get_artifacts_matching_glob(context, task_id, pattern):
+    """Return paths of downloaded artifacts matching ``pattern`` under the task's cot/<id> dir."""
     parent_dir = os.path.abspath(os.path.join(context.config["work_dir"], "cot", task_id))
     matching = []
     for root, _, files in os.walk(parent_dir):

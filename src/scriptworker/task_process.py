@@ -19,7 +19,7 @@ class TaskProcess:
     """Wraps worker task's process."""
 
     def __init__(self, process: Process):
-        """Constructor.
+        """Initialize the wrapper around the worker task's subprocess.
 
         Args:
             process (Process): task process
