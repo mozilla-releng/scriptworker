@@ -77,6 +77,46 @@ async def test_set_reset_task(rw_context, claim_task, reclaim_task):
     assert rw_context.temp_queue is None
 
 
+def test_credentials_fd_initial(rw_context):
+    assert rw_context.credentials_fd == -1
+
+
+@pytest.mark.asyncio
+async def test_credentials_fd_opened_on_claim_task(rw_context, claim_task):
+    rw_context.claim_task = claim_task
+    assert rw_context.credentials_fd >= 0
+    os.fstat(rw_context.credentials_fd)  # raises OSError if fd is invalid
+
+
+@pytest.mark.asyncio
+async def test_credentials_fd_content(rw_context, claim_task):
+    rw_context.claim_task = claim_task
+    fd = rw_context.credentials_fd
+    size = os.fstat(fd).st_size
+    data = os.pread(fd, size, 0)
+    assert json.loads(data) == claim_task["credentials"]
+
+
+@pytest.mark.asyncio
+async def test_credentials_fd_updated_on_reclaim(rw_context, claim_task, reclaim_task):
+    rw_context.claim_task = claim_task
+    rw_context.reclaim_task = reclaim_task
+    fd = rw_context.credentials_fd
+    size = os.fstat(fd).st_size
+    data = os.pread(fd, size, 0)
+    assert json.loads(data) == reclaim_task["credentials"]
+
+
+@pytest.mark.asyncio
+async def test_credentials_fd_closed_on_reset(rw_context, claim_task):
+    rw_context.claim_task = claim_task
+    fd = rw_context.credentials_fd
+    rw_context.claim_task = None
+    assert rw_context.credentials_fd == -1
+    with pytest.raises(OSError):
+        os.fstat(fd)
+
+
 @pytest.mark.asyncio
 async def test_projects(rw_context, mocker):
     fake_projects = {"mozilla-central": "blah", "count": 0}
