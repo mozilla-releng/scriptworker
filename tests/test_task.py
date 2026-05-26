@@ -567,6 +567,24 @@ async def test_run_task_timeout(context):
     assert context.proc is None
 
 
+@pytest.mark.asyncio
+async def test_run_task_credentials_fd(context):
+    """The subprocess receives the temp credentials via the fd in TASKCLUSTER_CREDENTIALS_FD."""
+    context.config["task_script"] = (
+        sys.executable,
+        "-c",
+        "import json, os, sys; "
+        "fd = int(os.environ['TASKCLUSTER_CREDENTIALS_FD']); "
+        "size = os.fstat(fd).st_size; "
+        "sys.stdout.write(os.pread(fd, size, 0).decode('ascii'))",
+    )
+    await swtask.run_task(context, noop_to_cancellable_process)
+    log_file = log.get_log_filename(context)
+    contents = read(log_file)
+    parsed, _ = json.JSONDecoder().raw_decode(contents)
+    assert parsed == context.temp_credentials
+
+
 # report* {{{1
 @pytest.mark.asyncio
 async def test_reportCompleted(context, successful_queue):
