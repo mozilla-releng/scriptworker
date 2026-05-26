@@ -4,7 +4,17 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.1.0 - 2026-05-26
+-------------------
+
+Added
+~~~~~
+- The TASKCLUSTER_CREDENTIALS_FD environment variable is passed to scripts, and
+  the referenced file descriptor (a memfd) contains temporary taskcluster
+  credentials using the task's scopes, updated after each reclaimTask
+
 63.0.1 - 2026-04-27
+-------------------
 
 Fixed
 ~~~~~
