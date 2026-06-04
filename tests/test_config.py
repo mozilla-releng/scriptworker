@@ -117,6 +117,35 @@ def test_check_config_good(t_config):
     assert messages == []
 
 
+@pytest.mark.parametrize("cot_product", (None, "firefox"))
+def test_check_config_good_by_cot_product(cot_product):
+    """`check_config` shouldn't flag false-positive type mismatches on
+    `by-cot-product`-keyed values, whether `cot_product` is unset or set to a
+    real product."""
+    raw_config = dict(deepcopy(DEFAULT_CONFIG))
+    raw_config["cot_product"] = cot_product
+    t_config = _fill_missing_values(config.apply_product_config(raw_config))
+    messages = config.check_config(t_config, "test_path")
+    assert messages == []
+
+
+def test_check_config_verify_chain_of_trust_without_cot_product(t_config):
+    t_config = _fill_missing_values(t_config)
+    t_config["cot_product"] = None
+    t_config["verify_chain_of_trust"] = True
+    messages = config.check_config(t_config, "test_path")
+    assert "verify_chain_of_trust can't be True when cot_product is not set" in "\n".join(messages)
+
+
+def test_check_config_verify_chain_of_trust_with_cot_product():
+    raw_config = dict(deepcopy(DEFAULT_CONFIG))
+    raw_config["cot_product"] = "firefox"
+    raw_config["verify_chain_of_trust"] = True
+    t_config = _fill_missing_values(config.apply_product_config(raw_config))
+    messages = config.check_config(t_config, "test_path")
+    assert messages == []
+
+
 # create_config {{{1
 def test_create_config_missing_file():
     with pytest.raises(SystemExit):
@@ -226,3 +255,13 @@ def test_apply_product_config_unknown_product():
     c = {"cot_product": "seamonkey", "keyed": {"by-cot-product": {"thunderbird": "expected", "firefox": "unexpected"}}}
     with pytest.raises(config.ConfigError):
         config.apply_product_config(c)
+
+
+def test_apply_product_config_none_product():
+    """
+    `apply_product_config` resolves `by-cot-product`-keyed entries to `None`
+    when `cot_product` is not set.
+    """
+    c = {"cot_product": None, "unkeyed": "no keys", "keyed": {"by-cot-product": {"thunderbird": "expected", "firefox": "unexpected"}}}
+    expected_config = {"cot_product": None, "unkeyed": "no keys", "keyed": None}
+    assert config.apply_product_config(dict(c)) == expected_config
