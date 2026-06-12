@@ -14,6 +14,7 @@ from scriptworker.artifacts import (
     _craft_artifact_put_headers,
     compress_artifact_if_supported,
     create_artifact,
+    create_link_artifact,
     download_artifacts,
     get_and_check_single_upstream_artifact_full_path,
     get_artifact_url,
@@ -159,6 +160,34 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
     with pytest.raises(ScriptWorkerRetryException):
         context.temp_queue = successful_queue
         await create_artifact(context, path, "public/env/one.log", content_type="text/plain", content_encoding=None, expires=expires)
+
+
+@pytest.mark.asyncio
+async def test_create_link_artifact(context, successful_queue):
+    expires = arrow.utcnow().isoformat()
+    context.temp_queue = successful_queue
+    await create_link_artifact(
+        context,
+        target_path="public/logs/live_backing.log",
+        link_to="public/logs/chain_of_trust.log",
+        content_type="text/plain",
+        expires=expires,
+    )
+    assert successful_queue.info == [
+        "createArtifact",
+        (
+            "taskId",
+            0,
+            "public/logs/live_backing.log",
+            {
+                "storageType": "link",
+                "expires": expires,
+                "contentType": "text/plain",
+                "artifact": "public/logs/chain_of_trust.log",
+            },
+        ),
+        {},
+    ]
 
 
 def test_craft_artifact_put_headers():
