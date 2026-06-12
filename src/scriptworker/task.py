@@ -672,7 +672,8 @@ async def run_task(context, to_cancellable_process):
     env["TASK_ID"] = context.task_id or "None"
     env["RUN_ID"] = str(get_run_id(context.claim_task))
     env["TASKCLUSTER_ROOT_URL"] = context.config["taskcluster_root_url"]
-    env["TASKCLUSTER_CREDENTIALS_FD"] = str(context.credentials_fd)
+    credentials_fd = context.credentials_file.fileno()
+    env["TASKCLUSTER_CREDENTIALS_FD"] = str(credentials_fd)
     kwargs = {
         "stdout": PIPE,
         "stderr": PIPE,
@@ -680,7 +681,7 @@ async def run_task(context, to_cancellable_process):
         "close_fds": True,
         "preexec_fn": lambda: os.setsid(),
         "env": env,
-        "pass_fds": (context.credentials_fd,),
+        "pass_fds": (credentials_fd,),
     }  # pragma: no branch
 
     timeout = get_task_maxruntime(context.task, context.config["task_max_timeout"])

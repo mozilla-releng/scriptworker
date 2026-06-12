@@ -59,7 +59,7 @@ class Context(object):
 
     config: Optional[Dict[str, Any]] = None
     credentials_timestamp: Optional[int] = None
-    credentials_fd: int = -1
+    credentials_file = None
     proc: Optional[task_process.TaskProcess] = None
     queue: Optional[Queue] = None
     session: Optional[aiohttp.ClientSession] = None
@@ -99,8 +99,7 @@ class Context(object):
         if claim_task:
             self.task = claim_task["task"]
             self.verify_task()
-            # flags=0 to let the child inherit this fd
-            self.credentials_fd = os.memfd_create("scriptworker_temp_creds", flags=0)
+            self.credentials_file = tempfile.TemporaryFile()
             self.temp_credentials = claim_task["credentials"]
             path = os.path.join(self.config["work_dir"], "task.json")
             assert self.task
@@ -108,8 +107,9 @@ class Context(object):
         else:
             self.temp_credentials = None
             self.task = None
-            os.close(self.credentials_fd)
-            self.credentials_fd = -1
+            if self.credentials_file is not None:
+                self.credentials_file.close()
+                self.credentials_file = None
 
     def verify_task(self) -> None:
         """Run some task sanity checks on ``self.task``."""
@@ -201,7 +201,7 @@ class Context(object):
         if credentials:
             data = json.dumps(credentials, indent=2, sort_keys=True).encode("ascii")
             # use pwrite so we don't confuse the child by changing the file offset
-            assert os.pwrite(self.credentials_fd, data, 0) == len(data)
+            assert os.pwrite(self.credentials_file.fileno(), data, 0) == len(data)
 
     def write_json(self, path: str, contents: Dict[str, Any], message: str) -> None:
         """Write json to disk.
