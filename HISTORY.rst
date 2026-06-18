@@ -4,6 +4,20 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.2.0 - 2026-06-18
+-------------------
+
+Added
+~~~~~
+- When Chain of Trust verification fails, the log is also exposed as public/logs/live_backing.log
+  (https://bugzilla.mozilla.org/show_bug.cgi?id=2039779)
+- Values for ESR 153 to scriptworker constants (https://bugzilla.mozilla.org/show_bug.cgi?id=2046216)
+
+Fixed
+~~~~~
+- The TASKCLUSTER_CREDENTIALS_FD feature uses a regular temporary file rather than a memfd, to
+  make things work again on macOS
+
 63.1.0 - 2026-05-26
 -------------------
 
