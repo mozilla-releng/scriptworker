@@ -308,500 +308,518 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         ),
         # for trace_back_to_*_tree.  These repos have access to restricted scopes;
         # all other repos are relegated to CI scopes.
-        "trusted_vcs_rules": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/(?:adhoc-signing|adhoc-manifest))(/|.git|$)"]),
-                            }
+        "trusted_vcs_rules": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla-releng/(?:adhoc-signing|adhoc-manifest))(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                    "app-services": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",),
-                            }
+                        "app-services": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": (r"^(?P<path>/mozilla/application-services)(/|.git|$)",),
+                                }
+                            ),
                         ),
-                    ),
-                    "enterprise": (
-                        immutabledict(
-                            {"schemes": ("https", "ssh"), "netlocs": ("github.com",), "path_regexes": (r"^(?P<path>/mozilla/enterprise-firefox)(/|.git|$)",)}
+                        "enterprise": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": (r"^(?P<path>/mozilla/enterprise-firefox)(/|.git|$)",),
+                                }
+                            ),
                         ),
-                    ),
-                    "firefox": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("hg.mozilla.org",),
-                                "path_regexes": (
-                                    r"^(?P<path>/mozilla-(central|unified))(/|$)",
-                                    r"^(?P<path>/integration/autoland)(/|$)",
-                                    r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
-                                    # bug 1845368: a permanent project branch for testing updates
-                                    r"^(?P<path>/projects/(pine|maple|larch|cypress))(/|$)",
-                                ),
-                            }
+                        "firefox": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("hg.mozilla.org",),
+                                    "path_regexes": (
+                                        r"^(?P<path>/mozilla-(central|unified))(/|$)",
+                                        r"^(?P<path>/integration/autoland)(/|$)",
+                                        r"^(?P<path>/releases/mozilla-(beta|release|esr\d+))(/|$)",
+                                        # bug 1845368: a permanent project branch for testing updates
+                                        r"^(?P<path>/projects/(pine|maple|larch|cypress))(/|$)",
+                                    ),
+                                }
+                            ),
                         ),
-                    ),
-                    "glean": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",),
-                            }
+                        "glean": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": (r"^(?P<path>/mozilla/glean)(/|.git|$)",),
+                                }
+                            ),
                         ),
-                    ),
-                    "mobile": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:reference-browser))(/|.git|$)"]),
-                            }
+                        "mobile": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:reference-browser))(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                    "mozillavpn": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:mozilla-vpn-client))(/|.git|$)"]),
-                            }
+                        "mozillavpn": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla-mobile/(?:mozilla-vpn-client))(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                    "scriptworker": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-releng/scriptworker(?:|-scripts))(/|.git|$)"]),
-                            }
+                        "scriptworker": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla-releng/scriptworker(?:|-scripts))(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                    # XXX We should also check the mozilla-central tree that is being used.
-                    "thunderbird": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("hg.mozilla.org",),
-                                "path_regexes": (
-                                    r"^(?P<path>/comm-central)(/|$)",
-                                    r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)",
-                                ),
-                            }
+                        # XXX We should also check the mozilla-central tree that is being used.
+                        "thunderbird": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("hg.mozilla.org",),
+                                    "path_regexes": (
+                                        r"^(?P<path>/comm-central)(/|$)",
+                                        r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)",
+                                    ),
+                                }
+                            ),
                         ),
-                    ),
-                    "translations": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla/translations)(/|.git|$)"]),
-                            }
+                        "translations": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla/translations)(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                    "xpi": (
-                        immutabledict(
-                            {
-                                "schemes": ("https", "ssh"),
-                                "netlocs": ("github.com",),
-                                "path_regexes": tuple([r"^(?P<path>/mozilla-extensions/xpi-manifest)(/|.git|$)"]),
-                            }
+                        "xpi": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/mozilla-extensions/xpi-manifest)(/|.git|$)"]),
+                                }
+                            ),
                         ),
-                    ),
-                }
-            )
-        },
-        "valid_tasks_for": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": ("action", "github-pull-request", "github-push"),
-                    "app-services": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                    ),
-                    "enterprise": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                        "pr-action",
-                    ),
-                    "firefox": ("hg-push", "cron", "action"),
-                    "glean": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                    ),
-                    "mobile": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-pull-request-untrusted",
-                        "github-push",
-                        "github-release",
-                    ),
-                    "mozillavpn": (
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                        "action",
-                    ),
-                    "scriptworker": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                    ),
-                    "thunderbird": ("hg-push", "cron", "action"),
-                    "translations": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "pr-action",
-                    ),
-                    "xpi": (
-                        "action",
-                        "cron",
-                        "github-pull-request",
-                        "github-push",
-                        "github-release",
-                    ),
-                }
-            )
-        },
-        "official_github_repos_owner": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": "mozilla-releng",
-                    "app-services": "mozilla",
-                    "enterprise": "mozilla",
-                    "firefox": "",
-                    "glean": "mozilla",
-                    "mobile": "mozilla-mobile",
-                    "mozillavpn": "mozilla-mobile",
-                    "scriptworker": "mozilla-releng",
-                    "thunderbird": "",
-                    "translations": "mozilla",
-                    "xpi": "mozilla-extensions",
-                }
-            )
-        },
+                    }
+                )
+            }
+        ),
+        "valid_tasks_for": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": ("action", "github-pull-request", "github-push"),
+                        "app-services": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                        ),
+                        "enterprise": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                            "pr-action",
+                        ),
+                        "firefox": ("hg-push", "cron", "action"),
+                        "glean": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                        ),
+                        "mobile": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-pull-request-untrusted",
+                            "github-push",
+                            "github-release",
+                        ),
+                        "mozillavpn": (
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                            "action",
+                        ),
+                        "scriptworker": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                        ),
+                        "thunderbird": ("hg-push", "cron", "action"),
+                        "translations": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "pr-action",
+                        ),
+                        "xpi": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-push",
+                            "github-release",
+                        ),
+                    }
+                )
+            }
+        ),
+        "official_github_repos_owner": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": "mozilla-releng",
+                        "app-services": "mozilla",
+                        "enterprise": "mozilla",
+                        "firefox": "",
+                        "glean": "mozilla",
+                        "mobile": "mozilla-mobile",
+                        "mozillavpn": "mozilla-mobile",
+                        "scriptworker": "mozilla-releng",
+                        "thunderbird": "",
+                        "translations": "mozilla",
+                        "xpi": "mozilla-extensions",
+                    }
+                )
+            }
+        ),
         # Map scopes to restricted-level
-        "cot_restricted_scopes": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
-                    "app-services": immutabledict(
-                        {
-                            "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
-                            "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
-                            "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
-                        }
-                    ),
-                    "enterprise": immutabledict(
-                        {
-                            "project:enterprise:releng:signing:cert:nightly-signing": "enterprise-firefox-repo",
-                            "project:enterprise:releng:signing:cert:release-signing": "enterprise-firefox-repo",
-                            "project:enterprise:releng:signing:cert:production-signing": "enterprise-firefox-repo",
-                            "project:enterprise:releng:signing:cert:fennec-production-signing": "enterprise-firefox-repo",
-                        }
-                    ),
-                    "firefox": immutabledict(
-                        {
-                            "project:releng:addons.mozilla.org:server:production": "all-release-branches",
-                            "project:releng:balrog:server:nightly": "all-nightly-branches",
-                            "project:releng:balrog:server:beta": "beta",
-                            "project:releng:balrog:server:release": "release",
-                            "project:releng:balrog:server:esr": "esr",
-                            "project:releng:beetmover:bucket:nightly": "all-nightly-branches",
-                            "project:releng:beetmover:bucket:release": "all-release-branches-and-autoland",
-                            "project:releng:beetmover:bucket:maven-production": "all-production-branches",
-                            "project:releng:beetmover:bucket:maven-nightly-production": "nightly",
-                            "project:releng:bouncer:server:production": "all-production-branches",
-                            "project:releng:signing:cert:nightly-signing": "all-nightly-branches",
-                            "project:releng:signing:cert:release-signing": "all-release-branches",
-                            "project:releng:signing:cert:production-signing": "all-production-branches",
-                            "project:releng:signing:cert:fennec-production-signing": "beta-or-release",
-                            "project:releng:flathub:firefox:beta": "beta",
-                            "project:releng:flathub:firefox:stable": "release",
-                            "project:releng:flathub:firefox:beta:org.mozilla.firefox": "beta",
-                            "project:releng:flathub:firefox:stable:org.mozilla.firefox": "release",
-                            "project:releng:googleplay:product:focus-android": "all-production-branches",
-                            "project:releng:googleplay:product:fenix": "all-production-branches",
-                            "project:releng:ship-it:production": "all-production-branches",
-                            "project:releng:treescript:action:push": "all-production-branches-and-autoland",
-                            "project:releng:microsoftstore:beta": "beta",
-                            "project:releng:microsoftstore:release": "release",
-                            # Note that the repositories in the scope are identifiers in Lando
-                            # and not necessarily individual repositories. For example, the Lando
-                            # "beta" repository is ultimately the `beta` branch of
-                            # https://github.com/mozilla-firefox/firefox.
-                            "project:releng:lando:repo:autoland": "autoland",
-                            "project:releng:lando:repo:nightly": "nightly",
-                            "project:releng:lando:repo:beta": "beta",
-                            "project:releng:lando:repo:release": "release",
-                            "project:releng:lando:repo:esr115": "esr115",
-                            "project:releng:lando:repo:esr140": "esr140",
-                            "project:releng:lando:repo:esr153": "esr153",
-                        }
-                    ),
-                    "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
-                    "mobile": immutabledict(
-                        {
-                            "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
-                            "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
-                            "project:mobile:releng:treescript:action:push": "firefox-ios-repo",
-                        }
-                    ),
-                    "mozillavpn": immutabledict(
-                        {
-                            "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
-                            "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
-                            "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
-                            "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
-                        }
-                    ),
-                    "scriptworker": immutabledict(
-                        {
-                            "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
-                            "project:scriptworker:pypi:production": "all-production-repos",
-                        }
-                    ),
-                    "thunderbird": immutabledict(
-                        {
-                            "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
-                            "project:comm:thunderbird:releng:balrog:server:beta": "beta",
-                            "project:comm:thunderbird:releng:balrog:server:release": "release-or-esr",
-                            "project:comm:thunderbird:releng:balrog:server:esr": "esr",
-                            "project:comm:thunderbird:releng:beetmover:bucket:nightly": "all-nightly-branches",
-                            "project:comm:thunderbird:releng:beetmover:bucket:release": "all-release-branches",
-                            "project:comm:thunderbird:releng:bouncer:server:production": "all-nightly-branches",
-                            "project:comm:thunderbird:releng:signing:cert:nightly-signing": "all-nightly-branches",
-                            "project:comm:thunderbird:releng:signing:cert:release-signing": "all-release-branches",
-                            "project:comm:thunderbird:releng:flathub:beta": "beta",
-                            "project:comm:thunderbird:releng:flathub:stable": "release-or-esr",
-                            "project:comm:thunderbird:releng:flathub:beta:org.mozilla.Thunderbird": "beta",
-                            "project:comm:thunderbird:releng:flathub:stable:org.mozilla.Thunderbird": "release-or-esr",
-                            "project:comm:thunderbird:releng:flathub:beta:org.mozilla.thunderbird": "beta",
-                            "project:comm:thunderbird:releng:flathub:stable:org.mozilla.thunderbird": "release",
-                            "project:comm:thunderbird:releng:flathub:stable:org.mozilla.thunderbird_esr": "esr",
-                            "project:comm:thunderbird:releng:microsoftstore:beta": "beta",
-                            "project:comm:thunderbird:releng:microsoftstore:release": "release",
-                            "project:comm:thunderbird:releng:microsoftstore:esr": "esr",
-                        }
-                    ),
-                    "translations": immutabledict(
-                        {
-                            "project:translations:releng:beetmover:bucket:release": "translations-repo",
-                        }
-                    ),
-                    "xpi": immutabledict(
-                        {
-                            "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
-                            "project:xpi:releng:github:project:mozilla-extensions/*": "xpi-manifest-repo",
-                            "project:xpi:ship-it:production": "xpi-manifest-repo",
-                            "project:xpi:beetmover:bucket:release": "xpi-manifest-repo",
-                            "project:xpi:balrog:server:release": "xpi-manifest-repo",
-                        }
-                    ),
-                }
-            )
-        },
+        "cot_restricted_scopes": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": immutabledict({"project:adhoc:signing:cert:release-signing": "adhoc-signing-repos"}),
+                        "app-services": immutabledict(
+                            {
+                                "project:mozilla:app-services:releng:beetmover:bucket:maven-production": "app-services-repo",
+                                "project:mozilla:app-services:releng:beetmover:bucket:release": "app-services-repo",
+                                "project:mozilla:app-services:releng:signing:cert:release-signing": "app-services-repo",
+                            }
+                        ),
+                        "enterprise": immutabledict(
+                            {
+                                "project:enterprise:releng:signing:cert:nightly-signing": "enterprise-firefox-repo",
+                                "project:enterprise:releng:signing:cert:release-signing": "enterprise-firefox-repo",
+                                "project:enterprise:releng:signing:cert:production-signing": "enterprise-firefox-repo",
+                                "project:enterprise:releng:signing:cert:fennec-production-signing": "enterprise-firefox-repo",
+                            }
+                        ),
+                        "firefox": immutabledict(
+                            {
+                                "project:releng:addons.mozilla.org:server:production": "all-release-branches",
+                                "project:releng:balrog:server:nightly": "all-nightly-branches",
+                                "project:releng:balrog:server:beta": "beta",
+                                "project:releng:balrog:server:release": "release",
+                                "project:releng:balrog:server:esr": "esr",
+                                "project:releng:beetmover:bucket:nightly": "all-nightly-branches",
+                                "project:releng:beetmover:bucket:release": "all-release-branches-and-autoland",
+                                "project:releng:beetmover:bucket:maven-production": "all-production-branches",
+                                "project:releng:beetmover:bucket:maven-nightly-production": "nightly",
+                                "project:releng:bouncer:server:production": "all-production-branches",
+                                "project:releng:signing:cert:nightly-signing": "all-nightly-branches",
+                                "project:releng:signing:cert:release-signing": "all-release-branches",
+                                "project:releng:signing:cert:production-signing": "all-production-branches",
+                                "project:releng:signing:cert:fennec-production-signing": "beta-or-release",
+                                "project:releng:flathub:firefox:beta": "beta",
+                                "project:releng:flathub:firefox:stable": "release",
+                                "project:releng:flathub:firefox:beta:org.mozilla.firefox": "beta",
+                                "project:releng:flathub:firefox:stable:org.mozilla.firefox": "release",
+                                "project:releng:googleplay:product:focus-android": "all-production-branches",
+                                "project:releng:googleplay:product:fenix": "all-production-branches",
+                                "project:releng:ship-it:production": "all-production-branches",
+                                "project:releng:treescript:action:push": "all-production-branches-and-autoland",
+                                "project:releng:microsoftstore:beta": "beta",
+                                "project:releng:microsoftstore:release": "release",
+                                # Note that the repositories in the scope are identifiers in Lando
+                                # and not necessarily individual repositories. For example, the Lando
+                                # "beta" repository is ultimately the `beta` branch of
+                                # https://github.com/mozilla-firefox/firefox.
+                                "project:releng:lando:repo:autoland": "autoland",
+                                "project:releng:lando:repo:nightly": "nightly",
+                                "project:releng:lando:repo:beta": "beta",
+                                "project:releng:lando:repo:release": "release",
+                                "project:releng:lando:repo:esr115": "esr115",
+                                "project:releng:lando:repo:esr140": "esr140",
+                                "project:releng:lando:repo:esr153": "esr153",
+                            }
+                        ),
+                        "glean": immutabledict({"project:mozilla:glean:releng:beetmover:bucket:maven-production": "glean-repo"}),
+                        "mobile": immutabledict(
+                            {
+                                "project:mobile:reference-browser:releng:googleplay:product:reference-browser": "reference-browser-repo",
+                                "project:mobile:reference-browser:releng:signing:cert:release-signing": "reference-browser-repo",
+                                "project:mobile:releng:treescript:action:push": "firefox-ios-repo",
+                            }
+                        ),
+                        "mozillavpn": immutabledict(
+                            {
+                                "project:mozillavpn:releng:signing:cert:nightly-signing": "mozillavpn-repo",
+                                "project:mozillavpn:releng:signing:cert:release-signing": "mozillavpn-repo",
+                                "project:mozillavpn:releng:googleplay:product:mozillavpn": "mozillavpn-repo",
+                                "project:mozillavpn:releng:beetmover:bucket:release": "mozillavpn-repo",
+                            }
+                        ),
+                        "scriptworker": immutabledict(
+                            {
+                                "project:scriptworker:dockerhub:production": "scriptworker-scripts-repo",
+                                "project:scriptworker:pypi:production": "all-production-repos",
+                            }
+                        ),
+                        "thunderbird": immutabledict(
+                            {
+                                "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
+                                "project:comm:thunderbird:releng:balrog:server:beta": "beta",
+                                "project:comm:thunderbird:releng:balrog:server:release": "release-or-esr",
+                                "project:comm:thunderbird:releng:balrog:server:esr": "esr",
+                                "project:comm:thunderbird:releng:beetmover:bucket:nightly": "all-nightly-branches",
+                                "project:comm:thunderbird:releng:beetmover:bucket:release": "all-release-branches",
+                                "project:comm:thunderbird:releng:bouncer:server:production": "all-nightly-branches",
+                                "project:comm:thunderbird:releng:signing:cert:nightly-signing": "all-nightly-branches",
+                                "project:comm:thunderbird:releng:signing:cert:release-signing": "all-release-branches",
+                                "project:comm:thunderbird:releng:flathub:beta": "beta",
+                                "project:comm:thunderbird:releng:flathub:stable": "release-or-esr",
+                                "project:comm:thunderbird:releng:flathub:beta:org.mozilla.Thunderbird": "beta",
+                                "project:comm:thunderbird:releng:flathub:stable:org.mozilla.Thunderbird": "release-or-esr",
+                                "project:comm:thunderbird:releng:flathub:beta:org.mozilla.thunderbird": "beta",
+                                "project:comm:thunderbird:releng:flathub:stable:org.mozilla.thunderbird": "release",
+                                "project:comm:thunderbird:releng:flathub:stable:org.mozilla.thunderbird_esr": "esr",
+                                "project:comm:thunderbird:releng:microsoftstore:beta": "beta",
+                                "project:comm:thunderbird:releng:microsoftstore:release": "release",
+                                "project:comm:thunderbird:releng:microsoftstore:esr": "esr",
+                            }
+                        ),
+                        "translations": immutabledict(
+                            {
+                                "project:translations:releng:beetmover:bucket:release": "translations-repo",
+                            }
+                        ),
+                        "xpi": immutabledict(
+                            {
+                                "project:xpi:signing:cert:release-signing": "xpi-manifest-repo",
+                                "project:xpi:releng:github:project:mozilla-extensions/*": "xpi-manifest-repo",
+                                "project:xpi:ship-it:production": "xpi-manifest-repo",
+                                "project:xpi:beetmover:bucket:release": "xpi-manifest-repo",
+                                "project:xpi:balrog:server:release": "xpi-manifest-repo",
+                            }
+                        ),
+                    }
+                )
+            }
+        ),
         # Map restricted-level to trees
-        "cot_restricted_trees": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": immutabledict(
-                        {
-                            "adhoc-signing-repos": (
-                                "/mozilla-releng/adhoc-signing",
-                                "/mozilla-releng/adhoc-manifest",
-                            )
-                        }
-                    ),
-                    "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
-                    "enterprise": immutabledict({"enterprise-firefox-repo": ("/mozilla/enterprise-firefox",)}),
-                    "firefox": immutabledict(
-                        {
-                            # Which repos can perform release actions?
-                            "all-release-branches": (
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                                "/projects/birch",
-                                # Bug 1821839 hneiva using to test hardened signing
-                                "/projects/maple",
-                            ),
-                            "all-release-branches-and-autoland": (
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                                "/projects/birch",
-                                "/projects/maple",
-                                "/integration/autoland",
-                            ),
-                            # Limit things like pushapk to just these branches
-                            "release": ("/releases/mozilla-release",),
-                            "beta": ("/releases/mozilla-beta",),
-                            "beta-or-release": (
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                            ),
-                            "esr115": ("/releases/mozilla-esr115",),
-                            "esr140": ("/releases/mozilla-esr140",),
-                            "esr153": ("/releases/mozilla-esr153",),
-                            "esr": (
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                            ),
-                            "nightly": ("/mozilla-central",),
-                            "autoland": ("/integration/autoland",),
-                            # Which repos can do nightly signing?
-                            "all-nightly-branches": (
-                                "/mozilla-central",
-                                "/releases/mozilla-unified",
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                                # bug 1845368: a permanent project branch for testing updates
-                                "/projects/pine",
-                                "/projects/larch",
-                                "/projects/maple",
-                                "/projects/cypress",
-                            ),
-                            "all-production-branches": (
-                                "/mozilla-central",
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                            ),
-                            "all-production-branches-and-autoland": (
-                                "/mozilla-central",
-                                "/releases/mozilla-beta",
-                                "/releases/mozilla-release",
-                                "/releases/mozilla-esr115",
-                                "/releases/mozilla-esr140",
-                                "/releases/mozilla-esr153",
-                                "/integration/autoland",
-                            ),
-                        }
-                    ),
-                    "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
-                    "mobile": immutabledict(
-                        {
-                            "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
-                            "firefox-ios-repo": ("/mozilla-mobile/firefox-ios",),
-                        }
-                    ),
-                    "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
-                    "scriptworker": immutabledict(
-                        {
-                            "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
-                            "all-production-repos": (
-                                "/mozilla-releng/scriptworker",
-                                "/mozilla-releng/scriptworker-scripts",
-                            ),
-                        }
-                    ),
-                    "thunderbird": immutabledict(
-                        {
-                            "all-release-branches": (
-                                "/releases/comm-beta",
-                                "/releases/comm-release",
-                                "/releases/comm-esr115",
-                                "/releases/comm-esr140",
-                                "/releases/comm-esr153",
-                            ),
-                            "beta": ("/releases/comm-beta",),
-                            "release": ("/releases/comm-release",),
-                            "release-or-esr": (
-                                "/releases/comm-release",
-                                "/releases/comm-esr115",
-                                "/releases/comm-esr140",
-                                "/releases/comm-esr153",
-                            ),
-                            "esr": ("/releases/comm-esr115", "/releases/comm-esr140", "/releases/comm-esr153"),
-                            "all-nightly-branches": (
-                                "/comm-central",
-                                "/releases/comm-beta",
-                                "/releases/comm-release",
-                                "/releases/comm-esr115",
-                                "/releases/comm-esr140",
-                                "/releases/comm-esr153",
-                            ),
-                            "nightly": ("/comm-central",),
-                        }
-                    ),
-                    "translations": immutabledict(
-                        {
-                            "translations-repo": ("/mozilla/translations",),
-                        }
-                    ),
-                    "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
-                }
-            )
-        },
-        "prebuilt_docker_image_task_types": {
-            "by-cot-product": immutabledict(
-                {
-                    "app-services": "any",  # all allowed
-                    "adhoc": "any",  # all allowed
-                    "enterprise": ("decision", "action", "docker-image"),
-                    "firefox": ("decision", "action", "docker-image"),
-                    "glean": "any",  # all allowed
-                    # XXX now that we're on taskgraph, we should limit these.
-                    "mobile": "any",  # all allowed
-                    "mozillavpn": "any",  # all allowed
-                    "scriptworker": ("decision", "action", "docker-image"),
-                    "thunderbird": ("decision", "action", "docker-image"),
-                    "translations": "any",  # all allowed
-                    "xpi": "any",  # all allowed
-                }
-            )
-        },
-        "source_env_prefix": {
-            "by-cot-product": immutabledict(
-                {
-                    "adhoc": "ADHOC",
-                    "app-services": "APPSERVICES",
-                    "enterprise": "GECKO",
-                    "firefox": "GECKO",
-                    "glean": "GLEAN",
-                    "mobile": "MOBILE",
-                    "mozillavpn": "MOZILLAVPN",
-                    "scriptworker": "SCRIPTWORKER",
-                    "thunderbird": "COMM",
-                    "translations": "TRANSLATIONS",
-                    "xpi": "XPI",
-                }
-            )
-        },
+        "cot_restricted_trees": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": immutabledict(
+                            {
+                                "adhoc-signing-repos": (
+                                    "/mozilla-releng/adhoc-signing",
+                                    "/mozilla-releng/adhoc-manifest",
+                                )
+                            }
+                        ),
+                        "app-services": immutabledict({"app-services-repo": ("/mozilla/application-services",)}),
+                        "enterprise": immutabledict({"enterprise-firefox-repo": ("/mozilla/enterprise-firefox",)}),
+                        "firefox": immutabledict(
+                            {
+                                # Which repos can perform release actions?
+                                "all-release-branches": (
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                    "/projects/birch",
+                                    # Bug 1821839 hneiva using to test hardened signing
+                                    "/projects/maple",
+                                ),
+                                "all-release-branches-and-autoland": (
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                    "/projects/birch",
+                                    "/projects/maple",
+                                    "/integration/autoland",
+                                ),
+                                # Limit things like pushapk to just these branches
+                                "release": ("/releases/mozilla-release",),
+                                "beta": ("/releases/mozilla-beta",),
+                                "beta-or-release": (
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                ),
+                                "esr115": ("/releases/mozilla-esr115",),
+                                "esr140": ("/releases/mozilla-esr140",),
+                                "esr153": ("/releases/mozilla-esr153",),
+                                "esr": (
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                ),
+                                "nightly": ("/mozilla-central",),
+                                "autoland": ("/integration/autoland",),
+                                # Which repos can do nightly signing?
+                                "all-nightly-branches": (
+                                    "/mozilla-central",
+                                    "/releases/mozilla-unified",
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                    # bug 1845368: a permanent project branch for testing updates
+                                    "/projects/pine",
+                                    "/projects/larch",
+                                    "/projects/maple",
+                                    "/projects/cypress",
+                                ),
+                                "all-production-branches": (
+                                    "/mozilla-central",
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                ),
+                                "all-production-branches-and-autoland": (
+                                    "/mozilla-central",
+                                    "/releases/mozilla-beta",
+                                    "/releases/mozilla-release",
+                                    "/releases/mozilla-esr115",
+                                    "/releases/mozilla-esr140",
+                                    "/releases/mozilla-esr153",
+                                    "/integration/autoland",
+                                ),
+                            }
+                        ),
+                        "glean": immutabledict({"glean-repo": ("/mozilla/glean",)}),
+                        "mobile": immutabledict(
+                            {
+                                "reference-browser-repo": ("/mozilla-mobile/reference-browser",),
+                                "firefox-ios-repo": ("/mozilla-mobile/firefox-ios",),
+                            }
+                        ),
+                        "mozillavpn": immutabledict({"mozillavpn-repo": ("/mozilla-mobile/mozilla-vpn-client",)}),
+                        "scriptworker": immutabledict(
+                            {
+                                "scriptworker-scripts-repo": ("/mozilla-releng/scriptworker-scripts",),
+                                "all-production-repos": (
+                                    "/mozilla-releng/scriptworker",
+                                    "/mozilla-releng/scriptworker-scripts",
+                                ),
+                            }
+                        ),
+                        "thunderbird": immutabledict(
+                            {
+                                "all-release-branches": (
+                                    "/releases/comm-beta",
+                                    "/releases/comm-release",
+                                    "/releases/comm-esr115",
+                                    "/releases/comm-esr140",
+                                    "/releases/comm-esr153",
+                                ),
+                                "beta": ("/releases/comm-beta",),
+                                "release": ("/releases/comm-release",),
+                                "release-or-esr": (
+                                    "/releases/comm-release",
+                                    "/releases/comm-esr115",
+                                    "/releases/comm-esr140",
+                                    "/releases/comm-esr153",
+                                ),
+                                "esr": ("/releases/comm-esr115", "/releases/comm-esr140", "/releases/comm-esr153"),
+                                "all-nightly-branches": (
+                                    "/comm-central",
+                                    "/releases/comm-beta",
+                                    "/releases/comm-release",
+                                    "/releases/comm-esr115",
+                                    "/releases/comm-esr140",
+                                    "/releases/comm-esr153",
+                                ),
+                                "nightly": ("/comm-central",),
+                            }
+                        ),
+                        "translations": immutabledict(
+                            {
+                                "translations-repo": ("/mozilla/translations",),
+                            }
+                        ),
+                        "xpi": immutabledict({"xpi-manifest-repo": ("/mozilla-extensions/xpi-manifest",)}),
+                    }
+                )
+            }
+        ),
+        "prebuilt_docker_image_task_types": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "app-services": "any",  # all allowed
+                        "adhoc": "any",  # all allowed
+                        "enterprise": ("decision", "action", "docker-image"),
+                        "firefox": ("decision", "action", "docker-image"),
+                        "glean": "any",  # all allowed
+                        # XXX now that we're on taskgraph, we should limit these.
+                        "mobile": "any",  # all allowed
+                        "mozillavpn": "any",  # all allowed
+                        "scriptworker": ("decision", "action", "docker-image"),
+                        "thunderbird": ("decision", "action", "docker-image"),
+                        "translations": "any",  # all allowed
+                        "xpi": "any",  # all allowed
+                    }
+                )
+            }
+        ),
+        "source_env_prefix": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": "ADHOC",
+                        "app-services": "APPSERVICES",
+                        "enterprise": "GECKO",
+                        "firefox": "GECKO",
+                        "glean": "GLEAN",
+                        "mobile": "MOBILE",
+                        "mozillavpn": "MOZILLAVPN",
+                        "scriptworker": "SCRIPTWORKER",
+                        "thunderbird": "COMM",
+                        "translations": "TRANSLATIONS",
+                        "xpi": "XPI",
+                    }
+                )
+            }
+        ),
     }
 )
 
