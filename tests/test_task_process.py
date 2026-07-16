@@ -30,15 +30,20 @@ async def test_stop_catch_os_error(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_stop_handle_process_lookup_error():
+async def test_stop_handle_process_lookup_error(monkeypatch):
+    def mock_kill(_, __):
+        raise ProcessLookupError()
+
     process = MagicMock()
-    process.terminate.side_effect = ProcessLookupError
     task_process = TaskProcess(process)
+
+    monkeypatch.setattr(os, "kill", mock_kill)
     await task_process.stop()
 
 
 @pytest.mark.asyncio
-async def test_set_killed_due_to_worker_shutdown():
+async def test_set_killed_due_to_worker_shutdown(mocker):
+    mocker.patch.object(os, "kill")
     task_process = TaskProcess(MagicMock())
     assert task_process.stopped_due_to_worker_shutdown is False
     await task_process.worker_shutdown_stop()

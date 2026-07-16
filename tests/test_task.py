@@ -246,6 +246,12 @@ def test_get_worker_type(task, result):
 @pytest.mark.asyncio
 async def test_get_project(context, mobile_context, source_url, expected, raises, context_type):
     context_ = mobile_context if context_type == "mobile" else context
+    context_.projects = {
+        "mozilla-central": {"repo": "https://hg.mozilla.org/mozilla-central", "repo_type": "hg", "access": "scm_level_3"},
+        "mozilla-esr115": {"repo": "https://hg.mozilla.org/releases/mozilla-esr115", "repo_type": "hg", "access": "scm_level_3"},
+        "try": {"repo": "https://hg.mozilla.org/try", "repo_type": "hg", "access": "scm_level_1"},
+    }
+    context_._projects_timestamp = time.time()
 
     if raises:
         with pytest.raises(ValueError):

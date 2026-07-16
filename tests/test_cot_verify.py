@@ -1087,12 +1087,16 @@ async def test_get_pushlog_info(decision_link, pushes, mocker):
 )
 @pytest.mark.asyncio
 async def test_populate_jsone_context_gecko_trees(mocker, chain, decision_link, action_link, cron_link, tasks_for, expected, raises):
+    async def get_project(*args, **kwargs):
+        return "mozilla-central"
+
     async def get_scm_level(*args, **kwargs):
         return "1"
 
     async def get_pushlog_info(*args, **kwargs):
         return {"pushes": {1: {"user": "some-user", "date": 1500000000, "changesets": [{"desc": " ", "parents": ["baserev"]}]}}}
 
+    mocker.patch.object(cotverify, "get_project", get_project)
     mocker.patch.object(cotverify, "get_scm_level", get_scm_level)
     mocker.patch.object(cotverify, "get_pushlog_info", get_pushlog_info)
     mocker.patch.object(cotverify, "load_json_or_yaml", return_value={})
@@ -1149,7 +1153,12 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
 
 @pytest.mark.parametrize("has_triggered_by", (True, False))
 @pytest.mark.asyncio
-async def test_populate_jsone_context_git_cron(mobile_chain, mobile_cron_link, has_triggered_by):
+async def test_populate_jsone_context_git_cron(mocker, mobile_chain, mobile_cron_link, has_triggered_by):
+    async def get_scm_level(*args, **kwargs):
+        return "3"
+
+    mocker.patch.object(cotverify, "get_scm_level", get_scm_level)
+
     if has_triggered_by:
         mobile_cron_link.task["payload"]["env"]["MOBILE_TRIGGERED_BY"] = "TaskclusterHook"
 
