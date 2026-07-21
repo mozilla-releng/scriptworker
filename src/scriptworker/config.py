@@ -125,11 +125,17 @@ def check_config(config, path):
         if key not in DEFAULT_CONFIG:
             messages.append("Unknown key {} in {}!".format(key, path))
             continue
+        is_by_cot_product = isinstance(DEFAULT_CONFIG[key], Mapping) and "by-cot-product" in DEFAULT_CONFIG[key]
         if value is None:
-            messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
+            if key != "cot_product" and not is_by_cot_product:
+                messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
         else:
             value_type = type(value)
-            if isinstance(DEFAULT_CONFIG[key], Mapping) and "by-cot-product" in DEFAULT_CONFIG[key]:
+            if key == "cot_product":
+                # `cot_product`'s own default is `None`, so its type can't be
+                # inferred from `DEFAULT_CONFIG` the way other keys' can.
+                default_type = str
+            elif is_by_cot_product:
                 default_type = type(DEFAULT_CONFIG[key]["by-cot-product"][config["cot_product"]])
             else:
                 default_type = type(DEFAULT_CONFIG[key])
@@ -139,6 +145,8 @@ def check_config(config, path):
             messages.append(_VALUE_UNDEFINED_MESSAGE.format(path=path, key=key))
         if key in ("provisioner_id", "worker_group", "worker_type", "worker_id") and not _is_id_valid(value):
             messages.append('{} doesn\'t match "{}" (required by Taskcluster)'.format(key, _GENERIC_ID_REGEX.pattern))
+    if config.get("cot_product") is None and config.get("verify_chain_of_trust"):
+        messages.append("{} verify_chain_of_trust can't be True when cot_product is not set!".format(path))
     return messages
 
 
@@ -161,6 +169,9 @@ def apply_product_config(config):
 
     for key in config:
         if isinstance(config[key], Mapping) and "by-cot-product" in config[key]:
+            if cot_product is None:
+                config[key] = None
+                continue
             try:
                 config[key] = config[key]["by-cot-product"][cot_product]
             except KeyError:

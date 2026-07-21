@@ -73,7 +73,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "verify_chain_of_trust": False,  # TODO True
         "verify_cot_signature": False,
         "cot_job_type": "unknown",  # e.g., signing
-        "cot_product": "firefox",
+        "cot_product": None,
         "cot_version": 3,
         "min_cot_version": 2,
         "max_chain_length": 20,
