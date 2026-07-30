@@ -11,7 +11,7 @@ import mock
 import pytest
 
 import scriptworker.context as swcontext
-from scriptworker.exceptions import CoTError
+from scriptworker.exceptions import CoTError, ScriptWorkerException
 
 
 # constants helpers and fixtures {{{1
@@ -155,12 +155,18 @@ def test_get_credentials(rw_context):
     assert rw_context.credentials == expected
 
 
-def test_new_event_loop(mocker):
-    """The default rw_context.event_loop is from `asyncio.get_event_loop`"""
-    fake_loop = mock.MagicMock()
-    mocker.patch.object(asyncio, "get_event_loop", return_value=fake_loop)
+def test_event_loop_no_running_loop():
+    """`context.event_loop` raises when nothing is set and no loop is running."""
     rw_context = swcontext.Context()
-    assert rw_context.event_loop is fake_loop
+    with pytest.raises(ScriptWorkerException):
+        rw_context.event_loop
+
+
+@pytest.mark.asyncio
+async def test_event_loop_prefers_running_loop():
+    """`context.event_loop` returns the running loop when nothing is set."""
+    rw_context = swcontext.Context()
+    assert rw_context.event_loop is asyncio.get_running_loop()
 
 
 def test_set_event_loop(mocker):

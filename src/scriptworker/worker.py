@@ -236,14 +236,16 @@ def main(event_loop=None):
 
     Args:
         event_loop (asyncio.BaseEventLoop, optional): the event loop to use.
-            If None, use ``asyncio.get_event_loop()``. Defaults to None.
+            If None, create one with ``asyncio.new_event_loop()``. Defaults to None.
 
     """
     context, credentials = get_context_from_cmdln(sys.argv[1:])
     log.info("Scriptworker starting up at {} UTC".format(arrow.utcnow().format()))
     log.info("Worker FQDN: {}".format(socket.getfqdn()))
     cleanup(context)
-    context.event_loop = event_loop or asyncio.get_event_loop()
+    if event_loop is None:
+        event_loop = asyncio.new_event_loop()
+    context.event_loop = event_loop
 
     done = False
 

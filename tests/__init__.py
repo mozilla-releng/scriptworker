@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import sys
+from contextlib import contextmanager
 
 import aiohttp
 import arrow
@@ -44,6 +45,26 @@ def touch(path):
     """
     with open(path, "w") as fh:
         print(path, file=fh, end="")
+
+
+@contextmanager
+def no_ambient_event_loop():
+    """Run a block with no current event loop set for this thread.
+
+    ``pytest-asyncio``'s auto mode installs a current event loop in the main
+    thread, so tests exercising the no-current-loop path have to remove it
+    first.  The previous loop is restored on the way out, since sibling tests
+    run in a random order and expect to find it.
+    """
+    try:
+        previous_loop = asyncio.get_event_loop()
+    except RuntimeError:
+        previous_loop = None
+    asyncio.set_event_loop(None)
+    try:
+        yield
+    finally:
+        asyncio.set_event_loop(previous_loop)
 
 
 class FakeResponse(aiohttp.client_reqrep.ClientResponse):
