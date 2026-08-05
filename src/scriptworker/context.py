@@ -25,7 +25,7 @@ import arrow
 from taskcluster.aio import Queue
 
 from scriptworker import task_process
-from scriptworker.exceptions import CoTError
+from scriptworker.exceptions import CoTError, ScriptWorkerException
 from scriptworker.utils import load_json_or_yaml_from_url, makedirs, scriptworker_session
 
 log = logging.getLogger(__name__)
@@ -235,13 +235,21 @@ class Context(object):
 
     @property
     def event_loop(self) -> asyncio.AbstractEventLoop:
-        """asyncio.BaseEventLoop: the running event loop.
+        """asyncio.BaseEventLoop: the event loop set on the context, or the running one.
 
         This fixture mainly exists to allow for overrides during unit tests.
 
+        Raises:
+            ScriptWorkerException: if no loop has been set and none is running.
+
         """
         if not self._event_loop:
-            self._event_loop = asyncio.get_event_loop()
+            try:
+                self._event_loop = asyncio.get_running_loop()
+            except RuntimeError as exc:
+                raise ScriptWorkerException(
+                    "No event loop is running and none was set on the context. Set ``context.event_loop`` before use, or read it from a coroutine."
+                ) from exc
         return self._event_loop
 
     @event_loop.setter

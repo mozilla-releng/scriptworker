@@ -20,7 +20,18 @@ from scriptworker.constants import STATUSES
 from scriptworker.exceptions import ScriptWorkerException, WorkerShutdownDuringTask
 from scriptworker.worker import RunTasks, do_run_task
 
-from . import AT_LEAST_PY38, KILLED_SCRIPT, TIMEOUT_SCRIPT, create_async, create_finished_future, create_slow_async, create_sync, noop_async, noop_sync
+from . import (
+    AT_LEAST_PY38,
+    KILLED_SCRIPT,
+    TIMEOUT_SCRIPT,
+    create_async,
+    create_finished_future,
+    create_slow_async,
+    create_sync,
+    no_ambient_event_loop,
+    noop_async,
+    noop_sync,
+)
 
 
 # constants helpers and fixtures {{{1
@@ -60,6 +71,35 @@ def test_main(mocker, context):
             worker.main()
     finally:
         os.remove(tmp)
+
+
+def test_main_no_ambient_event_loop(mocker, context):
+    """``main()`` runs with a loop it creates itself when none is current."""
+    config = dict(context.config)
+    config["poll_interval"] = 1
+    config["credentials"] = {"fake_creds": True}
+
+    loops = []
+
+    async def foo(arg, credentials):
+        loops.append(arg.event_loop)
+        raise ScriptWorkerException("foo")
+
+    _, tmp = tempfile.mkstemp()
+    try:
+        with open(tmp, "w") as fh:
+            json.dump(config, fh)
+        del config["credentials"]
+        mocker.patch.object(worker, "async_main", new=foo)
+        mocker.patch.object(sys, "argv", new=["x", tmp])
+        with no_ambient_event_loop():
+            with pytest.raises(ScriptWorkerException):
+                worker.main()
+    finally:
+        os.remove(tmp)
+
+    assert len(loops) == 1
+    assert isinstance(loops[0], asyncio.AbstractEventLoop)
 
 
 @pytest.mark.parametrize("running", (True, False))

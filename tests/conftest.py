@@ -171,5 +171,6 @@ def _craft_rw_context(tmp, cot_product, session, private=False):
         for rule in context.config["trusted_vcs_rules"]:
             rule["require_secret"] = True
     context.config["verbose"] = VERBOSE
-    context.event_loop = asyncio.new_event_loop()
+    # only reached from the async ``*_rw_context`` fixtures, so a loop is always running
+    context.event_loop = asyncio.get_running_loop()
     return context
