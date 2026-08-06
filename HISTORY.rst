@@ -4,6 +4,28 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.3.0 - 2026-08-05
+-------------------
+
+Added
+~~~~~
+
+- `cot_product` is now optional. When unset, `by-cot-product` mappings resolve to
+  `None`, and `check_config` requires `verify_chain_of_trust` to be off (#810)
+- `download_file` accepts an optional `expected_content_type` kwarg that rejects
+  `text/html` responses when another type was requested (#791)
+
+Fixed
+~~~~~
+
+- Event loop creation in a fresh process, which raised a `RuntimeError` on
+  Python 3.14 since `asyncio.get_event_loop()` no longer creates a loop (#811)
+- JSON/YAML load failures now include the file path and, for downloaded
+  artifacts, the source URL in the error message (#791)
+- `load_json_or_yaml_from_url` retries the download when the cached file fails
+  to parse, turning transient artifact-server glitches into self-healing
+  retries instead of hard failures (#791)
+
 63.2.0 - 2026-06-18
 -------------------
 
