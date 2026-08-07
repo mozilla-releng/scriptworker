@@ -1952,12 +1952,26 @@ def get_source_url(obj):
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task["metadata"]["source"]
-    if repo and not verify_repo_matches_url(repo, source):
-        raise CoTError(
-            "{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
-                name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
+    cot_product = obj.context.config["cot_product"]
+    match_repo = repo and verify_repo_matches_url(repo, source)
+    if cot_product != "enterprise":
+        if repo and not match_repo:
+            raise CoTError(
+                "{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
+                    name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
+                )
             )
-        )
+    else:
+        comm_repo = get_repo(obj.task, source_env_prefix="COMM", repo_type="head")
+        match_comm_repo = comm_repo and verify_repo_matches_url(comm_repo, source)
+
+        if not match_repo and not match_comm_repo:
+            raise CoTError(
+                "{name} {task_id}: {source_env_prefix} {repo} or {comm_repo} doesn't match source {source}!".format(
+                    name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, comm_repo=comm_repo, source=source
+                )
+            )
+
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
     return source
 
