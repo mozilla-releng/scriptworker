@@ -2097,16 +2097,23 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
 
 # get_source_url {{{1
 @pytest.mark.parametrize(
-    "task,expected,source_env_prefix,raises",
+    "task,expected,source_env_prefix,cot_product,raises",
     (
         (
             {"payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah"}}, "metadata": {"source": "https://example.com/blah/blah"}},
             "https://example.com/blah/blah",
             "GECKO",
+            "firefox",
             False,
         ),
-        ({"payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/blah"}}, "metadata": {"source": "https://task/blah"}}, None, "GECKO", True),
-        ({"payload": {"env": {}}, "metadata": {"source": "https://example.com/blah"}}, "https://example.com/blah", "GECKO", False),
+        (
+            {"payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/blah"}}, "metadata": {"source": "https://task/blah"}},
+            None,
+            "GECKO",
+            "firefox",
+            True,
+        ),
+        ({"payload": {"env": {}}, "metadata": {"source": "https://example.com/blah"}}, "https://example.com/blah", "GECKO", "firefox", False),
         (
             {
                 "payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/blah", "COMM_HEAD_REPOSITORY": "https://example.com/blah/comm"}},
@@ -2114,26 +2121,46 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
             },
             "https://example.com/blah/comm",
             "COMM",
+            "thunderbird",
             False,
         ),
         (
             {"payload": {"env": {"PVT_HEAD_REPOSITORY": "https://github.com/blah/blah.git"}}, "metadata": {"source": "https://github.com/blah/blah"}},
             "https://github.com/blah/blah",
             "PVT",
+            "private",
             False,
         ),
         (
             {"payload": {"env": {"PVT_HEAD_REPOSITORY": "git@github.com:blah/blah.git"}}, "metadata": {"source": "https://github.com/blah/blah"}},
             "https://github.com/blah/blah",
             "PVT",
+            "private",
+            False,
+        ),
+        (
+            {"payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/gecko"}}, "metadata": {"source": "https://example.com/blah/gecko/file"}},
+            "https://example.com/blah/gecko/file",
+            "GECKO",
+            "enterprise",
+            False,
+        ),
+        (
+            {
+                "payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/gecko", "COMM_HEAD_REPOSITORY": "https://example.com/blah/comm"}},
+                "metadata": {"source": "https://example.com/blah/comm/file"},
+            },
+            "https://example.com/blah/comm/file",
+            "GECKO",
+            "enterprise",
             False,
         ),
     ),
 )
-def test_get_source_url(task, expected, source_env_prefix, raises):
+def test_get_source_url(task, expected, source_env_prefix, cot_product, raises):
     obj = MagicMock()
     obj.task = task
-    obj.context.config = {"source_env_prefix": source_env_prefix}
+    obj.context.config = {"source_env_prefix": source_env_prefix, "cot_product": cot_product}
     if raises:
         with pytest.raises(CoTError):
             cotverify.get_source_url(obj)
