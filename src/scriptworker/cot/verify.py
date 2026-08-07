@@ -1950,12 +1950,15 @@ def get_source_url(obj):
     source_env_prefix = obj.context.config["source_env_prefix"]
     task = obj.task
     log.debug("Getting source url for {} {}...".format(obj.name, obj.task_id))
+    comm_repo = get_repo(obj.task, source_env_prefix=source_env_prefix, repo_type="comm_head")
     repo = get_repo(obj.task, source_env_prefix=source_env_prefix)
     source = task["metadata"]["source"]
-    if repo and not verify_repo_matches_url(repo, source):
+    not_repo = repo and not verify_repo_matches_url(repo, source)
+    not_comm_repo = comm_repo and not verify_repo_matches_url(comm_repo, source)
+    if (not_repo) and (not_comm_repo):
         raise CoTError(
             "{name} {task_id}: {source_env_prefix} {repo} doesn't match source {source}!".format(
-                name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, source=source
+                name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=[repo, comm_repo], source=source
             )
         )
     log.info("{} {}: found {}".format(obj.name, obj.task_id, source))
