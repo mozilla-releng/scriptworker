@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.4.1 - 2026-08-11
+-------------------
+
+Fixed
+~~~~~
+
+- Allow enterprise tasks to have comm source repositories
+
 63.4.0 - 2026-08-11
 -------------------
 
