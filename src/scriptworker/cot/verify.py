@@ -1965,7 +1965,11 @@ def get_source_url(obj):
         comm_repo = get_repo(obj.task, source_env_prefix="COMM", repo_type="head")
         match_comm_repo = comm_repo and verify_repo_matches_url(comm_repo, source)
 
-        if not match_repo and not match_comm_repo:
+        # Enterprise runs two Decision tasks, a gecko one and a comm one. If
+        # the task has COMM_HEAD_REPOSITORY defined, it comes from the comm
+        # Decision task and its metadata.source must match the comm repository.
+        # Otherwise it must match the enterprise-firefox repository.
+        if (comm_repo and not match_comm_repo) or (not comm_repo and repo and not match_repo):
             raise CoTError(
                 "{name} {task_id}: {source_env_prefix} {repo} or {comm_repo} doesn't match source {source}!".format(
                     name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, comm_repo=comm_repo, source=source
