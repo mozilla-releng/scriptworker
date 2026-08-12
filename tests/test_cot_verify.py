@@ -2155,6 +2155,16 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
             "enterprise",
             False,
         ),
+        (
+            {
+                "payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/gecko", "COMM_HEAD_REPOSITORY": "https://example.com/blah/comm"}},
+                "metadata": {"source": "https://example.com/blah/gecko/file"},
+            },
+            None,
+            "GECKO",
+            "enterprise",
+            True,
+        ),
     ),
 )
 def test_get_source_url(task, expected, source_env_prefix, cot_product, raises):
