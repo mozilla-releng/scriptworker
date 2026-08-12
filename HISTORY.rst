@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.4.2 - 2026-08-12
+
+Fixed
+~~~~~
+
+- Reverted #815 for permanent bustage when uploading logs (#821)
+- Don't raise on mismatched source if no repositories configured (#820)
+
 63.4.1 - 2026-08-11
 -------------------
 
