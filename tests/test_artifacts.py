@@ -1,13 +1,10 @@
 import asyncio
-import base64
 import gzip
-import hashlib
 import itertools
 import json
 import os
 import tempfile
 
-import aiohttp
 import arrow
 import mock
 import pytest
@@ -21,7 +18,6 @@ from scriptworker.artifacts import (
     download_artifacts,
     get_and_check_single_upstream_artifact_full_path,
     get_artifact_url,
-    get_content_md5,
     get_expiration_arrow,
     get_optional_artifacts_per_task_id,
     get_single_upstream_artifact_full_path,
@@ -31,7 +27,7 @@ from scriptworker.artifacts import (
 )
 from scriptworker.exceptions import ScriptWorkerRetryException, ScriptWorkerTaskException
 
-from . import FakeResponse, touch
+from . import touch
 
 
 @pytest.fixture(scope="function")
@@ -166,81 +162,6 @@ async def test_create_artifact_retry(context, fake_session_500, successful_queue
         await create_artifact(context, path, "public/env/one.log", content_type="text/plain", content_encoding=None, expires=expires)
 
 
-def _write(path, contents=b"hello world"):
-    with open(path, "wb") as fh:
-        fh.write(contents)
-    return contents
-
-
-async def _capture_put(context, fake_session, successful_queue, path, target_path="public/env/one.txt", content_type="text/plain", content_encoding=None):
-    captured = {}
-    original = fake_session._request
-
-    async def capture(method, url, *args, **kwargs):
-        captured.update(kwargs)
-        return await original(method, url, *args, **kwargs)
-
-    fake_session._request = capture
-    context.session = fake_session
-    context.temp_queue = successful_queue
-    await create_artifact(context, path, target_path, content_type=content_type, content_encoding=content_encoding, expires=arrow.utcnow().isoformat())
-    return captured
-
-
-@pytest.mark.asyncio
-async def test_create_artifact_sends_content_md5(context, fake_session, successful_queue):
-    path = os.path.join(context.config["artifact_dir"], "one.txt")
-    contents = _write(path)
-
-    captured = await _capture_put(context, fake_session, successful_queue, path)
-
-    expected = base64.b64encode(hashlib.md5(contents).digest()).decode("ascii")
-    assert captured["headers"][aiohttp.hdrs.CONTENT_MD5] == expected
-
-
-@pytest.mark.asyncio
-async def test_create_artifact_content_md5_covers_compressed_bytes(context, fake_session, successful_queue):
-    """The digest has to cover what goes on the wire, which for a gzipped artifact is the compressed file."""
-    path = os.path.join(context.config["artifact_dir"], "one.log")
-    original_contents = _write(path, b"12:00:00 Foo bar")
-    content_type, content_encoding = compress_artifact_if_supported(path)
-    assert content_encoding == "gzip"
-
-    captured = await _capture_put(
-        context, fake_session, successful_queue, path, target_path="public/logs/one.log", content_type=content_type, content_encoding=content_encoding
-    )
-
-    with open(path, "rb") as fh:
-        on_disk = fh.read()
-    assert on_disk != original_contents
-    assert captured["headers"][aiohttp.hdrs.CONTENT_MD5] == base64.b64encode(hashlib.md5(on_disk).digest()).decode("ascii")
-    assert captured["headers"][aiohttp.hdrs.CONTENT_ENCODING] == "gzip"
-
-
-@pytest.mark.asyncio
-async def test_create_artifact_bad_digest_retries(context, fake_session, successful_queue, caplog):
-    path = os.path.join(context.config["artifact_dir"], "one.txt")
-    _write(path)
-
-    async def bad_digest(method, url, *args, **kwargs):
-        return FakeResponse(method, url, status=400, payload="<Error><Code>BadDigest</Code></Error>")
-
-    fake_session._request = bad_digest
-    context.session = fake_session
-    context.temp_queue = successful_queue
-
-    with pytest.raises(ScriptWorkerRetryException):
-        await create_artifact(context, path, "public/env/one.txt", content_type="text/plain", content_encoding=None, expires=arrow.utcnow().isoformat())
-
-    assert "was corrupted in transit" in caplog.text
-
-
-def test_get_content_md5(tmpdir):
-    path = os.path.join(tmpdir, "one.txt")
-    contents = _write(path, b"some artifact contents")
-    assert get_content_md5(path) == base64.b64encode(hashlib.md5(contents).digest()).decode("ascii")
-
-
 @pytest.mark.asyncio
 async def test_create_link_artifact(context, successful_queue):
     expires = arrow.utcnow().isoformat()
@@ -270,13 +191,9 @@ async def test_create_link_artifact(context, successful_queue):
 
 
 def test_craft_artifact_put_headers():
-    assert _craft_artifact_put_headers("text/plain", "deadbeef==") == {"Content-Type": "text/plain", "Content-MD5": "deadbeef=="}
-    assert _craft_artifact_put_headers("text/plain", "deadbeef==", encoding=None) == {"Content-Type": "text/plain", "Content-MD5": "deadbeef=="}
-    assert _craft_artifact_put_headers("text/plain", "deadbeef==", "gzip") == {
-        "Content-Type": "text/plain",
-        "Content-Encoding": "gzip",
-        "Content-MD5": "deadbeef==",
-    }
+    assert _craft_artifact_put_headers("text/plain") == {"Content-Type": "text/plain"}
+    assert _craft_artifact_put_headers("text/plain", encoding=None) == {"Content-Type": "text/plain"}
+    assert _craft_artifact_put_headers("text/plain", "gzip") == {"Content-Type": "text/plain", "Content-Encoding": "gzip"}
 
 
 # get_artifact_url {{{1

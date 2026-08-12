@@ -6,7 +6,6 @@ in S3.
 """
 
 import asyncio
-import base64
 import fnmatch
 import gzip
 import logging
@@ -22,15 +21,7 @@ from taskcluster.exceptions import TaskclusterFailure
 from scriptworker.client import validate_artifact_url
 from scriptworker.exceptions import DownloadError, ScriptWorkerRetryException, ScriptWorkerTaskException
 from scriptworker.task import get_decision_task_id, get_run_id, get_task_id
-from scriptworker.utils import (
-    add_enumerable_item_to_dict,
-    download_file,
-    get_hash,
-    get_loggable_url,
-    raise_future_exceptions,
-    retry_async,
-    semaphore_wrapper,
-)
+from scriptworker.utils import add_enumerable_item_to_dict, download_file, get_loggable_url, raise_future_exceptions, retry_async, semaphore_wrapper
 
 log = logging.getLogger(__name__)
 
@@ -172,8 +163,6 @@ async def create_artifact(context, path, target_path, content_type, content_enco
     payload = {"storageType": storage_type, "expires": expires or get_expiration_arrow(context).isoformat(), "contentType": content_type}
     args = [get_task_id(context.claim_task), get_run_id(context.claim_task), target_path, payload]
 
-    content_md5 = await asyncio.to_thread(get_content_md5, path)
-
     tc_response = await context.temp_queue.createArtifact(*args)
     skip_auto_headers = [aiohttp.hdrs.CONTENT_TYPE]
     loggable_url = get_loggable_url(tc_response["putUrl"])
@@ -183,7 +172,7 @@ async def create_artifact(context, path, target_path, content_type, content_enco
             async with context.session.put(
                 tc_response["putUrl"],
                 data=fh,
-                headers=_craft_artifact_put_headers(content_type, content_md5, content_encoding),
+                headers=_craft_artifact_put_headers(content_type, content_encoding),
                 skip_auto_headers=skip_auto_headers,
                 compress=False,
             ) as resp:
@@ -191,12 +180,6 @@ async def create_artifact(context, path, target_path, content_type, content_enco
                 response_text = await resp.text()
                 log.info(response_text)
                 if resp.status not in (200, 204):
-                    if content_md5 is not None and "BadDigest" in (response_text or ""):
-                        log.error(
-                            "{} was corrupted in transit: the storage backend rejected the body as not matching Content-MD5 {}. Retrying.".format(
-                                target_path, content_md5
-                            )
-                        )
                     raise ScriptWorkerRetryException("Bad status {}".format(resp.status))
 
 
@@ -223,22 +206,9 @@ async def create_link_artifact(context, target_path, link_to, content_type, expi
     await context.temp_queue.createArtifact(*args)
 
 
-def get_content_md5(path):
-    """Get the base64-encoded md5 digest of a file, formatted for ``Content-MD5``.
-
-    Args:
-        path (str): the path to the file to digest.
-
-    Returns:
-        str: the base64-encoded md5 digest.
-
-    """
-    return base64.b64encode(bytes.fromhex(get_hash(path, hash_alg="md5"))).decode("ascii")
-
-
-def _craft_artifact_put_headers(content_type, content_md5, encoding=None):
+def _craft_artifact_put_headers(content_type, encoding=None):
     log.debug("{} {}".format(content_type, encoding))
-    headers = {aiohttp.hdrs.CONTENT_TYPE: content_type, aiohttp.hdrs.CONTENT_MD5: content_md5}
+    headers = {aiohttp.hdrs.CONTENT_TYPE: content_type}
 
     if encoding is not None:
         headers[aiohttp.hdrs.CONTENT_ENCODING] = encoding
