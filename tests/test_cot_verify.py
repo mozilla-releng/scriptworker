@@ -2389,6 +2389,24 @@ async def test_get_scm_level(rw_context, project, level, raises):
         assert await cotverify.get_scm_level(rw_context, project) == level
 
 
+@pytest.mark.asyncio
+async def test_get_scm_level_with_branch(rw_context):
+    rw_context.projects = {
+        "multi-branch": {
+            "branches": [{"name": "main", "level": 3}, {"name": "*", "level": 1}],
+            "default_branch": "main",
+            "repo_type": "git",
+        },
+    }
+    rw_context._projects_timestamp = time.time()
+
+    # No branch given -> falls back to the default branch's level.
+    assert await cotverify.get_scm_level(rw_context, "multi-branch") == "3"
+    assert await cotverify.get_scm_level(rw_context, "multi-branch", branch="main") == "3"
+    # A non-default branch not explicitly listed matches the "*" catch-all.
+    assert await cotverify.get_scm_level(rw_context, "multi-branch", branch="staging") == "1"
+
+
 # tests for matching scopes with a partial match, implemented for xpi
 @pytest.mark.parametrize(
     "scope, restricted_scopes, expected",

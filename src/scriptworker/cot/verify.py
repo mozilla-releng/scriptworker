@@ -1023,7 +1023,7 @@ async def get_pushlog_info(decision_link):
 
 
 # get_scm_level {{{1
-async def get_scm_level(context, project):
+async def get_scm_level(context, project, branch=None):
     """Get the scm level for a project from ``projects.yml``.
 
     We define all known projects in ``projects.yml``. Let's make sure we have
@@ -1035,6 +1035,7 @@ async def get_scm_level(context, project):
     Args:
         context (scriptworker.context.Context): the scriptworker context
         project (str): the project to get the scm level for.
+        branch (str, optional): the branch to get the level for (Git only)
 
     Returns:
         str: the level of the project, as a string.
@@ -1045,12 +1046,11 @@ async def get_scm_level(context, project):
     if config["repo_type"] == "hg":
         return config["access"].replace("scm_level_", "")
     elif config["repo_type"] == "git":
-        # TODO: we should be using the branch that the task is actually
-        # being run on
-        default_branch = config.get("default_branch", "main")
-        for branch in config["branches"]:
-            if branch["name"] == default_branch:
-                return str(branch["level"])
+        if branch is None:
+            branch = config.get("default_branch", "main")
+        for b in config["branches"]:
+            if fnmatch.fnmatch(branch, b["name"]):
+                return str(b["level"])
 
     raise ValueError("Can't find level for project {}".format(project))
 
@@ -1182,7 +1182,7 @@ async def _get_additional_git_cron_jsone_context(decision_link):
             "sender": {"login": user},
         },
         # Taskgraph cron contexts mirror hg-push contexts
-        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name), "type": "git"},
+        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name, branch), "type": "git"},
         "push": {"revision": revision, "branch": branch},
     }
 
