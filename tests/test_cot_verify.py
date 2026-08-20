@@ -1412,6 +1412,24 @@ def test_get_action_perm(defn, expected):
     assert cotverify._get_action_perm(defn) == expected
 
 
+@pytest.mark.parametrize(
+    "defn,expected",
+    (
+        ({"hookId": "in-tree-action-1-generic/bb2dee27f9"}, 1),
+        ({"hookId": "in-tree-action-3-release-promotion/bb2dee27f9"}, 3),
+        ({"hookId": "in-tree-pr-action-1-generic/bb2dee27f9"}, 1),
+    ),
+)
+def test_get_action_level(defn, expected):
+    assert cotverify._get_action_level(defn) == expected
+
+
+@pytest.mark.parametrize("defn", ({}, {"hookId": "blah/generic/"}))
+def test_get_action_level_missing(defn):
+    with pytest.raises(CoTError):
+        cotverify._get_action_level(defn)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "name,task_id,path,decision_task_id,decision_path,expected_template_path,expected_context_path",

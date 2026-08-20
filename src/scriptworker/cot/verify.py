@@ -15,6 +15,7 @@ import hashlib
 import logging
 import os
 import pprint
+import re
 import sys
 import tempfile
 from copy import deepcopy
@@ -1457,14 +1458,16 @@ def _get_action_from_actions_json(all_actions, callback_name):
     raise CoTError("No action with {} callback found.".format(callback_name))
 
 
-def _wrap_action_hook_with_let(tmpl, action_perm, tasks_for):
+def _wrap_action_hook_with_let(tmpl, action_perm, tasks_for, level):
     """Construct the hook task template body.
 
     Given the content of .taskcluster.yml, construct the task template that
     would appear in the corresponding hook definition.  This is an attempt to
     duplicate the logic here:
-    https://hg.mozilla.org/ci/ci-admin/file/edad9f8/ciadmin/generate/in_tree_actions.py#l154
+    https://github.com/mozilla-releng/fxci-config/blob/main/src/ciadmin/generate/in_tree_actions.py
 
+    `level` must be derived from the hook that produced this action task, not
+    the triggering push
     """
     return {
         "$let": {
@@ -1475,7 +1478,7 @@ def _wrap_action_hook_with_let(tmpl, action_perm, tasks_for):
                 "description": "${payload.decision.action.description}",
                 "taskGroupId": "${payload.decision.action.taskGroupId}",
                 "symbol": "${payload.decision.action.symbol}",
-                "repo_scope": "assume:repo:${payload.decision.repository.url[8:]}:" + tasks_for + ":" + action_perm,
+                "repo_scope": "assume:repo:${payload.decision.repository.url[8:]}:" + tasks_for + "-" + str(level) + ":" + action_perm,
                 "action_perm": action_perm,
                 "cb_name": "${payload.decision.action.cb_name}",
             },
@@ -1513,6 +1516,14 @@ def _get_action_perm(action_defn):
     return action_perm
 
 
+def _get_action_level(action_defn):
+    hook_id = action_defn.get("hookId", "")
+    match = re.match(r"in-tree-(?:pr-)?action-(\d+)-", hook_id)
+    if not match:
+        raise CoTError("Can't find level in action hookId `{}`.".format(hook_id))
+    return int(match.group(1))
+
+
 async def get_action_context_and_template(chain, parent_link, decision_link, tasks_for):
     """Get the appropriate json-e context and template for an action task.
 
@@ -1540,7 +1551,8 @@ async def get_action_context_and_template(chain, parent_link, decision_link, tas
     # action-hook.
     in_tree_tmpl = await get_in_tree_template(decision_link)
     action_perm = _get_action_perm(action_defn)
-    tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm, tasks_for)
+    action_level = _get_action_level(action_defn)
+    tmpl = _wrap_action_hook_with_let(in_tree_tmpl, action_perm, tasks_for, action_level)
 
     # define the JSON-e context with which the hook's task template was
     # rendered, defined at
