@@ -17,7 +17,7 @@
   "deadline": "2018-12-20T19:30:10.266Z",
   "expires": "2019-12-19T19:30:11.266Z",
   "scopes": [
-    "assume:repo:hg.mozilla.org/try:action:release-promotion"
+    "assume:repo:hg.mozilla.org/try:action-1:release-promotion"
   ],
   "payload": {
     "env": {

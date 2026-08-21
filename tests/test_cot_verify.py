@@ -1412,6 +1412,24 @@ def test_get_action_perm(defn, expected):
     assert cotverify._get_action_perm(defn) == expected
 
 
+@pytest.mark.parametrize(
+    "defn,expected",
+    (
+        ({"hookId": "in-tree-action-1-generic/bb2dee27f9"}, 1),
+        ({"hookId": "in-tree-action-3-release-promotion/bb2dee27f9"}, 3),
+        ({"hookId": "in-tree-pr-action-1-generic/bb2dee27f9"}, 1),
+    ),
+)
+def test_get_action_level(defn, expected):
+    assert cotverify._get_action_level(defn) == expected
+
+
+@pytest.mark.parametrize("defn", ({}, {"hookId": "blah/generic/"}))
+def test_get_action_level_missing(defn):
+    with pytest.raises(CoTError):
+        cotverify._get_action_level(defn)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "name,task_id,path,decision_task_id,decision_path,expected_template_path,expected_context_path",
@@ -2369,6 +2387,24 @@ async def test_get_scm_level(rw_context, project, level, raises):
             await cotverify.get_scm_level(rw_context, project)
     else:
         assert await cotverify.get_scm_level(rw_context, project) == level
+
+
+@pytest.mark.asyncio
+async def test_get_scm_level_with_branch(rw_context):
+    rw_context.projects = {
+        "multi-branch": {
+            "branches": [{"name": "main", "level": 3}, {"name": "*", "level": 1}],
+            "default_branch": "main",
+            "repo_type": "git",
+        },
+    }
+    rw_context._projects_timestamp = time.time()
+
+    # No branch given -> falls back to the default branch's level.
+    assert await cotverify.get_scm_level(rw_context, "multi-branch") == "3"
+    assert await cotverify.get_scm_level(rw_context, "multi-branch", branch="main") == "3"
+    # A non-default branch not explicitly listed matches the "*" catch-all.
+    assert await cotverify.get_scm_level(rw_context, "multi-branch", branch="staging") == "1"
 
 
 # tests for matching scopes with a partial match, implemented for xpi
