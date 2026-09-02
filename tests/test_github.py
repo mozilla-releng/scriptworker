@@ -1,9 +1,10 @@
 import asyncio
 from copy import copy
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import taskcluster.exceptions
 
 from scriptworker import github
 from scriptworker.exceptions import ConfigError, ScriptWorkerRetryException
@@ -31,7 +32,15 @@ def vpn_context(vpn_private_rw_context):
 
 
 @pytest.fixture(scope="function")
-def github_repository(mocker):
+def token_context():
+    return SimpleNamespace(
+        config={"github_oauth_token": "fallback-token", "github_app_name": "read", "taskcluster_root_url": "https://tc.example.com"},
+        credentials={"a": "b"},
+    )
+
+
+@pytest.fixture(scope="function")
+def github_repository(mocker, token_context):
     github_repository_mock = MagicMock()
     github_repository_mock.__name__ = "GithubRepositoryMock"
     github_repository_mock.html_url = "https://github.com/some-user/some-repo/"
@@ -43,28 +52,61 @@ def github_repository(mocker):
     github_instance_mock.repository.return_value = github_repository_mock
     github_class_mock = mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
     github_class_mock.__name__ = github_class_mock.name
-    yield github.GitHubRepository("some-user", "some-repo")
+    mocker.patch.object(github, "Auth", side_effect=taskcluster.exceptions.TaskclusterFailure("disabled in tests"))
+    yield github.GitHubRepository(token_context, "some-user", "some-repo")
 
 
+@pytest.mark.asyncio
+async def test_constructor(mocker, token_context):
+    github_instance_mock = MagicMock()
+    github_instance_mock.repository.__name__ = "github_instance_repository_mock"
+    github_class_mock = mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
+    github_class_mock.__name__ = github_class_mock.name
+    mocker.patch.object(github, "Auth", side_effect=taskcluster.exceptions.TaskclusterFailure("disabled in tests"))
+
+    repo = github.GitHubRepository(token_context, "some-user", "some-repo")
+    await repo._get_repository()
+
+    github_class_mock.assert_called_once_with(token="fallback-token")
+    github_instance_mock.repository.assert_called_once_with("some-user", "some-repo")
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "args, expected_class_kwargs", ((("some-user", "some-repo", "some-token"), {"token": "some-token"}), (("some-user", "some-repo"), {"token": ""}))
+    "raises, expected_token",
+    (
+        (False, "scoped-token"),
+        (True, "fallback-token"),
+    ),
 )
-def test_constructor(mocker, args, expected_class_kwargs):
+async def test_constructor_with_context(mocker, token_context, raises, expected_token):
     github_instance_mock = MagicMock()
     github_instance_mock.repository.__name__ = "github_instance_repository_mock"
     github_class_mock = mocker.patch.object(github, "GitHub", return_value=github_instance_mock)
     github_class_mock.__name__ = github_class_mock.name
 
-    github.GitHubRepository(*args)
+    auth_instance_mock = MagicMock()
+    if raises:
+        auth_instance_mock.githubRepoToken = AsyncMock(side_effect=taskcluster.exceptions.TaskclusterRestFailure("missing scopes", None, status_code=403))
+    else:
+        auth_instance_mock.githubRepoToken = AsyncMock(return_value={"token": "scoped-token", "expires": "2020-01-01T00:00:00Z"})
+    auth_class_mock = mocker.patch.object(github, "Auth", return_value=auth_instance_mock)
 
-    github_class_mock.assert_called_once_with(**expected_class_kwargs)
-    github_instance_mock.repository.assert_called_once_with("some-user", "some-repo")
+    repo = github.GitHubRepository(token_context, "some-user", "some-repo")
+    await repo._get_repository()
+
+    github_class_mock.assert_called_once_with(token=expected_token)
+    auth_class_mock.assert_called_once_with(options={"rootUrl": "https://tc.example.com", "credentials": {"a": "b"}})
+    auth_instance_mock.githubRepoToken.assert_called_once_with(
+        "read", "some-user", payload={"repositories": ["some-repo"], "permissions": github.GitHubRepository.GITHUB_PERMISSIONS}
+    )
 
 
 retry_count = {}
 
 
-def test_constructor_uses_retry_sync(mocker):
+@pytest.mark.asyncio
+async def test_constructor_uses_retry_sync(mocker, token_context):
     global retry_count
     retry_count["fail_first"] = 0
 
@@ -80,34 +122,41 @@ def test_constructor_uses_retry_sync(mocker):
 
     github_class_mock = mocker.patch.object(github, "GitHub", side_effect=fail_first)
     github_class_mock.__name__ = github_class_mock.name
+    mocker.patch.object(github, "Auth", side_effect=taskcluster.exceptions.TaskclusterFailure("disabled in tests"))
     mocker.patch.object(github, "_GITHUB_LIBRARY_SLEEP_TIME_KWARGS", {"delay_factor": 0.1})
-    github.GitHubRepository("some-user", "some-repo", "some-token")
+    repo = github.GitHubRepository(token_context, "some-user", "some-repo")
+    await repo._get_repository()
 
     assert retry_count["fail_first"] == 2
 
 
-def test_get_definition(github_repository):
-    github_repository._github_repository.as_dict.return_value = {"foo": "bar"}
-    assert github_repository.definition == {"foo": "bar"}
-    github_repository._github_repository.as_dict.assert_called_once_with()
+@pytest.mark.asyncio
+async def test_get_definition(github_repository):
+    repository = await github_repository._get_repository()
+    repository.as_dict.return_value = {"foo": "bar"}
+    assert await github_repository.get_definition() == {"foo": "bar"}
+    repository.as_dict.assert_called_once_with()
 
 
 @pytest.mark.asyncio
 async def test_get_commit(github_repository):
     await github_repository.get_commit("somehash")
-    github_repository._github_repository.commit.assert_called_once_with("somehash")
+    repository = await github_repository._get_repository()
+    repository.commit.assert_called_once_with("somehash")
 
 
 @pytest.mark.asyncio
 async def test_get_pull_request(github_repository):
     await github_repository.get_pull_request(1)
-    github_repository._github_repository.pull_request.assert_called_once_with(1)
+    repository = await github_repository._get_repository()
+    repository.pull_request.assert_called_once_with(1)
 
 
 @pytest.mark.asyncio
 async def test_get_release(github_repository):
     await github_repository.get_release("some-tag")
-    github_repository._github_repository.release_from_tag.assert_called_once_with("some-tag")
+    repository = await github_repository._get_repository()
+    repository.release_from_tag.assert_called_once_with("some-tag")
 
 
 @pytest.mark.parametrize(
@@ -128,7 +177,8 @@ async def test_get_release(github_repository):
 )
 @pytest.mark.asyncio
 async def test_get_tag_hash(github_repository, tags, raises, expected):
-    github_repository._github_repository.tags.return_value = tags
+    repository = await github_repository._get_repository()
+    repository.tags.return_value = tags
 
     if raises:
         with pytest.raises(ValueError):
