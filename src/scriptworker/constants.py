@@ -79,7 +79,12 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "max_chain_length": 20,
         # Calls to Github API are limited to 60 an hour. Using an API token allows to raise the limit to
         # 5000 per hour. https://developer.github.com/v3/#rate-limiting
+        # Scriptworker first tries to obtain a repository scoped token from Taskcluster's auth
+        # service, falling back to this token if that fails.
         "github_oauth_token": "",
+        # The name of the Github App registered with Taskcluster's auth service, used to obtain
+        # a repository scoped token via `auth.githubRepoToken`.
+        "github_app_name": "read",
         # ed25519 settings
         "ed25519_private_key_path": "...",
         "ed25519_public_keys": immutabledict(

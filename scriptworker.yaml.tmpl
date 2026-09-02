@@ -45,9 +45,15 @@ verify_cot_signature: false
 # Chain of Trust job type, e.g. signing
 cot_job_type: scriptworker
 cot_product: firefox
-# Calls to Github API are limited to 60 an hour. Using an API token allows to raise the limit to
-# 5000 per hour. https://developer.github.com/v3/#rate-limiting
-github_oauth_token: somegithubtoken
+
+# Scriptworker first tries to obtain a repository scoped token from Taskcluster's auth service,
+# using the Github App registered under this name.
+# github_app_name: read
+#
+# `github_oauth_token` is used as a fallback if that fails (e.g. missing scopes or app not
+# configured). Without either, calls to the Github API are unauthenticated and limited to 60 an
+# hour. See https://developer.github.com/v3/#rate-limiting
+# github_oauth_token: somegithubtoken
 
 
 #-----------------------------------------------------------------------------------------------
