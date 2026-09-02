@@ -4,7 +4,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.4.3 - 2026-09-02
+-------------------
+
+Fixed
+~~~~~
+
+- Added 'thunderbird' as a secondary owner for enterprise repos
+
 63.4.2 - 2026-08-12
+-------------------
 
 Fixed
 ~~~~~
