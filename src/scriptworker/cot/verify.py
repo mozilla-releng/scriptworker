@@ -996,6 +996,55 @@ def verify_link_in_task_graph(chain, decision_link, task_link):
     raise_on_errors(["Can't find task {} {} in {} {} task-graph.json!".format(task_link.name, task_link.task_id, decision_link.name, decision_link.task_id)])
 
 
+# load_parent_task_graph {{{1
+def load_parent_task_graph(link):
+    """Load the ``task-graph.json`` a parent task published.
+
+    Populates ``link.task_graph`` on first call, and returns it as is
+    afterwards: a parent task is verified once for itself, and once more for
+    every nested parent task it created.
+
+    Args:
+        link (LinkOfTrust): the parent link that published the task graph.
+
+    Returns:
+        dict: the parent task's task graph.
+
+    Raises:
+        CoTError: if the artifact is missing or unloadable.
+
+    """
+    if link.task_graph is None:
+        path = link.get_artifact_full_path("public/task-graph.json")
+        if not os.path.exists(path):
+            raise CoTError("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
+        link.task_graph = load_json_or_yaml(path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path))
+    return link.task_graph
+
+
+# is_nested_parent_task {{{1
+def is_nested_parent_task(link):
+    """Determine whether a parent task was created by another parent task.
+
+    A decision task is usually the root of its own task group, and there is a
+    ``.taskcluster.yml`` in the tree to rebuild its definition from. A decision
+    task that another parent task created, e.g. the Thunderbird decision task
+    of an Enterprise Firefox push, has no such template: its definition is
+    attested by the ``task-graph.json`` of the parent that created it.
+
+    Action tasks are created by a decision task too, but they are rebuilt from
+    its ``actions.json``, so they are not nested parent tasks.
+
+    Args:
+        link (LinkOfTrust): the parent link to test.
+
+    Returns:
+        bool: True if the parent task is a nested one.
+
+    """
+    return link.task_type in DECISION_TASK_TYPES and link.parent_task_id != link.task_id
+
+
 # get_pushlog_info {{{1
 async def get_pushlog_info(decision_link):
     """Get pushlog info for a decision LinkOfTrust.
@@ -1732,21 +1781,34 @@ async def verify_parent_task(chain, link):
         # make sure all tasks generated from this parent task match the published
         # task-graph.json. Not applicable if this link is the ChainOfTrust object,
         # since this task won't have generated a task-graph.json yet.
-        path = link.get_artifact_full_path("public/task-graph.json")
-        if not os.path.exists(path):
-            raise CoTError("{} {}: {} doesn't exist!".format(link.name, link.task_id, path))
-        link.task_graph = load_json_or_yaml(path, is_path=True, exception=CoTError, message="Can't load {}! %(exc)s".format(path))
+        load_parent_task_graph(link)
         # This check may want to move to a per-task check?
         for target_link in chain.get_all_links_in_chain():
             # Verify the target's task is in the parent task's task graph, unless
             # it's this task or a parent task.
             # (Decision tasks will not exist in a parent task's task-graph.json;
-            #  action tasks, which are generated later, will also be missing.)
+            #  action tasks, which are generated later, will also be missing.
+            #  Nested parent tasks do appear in it, and verify themselves
+            #  against it below.)
             # https://github.com/mozilla-releng/scriptworker/issues/77
             if target_link.parent_task_id == link.task_id and target_link.task_id != link.task_id and target_link.task_type not in PARENT_TASK_TYPES:
                 verify_link_in_task_graph(chain, link, target_link)
     try:
-        await verify_parent_task_definition(chain, link)
+        if is_nested_parent_task(link):
+            # No template to rebuild this task from: the parent task that
+            # created it is where its definition is attested, and that parent
+            # is verified against the tree in its own right.
+            parent_link = chain.get_link(link.parent_task_id)
+            if parent_link.task_type not in PARENT_TASK_TYPES:
+                raise CoTError(
+                    "{} {}: parent {} {} is a {} task, which can't have created it!".format(
+                        link.name, link.task_id, parent_link.name, parent_link.task_id, parent_link.task_type
+                    )
+                )
+            load_parent_task_graph(parent_link)
+            verify_link_in_task_graph(chain, parent_link, link)
+        else:
+            await verify_parent_task_definition(chain, link)
     except (BaseDownloadError, KeyError) as e:
         raise CoTError(e)
 
@@ -1965,11 +2027,11 @@ def get_source_url(obj):
         comm_repo = get_repo(obj.task, source_env_prefix="COMM", repo_type="head")
         match_comm_repo = comm_repo and verify_repo_matches_url(comm_repo, source)
 
-        # Enterprise runs two Decision tasks, a gecko one and a comm one. If
-        # the task has COMM_HEAD_REPOSITORY defined, it comes from the comm
-        # Decision task and its metadata.source must match the comm repository.
-        # Otherwise it must match the enterprise-firefox repository.
-        if (comm_repo and not match_comm_repo) or (not comm_repo and repo and not match_repo):
+        # Enterprise runs two Decision tasks, a gecko one and a comm one, and
+        # the comm one is defined in the gecko tree while it checks the comm
+        # repository out. So a task carrying both repositories may legitimately
+        # be sourced from either of them; it just has to be one of the two.
+        if (repo or comm_repo) and not (match_repo or match_comm_repo):
             raise CoTError(
                 "{name} {task_id}: {source_env_prefix} {repo} or {comm_repo} doesn't match source {source}!".format(
                     name=obj.name, task_id=obj.task_id, source_env_prefix=source_env_prefix, repo=repo, comm_repo=comm_repo, source=source
