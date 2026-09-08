@@ -493,6 +493,7 @@ def check_interactive_docker_worker(link):
 def check_interactive_generic_worker(link):
     """Given a task, make sure the task was not defined as interactive.
 
+    * ``task.payload.features.interactive`` must be absent or False.
     * ``task.payload.rdpInfo`` must be absent or False.
     * ``task.payload.scopes`` must not contain a scope starting with ``generic-worker:allow-rdp:``
 
@@ -506,6 +507,8 @@ def check_interactive_generic_worker(link):
     errors = []
     log.info("Checking for {} {} interactive generic-worker".format(link.name, link.task_id))
     try:
+        if link.task["payload"].get("features", {}).get("interactive"):
+            errors.append("{} is interactive: task.payload.features.interactive!".format(link.name))
         if link.task["payload"].get("rdpInfo"):
             errors.append("{} is interactive: task.payload.rdpInfo!".format(link.name))
         for scope in link.task["scopes"]:

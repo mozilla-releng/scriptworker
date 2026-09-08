@@ -511,6 +511,9 @@ def test_check_interactive_docker_worker(task, raises):
     "task,raises",
     (
         ({"payload": {}, "scopes": []}, False),
+        ({"payload": {"features": {}}, "scopes": []}, False),
+        ({"payload": {"features": {"interactive": False}}, "scopes": []}, False),
+        ({"payload": {"features": {"interactive": True}}, "scopes": []}, True),
         ({"payload": {"rdpInfo": {"foo": "bar"}}, "scopes": []}, True),
         ({"payload": {}, "scopes": ["foo", "generic-worker:allow-rdp:foo:bar"]}, True),
         ({}, True),
