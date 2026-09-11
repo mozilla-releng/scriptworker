@@ -356,6 +356,13 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     ),
                                 }
                             ),
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": (r"^(?P<path>/mozilla-firefox/firefox)(/|.git|$)",),
+                                }
+                            ),
                         ),
                         "glean": (
                             immutabledict(
