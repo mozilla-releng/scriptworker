@@ -160,6 +160,26 @@ def cron_link(chain):
 
 
 @pytest.fixture(scope="function")
+def nested_decision_link(chain):
+    """A decision task that another decision task created, e.g. comm-decision."""
+    link = cotverify.LinkOfTrust(chain.context, "decision", "nested_task_id")
+    link.cot = {"taskId": "nested_task_id", "environment": {"imageHash": "sha256:decision_image_sha"}}
+    link.task = {
+        "taskGroupId": "decision_task_id",
+        "schedulerId": "scheduler_id",
+        "provisionerId": "provisioner_id",
+        "created": "2018-01-01T12:00:00.000Z",
+        "workerType": "workerType",
+        "dependencies": [],
+        "scopes": [],
+        "metadata": {"source": "https://hg.mozilla.org/mozilla-central", "owner": "foo@example.tld"},
+        "payload": {"image": "blah"},
+        "extra": {"parent": "decision_task_id", "tasks_for": "hg-push"},
+    }
+    yield link
+
+
+@pytest.fixture(scope="function")
 def github_action_link(mobile_chain):
     link = cotverify.LinkOfTrust(mobile_chain.context, "action", "action_task_id")
     with open(os.path.join(COTV4_DIR, "action_github.json")) as fh:
@@ -1995,6 +2015,66 @@ async def test_verify_parent_task_missing_graph(chain, decision_link, build_link
         await cotverify.verify_parent_task(chain, decision_link)
 
 
+# is_nested_parent_task {{{1
+def test_is_nested_parent_task(decision_link, action_link, nested_decision_link):
+    # a decision task is the root of its own task group
+    assert cotverify.is_nested_parent_task(decision_link) is False
+    # an action task has a parent, but is rebuilt from its actions.json
+    assert cotverify.is_nested_parent_task(action_link) is False
+    assert cotverify.is_nested_parent_task(nested_decision_link) is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("in_parent_graph,raises", ((True, False), (False, True)))
+async def test_verify_parent_task_nested(chain, decision_link, nested_decision_link, build_link, mocker, in_parent_graph, raises):
+    """A nested decision task is verified against the task graph of its parent."""
+    build_link.decision_task_id = nested_decision_link.task_id
+    build_link.parent_task_id = nested_decision_link.task_id
+    build_link.task["created"] = "1970-01-01T01:00:00.000Z"
+
+    for link in (decision_link, nested_decision_link):
+        path = os.path.join(link.cot_dir, "public", "task-graph.json")
+        makedirs(os.path.dirname(path))
+        touch(path)
+        pool = chain.context.config["valid_decision_worker_pools"][0]
+        link.task["provisionerId"], link.task["workerType"] = pool.split("/")
+
+    nested_task = deepcopy(nested_decision_link.task)
+    parent_graph_path = decision_link.get_artifact_full_path("public/task-graph.json")
+
+    def task_graph(path, *args, **kwargs):
+        if path == parent_graph_path:
+            # the parent decision task is the one that created the nested one
+            return {nested_decision_link.task_id: {"task": nested_task}} if in_parent_graph else {}
+        return {build_link.task_id: {"task": deepcopy(build_link.task)}}
+
+    chain.links = [decision_link, nested_decision_link, build_link]
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=task_graph)
+    # the nested task has no json-e template to be rebuilt from
+    mocker.patch.object(cotverify, "verify_parent_task_definition", new=die_async)
+    if raises:
+        with pytest.raises(CoTError):
+            await cotverify.verify_parent_task(chain, nested_decision_link)
+    else:
+        await cotverify.verify_parent_task(chain, nested_decision_link)
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_nested_untrusted_parent(chain, nested_decision_link, build_link, mocker):
+    """A nested decision task can only have been created by a parent task."""
+    build_link.task_id = nested_decision_link.parent_task_id
+    path = os.path.join(nested_decision_link.cot_dir, "public", "task-graph.json")
+    makedirs(os.path.dirname(path))
+    touch(path)
+    pool = chain.context.config["valid_decision_worker_pools"][0]
+    nested_decision_link.task["provisionerId"], nested_decision_link.task["workerType"] = pool.split("/")
+    chain.links = [nested_decision_link, build_link]
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=lambda *args, **kwargs: {})
+    mocker.patch.object(cotverify, "verify_parent_task_definition", new=die_async)
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task(chain, nested_decision_link)
+
+
 # verify_build_task {{{1
 @pytest.mark.asyncio
 async def test_verify_build_task(chain, build_link):
@@ -2159,9 +2239,21 @@ async def test_verify_worker_impls(chain, decision_link, build_link, docker_imag
             False,
         ),
         (
+            # The comm decision task carries both repositories, and is defined
+            # in the gecko tree.
             {
                 "payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/gecko", "COMM_HEAD_REPOSITORY": "https://example.com/blah/comm"}},
                 "metadata": {"source": "https://example.com/blah/gecko/file"},
+            },
+            "https://example.com/blah/gecko/file",
+            "GECKO",
+            "enterprise",
+            False,
+        ),
+        (
+            {
+                "payload": {"env": {"GECKO_HEAD_REPOSITORY": "https://example.com/blah/gecko", "COMM_HEAD_REPOSITORY": "https://example.com/blah/comm"}},
+                "metadata": {"source": "https://example.com/blah/elsewhere/file"},
             },
             None,
             "GECKO",
