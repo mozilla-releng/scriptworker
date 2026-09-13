@@ -6,6 +6,8 @@ import re
 
 from github3 import GitHub
 from github3.exceptions import GitHubException
+from taskcluster.aio import Auth
+from taskcluster.exceptions import TaskclusterFailure
 
 from scriptworker.exceptions import ConfigError
 from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request, retry_sync
@@ -23,30 +25,96 @@ log = logging.getLogger(__name__)
 class GitHubRepository:
     """Wrapper around GitHub API. Used to access public data."""
 
-    def __init__(self, owner, repo_name, token=""):
-        """Build the GitHub API URL which points to the definition of the repository.
+    GITHUB_PERMISSIONS = {"contents": "read", "metadata": "read", "pull_requests": "read"}
+
+    def __init__(self, context, owner, repo_name):
+        """Store the repository coordinates. The github3 repository object is built lazily.
 
         Args:
-            owner (str): the owner's GitHub username
+            context (scriptworker.context.Context): the scriptworker context
+            owner (str): the owner of the repository
             repo_name (str): the name of the repository
-            token (str): the GitHub API token
-
-        Returns:
-            dict: a representation of the repo definition
 
         """
-        github = retry_sync(GitHub, kwargs={"token": token}, sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
-        self._github_repository = retry_sync(github.repository, args=(owner, repo_name), sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
+        self._context = context
+        self._owner = owner
+        self._repo_name = repo_name
+        self._repository_cache = None
+        self._repository_lock = asyncio.Lock()
 
-    @property
-    def definition(self):
+    async def _get_repository(self):
+        """Build and cache the github3 repository object.
+
+        Returns:
+            github3.repos.repo.Repository: the github3 repository object
+
+        """
+        async with self._repository_lock:
+            if self._repository_cache is None:
+                token = await self._get_token(self._context, self._owner, self._repo_name)
+                github = retry_sync(GitHub, kwargs={"token": token}, sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
+                self._repository_cache = retry_sync(github.repository, args=(self._owner, self._repo_name), sleeptime_kwargs=_GITHUB_LIBRARY_SLEEP_TIME_KWARGS)
+
+        return self._repository_cache
+
+    async def _get_token(self, context, owner, repo_name):
+        """Get a repository scoped GitHub token from Taskcluster's auth service.
+
+        Falls back to ``context.config["github_oauth_token"]`` if the auth service call
+        fails, e.g. because of missing scopes.
+
+        Args:
+            context (scriptworker.context.Context): the scriptworker context
+            owner (str): the owner of the repository
+            repo_name (str): the name of the repository
+
+        Returns:
+            str: the scoped GitHub token, or the fallback token
+
+        """
+        if not context.credentials:
+            return context.config.get("github_oauth_token", "")
+
+        try:
+            auth = Auth(options={"rootUrl": context.config["taskcluster_root_url"], "credentials": context.credentials})
+            response = await auth.githubRepoToken(
+                context.config["github_app_name"], owner, payload={"repositories": [repo_name], "permissions": self.GITHUB_PERMISSIONS}
+            )
+            return response["token"]
+        except TaskclusterFailure as e:
+            # TODO When opening a PR from a fork, we're guaranteed to hit this
+            # fallback as the task won't have auth service scopes for the repo
+            # fork. We'll need to improve this before we can stop depending on
+            # `github_oauth_token`.
+            log.warning(f"Could not obtain Github token from Taskcluster for {owner}/{repo_name}, falling back to `github_oauth_token`: {e}")
+            return context.config.get("github_oauth_token", "")
+
+    async def get_definition(self):
         """Fetch the definition of the repository, exposed by the GitHub API.
 
         Returns:
             dict: a representation of the repo definition
 
         """
-        return self._github_repository.as_dict()
+        repository = await self._get_repository()
+        return repository.as_dict()
+
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_file_contents(self, path, ref=None):
+        """Fetch the decoded contents of a file in the repository.
+
+        Args:
+            path (str): the path to the file, relative to the repository root
+            ref (str, optional): the commit/branch/tag to read the file from.
+                Defaults to the repository's default branch.
+
+        Returns:
+            str: the decoded contents of the file
+
+        """
+        repository = await self._get_repository()
+        contents = repository.file_contents(path, ref=ref)
+        return contents.decoded.decode("utf-8")
 
     @retry_async_decorator(retry_exceptions=GitHubException)
     async def get_commit(self, commit_hash):
@@ -59,7 +127,8 @@ class GitHubRepository:
             dict: a representation of the commit
 
         """
-        return self._github_repository.commit(commit_hash).as_dict()
+        repository = await self._get_repository()
+        return repository.commit(commit_hash).as_dict()
 
     @retry_async_decorator(retry_exceptions=GitHubException)
     async def get_pull_request(self, pull_request_number):
@@ -72,7 +141,8 @@ class GitHubRepository:
             dict: a representation of the pull request
 
         """
-        return self._github_repository.pull_request(pull_request_number).as_dict()
+        repository = await self._get_repository()
+        return repository.pull_request(pull_request_number).as_dict()
 
     @retry_async_decorator(retry_exceptions=GitHubException)
     async def get_release(self, tag_name):
@@ -85,7 +155,8 @@ class GitHubRepository:
             dict: a representation of the tag
 
         """
-        return self._github_repository.release_from_tag(tag_name).as_dict()
+        repository = await self._get_repository()
+        return repository.release_from_tag(tag_name).as_dict()
 
     @retry_async_decorator(retry_exceptions=GitHubException)
     async def get_tag_hash(self, tag_name):
@@ -98,8 +169,9 @@ class GitHubRepository:
             str: the commit hash linked by the tag
 
         """
+        repository = await self._get_repository()
         tag_object = get_single_item_from_sequence(
-            sequence=self._github_repository.tags(),
+            sequence=repository.tags(),
             condition=lambda tag: tag.name == tag_name,
             no_item_error_message='No tag "{}" exist'.format(tag_name),
             too_many_item_error_message='Too many tags "{}" found'.format(tag_name),
@@ -128,7 +200,8 @@ class GitHubRepository:
         if not _is_git_full_hash(revision):
             revision = await self.get_tag_hash(tag_name=revision)
 
-        html_text = await _fetch_github_branch_commits_data(context, self._github_repository.html_url, revision)
+        repository = await self._get_repository()
+        html_text = await _fetch_github_branch_commits_data(context, repository.html_url, revision)
 
         # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
         # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it

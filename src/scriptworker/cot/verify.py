@@ -20,7 +20,6 @@ import tempfile
 from copy import deepcopy
 from urllib.parse import urlparse
 
-import aiohttp
 import dictdiffer
 import jsone
 from immutabledict import immutabledict
@@ -40,7 +39,7 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
-from scriptworker.github import GitHubRepository, extract_github_repo_full_name, extract_github_repo_owner_and_name, extract_github_repo_ssh_url
+from scriptworker.github import GitHubRepository, extract_github_repo_full_name, extract_github_repo_owner_and_name, extract_github_repo_ssh_url, is_github_url
 from scriptworker.log import contextual_log_handler, get_chain_of_trust_log_filename
 from scriptworker.task import (
     get_action_callback_name,
@@ -1121,7 +1120,7 @@ async def _get_additional_github_releases_jsone_context(decision_link):
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     tag_name = get_revision(task, source_env_prefix)
 
-    github_repo = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
+    github_repo = GitHubRepository(context, repo_owner, repo_name)
     release_data = await github_repo.get_release(tag_name)
 
     # The release data expose by the API[1] is not the same as the original event[2]. That's why
@@ -1203,17 +1202,16 @@ async def _get_additional_github_pull_request_jsone_context(decision_link):
     repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     pull_request_number = get_pull_request_number(task, source_env_prefix)
-    token = context.config["github_oauth_token"]
 
-    github_repo = GitHubRepository(repo_owner, repo_name, token)
-    repo_definition = github_repo.definition
+    github_repo = GitHubRepository(context, repo_owner, repo_name)
+    repo_definition = await github_repo.get_definition()
 
     # We need to query the repository where the pull request was made to extract
     # pull request data. The pull request could be created on the same repo as
     # the commit, or an upstream repo. We can compare the base and head repo URLs
     # to infer where the pull request lives.
     if repo_definition["fork"] and base_repo_url != repo_url:
-        github_repo = GitHubRepository(owner=repo_definition["parent"]["owner"]["login"], repo_name=repo_definition["parent"]["name"], token=token)
+        github_repo = GitHubRepository(context, repo_definition["parent"]["owner"]["login"], repo_definition["parent"]["name"])
 
     pull_request_data = await github_repo.get_pull_request(pull_request_number)
     # Even though pull_request_data['head']['repo']['pushed_at'] does exist,
@@ -1248,7 +1246,7 @@ async def _get_additional_github_push_jsone_context(decision_link):
     repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
     commit_hash = get_revision(task, source_env_prefix)
 
-    github_repo = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
+    github_repo = GitHubRepository(context, repo_owner, repo_name)
     commit_data = await github_repo.get_commit(commit_hash)
 
     committer = commit_data["committer"] or {}
@@ -1402,16 +1400,11 @@ def build_taskcluster_yml_url(link):
     """
     source_env_prefix = link.context.config["source_env_prefix"]
     repo_url = get_repo(link.task, source_env_prefix)
-    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
     revision = get_revision(link.task, source_env_prefix)
     repo_parts = urlparse(repo_url)
-    if repo_parts.netloc == "github.com":
-        user, repo_name = extract_github_repo_owner_and_name(repo_url)
-        url = f"https://raw.githubusercontent.com/{user}/{repo_name}/{revision}/.taskcluster.yml"
-    elif repo_parts.netloc == "hg.mozilla.org":
-        url = f"{repo_parts.scheme}://{repo_parts.netloc}{repo_parts.path}/raw-file/{revision}/.taskcluster.yml"
-    else:
+    if repo_parts.netloc != "hg.mozilla.org":
         raise CoTError("Unsupported VCS server!")
+    url = f"{repo_parts.scheme}://{repo_parts.netloc}{repo_parts.path}/raw-file/{revision}/.taskcluster.yml"
     log.debug(f"{link.name} .taskcluster.yml is at {url}")
     return url
 
@@ -1433,19 +1426,20 @@ async def get_in_tree_template(link):
 
     """
     context = link.context
-    source_url = build_taskcluster_yml_url(link)
-    repo_url = get_repo(link.task, link.context.config["source_env_prefix"])
+    source_env_prefix = context.config["source_env_prefix"]
+    repo_url = get_repo(link.task, source_env_prefix)
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
 
-    auth = None
-    if (
-        (repo_url.startswith(("ssh://", "git@github.com")) or any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]))
-        and "github.com" in repo_url
-        and context.config.get("github_oauth_token")
-    ):
-        auth = aiohttp.BasicAuth(context.config["github_oauth_token"])
+    if is_github_url(repo_url):
+        revision = get_revision(link.task, source_env_prefix)
+        repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+        github_repo = GitHubRepository(context, repo_owner, repo_name)
+        content = await github_repo.get_file_contents(".taskcluster.yml", ref=revision)
+        return load_json_or_yaml(content, file_type="yaml")
+
+    source_url = build_taskcluster_yml_url(link)
     url_hash = hashlib.sha1(source_url.encode("ascii")).hexdigest()
-    tmpl = await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(url_hash)), auth=auth)
-    return tmpl
+    return await load_json_or_yaml_from_url(context, source_url, os.path.join(context.config["work_dir"], "{}_taskcluster.yml".format(url_hash)))
 
 
 def _get_action_from_actions_json(all_actions, callback_name):

@@ -9,9 +9,8 @@ import tempfile
 import time
 from copy import deepcopy
 from functools import partial
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
-import aiohttp
 import jsone
 import pytest
 from immutabledict import immutabledict
@@ -325,7 +324,7 @@ def cot_load(string, is_path=False, parent_dir=None, **kwargs):
         elif string.endswith("actions.json"):
             return load_json_or_yaml(os.path.join(parent_dir, "actions.json"), is_path=True)
     else:
-        return load_json_or_yaml(string)
+        return load_json_or_yaml(string, **kwargs)
 
 
 cotv2_load = partial(cot_load, parent_dir=COTV2_DIR)
@@ -1133,7 +1132,7 @@ async def test_populate_jsone_context_github_release(mocker, mobile_chain, mobil
 
     context = await cotverify.populate_jsone_context(mobile_chain, mobile_github_release_link, mobile_github_release_link, tasks_for="github-release")
 
-    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "reference-browser", "fakegithubtoken")
+    github_repo_class_mock.assert_called_once_with(ANY, "mozilla-mobile", "reference-browser")
     del context["as_slugid"]
     assert context == {
         "event": {
@@ -1213,7 +1212,7 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
 
     context = await cotverify.populate_jsone_context(mobile_chain, mobile_github_push_link, mobile_github_push_link, tasks_for="github-push")
 
-    github_repo_class_mock.assert_called_once_with("mozilla-mobile", "reference-browser", "fakegithubtoken")
+    github_repo_class_mock.assert_called_once_with(ANY, "mozilla-mobile", "reference-browser")
     del context["as_slugid"]
     assert context == {
         "event": {
@@ -1290,7 +1289,11 @@ async def test_populate_jsone_context_github_pull_request(
     github_repo_mock = MagicMock()
     repo_definition = {"fork": True, "parent": {"name": "reference-browser", "owner": {"login": "mozilla-mobile"}}}
     repo_definition.update(extra_repo_definition)
-    github_repo_mock.definition = repo_definition
+
+    async def get_definition_mock():
+        return repo_definition
+
+    github_repo_mock.get_definition = get_definition_mock
 
     mobile_github_pull_request_link.task["extra"]["tasks_for"] = tasks_for
     mobile_github_pull_request_link.task["payload"]["env"].update(extra_env)
@@ -1323,10 +1326,10 @@ async def test_populate_jsone_context_github_pull_request(
         mobile_chain_pull_request, mobile_github_pull_request_link, mobile_github_pull_request_link, tasks_for=tasks_for
     )
 
-    github_repo_class_mock.assert_any_call("JohanLorenzo", "reference-browser", "fakegithubtoken")
+    github_repo_class_mock.assert_any_call(ANY, "JohanLorenzo", "reference-browser")
 
     if expected_use_parent:
-        github_repo_class_mock.assert_any_call(owner="mozilla-mobile", repo_name="reference-browser", token="fakegithubtoken")
+        github_repo_class_mock.assert_any_call(ANY, "mozilla-mobile", "reference-browser")
         assert len(github_repo_class_mock.call_args_list) == 2
     else:
         assert len(github_repo_class_mock.call_args_list) == 1
@@ -1572,12 +1575,13 @@ async def test_verify_parent_task_definition_vpn(vpn_chain, name, task_id, path,
                 "committer": {"login": "Callek"},
             }
 
+        async def get_file_contents(self, path, ref=None):
+            assert path == ".taskcluster.yml"
+            assert ref == "330ea928b42ff2403fc99cd3e596d13294fe8775"
+            with open(os.path.join(COTV4_DIR, "private_github_.taskcluster.yml")) as fh:
+                return fh.read()
+
     async def mocked_load_url(context, url, path, parent_path=COTV4_DIR, **kwargs):
-        if path.endswith("taskcluster.yml"):
-            assert kwargs.get("auth")
-            assert isinstance(kwargs["auth"], aiohttp.BasicAuth)
-            assert kwargs["auth"].login == "fakegithubtoken"
-            return load_json_or_yaml(os.path.join(parent_path, "private_github_.taskcluster.yml"), is_path=True, file_type="yaml")
         raise NotImplementedError()
 
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=mocked_load_url)
@@ -1597,50 +1601,53 @@ def test_build_taskcluster_yml_url_unknown_server(decision_link):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("use_auth", (None, True))
 @pytest.mark.parametrize(
-    "source_repo,revision,expected_url",
+    "source_repo",
     (
-        (
-            "ssh://github.com/mozilla-mobile/mozilla-vpn-client",
-            "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
-        ),
-        (
-            "git@github.com:mozilla-mobile/mozilla-vpn-client",
-            "330ea928b42ff2403fc99cd3e596d13294fe8775",
-            "https://raw.githubusercontent.com/mozilla-mobile/mozilla-vpn-client/330ea928b42ff2403fc99cd3e596d13294fe8775/.taskcluster.yml",
-        ),
-        (
-            "https://hg.mozilla.org/ci/taskgraph-try",
-            "a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea",
-            "https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml",
-        ),
+        "ssh://github.com/mozilla-mobile/mozilla-vpn-client",
+        "git@github.com:mozilla-mobile/mozilla-vpn-client",
     ),
 )
-async def test_get_in_tree_template_auth_morphing(vpn_chain, mocker, use_auth, source_repo, revision, expected_url):
+async def test_get_in_tree_template_github(vpn_chain, mocker, source_repo):
     name = "decision"
     task_id = "VUTfOIPFQWaGHf7sIbgTEg"
-    if not use_auth:
-        del vpn_chain.context.config["github_oauth_token"]
+    revision = "330ea928b42ff2403fc99cd3e596d13294fe8775"
     link = cotverify.LinkOfTrust(vpn_chain.context, name, task_id)
 
-    async def mocked_load_url(context, url, path, parent_path=COTV2_DIR, **kwargs):
+    github_repo_mock = MagicMock()
+
+    async def get_file_contents_mock(path, ref=None):
+        assert path == ".taskcluster.yml"
+        assert ref == revision
+        return "tasks: []\n"
+
+    github_repo_mock.get_file_contents = get_file_contents_mock
+    github_repo_class_mock = mocker.patch.object(cotverify, "GitHubRepository", return_value=github_repo_mock)
+    mocker.patch.object(cotverify, "get_repo", new=lambda x, y: source_repo)
+    mocker.patch.object(cotverify, "get_revision", new=lambda x, y: revision)
+
+    tmpl = await cotverify.get_in_tree_template(link)
+
+    github_repo_class_mock.assert_called_once_with(vpn_chain.context, "mozilla-mobile", "mozilla-vpn-client")
+    assert tmpl == {"tasks": []}
+
+
+@pytest.mark.asyncio
+async def test_get_in_tree_template_hg(decision_link, mocker):
+    source_repo = "https://hg.mozilla.org/ci/taskgraph-try"
+    revision = "a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea"
+    expected_url = "https://hg.mozilla.org/ci/taskgraph-try/raw-file/a9afa8aa11cf1431d4e6ef06c2a08d19e271c6ea/.taskcluster.yml"
+
+    async def mocked_load_url(context, url, path, **kwargs):
         assert url == expected_url
-        if use_auth and "github.com" in source_repo:
-            assert kwargs.get("auth")
-            assert isinstance(kwargs["auth"], aiohttp.BasicAuth)
-            assert kwargs["auth"].login == "fakegithubtoken"
-            return "some_template"
-        else:
-            assert not kwargs.get("auth")
-            return "some_template_no_auth"
+        return "some_template"
 
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=mocked_load_url)
     mocker.patch.object(cotverify, "get_repo", new=lambda x, y: source_repo)
     mocker.patch.object(cotverify, "get_revision", new=lambda x, y: revision)
 
-    await cotverify.get_in_tree_template(link)
+    tmpl = await cotverify.get_in_tree_template(decision_link)
+    assert tmpl == "some_template"
 
 
 @pytest.mark.asyncio
@@ -1751,9 +1758,19 @@ async def test_get_pr_action_context_and_template(mocker, mobile_chain, github_p
     """Test that pr-action tasks generate correct context and template with pr-action specific values."""
     mobile_chain.context.config["min_cot_version"] = 3
 
+    class MockedGitHubRepository(object):
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def get_file_contents(self, path, ref=None):
+            assert path == ".taskcluster.yml"
+            with open(os.path.join(COTV4_DIR, ".taskcluster.yml")) as fh:
+                return fh.read()
+
     mocker.patch.object(cotverify, "load_json_or_yaml_from_url", new=cotv4_load_url)
     mocker.patch.object(swcontext, "load_json_or_yaml_from_url", new=cotv4_load_url)
     mocker.patch.object(cotverify, "load_json_or_yaml", new=cotv4_load)
+    mocker.patch.object(cotverify, "GitHubRepository", new=MockedGitHubRepository)
 
     mobile_chain.links = list(set([mobile_github_push_link, github_pr_action_link]))
 

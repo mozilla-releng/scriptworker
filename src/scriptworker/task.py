@@ -550,7 +550,7 @@ async def is_pull_request(context, task):
         if not revision and can_skip:
             continue
 
-        github_repository = GitHubRepository(repo_owner, repo_name, context.config["github_oauth_token"])
+        github_repository = GitHubRepository(context, repo_owner, repo_name)
         conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision))
 
     return any(conditions)
