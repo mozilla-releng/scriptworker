@@ -58,6 +58,7 @@ from scriptworker.task import (
     get_push_date_time,
     get_repo,
     get_revision,
+    get_tag,
     get_task_id,
     get_triggered_by,
     get_worker_pool_id,
@@ -2007,9 +2008,15 @@ async def trace_back_to_tree(chain):
 
     # a repo_path of None means we have no restricted privs.
     # a string repo_path may mean we have higher privs
+    aliases = chain.context.config["project_vcs_aliases"]
     for obj in [chain] + chain.links:
         source_url = get_source_url(obj)
         repo_path = match_url_regex(chain.context.config["trusted_vcs_rules"], source_url, match_url_path_callback)
+        if project_aliases := aliases.get(repo_path):
+            # If the repo path has an alias for the project configured, use
+            # that instead. This supports projects that allow multiple repo
+            # paths.
+            repo_path = project_aliases.get(get_tag(obj.task, "project"), repo_path)
         repos[obj] = repo_path
     # check for restricted scopes.
     my_repo = repos[chain]

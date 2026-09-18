@@ -2222,6 +2222,55 @@ async def test_trace_back_to_tree_diff_repo(chain, decision_link, build_link, do
     await cotverify.trace_back_to_tree(chain)
 
 
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_github_mirror_alias(chain, decision_link, build_link, docker_image_link, mocker):
+    # During the hg -> github migration, some sibling tasks may be sourced from
+    # the github mirror while others are still sourced from hg.mozilla.org. These
+    # should be treated as the same repo via `project_vcs_aliases`, disambiguated by
+    # `tags.project` since the github repo hosts every branch under one path.
+    build_link.task["metadata"]["source"] = "https://github.com/mozilla-firefox/firefox/raw/somerevision/.taskcluster.yml"
+    build_link.task["tags"] = {"project": "mozilla-central"}
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_github_mirror_alias_no_checkout(chain, decision_link, build_link, docker_image_link, mocker):
+    # Tasks that don't check out the source themselves (eg. signing, beetmover)
+    # have no VCS env vars at all, only `tags.project`, and must still resolve.
+    build_link.task["metadata"]["source"] = "https://github.com/mozilla-firefox/firefox/raw/somerevision/.taskcluster.yml"
+    build_link.task["payload"]["env"] = {}
+    build_link.task["tags"] = {"project": "mozilla-central"}
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_github_mirror_alias_wrong_project(chain, decision_link, build_link, docker_image_link, mocker):
+    # A github-sourced sibling on a different project than the decision task
+    # (mozilla-central) must not be treated as the same repo.
+    build_link.task["metadata"]["source"] = "https://github.com/mozilla-firefox/firefox/raw/somerevision/.taskcluster.yml"
+    build_link.task["tags"] = {"project": "mozilla-beta"}
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_github_mirror_alias_unknown_project(chain, decision_link, build_link, docker_image_link, mocker):
+    # An unrecognized project on the mirror repo must not resolve to any known
+    # repo, so it can't piggyback on the decision task's trust.
+    build_link.task["metadata"]["source"] = "https://github.com/mozilla-firefox/firefox/raw/somerevision/.taskcluster.yml"
+    build_link.task["tags"] = {"project": "some-feature-branch"}
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    with pytest.raises(CoTError):
+        await cotverify.trace_back_to_tree(chain)
+
+
 @pytest.mark.parametrize(
     "source_url, raises",
     (

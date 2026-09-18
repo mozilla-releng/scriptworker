@@ -272,6 +272,21 @@ def get_branch(task, source_env_prefix):
     return _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_BRANCH", _extract_from_env_in_payload(task, source_env_prefix + "_HEAD_REF"))
 
 
+def get_tag(task, tag_name):
+    """Get a tag from a task.
+
+    Args:
+        task (dict): the task dict.
+        tag_name (str): the name of the tag to look up.
+
+    Returns:
+        str: the tag's value.
+        None: if not defined for this task.
+
+    """
+    return task.get("tags", {}).get(tag_name)
+
+
 def get_base_branch(task, source_env_prefix):
     """Get the branch the head branch was built upon.
 

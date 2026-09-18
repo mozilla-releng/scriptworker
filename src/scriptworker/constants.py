@@ -435,6 +435,45 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                 )
             }
         ),
+        # XXX While migrating from hg.mozilla.org to Github, some products
+        # might have release tasks that originate from either hgmo or its
+        # Github equivalent, which hosts every branch under one repo path.
+        # This maps a task's `tags.project` to the associated repository on
+        # hgmo, so it can be treated as a valid alias for that repo.
+        # This config should be removed post migration.
+        "project_vcs_aliases": immutabledict(
+            {
+                "by-cot-product": immutabledict(
+                    {
+                        "adhoc": immutabledict({}),
+                        "app-services": immutabledict({}),
+                        "enterprise": immutabledict({}),
+                        "firefox": immutabledict(
+                            {
+                                "/mozilla-firefox/firefox": immutabledict(
+                                    {
+                                        "mozilla-central": "/mozilla-central",
+                                        "autoland": "/integration/autoland",
+                                        "mozilla-beta": "/releases/mozilla-beta",
+                                        "mozilla-release": "/releases/mozilla-release",
+                                        "mozilla-esr115": "/releases/mozilla-esr115",
+                                        "mozilla-esr140": "/releases/mozilla-esr140",
+                                        "mozilla-esr153": "/releases/mozilla-esr153",
+                                    }
+                                )
+                            }
+                        ),
+                        "glean": immutabledict({}),
+                        "mobile": immutabledict({}),
+                        "mozillavpn": immutabledict({}),
+                        "scriptworker": immutabledict({}),
+                        "thunderbird": immutabledict({}),
+                        "translations": immutabledict({}),
+                        "xpi": immutabledict({}),
+                    }
+                )
+            }
+        ),
         "valid_tasks_for": immutabledict(
             {
                 "by-cot-product": immutabledict(
