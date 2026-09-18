@@ -514,7 +514,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "mozilla",
                             "thunderbird",
                         ),
-                        "firefox": "",
+                        "firefox": "mozilla-firefox",
                         "glean": "mozilla",
                         "mobile": "mozilla-mobile",
                         "mozillavpn": "mozilla-mobile",
