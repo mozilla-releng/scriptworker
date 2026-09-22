@@ -236,6 +236,22 @@ def mobile_github_push_link(mobile_chain):
     yield decision_link
 
 
+@pytest.fixture(scope="function")
+def firefox_github_push_link(chain):
+    decision_link = _craft_decision_link(
+        chain, tasks_for="github-push", source_url="https://github.com/mozilla-firefox/firefox/raw/somerevision/.taskcluster.yml"
+    )
+    decision_link.task["payload"]["env"] = {
+        "GECKO_BASE_REPOSITORY": "https://github.com/mozilla-firefox/firefox",
+        "GECKO_BASE_REV": "somebaserevision",
+        "GECKO_HEAD_REF": "refs/heads/main",
+        "GECKO_HEAD_REPOSITORY": "https://github.com/mozilla-firefox/firefox",
+        "GECKO_HEAD_REV": "somerevision",
+        "GECKO_REPOSITORY_TYPE": "git",
+    }
+    yield decision_link
+
+
 def _craft_decision_link(chain, *, tasks_for, source_url="https://hg.mozilla.org/mozilla-central"):
     link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
     link.cot = {"taskId": "decision_task_id", "environment": {"imageHash": "sha256:decision_image_sha"}}
@@ -1228,6 +1244,49 @@ async def test_populate_jsone_context_github_push(mocker, mobile_chain, mobile_g
                 "name": "reference-browser",
                 "pushed_at": "1549022400",
                 "ssh_url": "git@github.com:mozilla-mobile/reference-browser.git",
+            },
+            "sender": {"login": "some-user"},
+        },
+        "now": "2018-01-01T12:00:00.000Z",
+        "ownTaskId": "decision_task_id",
+        "taskId": None,
+        "tasks_for": "github-push",
+    }
+
+
+@pytest.mark.asyncio
+async def test_populate_jsone_context_firefox_github_push(mocker, chain, firefox_github_push_link):
+    chain.context.config["github_oauth_token"] = "fakegithubtoken"
+    github_repo_mock = MagicMock()
+
+    async def get_commit_mock(commit_hash, *args, **kwargs):
+        assert commit_hash == "somerevision"
+        return {
+            "commit": {"author": {"email": "some-user@email.tld"}, "committer": {"email": "some-user@email.tld"}},
+            "committer": {"login": "some-user"},
+            "author": {"login": "some-user"},
+        }
+
+    github_repo_mock.get_commit = get_commit_mock
+    github_repo_class_mock = mocker.patch.object(cotverify, "GitHubRepository", return_value=github_repo_mock)
+
+    context = await cotverify.populate_jsone_context(chain, firefox_github_push_link, firefox_github_push_link, tasks_for="github-push")
+
+    github_repo_class_mock.assert_called_once_with("mozilla-firefox", "firefox", "fakegithubtoken")
+    del context["as_slugid"]
+    assert context == {
+        "event": {
+            "before": "somebaserevision",
+            "after": "somerevision",
+            "pusher": {"email": "foo@example.tld"},
+            "base_ref": None,
+            "ref": "refs/heads/main",
+            "repository": {
+                "full_name": "mozilla-firefox/firefox",
+                "html_url": "https://github.com/mozilla-firefox/firefox",
+                "name": "firefox",
+                "pushed_at": None,
+                "ssh_url": "git@github.com:mozilla-firefox/firefox.git",
             },
             "sender": {"login": "some-user"},
         },
