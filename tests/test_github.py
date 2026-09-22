@@ -286,6 +286,8 @@ def test_is_github_url(url, expected):
             "staging-reference-browser",
             False,
         ),
+        ("https://github.com/mozilla-firefox/firefox", "mozilla-firefox", "firefox", False),
+        ("https://github.com/mozilla-firefox", None, None, True),
         ("https://hg.mozilla.org/mozilla-central", None, None, True),
     ),
 )
@@ -356,6 +358,15 @@ def test_extract_github_repo_ssh_url(repo_url, expected, raises):
             "0123456789abcdef0123456789abcdef01234567",
             False,
         ),
+        (
+            # The repo name ("firefox") also appears inside the owner
+            # ("mozilla-firefox"); the repo url must not be truncated there.
+            "https://github.com/mozilla-firefox/firefox/blob/61a4f8008eea8552b81923a1e0143e7c3a831c35/taskcluster/kinds/signing",
+            "https://github.com/mozilla-firefox/firefox",
+            "61a4f8008eea8552b81923a1e0143e7c3a831c35",
+            False,
+        ),
+        ("https://github.com/mozilla-firefox", None, None, True),
         ("https://github.com/mozilla-mobile/reference-browser", None, None, True),
         ("https://github.com/mozilla-mobile/reference-browser.git", None, None, True),
         ("https://github.com/mozilla-releng/staging-reference-browser", None, None, True),

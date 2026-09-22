@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+from urllib.parse import unquote, urlparse
 
 from github3 import GitHub
 from github3.exceptions import GitHubException
@@ -202,6 +203,8 @@ def extract_github_repo_owner_and_name(url):
     _check_github_url_is_supported(url)
 
     parts = get_parts_of_url_path(url)
+    if len(parts) < 2:
+        raise ValueError(f"Could not extract repo owner and name from GitHub URL: {url}")
     repo_owner = parts[0]
     repo_name = parts[1]
 
@@ -257,17 +260,20 @@ def extract_github_repo_and_revision_from_source_url(url):
     """
     _check_github_url_is_supported(url)
 
-    parts = get_parts_of_url_path(url)
-    repo_name = parts[1]
+    parsed = urlparse(url)
+    parts = unquote(parsed.path).lstrip("/").split("/")
+    if len(parts) < 2:
+        raise ValueError(f"Could not extract repo owner and name from GitHub URL: {url}")
+    repo_owner = parts[0]
+    repo_name = _strip_trailing_dot_git(parts[1])
     try:
         revision = parts[3]
     except IndexError:
-        raise ValueError("Revision cannot be extracted from url: {}".format(url))
+        raise ValueError(f"Revision cannot be extracted from url: {url}")
 
-    end_index = url.index(repo_name) + len(repo_name)
-    repo_url = url[:end_index]
+    repo_url = f"{parsed.scheme}://{parsed.netloc}/{repo_owner}/{repo_name}"
 
-    return _strip_trailing_dot_git(repo_url), revision
+    return repo_url, revision
 
 
 def _strip_trailing_dot_git(url):
