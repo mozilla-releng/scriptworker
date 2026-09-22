@@ -1360,24 +1360,29 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         else:
             raise CoTError('Unknown tasks_for "{}" for github cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     elif chain.context.config["cot_product_type"] == "hg":
-        source_url = get_source_url(decision_link)
-        project = await get_project(chain.context, source_url)
-        jsone_context["repository"] = {
-            "url": get_repo(decision_link.task, decision_link.context.config["source_env_prefix"]),
-            "level": await get_scm_level(chain.context, project),
-            "project": project,
-        }
-
-        if tasks_for == "action":
-            jsone_context.update(await _get_additional_hg_action_jsone_context(parent_link, decision_link))
-        elif tasks_for == "hg-push":
-            jsone_context.update(await _get_additional_hg_push_jsone_context(parent_link, decision_link))
-            jsone_context["repository"]["type"] = "hg"
-        elif tasks_for == "cron":
-            jsone_context.update(await _get_additional_hg_cron_jsone_context(parent_link, decision_link))
-            jsone_context["repository"]["type"] = "hg"
+        if tasks_for == "github-push":
+            # hg cot products are migrating to Github (bug 2070846); their
+            # .taskcluster.yml only uses the github event context for these.
+            jsone_context.update(await _get_additional_github_push_jsone_context(decision_link))
         else:
-            raise CoTError('Unknown tasks_for "{}" for hg cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
+            source_url = get_source_url(decision_link)
+            project = await get_project(chain.context, source_url)
+            jsone_context["repository"] = {
+                "url": get_repo(decision_link.task, decision_link.context.config["source_env_prefix"]),
+                "level": await get_scm_level(chain.context, project),
+                "project": project,
+            }
+
+            if tasks_for == "action":
+                jsone_context.update(await _get_additional_hg_action_jsone_context(parent_link, decision_link))
+            elif tasks_for == "hg-push":
+                jsone_context.update(await _get_additional_hg_push_jsone_context(parent_link, decision_link))
+                jsone_context["repository"]["type"] = "hg"
+            elif tasks_for == "cron":
+                jsone_context.update(await _get_additional_hg_cron_jsone_context(parent_link, decision_link))
+                jsone_context["repository"]["type"] = "hg"
+            else:
+                raise CoTError('Unknown tasks_for "{}" for hg cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     else:
         raise CoTError(
             'Unknown cot_product_type "{}" for cot_product "{}"!'.format(chain.context.config["cot_product_type"], chain.context.config["cot_product"])

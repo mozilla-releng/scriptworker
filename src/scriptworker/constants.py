@@ -455,7 +455,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "github-release",
                             "pr-action",
                         ),
-                        "firefox": ("hg-push", "cron", "action"),
+                        "firefox": ("hg-push", "cron", "action", "github-push"),
                         "glean": (
                             "action",
                             "cron",

@@ -273,7 +273,8 @@ async def test_get_project(context, mobile_context, source_url, expected, raises
         ("mobile", "action", False),
         ("firefox", "github-pull-request", True),
         ("firefox", "github-pull-request-untrusted", True),
-        ("firefox", "github-push", True),
+        # Firefox now accepts github-push tasks (bug 2070846)
+        ("firefox", "github-push", False),
         ("firefox", "github-release", True),
         ("mobile", "github-pull-request", False),
         ("mobile", "github-pull-request-untrusted", False),
