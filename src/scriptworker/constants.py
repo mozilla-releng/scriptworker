@@ -142,7 +142,8 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "adhoc": "github",
                         "app-services": "github",
                         "enterprise": "github",
-                        "firefox": "hg",
+                        # Firefox is migrating from hg.mozilla.org to Github (bug 2070846)
+                        "firefox": ("hg", "github"),
                         "glean": "github",
                         "mobile": "github",
                         "mozillavpn": "github",
@@ -455,7 +456,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "github-release",
                             "pr-action",
                         ),
-                        "firefox": ("hg-push", "cron", "action", "github-push"),
+                        "firefox": (
+                            "action",
+                            "cron",
+                            "github-pull-request",
+                            "github-pull-request-untrusted",
+                            "github-push",
+                            "hg-push",
+                            "pr-action",
+                        ),
                         "glean": (
                             "action",
                             "cron",

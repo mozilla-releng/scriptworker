@@ -271,10 +271,11 @@ async def test_get_project(context, mobile_context, source_url, expected, raises
         # Mobile now accepts cron and action tasks
         ("mobile", "cron", False),
         ("mobile", "action", False),
-        ("firefox", "github-pull-request", True),
-        ("firefox", "github-pull-request-untrusted", True),
-        # Firefox now accepts github-push tasks (bug 2070846)
+        # Firefox now accepts Github based tasks_for (bug 2070846)
+        ("firefox", "github-pull-request", False),
+        ("firefox", "github-pull-request-untrusted", False),
         ("firefox", "github-push", False),
+        ("firefox", "pr-action", False),
         ("firefox", "github-release", True),
         ("mobile", "github-pull-request", False),
         ("mobile", "github-pull-request-untrusted", False),
