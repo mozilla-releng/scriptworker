@@ -4,6 +4,21 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.5.0 - 2026-09-23
+-------------------
+
+Fixed
+~~~~~
+
+- Add `mozilla-firefox` as a Github owner for Firefox
+- Url parsing bug when Github <owner> has <repo> as a substring
+
+Added
+~~~~~
+
+- Allow tasks sourced from "Git mirrors" to run in graphs alongside tasks
+  sourced from their Mercurial equivalents
+
 63.4.5 - 2026-09-11
 -------------------
 
