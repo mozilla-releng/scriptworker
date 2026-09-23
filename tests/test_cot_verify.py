@@ -2246,6 +2246,84 @@ async def test_trace_back_to_tree_mobile_staging_repos_dont_access_restricted_sc
         await cotverify.trace_back_to_tree(mobile_chain)
 
 
+# hg_git_mirrors {{{1
+FIREFOX_GITHUB_REPO = "https://github.com/mozilla-firefox/firefox"
+GIT_REV = "a" * 40
+
+
+def _use_git_mirror(obj, repo_url=FIREFOX_GITHUB_REPO):
+    obj.task["metadata"]["source"] = f"{repo_url}/raw/{GIT_REV}/.taskcluster.yml"
+    obj.task["payload"].setdefault("env", {})["GECKO_HEAD_REPOSITORY"] = repo_url
+
+
+def _set_hg_repo(objs, repo_url):
+    for obj in objs:
+        obj.task["metadata"]["source"] = repo_url
+
+
+@pytest.mark.parametrize(
+    "hg_repo, raises",
+    (
+        ("https://hg.mozilla.org/mozilla-central", False),
+        ("https://hg.mozilla.org/releases/mozilla-esr153", False),
+        # no mirror configured
+        ("https://hg.mozilla.org/projects/maple", True),
+    ),
+)
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror(chain, decision_link, build_link, docker_image_link, mocker, hg_repo, raises):
+    _set_hg_repo([chain, decision_link, docker_image_link], hg_repo)
+    _use_git_mirror(build_link)
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    if raises:
+        with pytest.raises(CoTError, match="build build_task_id repo /mozilla-firefox/firefox doesn't match my repo"):
+            await cotverify.trace_back_to_tree(chain)
+    else:
+        await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror_untrusted_repo(chain, decision_link, build_link, docker_image_link, mocker):
+    _use_git_mirror(build_link, repo_url="https://github.com/some-user/firefox")
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    with pytest.raises(CoTError, match="build build_task_id repo None doesn't match my repo /mozilla-central"):
+        await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror_restricted_leaf(chain, decision_link, build_link, docker_image_link, mocker):
+    # The task with restricted scopes itself is sourced from the mirror: it gets
+    # the decision task's repo's privileges.
+    _use_git_mirror(chain)
+    _use_git_mirror(build_link)
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror_not_for_parents(chain, decision_link, build_link, docker_image_link, mocker):
+    # Parent tasks are never mapped to their hg equivalent.
+    _use_git_mirror(decision_link)
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    with pytest.raises(CoTError, match="decision decision_task_id repo /mozilla-firefox/firefox doesn't match"):
+        await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_graph_not_mapped(chain, decision_link, build_link, docker_image_link, mocker):
+    # A graph entirely sourced from GitHub doesn't get hg privileges.
+    for obj in (chain, decision_link, build_link, docker_image_link):
+        _use_git_mirror(obj)
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    with pytest.raises(CoTError, match="repo /mozilla-firefox/firefox not allowlisted for scope"):
+        await cotverify.trace_back_to_tree(chain)
+
+
 # AuditLogFormatter {{{1
 @pytest.mark.parametrize("level,expected", ((logging.INFO, "foo"), (logging.DEBUG, " foo")))
 def test_audit_log_formatter(level, expected):

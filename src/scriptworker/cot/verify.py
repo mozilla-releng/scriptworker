@@ -40,7 +40,12 @@ from scriptworker.constants import DEFAULT_CONFIG
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
 from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
-from scriptworker.github import GitHubRepository, extract_github_repo_full_name, extract_github_repo_owner_and_name, extract_github_repo_ssh_url
+from scriptworker.github import (
+    GitHubRepository,
+    extract_github_repo_full_name,
+    extract_github_repo_owner_and_name,
+    extract_github_repo_ssh_url,
+)
 from scriptworker.log import contextual_log_handler, get_chain_of_trust_log_filename
 from scriptworker.task import (
     get_action_callback_name,
@@ -1983,6 +1988,44 @@ def get_source_url(obj):
     return source
 
 
+# hg_git_mirrors {{{1
+def _get_parent_repo(chain, repos):
+    """Get the repo of ``chain``'s parent (decision/action) tasks.
+
+    These are the tasks whose definitions are rebuilt from the tree, and that
+    the other tasks in the graph derive their trust from.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        repos (dict): the repo path of each object in the chain
+
+    Returns:
+        str: the parent tasks' repo path. If they don't agree, or can't be
+            found, ``chain``'s repo; any mismatch is reported by the sibling check.
+
+    """
+    parent_repos = {repo for obj, repo in repos.items() if obj.decision_task_id == chain.decision_task_id and obj.task_type in PARENT_TASK_TYPES}
+    if len(parent_repos) == 1:
+        return parent_repos.pop()
+    return repos[chain]
+
+
+def _is_git_mirror(chain, repo, parent_repo):
+    """Determine whether ``repo`` is the git mirror of ``parent_repo``.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on
+        repo (str): a non-parent task's repo path
+        parent_repo (str): the parent tasks' repo path
+
+    Returns:
+        bool: whether ``repo`` is the git mirror of ``parent_repo``.
+
+    """
+    mirrors = chain.context.config["hg_git_mirrors"] or {}
+    return repo is not None and mirrors.get(parent_repo) == repo
+
+
 # trace_back_to_tree {{{1
 async def trace_back_to_tree(chain):
     """Trace the chain back to the tree.
@@ -2011,6 +2054,17 @@ async def trace_back_to_tree(chain):
         source_url = get_source_url(obj)
         repo_path = match_url_regex(chain.context.config["trusted_vcs_rules"], source_url, match_url_path_callback)
         repos[obj] = repo_path
+    # XXX During the hg -> git migration, graphs generated from hg may contain
+    # tasks sourced from the git mirror. Treat those as coming from the parent
+    # tasks' repo. Parent tasks are never mapped: their source is what their
+    # definition gets rebuilt from, so it must be trusted in its own right.
+    parent_repo = _get_parent_repo(chain, repos)
+    for obj, repo in repos.items():
+        if obj.decision_task_id != chain.decision_task_id or obj.task_type in PARENT_TASK_TYPES:
+            continue
+        if _is_git_mirror(chain, repo, parent_repo):
+            log.info(f"{obj.name} {obj.task_id}: {repo} is the git mirror of {parent_repo}")
+            repos[obj] = parent_repo
     # check for restricted scopes.
     my_repo = repos[chain]
     for scope in chain.task["scopes"]:
