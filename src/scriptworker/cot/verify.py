@@ -67,6 +67,7 @@ from scriptworker.task import (
     get_triggered_by,
     get_worker_pool_id,
     is_action,
+    is_github_task,
     is_try_or_pull_request,
     retry_get_task_definition,
 )
@@ -1351,7 +1352,20 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         "taskId": None,
     }
 
-    if chain.context.config["cot_product_type"] == "github":
+    cot_product_types = chain.context.config["cot_product_type"]
+    if isinstance(cot_product_types, str):
+        cot_product_types = (cot_product_types,)
+    if len(cot_product_types) > 1:
+        # Products migrating between VCSes support several types (bug 2070846).
+        # tasks_for like `action` and `cron` exist on both hg and github, so
+        # determine the type from the decision task itself.
+        cot_product_type = "github" if is_github_task(decision_link.task) else "hg"
+        if cot_product_type not in cot_product_types:
+            raise CoTError('cot_product_type "{}" is not enabled for cot_product "{}"!'.format(cot_product_type, chain.context.config["cot_product"]))
+    else:
+        cot_product_type = cot_product_types[0]
+
+    if cot_product_type == "github":
         if tasks_for == "github-release":
             jsone_context.update(await _get_additional_github_releases_jsone_context(decision_link))
         elif tasks_for == "cron":
@@ -1364,7 +1378,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
             jsone_context.update(await _get_additional_github_push_jsone_context(decision_link))
         else:
             raise CoTError('Unknown tasks_for "{}" for github cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
-    elif chain.context.config["cot_product_type"] == "hg":
+    elif cot_product_type == "hg":
         source_url = get_source_url(decision_link)
         project = await get_project(chain.context, source_url)
         jsone_context["repository"] = {
@@ -1384,9 +1398,7 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         else:
             raise CoTError('Unknown tasks_for "{}" for hg cot_product "{}"!'.format(tasks_for, chain.context.config["cot_product"]))
     else:
-        raise CoTError(
-            'Unknown cot_product_type "{}" for cot_product "{}"!'.format(chain.context.config["cot_product_type"], chain.context.config["cot_product"])
-        )
+        raise CoTError('Unknown cot_product_type "{}" for cot_product "{}"!'.format(cot_product_type, chain.context.config["cot_product"]))
 
     log.debug("{} json-e context:".format(parent_link.name))
     # format_json() breaks on lambda values; use pprint.pformat here.
