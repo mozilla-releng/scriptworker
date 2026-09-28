@@ -1352,18 +1352,16 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
         "taskId": None,
     }
 
-    cot_product_types = chain.context.config["cot_product_type"]
-    if isinstance(cot_product_types, str):
-        cot_product_types = (cot_product_types,)
-    if len(cot_product_types) > 1:
+    cot_product_type = chain.context.config["cot_product_type"]
+    # A tuple becomes a list when the config round-trips through json/yaml.
+    if isinstance(cot_product_type, (tuple, list)):
         # Products migrating between VCSes support several types (bug 2070846).
         # tasks_for like `action` and `cron` exist on both hg and github, so
         # determine the type from the decision task itself.
-        cot_product_type = "github" if is_github_task(decision_link.task) else "hg"
-        if cot_product_type not in cot_product_types:
-            raise CoTError('cot_product_type "{}" is not enabled for cot_product "{}"!'.format(cot_product_type, chain.context.config["cot_product"]))
-    else:
-        cot_product_type = cot_product_types[0]
+        detected_type = "github" if is_github_task(decision_link.task) else "hg"
+        if detected_type not in cot_product_type:
+            raise CoTError('cot_product_type "{}" is not enabled for cot_product "{}"!'.format(detected_type, chain.context.config["cot_product"]))
+        cot_product_type = detected_type
 
     if cot_product_type == "github":
         if tasks_for == "github-release":
