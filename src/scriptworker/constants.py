@@ -409,6 +409,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "netlocs": ("hg.mozilla.org",),
                                     "path_regexes": (
                                         r"^(?P<path>/comm-central)(/|$)",
+                                        r"^(?P<path>/integration/comm-autoland)(/|$)",
                                         r"^(?P<path>/releases/comm-(beta|release|esr\d+))(/|$)",
                                     ),
                                 }
@@ -835,6 +836,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/comm-esr153",
                                 ),
                                 "nightly": ("/comm-central",),
+                                "autoland": ("/integration/comm-autoland",),
                             }
                         ),
                         "translations": immutabledict(
