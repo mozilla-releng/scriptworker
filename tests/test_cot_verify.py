@@ -2433,23 +2433,38 @@ def test_create_test_workdir(mocker, tmpdir, exists, overwrite, raises):
 
 
 @pytest.mark.parametrize(
-    "project,level,raises", (("mozilla-central", "3", False), ("no-such-project", None, True), ("fenix", "3", False), ("vpn", "3", False), ("redo", None, True))
+    "project,branch,level,raises",
+    (
+        ("mozilla-central", None, "3", False),
+        ("no-such-project", None, None, True),
+        ("fenix", "main", "3", False),
+        ("fenix", "refs/heads/main", "3", False),
+        ("fenix", "feature", None, True),
+        ("fenix", None, None, True),
+        ("multi", "main", "1", False),
+        ("multi", "release/v1.0", "3", False),
+        ("multi", "anything-else", "1", False),
+        ("redo", None, None, True),
+    ),
 )
 @pytest.mark.asyncio
-async def test_get_scm_level(rw_context, project, level, raises):
+async def test_get_scm_level(rw_context, project, branch, level, raises):
     rw_context.projects = {
         "mozilla-central": {"access": "scm_level_3", "repo_type": "hg"},
         "fenix": {"branches": [{"name": "main", "level": 3}], "repo_type": "git"},
-        "vpn": {"branches": [{"name": "master", "level": 3}], "default_branch": "master", "repo_type": "git"},
+        "multi": {
+            "branches": [{"name": "main", "level": 1}, {"name": "release/*", "level": 3}, {"name": "*", "level": 1}],
+            "repo_type": "git",
+        },
         "redo": {},
     }
     rw_context._projects_timestamp = time.time()
 
     if raises:
         with pytest.raises(Exception):
-            await cotverify.get_scm_level(rw_context, project)
+            await cotverify.get_scm_level(rw_context, project, branch)
     else:
-        assert await cotverify.get_scm_level(rw_context, project) == level
+        assert await cotverify.get_scm_level(rw_context, project, branch) == level
 
 
 # tests for matching scopes with a partial match, implemented for xpi
