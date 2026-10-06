@@ -4,6 +4,16 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.6.0 - 2026-10-06
+-------------------
+
+Added
+~~~~~
+
+- Accept `github-push` decision tasks for the Firefox CoT product
+- Add `comm-autoland` as a trusted project
+- Obtain a repository scoped Github token from the Taskcluster Auth service
+
 63.5.0 - 2026-09-23
 -------------------
 
