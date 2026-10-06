@@ -331,6 +331,18 @@ autoland:
     is-trunk: true
     taskcluster-cron: true
     taskcluster-push: true
+comm-autoland:
+  repo: https://hg.mozilla.org/integration/comm-autoland
+  repo_type: hg
+  access: scm_level_3
+  trust_domain: comm
+  features:
+    buildbot: true
+    taskcluster-docker-routes-v1: true
+    taskcluster-docker-routes-v2: true
+    is-trunk: true
+    taskcluster-cron: true
+    taskcluster-push: true
 stylo:
   repo: https://hg.mozilla.org/incubator/stylo
   repo_type: hg
