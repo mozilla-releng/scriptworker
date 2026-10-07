@@ -139,6 +139,30 @@ async def test_get_definition(github_repository):
 
 
 @pytest.mark.asyncio
+async def test_get_file_contents_caches_commit_hash(github_repository, tmp_path):
+    github_repository._context.config["work_dir"] = str(tmp_path)
+    repository = await github_repository._get_repository()
+    repository.file_contents.return_value.decoded = b"tasks: []\n"
+    ref = "a" * 40
+
+    assert await github_repository.get_file_contents(".taskcluster.yml", ref=ref) == "tasks: []\n"
+    assert await github_repository.get_file_contents(".taskcluster.yml", ref=ref) == "tasks: []\n"
+    repository.file_contents.assert_called_once_with(".taskcluster.yml", ref=ref)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("ref", (None, "main"))
+async def test_get_file_contents_no_cache_for_mutable_ref(github_repository, tmp_path, ref):
+    github_repository._context.config["work_dir"] = str(tmp_path)
+    repository = await github_repository._get_repository()
+    repository.file_contents.return_value.decoded = b"tasks: []\n"
+
+    await github_repository.get_file_contents(".taskcluster.yml", ref=ref)
+    await github_repository.get_file_contents(".taskcluster.yml", ref=ref)
+    assert repository.file_contents.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_get_commit(github_repository):
     await github_repository.get_commit("somehash")
     repository = await github_repository._get_repository()

@@ -1,8 +1,10 @@
 """GitHub helper functions."""
 
 import asyncio
+import hashlib
 import logging
 import re
+from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from github3 import GitHub
@@ -107,15 +109,29 @@ class GitHubRepository:
         Args:
             path (str): the path to the file, relative to the repository root
             ref (str, optional): the commit/branch/tag to read the file from.
-                Defaults to the repository's default branch.
+                Defaults to the repository's default branch. Results for full
+                commit hashes are cached on disk in `work_dir`.
 
         Returns:
             str: the decoded contents of the file
 
         """
+        # Files at a full commit hash are immutable, so they're safe to cache on disk.
+        cache_path = None
+        if ref and _is_git_full_hash(ref):
+            cache_key = hashlib.sha1(f"{self._owner}/{self._repo_name}@{ref}:{path}".encode("utf-8")).hexdigest()
+            cache_path = Path(self._context.config["work_dir"]) / ".cache" / "github_files" / cache_key
+            if cache_path.exists():
+                return cache_path.read_text(encoding="utf-8")
+
         repository = await self._get_repository()
         contents = repository.file_contents(path, ref=ref)
-        return contents.decoded.decode("utf-8")
+        decoded = contents.decoded.decode("utf-8")
+
+        if cache_path:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(decoded, encoding="utf-8")
+        return decoded
 
     @retry_async_decorator(retry_exceptions=GitHubException)
     async def get_commit(self, commit_hash):
