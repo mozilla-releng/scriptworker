@@ -2009,7 +2009,7 @@ def _get_parent_repo(chain, repos):
             found, ``chain``'s repo; any mismatch is reported by the sibling check.
 
     """
-    parent_repos = {repo for obj, repo in repos.items() if obj.decision_task_id == chain.decision_task_id and obj.task_type in PARENT_TASK_TYPES}
+    parent_repos = {repo for obj, repo in repos.items() if obj.task_id == chain.decision_task_id and obj.task_type in PARENT_TASK_TYPES}
     if len(parent_repos) == 1:
         return parent_repos.pop()
     return repos[chain]

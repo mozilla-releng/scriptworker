@@ -2423,6 +2423,18 @@ async def test_trace_back_to_tree_git_mirror_restricted_leaf(chain, decision_lin
 
 
 @pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror_action_parent(chain, decision_link, build_link, docker_image_link, mocker):
+    # The parent is an action task, whose own decision task is a different task.
+    _use_git_mirror(chain)
+    _use_git_mirror(build_link)
+    decision_link.task_type = "action"
+    decision_link.decision_task_id = "action_decision_task_id"
+    chain.links = [decision_link, build_link, docker_image_link]
+    mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
+    await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.asyncio
 async def test_trace_back_to_tree_git_mirror_not_for_parents(chain, decision_link, build_link, docker_image_link, mocker):
     # Parent tasks are never mapped to their hg equivalent.
     _use_git_mirror(decision_link)
