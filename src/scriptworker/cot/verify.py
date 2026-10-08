@@ -1031,7 +1031,16 @@ async def get_pushlog_info(decision_link):
 
 
 # get_scm_level {{{1
-async def get_scm_level(context, project):
+def _branch_matches(pattern, branch):
+    """Whether ``branch`` matches a ``projects.yml`` branch name, which may end in ``*``."""
+    if pattern == "*":
+        return True
+    if pattern.endswith("*"):
+        return branch.startswith(pattern[:-1])
+    return branch == pattern
+
+
+async def get_scm_level(context, project, branch=None):
     """Get the scm level for a project from ``projects.yml``.
 
     We define all known projects in ``projects.yml``. Let's make sure we have
@@ -1043,6 +1052,8 @@ async def get_scm_level(context, project):
     Args:
         context (scriptworker.context.Context): the scriptworker context
         project (str): the project to get the scm level for.
+        branch (str, optional): the branch the task runs on. Required for git
+            projects, where each branch has its own level. Ignored for hg.
 
     Returns:
         str: the level of the project, as a string.
@@ -1052,15 +1063,15 @@ async def get_scm_level(context, project):
     config = context.projects[project]
     if config["repo_type"] == "hg":
         return config["access"].replace("scm_level_", "")
-    elif config["repo_type"] == "git":
-        # TODO: we should be using the branch that the task is actually
-        # being run on
-        default_branch = config.get("default_branch", "main")
-        for branch in config["branches"]:
-            if branch["name"] == default_branch:
-                return str(branch["level"])
+    elif config["repo_type"] == "git" and branch is not None:
+        if branch.startswith("refs/heads/"):
+            branch = branch[len("refs/heads/") :]
+        # the first matching entry wins, like fxci-config's Project.get_branch()
+        for branch_config in config["branches"]:
+            if _branch_matches(branch_config["name"], branch):
+                return str(branch_config["level"])
 
-    raise ValueError("Can't find level for project {}".format(project))
+    raise ValueError("Can't find level for project {} on branch {}".format(project, branch))
 
 
 async def _get_additional_hg_action_jsone_context(parent_link, decision_link):
@@ -1190,7 +1201,7 @@ async def _get_additional_git_cron_jsone_context(decision_link):
             "sender": {"login": user},
         },
         # Taskgraph cron contexts mirror hg-push contexts
-        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name), "type": "git"},
+        "repository": {"url": repo, "project": repo_name, "level": await get_scm_level(decision_link.context, repo_name, branch), "type": "git"},
         "push": {"revision": revision, "branch": branch},
     }
 
