@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.6.1 - 2026-10-08
+-------------------
+
+Fixed
+~~~~~
+
+- CoT verification error with Git-mirrored task triggered via action
+
 63.6.0 - 2026-10-06
 -------------------
 
