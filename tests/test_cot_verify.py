@@ -2467,6 +2467,15 @@ async def test_get_scm_level(rw_context, project, branch, level, raises):
         assert await cotverify.get_scm_level(rw_context, project, branch) == level
 
 
+@pytest.mark.asyncio
+async def test_get_scm_level_git_requires_branch(rw_context):
+    rw_context.projects = {"fenix": {"branches": [{"name": "main", "level": 3}], "repo_type": "git"}}
+    rw_context._projects_timestamp = time.time()
+
+    with pytest.raises(ValueError, match="branch is required"):
+        await cotverify.get_scm_level(rw_context, "fenix")
+
+
 # tests for matching scopes with a partial match, implemented for xpi
 @pytest.mark.parametrize(
     "scope, restricted_scopes, expected",

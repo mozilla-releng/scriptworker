@@ -1062,7 +1062,9 @@ async def get_scm_level(context, project, branch=None):
     config = context.projects[project]
     if config["repo_type"] == "hg":
         return config["access"].replace("scm_level_", "")
-    elif config["repo_type"] == "git" and branch is not None:
+    elif config["repo_type"] == "git":
+        if branch is None:
+            raise ValueError("{} is a git project, so a branch is required to find its level".format(project))
         if branch.startswith("refs/heads/"):
             branch = branch[len("refs/heads/") :]
         # the first matching entry wins, like fxci-config's Project.get_branch()
