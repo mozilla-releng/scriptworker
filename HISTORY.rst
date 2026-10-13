@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+63.7.0 - 2026-10-13
+-------------------
+
+Added
+~~~~~
+
+- take a git project's scm level from the task branch (#839)
+
 63.6.1 - 2026-10-08
 -------------------
 
