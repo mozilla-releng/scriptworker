@@ -44,6 +44,8 @@ log = logging.getLogger(__name__)
 def scriptworker_session(*args, **kwargs):
     """Return an ``aiohttp.ClientSession`` with the scriptworker User-Agent header set."""
     kwargs.setdefault("headers", {}).setdefault("User-Agent", f"scriptworker {scriptworker.__version__}")
+    kwargs.setdefault("max_line_size", 8190 * 2)
+    kwargs.setdefault("max_field_size", 8190 * 2)
     return aiohttp.ClientSession(*args, **kwargs)
 
 
