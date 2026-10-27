@@ -142,16 +142,13 @@ VERIFY_COT_BRANCH_CONTEXTS = (
         "task_type": "signing",
         "cot_product": "firefox",
     },
-    pytest.param(
-        {
-            "name": "reference-browser nightly",
-            "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
-            "index": "mobile.v2.reference-browser.nightly.latest.arm64-v8a",
-            "task_type": "signing",
-            "cot_product": "mobile",
-        },
-        marks=pytest.mark.xfail,
-    ),
+    {
+        "name": "reference-browser nightly",
+        "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
+        "index": "mobile.v2.reference-browser.nightly.latest.arm64-v8a",
+        "task_type": "signing",
+        "cot_product": "mobile",
+    },
     {
         "name": "adhoc-signing-decision",
         "taskcluster_root_url": "https://firefox-ci-tc.services.mozilla.com/",
