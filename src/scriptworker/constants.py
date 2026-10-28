@@ -464,7 +464,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "/releases/mozilla-beta": "/mozilla-firefox/firefox",
                                 "/releases/mozilla-release": "/mozilla-firefox/firefox",
                                 "/releases/mozilla-esr115": "/mozilla-firefox/firefox",
-                                "/releases/mozilla-esr140": "/mozilla-firefox/firefox",
                                 "/releases/mozilla-esr153": "/mozilla-firefox/firefox",
                             }
                         ),
@@ -634,7 +633,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "project:releng:lando:repo:beta": "beta",
                                 "project:releng:lando:repo:release": "release",
                                 "project:releng:lando:repo:esr115": "esr115",
-                                "project:releng:lando:repo:esr140": "esr140",
                                 "project:releng:lando:repo:esr153": "esr153",
                             }
                         ),
@@ -730,7 +728,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-beta",
                                     "/releases/mozilla-release",
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                     "/projects/birch",
                                     # Bug 1821839 hneiva using to test hardened signing
@@ -740,7 +737,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-beta",
                                     "/releases/mozilla-release",
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                     "/projects/birch",
                                     "/projects/maple",
@@ -754,11 +750,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-release",
                                 ),
                                 "esr115": ("/releases/mozilla-esr115",),
-                                "esr140": ("/releases/mozilla-esr140",),
                                 "esr153": ("/releases/mozilla-esr153",),
                                 "esr": (
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                 ),
                                 "nightly": ("/mozilla-central",),
@@ -770,7 +764,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-beta",
                                     "/releases/mozilla-release",
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                     # bug 1845368: a permanent project branch for testing updates
                                     "/projects/pine",
@@ -783,7 +776,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-beta",
                                     "/releases/mozilla-release",
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                 ),
                                 "all-production-branches-and-autoland": (
@@ -791,7 +783,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/mozilla-beta",
                                     "/releases/mozilla-release",
                                     "/releases/mozilla-esr115",
-                                    "/releases/mozilla-esr140",
                                     "/releases/mozilla-esr153",
                                     "/integration/autoland",
                                 ),
@@ -820,7 +811,6 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                     "/releases/comm-beta",
                                     "/releases/comm-release",
                                     "/releases/comm-esr115",
-                                    "/releases/comm-esr140",
                                     "/releases/comm-esr153",
                                 ),
                                 "beta": ("/releases/comm-beta",),
@@ -828,16 +818,14 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "release-or-esr": (
                                     "/releases/comm-release",
                                     "/releases/comm-esr115",
-                                    "/releases/comm-esr140",
                                     "/releases/comm-esr153",
                                 ),
-                                "esr": ("/releases/comm-esr115", "/releases/comm-esr140", "/releases/comm-esr153"),
+                                "esr": ("/releases/comm-esr115", "/releases/comm-esr153"),
                                 "all-nightly-branches": (
                                     "/comm-central",
                                     "/releases/comm-beta",
                                     "/releases/comm-release",
                                     "/releases/comm-esr115",
-                                    "/releases/comm-esr140",
                                     "/releases/comm-esr153",
                                 ),
                                 "nightly": ("/comm-central",),
