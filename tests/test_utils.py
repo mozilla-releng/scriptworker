@@ -263,6 +263,19 @@ async def test_raise_future_exceptions(exc):
 
 
 @pytest.mark.asyncio
+async def test_raise_future_exceptions_cancelled():
+    """Cancelling the caller also cancels the tasks it is waiting on."""
+    tasks = [asyncio.ensure_future(asyncio.Event().wait()) for _ in range(2)]
+    waiter = asyncio.ensure_future(utils.raise_future_exceptions(tasks))
+    await asyncio.sleep(0)
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+    await asyncio.wait(tasks)
+    assert all(task.cancelled() for task in tasks)
+
+
+@pytest.mark.asyncio
 async def test_raise_future_exceptions_noop():
     await utils.raise_future_exceptions([])
 

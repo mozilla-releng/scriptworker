@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify"""
 
+import asyncio
 import json
 import logging
 import os
@@ -18,7 +19,8 @@ from immutabledict import immutabledict
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
-from scriptworker.exceptions import CoTError, DownloadError
+from scriptworker.constants import STATUSES
+from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerTaskException
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
 
 from . import create_async, noop_async, noop_sync, touch
@@ -2481,6 +2483,36 @@ async def test_verify_chain_of_trust(chain, exc, check_task, mocker):
             await cotverify.verify_chain_of_trust(chain, check_task=check_task)
     else:
         await cotverify.verify_chain_of_trust(chain, check_task=check_task)
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_timeout(chain, mocker):
+    async def hang(*args):
+        await asyncio.Event().wait()
+
+    for func in ("build_task_dependencies", "download_cot", "download_cot_artifacts", "verify_task_types", "verify_worker_impls"):
+        mocker.patch.object(cotverify, func, new=noop_async)
+    mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
+    mocker.patch.object(cotverify, "trace_back_to_tree", new=hang)
+    mocker.patch.object(cotverify, "COT_TIMEOUT_SECONDS", 0.01)
+    with pytest.raises(ScriptWorkerTaskException, match="timed out after 0.01 seconds") as excinfo:
+        await cotverify.verify_chain_of_trust(chain)
+    assert excinfo.value.exit_code == STATUSES["intermittent-task"]
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_other_timeout_error(chain, mocker):
+    """A TimeoutError raised by a verification step is not reported as a CoT timeout."""
+
+    async def die(*args):
+        raise TimeoutError("download timed out")
+
+    for func in ("build_task_dependencies", "download_cot_artifacts", "verify_task_types", "verify_worker_impls", "trace_back_to_tree"):
+        mocker.patch.object(cotverify, func, new=noop_async)
+    mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
+    mocker.patch.object(cotverify, "download_cot", new=die)
+    with pytest.raises(TimeoutError, match="download timed out"):
+        await cotverify.verify_chain_of_trust(chain)
 
 
 # verify_cot_cmdln {{{1

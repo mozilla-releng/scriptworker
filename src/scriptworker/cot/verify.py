@@ -35,10 +35,10 @@ from scriptworker.artifacts import (
     retry_list_latest_artifacts,
 )
 from scriptworker.config import apply_product_config, read_worker_creds
-from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG, STATUSES
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
-from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
+from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error, ScriptWorkerTaskException
 from scriptworker.github import (
     GitHubRepository,
     extract_github_repo_full_name,
@@ -94,6 +94,8 @@ from scriptworker.utils import (
 
 log = logging.getLogger(__name__)
 
+# Maximum time ``verify_chain_of_trust`` may run before the task is resolved as intermittent-task
+COT_TIMEOUT_SECONDS = 900
 
 DECISION_TASK_TYPES = ("decision",)
 PARENT_TASK_TYPES = ("decision", "action")
@@ -2133,6 +2135,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
 
     Raises:
         CoTError: on failure
+        ScriptWorkerTaskException: if verification takes longer than ``COT_TIMEOUT_SECONDS``
 
     """
     log_path = get_chain_of_trust_log_filename(chain.context)
@@ -2144,28 +2147,37 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         formatter=AuditLogFormatter(fmt=chain.context.config["log_fmt"], datefmt=chain.context.config["log_datefmt"]),
     ):
         log.info("Running scriptworker version {}".format(__version__))
+        cot_timeout = asyncio.timeout(COT_TIMEOUT_SECONDS)
         try:
-            # build LinkOfTrust objects
-            if check_task:
-                await add_link(chain, chain.name, chain.task_id)
-            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-            # download the signed chain of trust artifacts
-            await download_cot(chain)
-            # verify the signatures and populate the ``link.cot``s
-            verify_cot_signatures(chain)
-            # download all other artifacts needed to verify chain of trust
-            await download_cot_artifacts(chain)
-            # verify the task types, e.g. decision
-            await verify_task_types(chain)
-            # verify the worker_impls, e.g. docker-worker
-            await verify_worker_impls(chain)
-            await trace_back_to_tree(chain)
+            async with cot_timeout:
+                # build LinkOfTrust objects
+                if check_task:
+                    await add_link(chain, chain.name, chain.task_id)
+                await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+                # download the signed chain of trust artifacts
+                await download_cot(chain)
+                # verify the signatures and populate the ``link.cot``s
+                verify_cot_signatures(chain)
+                # download all other artifacts needed to verify chain of trust
+                await download_cot_artifacts(chain)
+                # verify the task types, e.g. decision
+                await verify_task_types(chain)
+                # verify the worker_impls, e.g. docker-worker
+                await verify_worker_impls(chain)
+                await trace_back_to_tree(chain)
         except (BaseDownloadError, KeyError, TypeError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
                 raise
             else:
                 raise CoTError(str(exc))
+        except TimeoutError as exc:
+            # Only handle our own deadline; other TimeoutErrors (e.g. a download) propagate unchanged
+            if not cot_timeout.expired():
+                raise
+            message = "Chain of Trust verification timed out after {} seconds!".format(COT_TIMEOUT_SECONDS)
+            log.critical(message)
+            raise ScriptWorkerTaskException(message, exit_code=STATUSES["intermittent-task"]) from exc
         log.info("Good.")
 
 
