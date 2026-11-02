@@ -607,6 +607,19 @@ async def test_run_task_shutdown(context):
 
 
 @pytest.mark.asyncio
+async def test_run_task_claim_lost(context):
+    """If reclaimTask already returned 409, the task script is killed as soon as it starts."""
+    context.config["task_script"] = ("bash", "-c", "sleep 30")
+    context.claim_lost = True
+    pre = arrow.utcnow().int_timestamp
+    with pytest.raises(ScriptWorkerTaskException, match="before the task script started") as excinfo:
+        await swtask.run_task(context, noop_to_cancellable_process)
+    assert arrow.utcnow().int_timestamp - pre < 10
+    assert excinfo.value.exit_code == context.config["invalid_reclaim_status"]
+    assert context.proc is None
+
+
+@pytest.mark.asyncio
 async def test_run_task_negative_11(context, mocker):
     async def fake_wait():
         return -11
@@ -789,6 +802,39 @@ async def test_reclaim_task_mock(context, mocker, no_proc):
         assert kill_count == 0
     else:
         assert kill_count == 1
+
+
+@pytest.mark.asyncio
+async def test_reclaim_task_409_cancels_cot(context):
+    """A 409 from reclaimTask cancels a running Chain of Trust verification."""
+
+    async def reclaim_409(*args, **kwargs):
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
+
+    context.temp_queue = MagicMock()
+    context.temp_queue.reclaimTask = reclaim_409
+    context.config["reclaim_interval"] = 0
+    context.cot_future = asyncio.ensure_future(asyncio.Event().wait())
+    await swtask.reclaim_task(context, context.task)
+    assert context.claim_lost is True
+    with pytest.raises(asyncio.CancelledError):
+        await context.cot_future
+
+
+@pytest.mark.asyncio
+async def test_reclaim_task_409_between_cot_and_task_script(context):
+    """A 409 that arrives while neither CoT nor the task script is running is still recorded."""
+
+    async def reclaim_409(*args, **kwargs):
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
+
+    context.temp_queue = MagicMock()
+    context.temp_queue.reclaimTask = reclaim_409
+    context.config["reclaim_interval"] = 0
+    assert context.cot_future is None
+    assert context.proc is None
+    await swtask.reclaim_task(context, context.task)
+    assert context.claim_lost is True
 
 
 # claim_work {{{1
