@@ -2631,7 +2631,7 @@ async def test_verify_chain_of_trust_timeout(chain, mocker):
         mocker.patch.object(cotverify, func, new=noop_async)
     mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
     mocker.patch.object(cotverify, "trace_back_to_tree", new=hang)
-    mocker.patch.object(cotverify, "COT_TIMEOUT_SECONDS", 0.01)
+    chain.context.config["cot_max_timeout"] = 0.01
     with pytest.raises(ScriptWorkerTaskException, match="timed out after 0.01 seconds") as excinfo:
         await cotverify.verify_chain_of_trust(chain)
     assert excinfo.value.exit_code == STATUSES["intermittent-task"]

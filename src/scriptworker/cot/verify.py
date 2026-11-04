@@ -94,9 +94,6 @@ from scriptworker.utils import (
 
 log = logging.getLogger(__name__)
 
-# Maximum time ``verify_chain_of_trust`` may run before the task is resolved as intermittent-task
-COT_TIMEOUT_SECONDS = 900
-
 DECISION_TASK_TYPES = ("decision",)
 PARENT_TASK_TYPES = ("decision", "action")
 
@@ -2149,7 +2146,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
 
     Raises:
         CoTError: on failure
-        ScriptWorkerTaskException: if verification takes longer than ``COT_TIMEOUT_SECONDS``
+        ScriptWorkerTaskException: if verification takes longer than ``config["cot_max_timeout"]`` seconds
 
     """
     log_path = get_chain_of_trust_log_filename(chain.context)
@@ -2161,7 +2158,8 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         formatter=AuditLogFormatter(fmt=chain.context.config["log_fmt"], datefmt=chain.context.config["log_datefmt"]),
     ):
         log.info("Running scriptworker version {}".format(__version__))
-        cot_timeout = asyncio.timeout(COT_TIMEOUT_SECONDS)
+        cot_max_timeout = chain.context.config["cot_max_timeout"]
+        cot_timeout = asyncio.timeout(cot_max_timeout)
         try:
             async with cot_timeout:
                 # build LinkOfTrust objects
@@ -2189,7 +2187,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
             # Only handle our own deadline; other TimeoutErrors (e.g. a download) propagate unchanged
             if not cot_timeout.expired():
                 raise
-            message = f"Chain of Trust verification timed out after {COT_TIMEOUT_SECONDS} seconds!"
+            message = f"Chain of Trust verification timed out after {cot_max_timeout} seconds!"
             log.critical(message)
             raise ScriptWorkerTaskException(message, exit_code=STATUSES["intermittent-task"]) from exc
         log.info("Good.")

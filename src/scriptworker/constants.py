@@ -47,6 +47,9 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
         "watch_log_file": False,
         # intervals are expressed in seconds
         "task_max_timeout": 60 * 20,
+        # Chain of Trust verification runs before the task script, so task_max_timeout doesn't cover it.
+        # On timeout the task is resolved as intermittent-task.
+        "cot_max_timeout": 60 * 15,
         "reclaim_interval": 300,
         "poll_interval": 10,
         "sign_key_timeout": 60 * 2,
