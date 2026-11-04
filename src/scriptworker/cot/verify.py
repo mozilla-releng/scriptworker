@@ -823,7 +823,15 @@ async def download_cot_artifacts(chain):
             else:
                 mandatory_artifact_tasks.extend(coroutines)
 
-    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    try:
+        mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    except BaseException:
+        # A mandatory artifact download failure or cancellation (e.g. CoT timeout) means the optional
+        # artifacts downloads can be safely cancelled regardless of their current state.
+        for task in optional_artifact_tasks:
+            task.cancel()
+        await asyncio.gather(*optional_artifact_tasks, return_exceptions=True)
+        raise
     succeeded_optional_artifacts_paths, failed_optional_artifacts = await get_results_and_future_exceptions(optional_artifact_tasks)
 
     if failed_optional_artifacts:

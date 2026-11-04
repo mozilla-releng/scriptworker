@@ -926,6 +926,44 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
         assert sorted(result) == ["path1", "path2", "path3"]
 
 
+@pytest.mark.parametrize("cancel", (False, True))
+@pytest.mark.asyncio
+async def test_download_cot_artifacts_cancels_optional(chain, mocker, cancel):
+    """Optional downloads are cancelled when a mandatory download fails or the caller is cancelled."""
+    optional_started = asyncio.Event()
+    optional_cancelled = []
+
+    async def fake_download(x, y, path):
+        if path == "optional":
+            optional_started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                optional_cancelled.append(path)
+                raise
+        await optional_started.wait()
+        if cancel:
+            await asyncio.Event().wait()
+        raise DownloadError("mandatory failed")
+
+    chain.task["payload"]["upstreamArtifacts"] = [
+        {"taskId": "task_id", "paths": ["mandatory"]},
+        {"taskId": "task_id", "paths": ["optional"], "optional": True},
+    ]
+    mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)
+    waiter = asyncio.ensure_future(cotverify.download_cot_artifacts(chain))
+    await optional_started.wait()
+    if cancel:
+        await asyncio.sleep(0)
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+    else:
+        with pytest.raises(DownloadError, match="mandatory failed"):
+            await waiter
+    assert optional_cancelled == ["optional"]
+
+
 # download_cot_artifacts {{{1
 @pytest.mark.parametrize(
     "upstreamArtifacts,expected,artifact_prefix",
