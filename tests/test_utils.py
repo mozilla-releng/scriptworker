@@ -244,6 +244,17 @@ def test_create_temp_creds():
 
 
 # raise_future_exceptions {{{1
+async def _slow_to_cancel(cleaned_up, steps=3):
+    """Block forever; on cancellation, take a few loop iterations to clean up."""
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        for _ in range(steps):
+            await asyncio.sleep(0)
+        cleaned_up.append(True)
+        raise
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exc", (IOError, SyntaxError, None))
 async def test_raise_future_exceptions(exc):
@@ -264,14 +275,15 @@ async def test_raise_future_exceptions(exc):
 
 @pytest.mark.asyncio
 async def test_raise_future_exceptions_cancelled():
-    """Cancelling the caller also cancels the tasks it is waiting on."""
-    tasks = [asyncio.ensure_future(asyncio.Event().wait()) for _ in range(2)]
+    """Cancelling the caller also cancels the tasks it is waiting on, and waits for their cleanup."""
+    cleaned_up = []
+    tasks = [asyncio.ensure_future(_slow_to_cancel(cleaned_up)) for _ in range(2)]
     waiter = asyncio.ensure_future(utils.raise_future_exceptions(tasks))
     await asyncio.sleep(0)
     waiter.cancel()
     with pytest.raises(asyncio.CancelledError):
         await waiter
-    await asyncio.wait(tasks)
+    assert len(cleaned_up) == 2
     assert all(task.cancelled() for task in tasks)
 
 
@@ -280,9 +292,12 @@ async def test_raise_future_exceptions_noop():
     await utils.raise_future_exceptions([])
 
 
+# get_results_and_future_exceptions {{{1
 @pytest.mark.asyncio
 @pytest.mark.parametrize("exc", (IOError, SyntaxError, None))
-async def test_get_results_and_future_exceptions(exc):
+async def test_get_results_and_future_exceptions_optional(exc):
+    """Failed optional tasks are returned, never raised."""
+
     async def one():
         if exc is None:
             return "passed1"
@@ -294,13 +309,78 @@ async def test_get_results_and_future_exceptions(exc):
 
     tasks = [asyncio.ensure_future(one()), asyncio.ensure_future(two())]
 
-    passed_results, error_results = await utils.get_results_and_future_exceptions(tasks)
+    mandatory_results, passed_results, error_results = await utils.get_results_and_future_exceptions((), tasks)
+    assert mandatory_results == []
     if exc is None:
         assert passed_results == ["passed1", "passed2"]
         assert error_results == []
     else:
         assert passed_results == ["passed2"]
         assert [str(error) for error in error_results] == [str(exc("failed"))]
+
+
+@pytest.mark.asyncio
+async def test_get_results_and_future_exceptions_mixed():
+    async def result(value):
+        return value
+
+    async def fail():
+        raise IOError("optional failed")
+
+    mandatory = [asyncio.ensure_future(result("m1")), asyncio.ensure_future(result("m2"))]
+    optional = [asyncio.ensure_future(result("o1")), asyncio.ensure_future(fail())]
+
+    mandatory_results, optional_results, optional_errors = await utils.get_results_and_future_exceptions(mandatory, optional)
+    assert mandatory_results == ["m1", "m2"]
+    assert optional_results == ["o1"]
+    assert [str(error) for error in optional_errors] == ["optional failed"]
+
+
+@pytest.mark.asyncio
+async def test_get_results_and_future_exceptions_mandatory_failure():
+    """A mandatory failure is raised, but only once the optional tasks have finished."""
+    release = asyncio.Event()
+
+    async def fail():
+        raise IOError("mandatory failed")
+
+    async def slow_optional():
+        await release.wait()
+        return "optional"
+
+    mandatory = [asyncio.ensure_future(fail())]
+    optional = [asyncio.ensure_future(slow_optional())]
+    waiter = asyncio.ensure_future(utils.get_results_and_future_exceptions(mandatory, optional))
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert mandatory[0].done()
+    assert not waiter.done()
+
+    release.set()
+    with pytest.raises(IOError, match="mandatory failed"):
+        await waiter
+    assert optional[0].done()
+    assert not optional[0].cancelled()
+
+
+@pytest.mark.asyncio
+async def test_get_results_and_future_exceptions_cancelled():
+    """Cancelling the caller cancels both mandatory and optional tasks, and waits for their cleanup."""
+    cleaned_up = []
+    mandatory = [asyncio.ensure_future(_slow_to_cancel(cleaned_up)) for _ in range(2)]
+    optional = [asyncio.ensure_future(_slow_to_cancel(cleaned_up, steps=10)) for _ in range(2)]
+    waiter = asyncio.ensure_future(utils.get_results_and_future_exceptions(mandatory, optional))
+    await asyncio.sleep(0)
+    waiter.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiter
+    assert len(cleaned_up) == 4
+    assert all(task.cancelled() for task in mandatory + optional)
+
+
+@pytest.mark.asyncio
+async def test_get_results_and_future_exceptions_noop():
+    assert await utils.get_results_and_future_exceptions([], []) == ([], [], [])
 
 
 # filepaths_in_dir {{{1

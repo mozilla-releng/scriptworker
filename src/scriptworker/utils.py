@@ -418,54 +418,48 @@ async def raise_future_exceptions(tasks):
         Exception: any exceptions in task.exception()
 
     """
-    succeeded_results, _ = await _process_future_exceptions(tasks, raise_at_first_error=True)
+    succeeded_results, *_ = await get_results_and_future_exceptions(tasks)
     return succeeded_results
 
 
 # get_results_and_future_exceptions {{{1
-async def get_results_and_future_exceptions(tasks):
-    """Given a list of futures, await them, then return results and exceptions.
+async def get_results_and_future_exceptions(mandatory_tasks, optional_tasks=()):
+    """Given two lists of futures, await them.
 
-    This is similar to raise_future_exceptions, except that it doesn't raise any
-    exception. They are returned instead. This allows some tasks to optionally fail.
-    Please consider that no exception will be raised when calling this function.
-    You must verify the content of the second item of the tuple. It contains all
-    exceptions raised by the futures.
-
-    Args:
-        tasks (list): the list of futures to await and check for exceptions.
-
-    Returns:
-        tuple: the list of results from the futures, then the list of exceptions.
-
+    If any of the mandatory tasks raises, its exception is re-raised.
+    Otherwise, return the results of the successful mandatory and optional
+    tasks, and the exceptions from any failed optional tasks.
     """
-    return await _process_future_exceptions(tasks, raise_at_first_error=False)
+    tasks = [*mandatory_tasks, *optional_tasks]
 
+    if not tasks:
+        return [], [], []
 
-async def _process_future_exceptions(tasks, raise_at_first_error):
-    succeeded_results = []
-    error_results = []
-
-    if tasks:
-        try:
-            await asyncio.wait(tasks)
-        except asyncio.CancelledError:
-            # Don't leave the tasks running in the background when the caller is cancelled
-            for task in tasks:
-                task.cancel()
-            raise
+    try:
+        await asyncio.wait(tasks)
+    except asyncio.CancelledError:
+        # Don't leave the tasks running in the background when the caller is cancelled
         for task in tasks:
-            exc = task.exception()
-            if exc:
-                if raise_at_first_error:
-                    raise exc
-                else:
-                    log.warning("Async task failed with error: {}".format(exc))
-                    error_results.append(exc)
-            else:
-                succeeded_results.append(task.result())
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    mandatory_results = []
+    for task in mandatory_tasks:
+        exc = task.exception()
+        if exc:
+            raise exc
+        mandatory_results.append(task.result())
+    optional_errors = []
+    optional_results = []
+    for task in optional_tasks:
+        exc = task.exception()
+        if exc:
+            log.warning("Async task failed with error: {}".format(exc))
+            optional_errors.append(exc)
+        else:
+            optional_results.append(task.result())
 
-    return succeeded_results, error_results
+    return mandatory_results, optional_results, optional_errors
 
 
 # filepaths_in_dir {{{1

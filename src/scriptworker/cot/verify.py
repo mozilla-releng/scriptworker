@@ -812,8 +812,9 @@ async def download_cot_artifacts(chain):
             else:
                 mandatory_artifact_tasks.extend(coroutines)
 
-    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
-    succeeded_optional_artifacts_paths, failed_optional_artifacts = await get_results_and_future_exceptions(optional_artifact_tasks)
+    mandatory_artifacts_paths, succeeded_optional_artifacts_paths, failed_optional_artifacts = await get_results_and_future_exceptions(
+        mandatory_artifact_tasks, optional_artifact_tasks
+    )
 
     if failed_optional_artifacts:
         log.warning("Could not download {} artifacts: {}".format(len(failed_optional_artifacts), failed_optional_artifacts))
