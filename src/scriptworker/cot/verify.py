@@ -2189,7 +2189,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
             # Only handle our own deadline; other TimeoutErrors (e.g. a download) propagate unchanged
             if not cot_timeout.expired():
                 raise
-            message = "Chain of Trust verification timed out after {} seconds!".format(COT_TIMEOUT_SECONDS)
+            message = f"Chain of Trust verification timed out after {COT_TIMEOUT_SECONDS} seconds!"
             log.critical(message)
             raise ScriptWorkerTaskException(message, exit_code=STATUSES["intermittent-task"]) from exc
         log.info("Good.")
