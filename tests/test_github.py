@@ -282,6 +282,62 @@ async def test_has_commit_landed_on_repository(context, github_repository, commi
         repository.compare_commits.assert_called_once_with(base, commitish)
 
 
+@pytest.mark.parametrize(
+    "ref, expected",
+    (
+        # Not a ref
+        (None, None),
+        ("", None),
+        (123, None),
+        # Fully qualified branches and tags are used as-is
+        ("refs/heads/main", "refs/heads/main"),
+        ("refs/heads/release/v1", "refs/heads/release/v1"),
+        ("refs/tags/v1.0.0", "refs/tags/v1.0.0"),
+        ("refs/tags/releases/v1.0.0", "refs/tags/releases/v1.0.0"),
+        # GitHub looks up fully qualified refs strictly, so this is a branch named "pull/123/head"
+        ("refs/heads/pull/123/head", "refs/heads/pull/123/head"),
+        # A branch or tag namespace without a name
+        ("refs/heads/", None),
+        ("refs/tags/", None),
+        ("refs/heads", None),
+        ("refs/tags", None),
+        ("refs/", None),
+        ("refs//heads/main", None),
+        # Refs that aren't branches or tags
+        ("refs/pull/123/head", None),
+        ("refs/pull/123/merge", None),
+        ("refs/notes/commits", None),
+        ("refs/remotes/origin/main", None),
+        ("refs/changes/12/345/6", None),
+        # Bare names are qualified as branches, so GitHub doesn't resolve them loosely
+        ("main", "refs/heads/main"),
+        ("release/v1", "refs/heads/release/v1"),
+        ("pull/123/head", "refs/heads/pull/123/head"),
+        ("heads/main", "refs/heads/heads/main"),
+        ("tags/v1.0.0", "refs/heads/tags/v1.0.0"),
+        ("refs", "refs/heads/refs"),
+        # Commit hashes, which a commit is trivially reachable from
+        ("0129abcdef012345643456789abcdef012345678", None),
+        ("0129abc", None),
+        # Too short to be an abbreviated hash, or not lowercase hex: a branch name
+        ("012abc", "refs/heads/012abc"),
+        ("0129ABC", "refs/heads/0129ABC"),
+        # Qualified, it's a branch, which GitHub looks up strictly
+        ("refs/heads/0129abcdef012345643456789abcdef012345678", "refs/heads/0129abcdef012345643456789abcdef012345678"),
+        # Refs from other repositories of the network, like forks
+        ("some-fork-owner:main", None),
+        ("some-fork-owner:refs/heads/main", None),
+        ("refs/heads/main:other", None),
+        # Ranges
+        ("main..other", None),
+        ("main...other", None),
+        ("refs/heads/main..refs/heads/other", None),
+    ),
+)
+def test_qualify_ref(ref, expected):
+    assert github._qualify_ref(ref) == expected
+
+
 @pytest.mark.asyncio
 async def test_has_commit_landed_on_repository_private(vpn_context, github_repository):
     """For private repos we don't actually query against github."""
