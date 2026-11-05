@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+64.0.1 - 2026-11-05
+-------------------
+
+Fixed
+~~~~~
+
+- use head_git_ref from the parameters as the fallback ref of graphs generated from hg (bug 2089531)
+
 64.0.0 - 2026-11-05
 -------------------
 
