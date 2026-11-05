@@ -430,6 +430,39 @@ async def test_is_pull_request(mocker, mobile_context, task, has_commit_landed, 
 
 
 @pytest.mark.parametrize(
+    "env, fallback_ref, expected_ref",
+    (
+        ({"MOBILE_HEAD_REF": "refs/heads/main"}, None, "refs/heads/main"),
+        ({"MOBILE_HEAD_REF": "refs/heads/main"}, "refs/heads/other", "refs/heads/main"),
+        ({"MOBILE_HEAD_BRANCH": "main", "MOBILE_HEAD_REF": "refs/heads/other"}, None, "main"),
+        ({"MOBILE_HEAD_REF": "refs/tags/v1.0.0"}, None, "refs/tags/v1.0.0"),
+        # e.g. docker-image or scriptworker tasks: use the ref of their decision task
+        ({}, "refs/heads/main", "refs/heads/main"),
+        ({}, None, None),
+    ),
+)
+@pytest.mark.asyncio
+async def test_is_pull_request_ref(mocker, mobile_context, env, fallback_ref, expected_ref):
+    calls = []
+
+    async def has_commit_landed_on_repository(context, revision, ref):
+        calls.append((revision, ref))
+        return True
+
+    github_repository_instance_mock = MagicMock()
+    github_repository_instance_mock.has_commit_landed_on_repository = has_commit_landed_on_repository
+    mocker.patch.object(swtask, "GitHubRepository", MagicMock(return_value=github_repository_instance_mock))
+
+    task = {
+        "payload": {"env": env},
+        "extra": {"tasks_for": "github-push"},
+        "metadata": {"source": "https://github.com/mozilla-mobile/some-repo/raw/0123456789abcdef0123456789abcdef01234567/.taskcluster.yml"},
+    }
+    assert not await swtask.is_pull_request(mobile_context, task, fallback_ref=fallback_ref)
+    assert calls == [("0123456789abcdef0123456789abcdef01234567", expected_ref)]
+
+
+@pytest.mark.parametrize(
     "context_type, is_github_task, is_try, is_pr, expected",
     (
         ("firefox", True, True, False, False),
@@ -446,7 +479,7 @@ async def test_is_pull_request(mocker, mobile_context, task, has_commit_landed, 
 async def test_is_try_or_pull_request(mocker, context, mobile_context, context_type, is_github_task, is_try, is_pr, expected):
     context_ = mobile_context if context_type == "mobile" else context
 
-    async def is_pull_request(*args):
+    async def is_pull_request(*args, **kwargs):
         return is_pr
 
     mocker.patch.object(swtask, "is_github_task", lambda *args: is_github_task)

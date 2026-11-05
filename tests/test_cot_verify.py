@@ -409,6 +409,103 @@ async def test_chain_is_try_or_pull_request(chain, bools, expected):
     assert await chain.is_try_or_pull_request() == expected
 
 
+@pytest.mark.asyncio
+async def test_chain_is_try_or_pull_request_fallback_ref(mocker, chain):
+    """Links without a ref of their own fall back to their decision task's."""
+    chain.decision_task_id = "decision_task_id"
+    decision_link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
+    decision_link.task = dict(chain.task, taskGroupId="decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/beta"}})
+    other_decision_link = cotverify.LinkOfTrust(chain.context, "decision", "other_decision_task_id")
+    other_decision_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/autoland"}})
+    docker_image_link = cotverify.LinkOfTrust(chain.context, "docker-image", "docker_image_task_id")
+    docker_image_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={})
+    orphan_link = cotverify.LinkOfTrust(chain.context, "build", "orphan_task_id")
+    orphan_link.task = dict(chain.task, taskGroupId="missing_decision_task_id", payload={})
+    chain.links = [decision_link, other_decision_link, docker_image_link, orphan_link]
+
+    names = {id(chain.task): "chain", **{id(link.task): link.task_id for link in chain.links}}
+    calls = []
+
+    async def is_try_or_pull_request(context, task, fallback_ref=None):
+        calls.append((names[id(task)], fallback_ref))
+        return False
+
+    mocker.patch.object(cotverify, "is_try_or_pull_request", is_try_or_pull_request)
+    assert not await chain.is_try_or_pull_request()
+    assert sorted(calls) == sorted(
+        [
+            ("chain", "refs/heads/beta"),
+            ("decision_task_id", "refs/heads/beta"),
+            ("other_decision_task_id", "refs/heads/autoland"),
+            ("docker_image_task_id", "refs/heads/autoland"),
+            ("orphan_task_id", None),
+        ]
+    )
+
+
+def _craft_link_with_payload(chain, task_id="decision_task_id", payload=None):
+    link = cotverify.LinkOfTrust(chain.context, "decision", task_id)
+    link.task = dict(chain.task, taskGroupId=task_id, payload=payload if payload is not None else {})
+    return link
+
+
+@pytest.mark.parametrize(
+    "decision_payloads, expected",
+    (
+        # The decision task is in the chain
+        ([{"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}], "refs/heads/beta"),
+        ([{"env": {"GECKO_HEAD_REF": "refs/tags/FIREFOX_BETA_123_0b1_RELEASE"}}], "refs/tags/FIREFOX_BETA_123_0b1_RELEASE"),
+        ([{"env": {"GECKO_HEAD_BRANCH": "beta"}}], "beta"),
+        # *_HEAD_BRANCH takes precedence, like in get_branch()
+        ([{"env": {"GECKO_HEAD_BRANCH": "beta", "GECKO_HEAD_REF": "refs/heads/release"}}], "beta"),
+        # The decision task doesn't define a ref
+        ([{"env": {}}], None),
+        ([{}], None),
+        ([{"env": {"GECKO_HEAD_REV": "0129abcdef012345643456789abcdef012345678"}}], None),
+        # The decision task uses another prefix than this worker
+        ([{"env": {"MOBILE_HEAD_REF": "refs/heads/main"}}], None),
+        # The decision task isn't in the chain
+        ([], None),
+        # Several links have the decision task id
+        ([{"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}, {"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}], None),
+    ),
+)
+def test_chain_get_decision_ref(chain, decision_payloads, expected):
+    chain.links = [_craft_link_with_payload(chain, payload=payload) for payload in decision_payloads]
+    assert chain._get_decision_ref("decision_task_id") == expected
+
+
+def test_chain_get_decision_ref_other_links(chain, build_link):
+    """Only the decision task matters, not other links of the chain."""
+    build_link.task["payload"]["env"] = {"GECKO_HEAD_REF": "refs/heads/release"}
+    chain.links = [
+        build_link,
+        _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}),
+        _craft_link_with_payload(chain, task_id="other_decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/autoland"}}),
+    ]
+    assert chain._get_decision_ref("decision_task_id") == "refs/heads/beta"
+    assert chain._get_decision_ref("other_decision_task_id") == "refs/heads/autoland"
+    assert chain._get_decision_ref(build_link.task_id) == "refs/heads/release"
+    assert chain._get_decision_ref("missing_task_id") is None
+
+
+@pytest.mark.parametrize("env, expected", (({"GECKO_HEAD_REF": "refs/heads/beta"}, "refs/heads/beta"), ({}, None)))
+def test_chain_get_decision_ref_self(chain, env, expected):
+    """The chain's own task is its decision task, e.g. when verifying a decision task."""
+    chain.task["payload"]["env"] = env
+    # A link can't have the chain's task id; the chain's task is used even if one does
+    chain.links = [_craft_link_with_payload(chain, task_id=chain.task_id, payload={"env": {"GECKO_HEAD_REF": "refs/heads/release"}})]
+    assert chain._get_decision_ref(chain.task_id) == expected
+
+
+def test_chain_get_decision_ref_mobile(mobile_chain):
+    """The env prefix comes from the worker's config."""
+    mobile_chain.links = [
+        _craft_link_with_payload(mobile_chain, payload={"env": {"MOBILE_HEAD_REF": "refs/heads/main", "GECKO_HEAD_REF": "refs/heads/beta"}}),
+    ]
+    assert mobile_chain._get_decision_ref("decision_task_id") == "refs/heads/main"
+
+
 # get_link {{{1
 @pytest.mark.parametrize("ids,req,raises", ((("one", "two", "three"), "one", False), (("one", "one", "two"), "one", True), (("one", "two"), "three", True)))
 def test_get_link(chain, ids, req, raises):
