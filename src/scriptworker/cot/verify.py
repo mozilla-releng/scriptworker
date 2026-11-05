@@ -163,6 +163,11 @@ class ChainOfTrust(object):
         Some tasks, like docker-image or scriptworker ones, don't define their
         own ref. Their decision task does, and it's the push the task comes from.
 
+        XXX Graphs generated from hg have an hg revision as their ref, but some of
+        their tasks are sourced from the git mirror. The ``head_git_ref`` parameter
+        tells which ref of the mirror the push is on, so it takes precedence. Remove
+        this once the hg -> git migration is complete.
+
         Args:
             decision_task_id (str): the task id of the decision task.
 
@@ -171,13 +176,26 @@ class ChainOfTrust(object):
 
         """
         if decision_task_id == self.task_id:
-            task = self.task
-        else:
+            return get_branch(self.task, self.context.config["source_env_prefix"])
+        try:
+            link = self.get_link(decision_task_id)
+        except CoTError:
+            return None
+
+        # Parameters are only downloaded for decision tasks. An action task's push is its decision task's.
+        parameters_link = link
+        if link.task_type == "action":
             try:
-                task = self.get_link(decision_task_id).task
+                parameters_link = self.get_link(link.decision_task_id)
             except CoTError:
-                return None
-        return get_branch(task, self.context.config["source_env_prefix"])
+                parameters_link = None
+        if parameters_link is not None and parameters_link.task_type in DECISION_TASK_TYPES:
+            path = parameters_link.get_artifact_full_path("public/parameters.yml")
+            if os.path.exists(path):
+                if head_git_ref := load_json_or_yaml(path, is_path=True, file_type="yaml").get("head_git_ref"):
+                    return head_git_ref
+
+        return get_branch(link.task, self.context.config["source_env_prefix"])
 
     def get_link(self, task_id):
         """Get a ``LinkOfTrust`` by task id.

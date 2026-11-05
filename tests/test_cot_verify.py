@@ -13,10 +13,13 @@ from unittest.mock import ANY, MagicMock
 
 import jsone
 import pytest
+import yaml
 from immutabledict import immutabledict
 
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
+import scriptworker.github as github
+import scriptworker.task as swtask
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
@@ -496,6 +499,56 @@ def test_chain_get_decision_ref_self(chain, env, expected):
     # A link can't have the chain's task id; the chain's task is used even if one does
     chain.links = [_craft_link_with_payload(chain, task_id=chain.task_id, payload={"env": {"GECKO_HEAD_REF": "refs/heads/release"}})]
     assert chain._get_decision_ref(chain.task_id) == expected
+
+
+HG_REV = "127dce3ac830d68df8479b5f32c9d2430363dba2"
+
+
+def _write_parameters(link, parameters):
+    path = link.get_artifact_full_path("public/parameters.yml")
+    makedirs(os.path.dirname(path))
+    with open(path, "w") as fh:
+        yaml.safe_dump(parameters, fh)
+
+
+@pytest.mark.parametrize(
+    "parameters, expected",
+    (
+        # Graphs generated from hg: the git ref of the push is in the parameters
+        ({"head_ref": HG_REV, "head_git_ref": "refs/heads/beta"}, "refs/heads/beta"),
+        # Parameters without a git ref, or no parameters at all: the decision task's env is used
+        ({"head_ref": HG_REV}, HG_REV),
+        ({"head_ref": HG_REV, "head_git_ref": ""}, HG_REV),
+        (None, HG_REV),
+    ),
+)
+def test_chain_get_decision_ref_head_git_ref(chain, parameters, expected):
+    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
+    if parameters is not None:
+        _write_parameters(decision_link, parameters)
+    chain.links = [decision_link]
+    assert chain._get_decision_ref("decision_task_id") == expected
+
+
+@pytest.mark.parametrize("decision_in_chain, expected", ((True, "refs/heads/beta"), (False, HG_REV)))
+def test_chain_get_decision_ref_head_git_ref_action(chain, decision_in_chain, expected):
+    """Parameters are only downloaded for decision tasks: an action task uses its decision task's."""
+    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
+    _write_parameters(decision_link, {"head_ref": HG_REV, "head_git_ref": "refs/heads/beta"})
+    action_link = cotverify.LinkOfTrust(chain.context, "action", "action_task_id")
+    action_link.task = dict(chain.task, taskGroupId="decision_task_id", payload={"env": {"GECKO_HEAD_REF": HG_REV}})
+    _write_parameters(action_link, {"head_ref": HG_REV, "head_git_ref": "refs/heads/release"})
+    chain.links = [decision_link, action_link] if decision_in_chain else [action_link]
+    assert chain._get_decision_ref("action_task_id") == expected
+
+
+def test_chain_get_decision_ref_head_git_ref_not_parent(chain, build_link):
+    """Only parent tasks' parameters are used."""
+    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
+    _write_parameters(decision_link, {"head_git_ref": "refs/heads/beta"})
+    build_link.task["payload"]["env"] = {"GECKO_HEAD_REF": "refs/heads/release"}
+    chain.links = [decision_link, build_link]
+    assert chain._get_decision_ref(build_link.task_id) == "refs/heads/release"
 
 
 def test_chain_get_decision_ref_mobile(mobile_chain):
@@ -2550,6 +2603,37 @@ async def test_trace_back_to_tree_git_graph_not_mapped(chain, decision_link, bui
     mocker.patch.object(chain, "is_try_or_pull_request", new=create_async(result=False))
     with pytest.raises(CoTError, match="repo /mozilla-firefox/firefox not allowlisted for scope"):
         await cotverify.trace_back_to_tree(chain)
+
+
+@pytest.mark.parametrize("parameters, raises", (({"head_git_ref": "refs/heads/beta"}, False), ({}, True)))
+@pytest.mark.asyncio
+async def test_trace_back_to_tree_git_mirror_head_git_ref(chain, decision_link, build_link, docker_image_link, mocker, parameters, raises):
+    # A task sourced from the mirror without a ref of its own, in a graph generated
+    # from hg: its decision task's ref is an hg revision, the git one is in the parameters.
+    _use_git_mirror(chain)
+    del chain.task["payload"]["env"]["GECKO_HEAD_REPOSITORY"]
+    _use_git_mirror(build_link)
+    build_link.task["payload"]["env"]["GECKO_HEAD_REF"] = "refs/heads/beta"
+    decision_link.task["payload"]["env"] = {"GECKO_HEAD_REF": HG_REV}
+    _write_parameters(decision_link, {"head_ref": HG_REV, **parameters})
+    chain.links = [decision_link, build_link, docker_image_link]
+
+    calls = []
+
+    async def has_commit_landed_on_repository(context, revision, ref):
+        calls.append(ref)
+        return github._qualify_ref(ref) is not None
+
+    github_repository = MagicMock()
+    github_repository.has_commit_landed_on_repository = has_commit_landed_on_repository
+    mocker.patch.object(swtask, "GitHubRepository", return_value=github_repository)
+    if raises:
+        with pytest.raises(CoTError, match="has restricted privilege scope, and is_try_or_pull_request"):
+            await cotverify.trace_back_to_tree(chain)
+        assert HG_REV in calls
+    else:
+        await cotverify.trace_back_to_tree(chain)
+        assert calls == ["refs/heads/beta", "refs/heads/beta"]
 
 
 # AuditLogFormatter {{{1
