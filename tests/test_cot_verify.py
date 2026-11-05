@@ -409,6 +409,40 @@ async def test_chain_is_try_or_pull_request(chain, bools, expected):
     assert await chain.is_try_or_pull_request() == expected
 
 
+@pytest.mark.asyncio
+async def test_chain_is_try_or_pull_request_fallback_ref(mocker, chain):
+    """Links without a ref of their own fall back to their decision task's."""
+    chain.decision_task_id = "decision_task_id"
+    decision_link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
+    decision_link.task = dict(chain.task, taskGroupId="decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/beta"}})
+    other_decision_link = cotverify.LinkOfTrust(chain.context, "decision", "other_decision_task_id")
+    other_decision_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/autoland"}})
+    docker_image_link = cotverify.LinkOfTrust(chain.context, "docker-image", "docker_image_task_id")
+    docker_image_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={})
+    orphan_link = cotverify.LinkOfTrust(chain.context, "build", "orphan_task_id")
+    orphan_link.task = dict(chain.task, taskGroupId="missing_decision_task_id", payload={})
+    chain.links = [decision_link, other_decision_link, docker_image_link, orphan_link]
+
+    names = {id(chain.task): "chain", **{id(link.task): link.task_id for link in chain.links}}
+    calls = []
+
+    async def is_try_or_pull_request(context, task, fallback_ref=None):
+        calls.append((names[id(task)], fallback_ref))
+        return False
+
+    mocker.patch.object(cotverify, "is_try_or_pull_request", is_try_or_pull_request)
+    assert not await chain.is_try_or_pull_request()
+    assert sorted(calls) == sorted(
+        [
+            ("chain", "refs/heads/beta"),
+            ("decision_task_id", "refs/heads/beta"),
+            ("other_decision_task_id", "refs/heads/autoland"),
+            ("docker_image_task_id", "refs/heads/autoland"),
+            ("orphan_task_id", None),
+        ]
+    )
+
+
 # get_link {{{1
 @pytest.mark.parametrize("ids,req,raises", ((("one", "two", "three"), "one", False), (("one", "one", "two"), "one", True), (("one", "two"), "three", True)))
 def test_get_link(chain, ids, req, raises):

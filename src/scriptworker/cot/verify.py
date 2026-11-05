@@ -151,11 +151,33 @@ class ChainOfTrust(object):
             bool: True if a task is a try task.
 
         """
-        tasks = [asyncio.ensure_future(link.is_try_or_pull_request()) for link in self.links]
-        tasks.insert(0, asyncio.ensure_future(is_try_or_pull_request(self.context, self.task)))
+        tasks = [asyncio.ensure_future(link.is_try_or_pull_request(fallback_ref=self._get_decision_ref(link.decision_task_id))) for link in self.links]
+        tasks.insert(0, asyncio.ensure_future(is_try_or_pull_request(self.context, self.task, fallback_ref=self._get_decision_ref(self.decision_task_id))))
 
         conditions = await raise_future_exceptions(tasks)
         return any(conditions)
+
+    def _get_decision_ref(self, decision_task_id):
+        """Get the ref (branch or tag) of a decision task in the chain.
+
+        Some tasks, like docker-image or scriptworker ones, don't define their
+        own ref. Their decision task does, and it's the push the task comes from.
+
+        Args:
+            decision_task_id (str): the task id of the decision task.
+
+        Returns:
+            str: the ref, or None if the decision task isn't in the chain or doesn't define one.
+
+        """
+        if decision_task_id == self.task_id:
+            task = self.task
+        else:
+            try:
+                task = self.get_link(decision_task_id).task
+            except CoTError:
+                return None
+        return get_branch(task, self.context.config["source_env_prefix"])
 
     def get_link(self, task_id):
         """Get a ``LinkOfTrust`` by task id.
@@ -293,9 +315,18 @@ class LinkOfTrust(object):
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
 
-    async def is_try_or_pull_request(self):
-        """bool: the task is either a try or a pull request one."""
-        return await is_try_or_pull_request(self.context, self.task)
+    async def is_try_or_pull_request(self, fallback_ref=None):
+        """Determine if the task is either a try or a pull request one.
+
+        Args:
+            fallback_ref (str, optional): the ref to check commits against if the
+                task doesn't define one. See ``scriptworker.task.is_pull_request``.
+
+        Returns:
+            bool: True if the task is either a try or a pull request one.
+
+        """
+        return await is_try_or_pull_request(self.context, self.task, fallback_ref=fallback_ref)
 
     @property
     def cot(self):

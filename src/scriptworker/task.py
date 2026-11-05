@@ -505,7 +505,7 @@ def is_try(task, source_env_prefix):
     )
 
 
-async def is_pull_request(context, task):
+async def is_pull_request(context, task, fallback_ref=None):
     """Determine if a task is a pull-request-like task (restricted privs).
 
     This goes further than checking ``tasks_for``. We may or may not want
@@ -516,11 +516,15 @@ async def is_pull_request(context, task):
         * ``task.extra.env.tasks_for`` is "github-pull-request" or "github-pull-request-untrusted"
         * ``task.payload.env.MOBILE_HEAD_REPOSITORY`` doesn't come from an official repo
         * ``task.metadata.source`` doesn't come from an official repo, either
-        * The last 2 items are landed on the official repo
+        * The last 2 items are landed on the official repo, i.e. reachable from the
+          task's ref (``*_HEAD_REF``/``*_HEAD_BRANCH``), or from ``fallback_ref``
+          when the task doesn't define one
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         task (dict): the task definition to check.
+        fallback_ref (str, optional): the ref to check commits against when the task
+            doesn't define one, typically the one of the task's decision task.
 
     Returns:
         bool: True if it's a pull-request. False if it either comes from the official repos or if
@@ -531,6 +535,7 @@ async def is_pull_request(context, task):
     tasks_for = task.get("extra", {}).get("tasks_for")
     repo_url_from_payload = get_repo(task, context.config["source_env_prefix"])
     revision_from_payload = get_revision(task, context.config["source_env_prefix"])
+    ref = get_branch(task, context.config["source_env_prefix"]) or fallback_ref
 
     metadata_source_url = task["metadata"].get("source", "")
     repo_from_source_url, revision_from_source_url = extract_github_repo_and_revision_from_source_url(metadata_source_url)
@@ -551,12 +556,12 @@ async def is_pull_request(context, task):
             continue
 
         github_repository = GitHubRepository(context, repo_owner, repo_name)
-        conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision))
+        conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision, ref))
 
     return any(conditions)
 
 
-async def is_try_or_pull_request(context, task):
+async def is_try_or_pull_request(context, task, fallback_ref=None):
     """Determine if a task is a try or a pull-request-like task (restricted privs).
 
     Checks are the ones done in ``is_try`` and ``is_pull_request``
@@ -564,13 +569,14 @@ async def is_try_or_pull_request(context, task):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         task (dict): the task definition to check.
+        fallback_ref (str, optional): passed to ``is_pull_request``.
 
     Returns:
         bool: True if it's a pull-request or a try task
 
     """
     if is_github_task(task):
-        return await is_pull_request(context, task)
+        return await is_pull_request(context, task, fallback_ref=fallback_ref)
     else:
         return is_try(task, context.config["source_env_prefix"])
 

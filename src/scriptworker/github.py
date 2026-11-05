@@ -8,14 +8,15 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from github3 import GitHub
-from github3.exceptions import GitHubException
+from github3.exceptions import GitHubException, NotFoundError
 from taskcluster.aio import Auth
 from taskcluster.exceptions import TaskclusterFailure
 
 from scriptworker.exceptions import ConfigError
-from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_request, retry_sync
+from scriptworker.utils import get_parts_of_url_path, get_single_item_from_sequence, retry_async_decorator, retry_sync
 
 _GIT_FULL_HASH_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+_GIT_HASH_LIKE_PATTERN = re.compile(r"^[0-9a-f]{7,40}$")
 # The github3 library already retries requests. It gives a round of waiting of usually 15 seconds.
 # A delay factor of 7.5s means the second round of waiting will occur ~15s after the first one,
 # the third one ~30s and so on.
@@ -196,64 +197,92 @@ class GitHubRepository:
 
         return tag_object.commit.sha
 
-    async def has_commit_landed_on_repository(self, context, revision):
-        """Tell if a commit was landed on the repository or if it just comes from a pull request.
+    async def has_commit_landed_on_repository(self, context, revision, ref):
+        """Tell if a commit was landed on the repository or if it just comes from a fork or a pull request.
+
+        GitHub serves commits from forks through the upstream repository, so the
+        commit merely existing isn't enough: it must be reachable from a ref of
+        this repository.
 
         Args:
             context (scriptworker.context.Context): the scriptworker context.
             revision (str): the commit hash or the tag name.
+            ref (str): the branch or tag of this repository that ``revision`` is
+                expected to be on, e.g. ``refs/heads/main``. Ignored if ``revision``
+                is a tag name.
 
         Returns:
-            bool: True if the commit is present in one of the branches of the main repository
+            bool: True if the commit is reachable from ``ref`` in this repository
 
         """
         if any(vcs_rule.get("require_secret") for vcs_rule in context.config["trusted_vcs_rules"]):
-            # This check uses unofficial API on github, which we can't easily
-            # check for private repos, assume its true in the private case.
+            # XXX This check isn't implemented for private repositories, assume it's true.
             log.info("has_commit_landed_on_repository() not implemented for private repositories, assume True")
             return True
 
-        # Revision may be a tag name. `branch_commits` doesn't work on tags
         if not _is_git_full_hash(revision):
-            revision = await self.get_tag_hash(tag_name=revision)
+            # The tag is looked up in this repository, so the commit it points to
+            # is reachable from one of its refs. This raises if there's no such tag.
+            await self.get_tag_hash(tag_name=revision)
+            return True
 
+        qualified_ref = _qualify_ref(ref)
+        if qualified_ref is None:
+            log.warning(f"Cannot tell if {revision} landed on {self._owner}/{self._repo_name}: no usable ref (got {ref!r})")
+            return False
+
+        status = await _fetch_github_compare_status(self, qualified_ref, revision)
+        # "behind" and "identical" mean that `revision` is an ancestor of, or equal to, `ref`.
+        # "ahead" and "diverged" mean that `revision` isn't reachable from `ref`.
+        landed = status in ("behind", "identical")
+        if not landed:
+            log.warning(f"{revision} is not on {ref} of {self._owner}/{self._repo_name} (comparison status: {status})")
+        return landed
+
+    @retry_async_decorator(retry_exceptions=GitHubException)
+    async def get_compare_status(self, base, head):
+        """Compare two commitishes of the repository.
+
+        Args:
+            base (str): the base ref or commit
+            head (str): the head ref or commit
+
+        Returns:
+            str: the status of ``head`` relative to ``base``: one of "ahead", "behind",
+                "diverged" or "identical", or None if either side doesn't exist
+
+        """
         repository = await self._get_repository()
-        html_text = await _fetch_github_branch_commits_data(context, repository.html_url, revision)
-
-        # https://github.com/{repo_owner}/{repo_name}/branch_commits/{revision} just returns some \n
-        # when the commit hasn't landed on the origin repo. Otherwise, some HTML data is returned - it
-        # represents the branches on which the given revision is present.
-        return html_text != ""
+        try:
+            return repository.compare_commits(base, head).status
+        except NotFoundError:
+            return None
 
 
-_BRANCH_COMMITS_CACHE_TTL_IN_SECONDS = 10 * 60  # 10 minutes
-_BRANCH_COMMITS_CACHE = {}
+_COMPARE_CACHE_TTL_IN_SECONDS = 10 * 60  # 10 minutes
+_COMPARE_CACHE = {}
 
 
-async def _fetch_github_branch_commits_data(context, repo_html_url, revision):
-    # Include context identity because different contexts carry
-    # different HTTP sessions that may be closed independently.
-    cache_key = (id(context), repo_html_url, revision)
+async def _fetch_github_compare_status(github_repository, base, head):
+    cache_key = (github_repository._owner, github_repository._repo_name, base, head)
 
-    if cache_key in _BRANCH_COMMITS_CACHE:
-        return await _BRANCH_COMMITS_CACHE[cache_key]
+    if cache_key in _COMPARE_CACHE:
+        return await _COMPARE_CACHE[cache_key]
 
     future = asyncio.get_running_loop().create_future()
-    _BRANCH_COMMITS_CACHE[cache_key] = future
+    _COMPARE_CACHE[cache_key] = future
 
     try:
-        url = "/".join((repo_html_url.rstrip("/"), "branch_commits", revision))
-        html_text = await retry_request(context, url)
-        result = html_text.strip()
+        result = await github_repository.get_compare_status(base, head)
         future.set_result(result)
         asyncio.get_running_loop().call_later(
-            _BRANCH_COMMITS_CACHE_TTL_IN_SECONDS,
-            _BRANCH_COMMITS_CACHE.pop,
+            _COMPARE_CACHE_TTL_IN_SECONDS,
+            _COMPARE_CACHE.pop,
             cache_key,
             None,
         )
     except BaseException as e:
-        _BRANCH_COMMITS_CACHE.pop(cache_key, None)
+        _COMPARE_CACHE.pop(cache_key, None)
         future.set_exception(e)
         raise
 
@@ -398,6 +427,37 @@ def is_github_repo_owner_the_official_one(context, repo_owner):
 
 def _is_git_full_hash(revision):
     return _GIT_FULL_HASH_PATTERN.match(revision) is not None
+
+
+def _qualify_ref(ref):
+    """Turn ``ref`` into a branch or tag ref that can prove a commit is in the repository.
+
+    Only branches and tags count: GitHub also exposes refs like ``refs/pull/123/head``
+    for pull requests, including ones from forks. GitHub resolves short names
+    loosely (``pull/123/head`` matches that pull request ref), so bare names are
+    qualified as branches, e.g. ``main`` becomes ``refs/heads/main``.
+
+    A commit is trivially reachable from itself, so (possibly abbreviated) hashes
+    prove nothing. ``owner:ref`` would make GitHub look up the ref in another
+    repository of the network, like a fork.
+
+    Args:
+        ref (str): the ref, e.g. ``refs/heads/main``, ``refs/tags/v1.0.0`` or ``main``
+
+    Returns:
+        str: the fully qualified ref, or None if ``ref`` can't be used.
+
+    """
+    if not ref or not isinstance(ref, str) or ":" in ref or ".." in ref:
+        return None
+    if ref.startswith("refs/"):
+        prefix, _, name = ref.partition("/")[2].partition("/")
+        if prefix in ("heads", "tags") and name:
+            return ref
+        return None
+    if _GIT_HASH_LIKE_PATTERN.match(ref):
+        return None
+    return f"refs/heads/{ref}"
 
 
 def _check_github_url_is_supported(url):
