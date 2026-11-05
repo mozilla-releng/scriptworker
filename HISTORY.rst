@@ -4,6 +4,19 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+64.0.0 - 2026-11-05
+-------------------
+
+Fixed
+~~~~~
+
+- use the compare API to tell if a commit landed on a github repo (bug 2089531, #855)
+
+Removed
+~~~~~~~
+
+- {mozilla,comm}-esr140 support (bug 2081292)
+
 63.7.1 - 2026-10-27
 -------------------
 
