@@ -35,10 +35,10 @@ from scriptworker.artifacts import (
     retry_list_latest_artifacts,
 )
 from scriptworker.config import apply_product_config, read_worker_creds
-from scriptworker.constants import DEFAULT_CONFIG
+from scriptworker.constants import DEFAULT_CONFIG, STATUSES
 from scriptworker.context import Context
 from scriptworker.ed25519 import ed25519_public_key_from_string, verify_ed25519_signature
-from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error
+from scriptworker.exceptions import BaseDownloadError, CoTError, ScriptWorkerEd25519Error, ScriptWorkerTaskException
 from scriptworker.github import (
     GitHubRepository,
     extract_github_repo_full_name,
@@ -93,7 +93,6 @@ from scriptworker.utils import (
 )
 
 log = logging.getLogger(__name__)
-
 
 DECISION_TASK_TYPES = ("decision",)
 PARENT_TASK_TYPES = ("decision", "action")
@@ -824,7 +823,15 @@ async def download_cot_artifacts(chain):
             else:
                 mandatory_artifact_tasks.extend(coroutines)
 
-    mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    try:
+        mandatory_artifacts_paths = await raise_future_exceptions(mandatory_artifact_tasks)
+    except BaseException:
+        # A mandatory artifact download failure or cancellation (e.g. CoT timeout) means the optional
+        # artifacts downloads can be safely cancelled regardless of their current state.
+        for task in optional_artifact_tasks:
+            task.cancel()
+        await asyncio.gather(*optional_artifact_tasks, return_exceptions=True)
+        raise
     succeeded_optional_artifacts_paths, failed_optional_artifacts = await get_results_and_future_exceptions(optional_artifact_tasks)
 
     if failed_optional_artifacts:
@@ -2147,6 +2154,7 @@ async def verify_chain_of_trust(chain, *, check_task=False):
 
     Raises:
         CoTError: on failure
+        ScriptWorkerTaskException: if verification takes longer than ``config["cot_max_timeout"]`` seconds
 
     """
     log_path = get_chain_of_trust_log_filename(chain.context)
@@ -2158,28 +2166,38 @@ async def verify_chain_of_trust(chain, *, check_task=False):
         formatter=AuditLogFormatter(fmt=chain.context.config["log_fmt"], datefmt=chain.context.config["log_datefmt"]),
     ):
         log.info("Running scriptworker version {}".format(__version__))
+        cot_max_timeout = chain.context.config["cot_max_timeout"]
+        cot_timeout = asyncio.timeout(cot_max_timeout)
         try:
-            # build LinkOfTrust objects
-            if check_task:
-                await add_link(chain, chain.name, chain.task_id)
-            await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
-            # download the signed chain of trust artifacts
-            await download_cot(chain)
-            # verify the signatures and populate the ``link.cot``s
-            verify_cot_signatures(chain)
-            # download all other artifacts needed to verify chain of trust
-            await download_cot_artifacts(chain)
-            # verify the task types, e.g. decision
-            await verify_task_types(chain)
-            # verify the worker_impls, e.g. docker-worker
-            await verify_worker_impls(chain)
-            await trace_back_to_tree(chain)
+            async with cot_timeout:
+                # build LinkOfTrust objects
+                if check_task:
+                    await add_link(chain, chain.name, chain.task_id)
+                await build_task_dependencies(chain, chain.task, chain.name, chain.task_id)
+                # download the signed chain of trust artifacts
+                await download_cot(chain)
+                # verify the signatures and populate the ``link.cot``s
+                verify_cot_signatures(chain)
+                # download all other artifacts needed to verify chain of trust
+                await download_cot_artifacts(chain)
+                # verify the task types, e.g. decision
+                await verify_task_types(chain)
+                # verify the worker_impls, e.g. docker-worker
+                await verify_worker_impls(chain)
+                await trace_back_to_tree(chain)
         except (BaseDownloadError, KeyError, TypeError, AttributeError) as exc:
             log.critical("Chain of Trust verification error!", exc_info=True)
             if isinstance(exc, CoTError):
                 raise
             else:
                 raise CoTError(str(exc))
+        except TimeoutError as exc:
+            # Only handle our own deadline; other TimeoutErrors (e.g. a download) propagate unchanged
+            if not cot_timeout.expired():
+                raise
+            message = f"Chain of Trust verification timed out after {cot_max_timeout} seconds!"
+            log.critical(message)
+            raise ScriptWorkerTaskException(message, exit_code=STATUSES["intermittent-task"]) from exc
         log.info("Good.")
 
 

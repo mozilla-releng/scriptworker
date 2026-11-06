@@ -2,6 +2,7 @@
 # coding=utf-8
 """Test scriptworker.cot.verify"""
 
+import asyncio
 import json
 import logging
 import os
@@ -19,7 +20,8 @@ import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
 import scriptworker.task as swtask
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
-from scriptworker.exceptions import CoTError, DownloadError
+from scriptworker.constants import STATUSES
+from scriptworker.exceptions import CoTError, DownloadError, ScriptWorkerTaskException
 from scriptworker.utils import load_json_or_yaml, makedirs, read_from_file
 
 from . import create_async, noop_async, noop_sync, touch
@@ -922,6 +924,44 @@ async def test_download_cot_artifacts(chain, raises, mocker, upstreamArtifacts):
         mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)
         result = await cotverify.download_cot_artifacts(chain)
         assert sorted(result) == ["path1", "path2", "path3"]
+
+
+@pytest.mark.parametrize("cancel", (False, True))
+@pytest.mark.asyncio
+async def test_download_cot_artifacts_cancels_optional(chain, mocker, cancel):
+    """Optional downloads are cancelled when a mandatory download fails or the caller is cancelled."""
+    optional_started = asyncio.Event()
+    optional_cancelled = []
+
+    async def fake_download(x, y, path):
+        if path == "optional":
+            optional_started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                optional_cancelled.append(path)
+                raise
+        await optional_started.wait()
+        if cancel:
+            await asyncio.Event().wait()
+        raise DownloadError("mandatory failed")
+
+    chain.task["payload"]["upstreamArtifacts"] = [
+        {"taskId": "task_id", "paths": ["mandatory"]},
+        {"taskId": "task_id", "paths": ["optional"], "optional": True},
+    ]
+    mocker.patch.object(cotverify, "download_cot_artifact", new=fake_download)
+    waiter = asyncio.ensure_future(cotverify.download_cot_artifacts(chain))
+    await optional_started.wait()
+    if cancel:
+        await asyncio.sleep(0)
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+    else:
+        with pytest.raises(DownloadError, match="mandatory failed"):
+            await waiter
+    assert optional_cancelled == ["optional"]
 
 
 # download_cot_artifacts {{{1
@@ -2618,6 +2658,36 @@ async def test_verify_chain_of_trust(chain, exc, check_task, mocker):
             await cotverify.verify_chain_of_trust(chain, check_task=check_task)
     else:
         await cotverify.verify_chain_of_trust(chain, check_task=check_task)
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_timeout(chain, mocker):
+    async def hang(*args):
+        await asyncio.Event().wait()
+
+    for func in ("build_task_dependencies", "download_cot", "download_cot_artifacts", "verify_task_types", "verify_worker_impls"):
+        mocker.patch.object(cotverify, func, new=noop_async)
+    mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
+    mocker.patch.object(cotverify, "trace_back_to_tree", new=hang)
+    chain.context.config["cot_max_timeout"] = 0.01
+    with pytest.raises(ScriptWorkerTaskException, match="timed out after 0.01 seconds") as excinfo:
+        await cotverify.verify_chain_of_trust(chain)
+    assert excinfo.value.exit_code == STATUSES["intermittent-task"]
+
+
+@pytest.mark.asyncio
+async def test_verify_chain_of_trust_other_timeout_error(chain, mocker):
+    """A TimeoutError raised by a verification step is not reported as a CoT timeout."""
+
+    async def die(*args):
+        raise TimeoutError("download timed out")
+
+    for func in ("build_task_dependencies", "download_cot_artifacts", "verify_task_types", "verify_worker_impls", "trace_back_to_tree"):
+        mocker.patch.object(cotverify, func, new=noop_async)
+    mocker.patch.object(cotverify, "verify_cot_signatures", new=noop_sync)
+    mocker.patch.object(cotverify, "download_cot", new=die)
+    with pytest.raises(TimeoutError, match="download timed out"):
+        await cotverify.verify_chain_of_trust(chain)
 
 
 # verify_cot_cmdln {{{1
