@@ -2264,6 +2264,55 @@ async def test_verify_parent_task_missing_graph(chain, decision_link, build_link
         await cotverify.verify_parent_task(chain, decision_link)
 
 
+def _craft_generated_parent(chain, decision_link, action_link, graph_task):
+    """Make `action_link` a task of `decision_link`'s graph, e.g. Enterprise
+    Firefox's comm decision or comm action task."""
+    pool = chain.context.config["valid_decision_worker_pools"][0]
+    for link in (decision_link, action_link):
+        link.task["provisionerId"], link.task["workerType"] = pool.split("/")
+    action_link.task["created"] = "1970-01-01T01:00:00.000Z"
+    decision_link.task_graph = {} if graph_task is None else {action_link.task_id: {"task": graph_task(deepcopy(action_link.task))}}
+    chain.links = [decision_link, action_link]
+    # `action_link`'s own graph, of the tasks it creates.
+    path = os.path.join(action_link.cot_dir, "public", "task-graph.json")
+    makedirs(os.path.dirname(path))
+    touch(path)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "graph_task, rebuilt",
+    (
+        # In the parent's graph: verified against it, not rebuilt from the tree.
+        (lambda task: task, False),
+        # Not in the parent's graph: a regular action task, rebuilt from the tree.
+        (None, True),
+    ),
+)
+async def test_verify_parent_task_generated_by_parent(chain, decision_link, action_link, mocker, graph_task, rebuilt):
+    _craft_generated_parent(chain, decision_link, action_link, graph_task)
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=lambda *args, **kwargs: {})
+    defn_fn = MagicMock(side_effect=noop_async)
+    mocker.patch.object(cotverify, "verify_parent_task_definition", new=defn_fn)
+
+    await cotverify.verify_parent_task(chain, action_link)
+    assert defn_fn.called == rebuilt
+
+
+@pytest.mark.asyncio
+async def test_verify_parent_task_generated_by_parent_mismatch(chain, decision_link, action_link, mocker):
+    def graph_task(task):
+        task["scopes"] = ["assume:repo:foo:action:release-promotion"]
+        return task
+
+    _craft_generated_parent(chain, decision_link, action_link, graph_task)
+    mocker.patch.object(cotverify, "load_json_or_yaml", new=lambda *args, **kwargs: {})
+    mocker.patch.object(cotverify, "verify_parent_task_definition", new=noop_async)
+
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task(chain, action_link)
+
+
 # verify_build_task {{{1
 @pytest.mark.asyncio
 async def test_verify_build_task(chain, build_link):
