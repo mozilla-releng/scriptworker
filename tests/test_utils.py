@@ -262,16 +262,29 @@ async def test_raise_future_exceptions(exc):
         await utils.raise_future_exceptions(tasks)
 
 
+async def _slow_to_cancel(cleaned_up):
+    """Block until cancelled, then take a few event loop iterations to clean up."""
+    try:
+        await asyncio.Event().wait()
+    except asyncio.CancelledError:
+        for _ in range(3):
+            await asyncio.sleep(0)
+        cleaned_up.append(True)
+        raise
+
+
 @pytest.mark.asyncio
-async def test_raise_future_exceptions_cancelled():
-    """Cancelling the caller also cancels the tasks it is waiting on."""
-    tasks = [asyncio.ensure_future(asyncio.Event().wait()) for _ in range(2)]
-    waiter = asyncio.ensure_future(utils.raise_future_exceptions(tasks))
+@pytest.mark.parametrize("func", (utils.raise_future_exceptions, utils.get_results_and_future_exceptions))
+async def test_future_exceptions_cancelled(func):
+    """Cancelling the caller cancels the tasks it is waiting on, and waits for them to finish cancelling."""
+    cleaned_up = []
+    tasks = [asyncio.ensure_future(_slow_to_cancel(cleaned_up)) for _ in range(2)]
+    waiter = asyncio.ensure_future(func(tasks))
     await asyncio.sleep(0)
     waiter.cancel()
     with pytest.raises(asyncio.CancelledError):
         await waiter
-    await asyncio.wait(tasks)
+    assert cleaned_up == [True, True]
     assert all(task.cancelled() for task in tasks)
 
 
