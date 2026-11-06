@@ -505,7 +505,7 @@ def is_try(task, source_env_prefix):
     )
 
 
-async def is_pull_request(context, task, fallback_ref=None):
+async def is_pull_request(context, task, check_landed=True):
     """Determine if a task is a pull-request-like task (restricted privs).
 
     This goes further than checking ``tasks_for``. We may or may not want
@@ -514,54 +514,62 @@ async def is_pull_request(context, task, fallback_ref=None):
     This checks for the following things::
 
         * ``task.extra.env.tasks_for`` is "github-pull-request" or "github-pull-request-untrusted"
-        * ``task.payload.env.MOBILE_HEAD_REPOSITORY`` doesn't come from an official repo
+        * ``task.payload.env.<source_env_prefix>_HEAD_REPOSITORY`` doesn't come from an official repo
         * ``task.metadata.source`` doesn't come from an official repo, either
-        * The last 2 items are landed on the official repo, i.e. reachable from the
-          task's ref (``*_HEAD_REF``/``*_HEAD_BRANCH``), or from ``fallback_ref``
-          when the task doesn't define one
+        * if ``check_landed``: ``<source_env_prefix>_HEAD_REV`` isn't reachable from
+          ``<source_env_prefix>_HEAD_REF`` (or ``_HEAD_BRANCH``) in
+          ``<source_env_prefix>_HEAD_REPOSITORY``
+
+    Only decision and action tasks need ``check_landed``. Their definitions are
+    rebuilt from ``.taskcluster.yml`` at ``<source_env_prefix>_HEAD_REV``, but GitHub
+    serves commits of forks through the upstream repository. So that revision must
+    be shown to be on a branch or tag of the repository before the rebuild can be
+    trusted. If it can't be, the task isn't trusted either, whether or not it comes
+    from a pull request. Other tasks are verified against their parent's
+    ``task-graph.json`` instead.
 
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         task (dict): the task definition to check.
-        fallback_ref (str, optional): the ref to check commits against when the task
-            doesn't define one, typically the one of the task's decision task.
+        check_landed (bool, optional): whether to check that the task's revision
+            landed on its repository. This queries the GitHub API. Defaults to True.
 
     Returns:
-        bool: True if it's a pull-request. False if it either comes from the official repos or if
-        the origin can't be determined. In fact, valid scriptworker tasks don't expose
-        ``task.extra.env.tasks_for`` or ``task.payload.env.MOBILE_HEAD_REPOSITORY``, for instance.
+        bool: True if it's a pull request, or if its revision can't be shown to come from
+        the official repos. False otherwise.
 
     """
+    source_env_prefix = context.config["source_env_prefix"]
     tasks_for = task.get("extra", {}).get("tasks_for")
-    repo_url_from_payload = get_repo(task, context.config["source_env_prefix"])
-    revision_from_payload = get_revision(task, context.config["source_env_prefix"])
-    ref = get_branch(task, context.config["source_env_prefix"]) or fallback_ref
+    conditions = [tasks_for in ("github-pull-request", "github-pull-request-untrusted")]
 
     metadata_source_url = task["metadata"].get("source", "")
-    repo_from_source_url, revision_from_source_url = extract_github_repo_and_revision_from_source_url(metadata_source_url)
+    repo_from_source_url, _ = extract_github_repo_and_revision_from_source_url(metadata_source_url)
+    repo_owner, _ = extract_github_repo_owner_and_name(repo_from_source_url)
+    conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
 
-    conditions = [tasks_for in ("github-pull-request", "github-pull-request-untrusted")]
-    urls_revisions_and_can_skip = ((repo_url_from_payload, revision_from_payload, True), (repo_from_source_url, revision_from_source_url, False))
-    for repo_url, revision, can_skip in urls_revisions_and_can_skip:
-        # XXX In the case of scriptworker tasks, neither the repo nor the revision is defined
-        if not repo_url and can_skip:
-            continue
-
+    repo_url = get_repo(task, source_env_prefix)
+    if repo_url:
         repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
-
         repo_owner, repo_name = extract_github_repo_owner_and_name(repo_url)
         conditions.append(not is_github_repo_owner_the_official_one(context, repo_owner))
 
-        if not revision and can_skip:
-            continue
-
-        github_repository = GitHubRepository(context, repo_owner, repo_name)
-        conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision, ref))
+    if check_landed:
+        revision = get_revision(task, source_env_prefix)
+        if not repo_url or not revision:
+            # XXX In the case of scriptworker tasks, neither the repo nor the revision is defined,
+            # but they don't need check_landed. Parent tasks can't be rebuilt without them.
+            name = task["metadata"].get("name")
+            log.warning(f"Cannot tell if the commit of {name} landed: no {source_env_prefix}_HEAD_REPOSITORY or {source_env_prefix}_HEAD_REV")
+            conditions.append(True)
+        else:
+            github_repository = GitHubRepository(context, repo_owner, repo_name)
+            conditions.append(not await github_repository.has_commit_landed_on_repository(context, revision, get_branch(task, source_env_prefix)))
 
     return any(conditions)
 
 
-async def is_try_or_pull_request(context, task, fallback_ref=None):
+async def is_try_or_pull_request(context, task, check_landed=True):
     """Determine if a task is a try or a pull-request-like task (restricted privs).
 
     Checks are the ones done in ``is_try`` and ``is_pull_request``
@@ -569,14 +577,14 @@ async def is_try_or_pull_request(context, task, fallback_ref=None):
     Args:
         context (scriptworker.context.Context): the scriptworker context.
         task (dict): the task definition to check.
-        fallback_ref (str, optional): passed to ``is_pull_request``.
+        check_landed (bool, optional): passed to ``is_pull_request``.
 
     Returns:
         bool: True if it's a pull-request or a try task
 
     """
     if is_github_task(task):
-        return await is_pull_request(context, task, fallback_ref=fallback_ref)
+        return await is_pull_request(context, task, check_landed=check_landed)
     else:
         return is_try(task, context.config["source_env_prefix"])
 

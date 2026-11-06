@@ -145,57 +145,23 @@ class ChainOfTrust(object):
         return [x.task_id for x in self.links]
 
     async def is_try_or_pull_request(self):
-        """Determine if any task in the chain is a try task.
+        """Determine if any task in the chain is a try or a pull request task.
+
+        Whether commits landed on the official GitHub repos is only checked for
+        parent (decision and action) tasks, see ``scriptworker.task.is_pull_request``.
+        Every other task is verified against its parent's ``task-graph.json`` (see
+        ``verify_parent_task``), so the commits it points to are the ones its
+        parent's trusted code chose.
 
         Returns:
-            bool: True if a task is a try task.
+            bool: True if a task is a try or a pull request task.
 
         """
-        tasks = [asyncio.ensure_future(link.is_try_or_pull_request(fallback_ref=self._get_decision_ref(link.decision_task_id))) for link in self.links]
-        tasks.insert(0, asyncio.ensure_future(is_try_or_pull_request(self.context, self.task, fallback_ref=self._get_decision_ref(self.decision_task_id))))
+        tasks = [asyncio.ensure_future(link.is_try_or_pull_request(check_landed=link.task_type in PARENT_TASK_TYPES)) for link in self.links]
+        tasks.insert(0, asyncio.ensure_future(is_try_or_pull_request(self.context, self.task, check_landed=self.task_type in PARENT_TASK_TYPES)))
 
         conditions = await raise_future_exceptions(tasks)
         return any(conditions)
-
-    def _get_decision_ref(self, decision_task_id):
-        """Get the ref (branch or tag) of a decision task in the chain.
-
-        Some tasks, like docker-image or scriptworker ones, don't define their
-        own ref. Their decision task does, and it's the push the task comes from.
-
-        XXX Graphs generated from hg have an hg revision as their ref, but some of
-        their tasks are sourced from the git mirror. The ``head_git_ref`` parameter
-        tells which ref of the mirror the push is on, so it takes precedence. Remove
-        this once the hg -> git migration is complete.
-
-        Args:
-            decision_task_id (str): the task id of the decision task.
-
-        Returns:
-            str: the ref, or None if the decision task isn't in the chain or doesn't define one.
-
-        """
-        if decision_task_id == self.task_id:
-            return get_branch(self.task, self.context.config["source_env_prefix"])
-        try:
-            link = self.get_link(decision_task_id)
-        except CoTError:
-            return None
-
-        # Parameters are only downloaded for decision tasks. An action task's push is its decision task's.
-        parameters_link = link
-        if link.task_type == "action":
-            try:
-                parameters_link = self.get_link(link.decision_task_id)
-            except CoTError:
-                parameters_link = None
-        if parameters_link is not None and parameters_link.task_type in DECISION_TASK_TYPES:
-            path = parameters_link.get_artifact_full_path("public/parameters.yml")
-            if os.path.exists(path):
-                if head_git_ref := load_json_or_yaml(path, is_path=True, file_type="yaml").get("head_git_ref"):
-                    return head_git_ref
-
-        return get_branch(link.task, self.context.config["source_env_prefix"])
 
     def get_link(self, task_id):
         """Get a ``LinkOfTrust`` by task id.
@@ -333,18 +299,17 @@ class LinkOfTrust(object):
         self.parent_task_id = get_parent_task_id(self.task)
         self.worker_impl = guess_worker_impl(self)
 
-    async def is_try_or_pull_request(self, fallback_ref=None):
+    async def is_try_or_pull_request(self, check_landed=True):
         """Determine if the task is either a try or a pull request one.
 
         Args:
-            fallback_ref (str, optional): the ref to check commits against if the
-                task doesn't define one. See ``scriptworker.task.is_pull_request``.
+            check_landed (bool, optional): see ``scriptworker.task.is_pull_request``.
 
         Returns:
             bool: True if the task is either a try or a pull request one.
 
         """
-        return await is_try_or_pull_request(self.context, self.task, fallback_ref=fallback_ref)
+        return await is_try_or_pull_request(self.context, self.task, check_landed=check_landed)
 
     @property
     def cot(self):
