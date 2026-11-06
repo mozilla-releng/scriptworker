@@ -4,6 +4,14 @@ Change Log
 All notable changes to this project will be documented in this file.
 This project adheres to `Semantic Versioning <http://semver.org/>`__.
 
+64.0.2 - 2026-11-06
+-------------------
+
+Fixed
+~~~~~
+
+- only check that parent tasks' revisions landed on github (bug 2089986)
+
 64.0.1 - 2026-11-05
 -------------------
 
