@@ -9,16 +9,14 @@ import tempfile
 import time
 from copy import deepcopy
 from functools import partial
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 import jsone
 import pytest
-import yaml
 from immutabledict import immutabledict
 
 import scriptworker.context as swcontext
 import scriptworker.cot.verify as cotverify
-import scriptworker.github as github
 import scriptworker.task as swtask
 from scriptworker.artifacts import get_single_upstream_artifact_full_path
 from scriptworker.exceptions import CoTError, DownloadError
@@ -412,151 +410,53 @@ async def test_chain_is_try_or_pull_request(chain, bools, expected):
     assert await chain.is_try_or_pull_request() == expected
 
 
+@pytest.mark.parametrize("chain_task_type", ("signing", "decision"))
 @pytest.mark.asyncio
-async def test_chain_is_try_or_pull_request_fallback_ref(mocker, chain):
-    """Links without a ref of their own fall back to their decision task's."""
-    chain.decision_task_id = "decision_task_id"
-    decision_link = cotverify.LinkOfTrust(chain.context, "decision", "decision_task_id")
-    decision_link.task = dict(chain.task, taskGroupId="decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/beta"}})
-    other_decision_link = cotverify.LinkOfTrust(chain.context, "decision", "other_decision_task_id")
-    other_decision_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/autoland"}})
-    docker_image_link = cotverify.LinkOfTrust(chain.context, "docker-image", "docker_image_task_id")
-    docker_image_link.task = dict(chain.task, taskGroupId="other_decision_task_id", payload={})
-    orphan_link = cotverify.LinkOfTrust(chain.context, "build", "orphan_task_id")
-    orphan_link.task = dict(chain.task, taskGroupId="missing_decision_task_id", payload={})
-    chain.links = [decision_link, other_decision_link, docker_image_link, orphan_link]
+async def test_chain_is_try_or_pull_request_check_landed(mocker, chain, chain_task_type):
+    """Only parent tasks get their commit checked against github: other tasks are verified against their parent's task graph."""
+    chain.task_type = chain_task_type
+    names = {id(chain.task): "chain"}
+    chain.links = []
+    for task_type in ("decision", "action", "build", "docker-image", "signing"):
+        link = cotverify.LinkOfTrust(chain.context, f"signing:{task_type}", f"{task_type}_task_id")
+        link.task = dict(chain.task, payload={})
+        assert link.task_type == task_type
+        names[id(link.task)] = task_type
+        chain.links.append(link)
 
-    names = {id(chain.task): "chain", **{id(link.task): link.task_id for link in chain.links}}
     calls = []
 
-    async def is_try_or_pull_request(context, task, fallback_ref=None):
-        calls.append((names[id(task)], fallback_ref))
+    async def is_try_or_pull_request(context, task, check_landed=True):
+        calls.append((names[id(task)], check_landed))
         return False
 
     mocker.patch.object(cotverify, "is_try_or_pull_request", is_try_or_pull_request)
     assert not await chain.is_try_or_pull_request()
     assert sorted(calls) == sorted(
         [
-            ("chain", "refs/heads/beta"),
-            ("decision_task_id", "refs/heads/beta"),
-            ("other_decision_task_id", "refs/heads/autoland"),
-            ("docker_image_task_id", "refs/heads/autoland"),
-            ("orphan_task_id", None),
+            ("chain", chain_task_type == "decision"),
+            ("decision", True),
+            ("action", True),
+            ("build", False),
+            ("docker-image", False),
+            ("signing", False),
         ]
     )
 
 
-def _craft_link_with_payload(chain, task_id="decision_task_id", payload=None):
-    link = cotverify.LinkOfTrust(chain.context, "decision", task_id)
-    link.task = dict(chain.task, taskGroupId=task_id, payload=payload if payload is not None else {})
-    return link
-
-
-@pytest.mark.parametrize(
-    "decision_payloads, expected",
-    (
-        # The decision task is in the chain
-        ([{"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}], "refs/heads/beta"),
-        ([{"env": {"GECKO_HEAD_REF": "refs/tags/FIREFOX_BETA_123_0b1_RELEASE"}}], "refs/tags/FIREFOX_BETA_123_0b1_RELEASE"),
-        ([{"env": {"GECKO_HEAD_BRANCH": "beta"}}], "beta"),
-        # *_HEAD_BRANCH takes precedence, like in get_branch()
-        ([{"env": {"GECKO_HEAD_BRANCH": "beta", "GECKO_HEAD_REF": "refs/heads/release"}}], "beta"),
-        # The decision task doesn't define a ref
-        ([{"env": {}}], None),
-        ([{}], None),
-        ([{"env": {"GECKO_HEAD_REV": "0129abcdef012345643456789abcdef012345678"}}], None),
-        # The decision task uses another prefix than this worker
-        ([{"env": {"MOBILE_HEAD_REF": "refs/heads/main"}}], None),
-        # The decision task isn't in the chain
-        ([], None),
-        # Several links have the decision task id
-        ([{"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}, {"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}], None),
-    ),
-)
-def test_chain_get_decision_ref(chain, decision_payloads, expected):
-    chain.links = [_craft_link_with_payload(chain, payload=payload) for payload in decision_payloads]
-    assert chain._get_decision_ref("decision_task_id") == expected
-
-
-def test_chain_get_decision_ref_other_links(chain, build_link):
-    """Only the decision task matters, not other links of the chain."""
-    build_link.task["payload"]["env"] = {"GECKO_HEAD_REF": "refs/heads/release"}
-    chain.links = [
-        build_link,
-        _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": "refs/heads/beta"}}),
-        _craft_link_with_payload(chain, task_id="other_decision_task_id", payload={"env": {"GECKO_HEAD_REF": "refs/heads/autoland"}}),
-    ]
-    assert chain._get_decision_ref("decision_task_id") == "refs/heads/beta"
-    assert chain._get_decision_ref("other_decision_task_id") == "refs/heads/autoland"
-    assert chain._get_decision_ref(build_link.task_id) == "refs/heads/release"
-    assert chain._get_decision_ref("missing_task_id") is None
-
-
-@pytest.mark.parametrize("env, expected", (({"GECKO_HEAD_REF": "refs/heads/beta"}, "refs/heads/beta"), ({}, None)))
-def test_chain_get_decision_ref_self(chain, env, expected):
-    """The chain's own task is its decision task, e.g. when verifying a decision task."""
-    chain.task["payload"]["env"] = env
-    # A link can't have the chain's task id; the chain's task is used even if one does
-    chain.links = [_craft_link_with_payload(chain, task_id=chain.task_id, payload={"env": {"GECKO_HEAD_REF": "refs/heads/release"}})]
-    assert chain._get_decision_ref(chain.task_id) == expected
-
-
-HG_REV = "127dce3ac830d68df8479b5f32c9d2430363dba2"
-
-
-def _write_parameters(link, parameters):
-    path = link.get_artifact_full_path("public/parameters.yml")
-    makedirs(os.path.dirname(path))
-    with open(path, "w") as fh:
-        yaml.safe_dump(parameters, fh)
-
-
-@pytest.mark.parametrize(
-    "parameters, expected",
-    (
-        # Graphs generated from hg: the git ref of the push is in the parameters
-        ({"head_ref": HG_REV, "head_git_ref": "refs/heads/beta"}, "refs/heads/beta"),
-        # Parameters without a git ref, or no parameters at all: the decision task's env is used
-        ({"head_ref": HG_REV}, HG_REV),
-        ({"head_ref": HG_REV, "head_git_ref": ""}, HG_REV),
-        (None, HG_REV),
-    ),
-)
-def test_chain_get_decision_ref_head_git_ref(chain, parameters, expected):
-    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
-    if parameters is not None:
-        _write_parameters(decision_link, parameters)
+@pytest.mark.parametrize("result, expected", ((False, False), (True, True)))
+@pytest.mark.asyncio
+async def test_chain_is_try_or_pull_request_any(mocker, chain, result, expected):
+    """A single try or pull request task in the chain is enough."""
+    decision_link = cotverify.LinkOfTrust(chain.context, "signing:decision", "decision_task_id")
+    decision_link.task = dict(chain.task, payload={})
     chain.links = [decision_link]
-    assert chain._get_decision_ref("decision_task_id") == expected
 
+    async def is_try_or_pull_request(context, task, check_landed=True):
+        return result and task is decision_link.task
 
-@pytest.mark.parametrize("decision_in_chain, expected", ((True, "refs/heads/beta"), (False, HG_REV)))
-def test_chain_get_decision_ref_head_git_ref_action(chain, decision_in_chain, expected):
-    """Parameters are only downloaded for decision tasks: an action task uses its decision task's."""
-    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
-    _write_parameters(decision_link, {"head_ref": HG_REV, "head_git_ref": "refs/heads/beta"})
-    action_link = cotverify.LinkOfTrust(chain.context, "action", "action_task_id")
-    action_link.task = dict(chain.task, taskGroupId="decision_task_id", payload={"env": {"GECKO_HEAD_REF": HG_REV}})
-    _write_parameters(action_link, {"head_ref": HG_REV, "head_git_ref": "refs/heads/release"})
-    chain.links = [decision_link, action_link] if decision_in_chain else [action_link]
-    assert chain._get_decision_ref("action_task_id") == expected
-
-
-def test_chain_get_decision_ref_head_git_ref_not_parent(chain, build_link):
-    """Only parent tasks' parameters are used."""
-    decision_link = _craft_link_with_payload(chain, payload={"env": {"GECKO_HEAD_REF": HG_REV}})
-    _write_parameters(decision_link, {"head_git_ref": "refs/heads/beta"})
-    build_link.task["payload"]["env"] = {"GECKO_HEAD_REF": "refs/heads/release"}
-    chain.links = [decision_link, build_link]
-    assert chain._get_decision_ref(build_link.task_id) == "refs/heads/release"
-
-
-def test_chain_get_decision_ref_mobile(mobile_chain):
-    """The env prefix comes from the worker's config."""
-    mobile_chain.links = [
-        _craft_link_with_payload(mobile_chain, payload={"env": {"MOBILE_HEAD_REF": "refs/heads/main", "GECKO_HEAD_REF": "refs/heads/beta"}}),
-    ]
-    assert mobile_chain._get_decision_ref("decision_task_id") == "refs/heads/main"
+    mocker.patch.object(cotverify, "is_try_or_pull_request", is_try_or_pull_request)
+    assert await chain.is_try_or_pull_request() == expected
 
 
 # get_link {{{1
@@ -2605,35 +2505,91 @@ async def test_trace_back_to_tree_git_graph_not_mapped(chain, decision_link, bui
         await cotverify.trace_back_to_tree(chain)
 
 
-@pytest.mark.parametrize("parameters, raises", (({"head_git_ref": "refs/heads/beta"}, False), ({}, True)))
+HG_REV = "127dce3ac830d68df8479b5f32c9d2430363dba2"
+
+
 @pytest.mark.asyncio
-async def test_trace_back_to_tree_git_mirror_head_git_ref(chain, decision_link, build_link, docker_image_link, mocker, parameters, raises):
-    # A task sourced from the mirror without a ref of its own, in a graph generated
-    # from hg: its decision task's ref is an hg revision, the git one is in the parameters.
+async def test_trace_back_to_tree_git_mirror_hg_graph(chain, decision_link, build_link, docker_image_link, mocker):
+    # Tasks sourced from the mirror, with or without a ref of their own, in a graph generated
+    # from hg (bug 2089531): their decision task's ref is an hg revision. They're verified against
+    # their decision task's graph, so their commits aren't checked against github.
     _use_git_mirror(chain)
     del chain.task["payload"]["env"]["GECKO_HEAD_REPOSITORY"]
     _use_git_mirror(build_link)
     build_link.task["payload"]["env"]["GECKO_HEAD_REF"] = "refs/heads/beta"
-    decision_link.task["payload"]["env"] = {"GECKO_HEAD_REF": HG_REV}
-    _write_parameters(decision_link, {"head_ref": HG_REV, **parameters})
+    decision_link.task["payload"]["env"] = {"GECKO_HEAD_REPOSITORY": decision_link.task["metadata"]["source"], "GECKO_HEAD_REF": HG_REV}
     chain.links = [decision_link, build_link, docker_image_link]
 
+    github_repository = MagicMock()
+    github_repository.has_commit_landed_on_repository = AsyncMock(return_value=False)
+    mocker.patch.object(swtask, "GitHubRepository", return_value=github_repository)
+    await cotverify.trace_back_to_tree(chain)
+    github_repository.has_commit_landed_on_repository.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_chain_is_try_or_pull_request_enterprise_thunderbird(mocker, chain):
+    """Enterprise's Thunderbird build (bug 2089986).
+
+    Its decision task is rendered from enterprise-firefox's .taskcluster.yml (GECKO_*, the
+    enterprise workers' env prefix), but its tasks are sourced from thunderbird-desktop
+    (COMM_*), at a revision pinned by that template. Only the GECKO commit needs checking,
+    against the GECKO ref.
+    """
+    enterprise_repo, thunderbird_repo = "https://github.com/mozilla/enterprise-firefox", "https://github.com/thunderbird/thunderbird-desktop"
+    gecko_rev, comm_rev = "8b83b8fff4480334098ecbf9a2cd593576794a45", "abff12af096fa4d6af9579d8daea86e7f8036da9"
+    chain.context.config["official_github_repos_owner"] = ("mozilla", "thunderbird")
+    chain.decision_task_id = "decision_task_id"
+    chain.task["metadata"]["source"] = f"{thunderbird_repo}/blob/{comm_rev}/taskcluster/kinds/build-signing"
+    decision_link = cotverify.LinkOfTrust(chain.context, "signing:decision", "decision_task_id")
+    decision_link.task = dict(
+        chain.task,
+        taskGroupId="decision_task_id",
+        payload={
+            "env": {
+                "COMM_HEAD_REF": "refs/heads/release",
+                "COMM_HEAD_REPOSITORY": thunderbird_repo,
+                "COMM_HEAD_REV": comm_rev,
+                "GECKO_HEAD_REF": "refs/heads/enterprise-release",
+                "GECKO_HEAD_REPOSITORY": enterprise_repo,
+                "GECKO_HEAD_REV": gecko_rev,
+            }
+        },
+        metadata={"source": f"{thunderbird_repo}/raw/{comm_rev}/.taskcluster.yml", "owner": "foo@example.tld"},
+    )
+    build_link = cotverify.LinkOfTrust(chain.context, "signing:build", "build_task_id")
+    build_link.task = dict(
+        chain.task,
+        taskGroupId="decision_task_id",
+        payload={
+            "env": {
+                "COMM_HEAD_REPOSITORY": thunderbird_repo,
+                "COMM_HEAD_REV": comm_rev,
+                "GECKO_HEAD_REF": "refs/heads/enterprise-release",
+                "GECKO_HEAD_REPOSITORY": enterprise_repo,
+                "GECKO_HEAD_REV": gecko_rev,
+            }
+        },
+        metadata={"source": f"{thunderbird_repo}/blob/{comm_rev}/taskcluster/kinds/build", "owner": "foo@example.tld"},
+    )
+    chain.links = [decision_link, build_link]
+
+    # What's actually on github
+    landed = {("mozilla/enterprise-firefox", gecko_rev, "refs/heads/enterprise-release"), ("thunderbird/thunderbird-desktop", comm_rev, "refs/heads/release")}
     calls = []
 
-    async def has_commit_landed_on_repository(context, revision, ref):
-        calls.append(ref)
-        return github._qualify_ref(ref) is not None
+    def github_repository(context, owner, repo_name):
+        async def has_commit_landed_on_repository(context, revision, ref):
+            calls.append((f"{owner}/{repo_name}", revision, ref))
+            return (f"{owner}/{repo_name}", revision, ref) in landed
 
-    github_repository = MagicMock()
-    github_repository.has_commit_landed_on_repository = has_commit_landed_on_repository
-    mocker.patch.object(swtask, "GitHubRepository", return_value=github_repository)
-    if raises:
-        with pytest.raises(CoTError, match="has restricted privilege scope, and is_try_or_pull_request"):
-            await cotverify.trace_back_to_tree(chain)
-        assert HG_REV in calls
-    else:
-        await cotverify.trace_back_to_tree(chain)
-        assert calls == ["refs/heads/beta", "refs/heads/beta"]
+        repository = MagicMock()
+        repository.has_commit_landed_on_repository = has_commit_landed_on_repository
+        return repository
+
+    mocker.patch.object(swtask, "GitHubRepository", side_effect=github_repository)
+    assert not await chain.is_try_or_pull_request()
+    assert calls == [("mozilla/enterprise-firefox", gecko_rev, "refs/heads/enterprise-release")]
 
 
 # AuditLogFormatter {{{1
