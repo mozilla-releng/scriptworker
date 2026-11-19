@@ -117,7 +117,7 @@ def test_check_config_good(t_config):
     assert messages == []
 
 
-@pytest.mark.parametrize("cot_product", (None, "firefox"))
+@pytest.mark.parametrize("cot_product", (None, *DEFAULT_CONFIG["cot_product_type"]["by-cot-product"]))
 def test_check_config_good_by_cot_product(cot_product):
     """`check_config` shouldn't flag false-positive type mismatches on
     `by-cot-product`-keyed values, whether `cot_product` is unset or set to a
