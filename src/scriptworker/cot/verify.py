@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import dictdiffer
 import jsone
 from immutabledict import immutabledict
-from taskcluster.aio import Queue
+from taskcluster.aio import Github, Queue
 from taskgraph.util.parameterization import resolve_timestamps
 
 from scriptworker import __version__
@@ -96,6 +96,14 @@ log = logging.getLogger(__name__)
 
 DECISION_TASK_TYPES = ("decision",)
 PARENT_TASK_TYPES = ("decision", "action")
+# Decision tasks that are verified against the GitHub service's build records,
+# mapped to their allowed GitHub event families (``eventType`` up to the first ".").
+GITHUB_BUILD_EVENT_TYPES = {
+    "github-push": ("push", "tag"),
+    "github-pull-request": ("pull_request",),
+    "github-pull-request-untrusted": ("pull_request",),
+    "github-release": ("release",),
+}
 
 
 # ChainOfTrust {{{1
@@ -1437,6 +1445,72 @@ async def populate_jsone_context(chain, parent_link, decision_link, tasks_for):
     return jsone_context
 
 
+# verify_github_build {{{1
+async def verify_github_build(chain, decision_link, tasks_for):
+    """Verify a decision task against Taskcluster's GitHub service build record.
+
+    Checks that the build recorded for the decision task's group matches the
+    repository, revision, event type and pull request number the task claims.
+
+    Args:
+        chain (ChainOfTrust): the chain we're operating on.
+        decision_link (LinkOfTrust): the decision task link to verify.
+        tasks_for (str): the reason the decision task was created, one of
+            ``GITHUB_BUILD_EVENT_TYPES``.
+
+    Raises:
+        CoTError: on failure.
+
+    """
+    task = decision_link.task
+    source_env_prefix = chain.context.config["source_env_prefix"]
+    # Builds are keyed by task group, so the decision task must own its group.
+    if task["taskGroupId"] != decision_link.task_id:
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: taskGroupId {task['taskGroupId']} doesn't match its taskId!")
+
+    event_types = GITHUB_BUILD_EVENT_TYPES[tasks_for]
+    is_pull_request = "pull_request" in event_types
+    # Pull request builds are recorded against the base repository, even for
+    # pull requests from forks.
+    repo_url = get_repo(task, source_env_prefix, repo_type="base" if is_pull_request else "head")
+    sha = get_head_revision(task, source_env_prefix)
+    if not repo_url or not sha:
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: can't find the repository and revision to look up the GitHub build!")
+    repo_url = repo_url.replace("git@github.com:", "ssh://github.com/", 1)
+    owner, repo_name = extract_github_repo_owner_and_name(repo_url)
+
+    options = {"rootUrl": chain.context.config["taskcluster_root_url"]}
+    if chain.context.credentials:
+        options["credentials"] = chain.context.credentials
+    github = Github(options=options, session=chain.context.session)
+    builds = (await github.builds(query={"taskGroupId": decision_link.task_id}))["builds"]
+    if not builds:
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: no GitHub build found for its task group!")
+    build = builds[0]
+
+    # The GitHub service stores names with "." replaced by "%".
+    build_repo = f"{build['organization']}/{build['repository']}".replace("%", ".")
+    if build_repo != f"{owner}/{repo_name}":
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: repository {owner}/{repo_name} doesn't match GitHub build repository {build_repo}!")
+    # Release decision tasks carry the tag name as their revision, and the
+    # GitHub service records the tip of the release's target branch when it
+    # handles the event, which needn't be the tagged commit.
+    if tasks_for != "github-release" and build["sha"] != sha:
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: revision {sha} doesn't match GitHub build revision {build['sha']}!")
+
+    event_type = build["eventType"]
+    if event_type.split(".")[0] not in event_types:
+        raise CoTError(f"{decision_link.name} {decision_link.task_id}: tasks_for {tasks_for} doesn't match GitHub event {event_type}!")
+    if is_pull_request:
+        pull_request_number = get_pull_request_number(task, source_env_prefix)
+        if pull_request_number != build.get("pullRequestNumber"):
+            raise CoTError(
+                f"{decision_link.name} {decision_link.task_id}: pull request {pull_request_number} doesn't match GitHub build "
+                f"pull request {build.get('pullRequestNumber')}!"
+            )
+    log.info(f"{decision_link.name} {decision_link.task_id} matches GitHub {event_type} build for {build_repo}@{build['sha']}")
+
+
 # get_in_tree_template {{{1
 def build_taskcluster_yml_url(link):
     """Build the url to the repo root ``.taskcluster.yml`` .
@@ -1655,6 +1729,8 @@ async def verify_parent_task_definition(chain, parent_link):
     decision_link = chain.get_link(parent_link.decision_task_id)
     try:
         tasks_for = get_and_check_tasks_for(chain.context, parent_link.task, "{} {}: ".format(parent_link.name, parent_link.task_id))
+        if tasks_for in GITHUB_BUILD_EVENT_TYPES:
+            await verify_github_build(chain, parent_link, tasks_for)
         jsone_context, tmpl = await get_jsone_context_and_template(chain, parent_link, decision_link, tasks_for)
         rebuilt_definitions = jsone.render(tmpl, jsone_context)
         if tasks_for in ("action", "pr-action"):
