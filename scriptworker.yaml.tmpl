@@ -31,6 +31,7 @@ worker_id: dummy-worker-myname1
 # The timeouts are in seconds.
 artifact_upload_timeout: 1200
 task_max_timeout: 1200
+cot_max_timeout: 900
 
 # This is the command line to execute the task.
 task_script: ["bash", "-c", "echo foo && sleep 19 && exit 1"]

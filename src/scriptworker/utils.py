@@ -447,7 +447,15 @@ async def _process_future_exceptions(tasks, raise_at_first_error):
     error_results = []
 
     if tasks:
-        await asyncio.wait(tasks)
+        try:
+            await asyncio.wait(tasks)
+        except asyncio.CancelledError:
+            # Don't leave the tasks running in the background when the caller is cancelled
+            for task in tasks:
+                task.cancel()
+            # return_exceptions=True so gather waits for every task and never raises in place of the CancelledError
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
         for task in tasks:
             exc = task.exception()
             if exc:
