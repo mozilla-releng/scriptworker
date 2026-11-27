@@ -156,6 +156,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "mobile": "github",
                         "mozillavpn": "github",
                         "scriptworker": "github",
+                        "taskcluster": "github",
                         "thunderbird": "hg",
                         "translations": "github",
                         "xpi": "github",
@@ -217,6 +218,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "scriptworker-1/decision-gcp",
                             "scriptworker-3/decision-gcp",
                         ),
+                        "taskcluster": ("taskcluster-1/decision", "taskcluster-3/decision"),
                         "thunderbird": (
                             "comm-1/decision",
                             "comm-2/decision",
@@ -293,6 +295,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "scriptworker-1/images-gcp",
                             "scriptworker-3/images-gcp",
                         ),
+                        "taskcluster": ("taskcluster-1/images", "taskcluster-3/images"),
                         "thunderbird": (
                             "comm-1/images",
                             "comm-2/images",
@@ -409,6 +412,15 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 }
                             ),
                         ),
+                        "taskcluster": (
+                            immutabledict(
+                                {
+                                    "schemes": ("https", "ssh"),
+                                    "netlocs": ("github.com",),
+                                    "path_regexes": tuple([r"^(?P<path>/taskcluster/taskcluster)(/|.git|$)"]),
+                                }
+                            ),
+                        ),
                         # XXX We should also check the mozilla-central tree that is being used.
                         "thunderbird": (
                             immutabledict(
@@ -474,6 +486,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "mobile": immutabledict({}),
                         "mozillavpn": immutabledict({}),
                         "scriptworker": immutabledict({}),
+                        "taskcluster": immutabledict({}),
                         "thunderbird": immutabledict({}),
                         "translations": immutabledict({}),
                         "xpi": immutabledict({}),
@@ -539,6 +552,10 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                             "github-push",
                             "github-release",
                         ),
+                        "taskcluster": (
+                            "github-pull-request",
+                            "github-push",
+                        ),
                         "thunderbird": ("hg-push", "cron", "action"),
                         "translations": (
                             "action",
@@ -573,6 +590,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "mobile": "mozilla-mobile",
                         "mozillavpn": "mozilla-mobile",
                         "scriptworker": "mozilla-releng",
+                        "taskcluster": "taskcluster",
                         "thunderbird": "",
                         "translations": "mozilla",
                         "xpi": "mozilla-extensions",
@@ -661,6 +679,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 "project:scriptworker:pypi:production": "all-production-repos",
                             }
                         ),
+                        "taskcluster": immutabledict({"project:taskcluster:releng:signing:cert:release-signing": "taskcluster-repo"}),
                         "thunderbird": immutabledict(
                             {
                                 "project:comm:thunderbird:releng:balrog:server:nightly": "all-nightly-branches",
@@ -808,6 +827,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                                 ),
                             }
                         ),
+                        "taskcluster": immutabledict({"taskcluster-repo": ("/taskcluster/taskcluster",)}),
                         "thunderbird": immutabledict(
                             {
                                 "all-release-branches": (
@@ -858,6 +878,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "mobile": "any",  # all allowed
                         "mozillavpn": "any",  # all allowed
                         "scriptworker": ("decision", "action", "docker-image"),
+                        "taskcluster": ("decision", "action", "docker-image"),
                         "thunderbird": ("decision", "action", "docker-image"),
                         "translations": "any",  # all allowed
                         "xpi": "any",  # all allowed
@@ -877,6 +898,7 @@ DEFAULT_CONFIG: immutabledict[str, Any] = immutabledict(
                         "mobile": "MOBILE",
                         "mozillavpn": "MOZILLAVPN",
                         "scriptworker": "SCRIPTWORKER",
+                        "taskcluster": "TASKCLUSTER",
                         "thunderbird": "COMM",
                         "translations": "TRANSLATIONS",
                         "xpi": "XPI",
