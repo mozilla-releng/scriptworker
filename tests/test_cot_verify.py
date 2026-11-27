@@ -1782,8 +1782,11 @@ async def test_verify_parent_task_definition_vpn(vpn_chain, name, task_id, path,
     mocker.patch.object(cotverify, "get_pushlog_info", new=cotv4_pushlog)
     mocker.patch.object(cotverify, "GitHubRepository", new=MockedGitHubRepository)
 
+    tc_github = _mock_github_builds(mocker, _github_build(repository="mozilla-vpn-client", sha="330ea928b42ff2403fc99cd3e596d13294fe8775"))
+
     vpn_chain.links = list(set([decision_link, link]))
     await cotverify.verify_parent_task_definition(vpn_chain, link)
+    tc_github.builds.assert_awaited_once_with(query={"taskGroupId": decision_task_id})
 
 
 def test_build_taskcluster_yml_url_unknown_server(decision_link):
@@ -2931,3 +2934,148 @@ def test_scope_in_restricted_scopes(chain, scope, restricted_scopes, expected):
             chain.is_scope_in_restricted_scopes(scope, restricted_scopes)
     else:
         assert chain.is_scope_in_restricted_scopes(scope, restricted_scopes) is expected
+
+
+# verify_github_build {{{1
+def _mock_github_builds(mocker, *builds):
+    tc_github = MagicMock()
+    tc_github.builds = AsyncMock(return_value={"builds": list(builds)})
+    mocker.patch.object(cotverify, "Github", return_value=tc_github)
+    return tc_github
+
+
+def _github_build(**kwargs):
+    return {"organization": "mozilla-mobile", "repository": "reference-browser", "sha": "abc", "eventType": "push", **kwargs}
+
+
+def _github_decision_link(chain, env, task_id="decision_task_id", task_group_id="decision_task_id"):
+    link = cotverify.LinkOfTrust(chain.context, "decision", task_id)
+    link.task = {
+        "taskGroupId": task_group_id,
+        "provisionerId": "mobile-3",
+        "workerType": "decision",
+        "scopes": [],
+        "payload": {"image": "decision", "env": env},
+    }
+    return link
+
+
+GITHUB_PUSH_ENV = {"MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser", "MOBILE_HEAD_REV": "abc"}
+GITHUB_PR_ENV = {
+    "MOBILE_BASE_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser",
+    "MOBILE_HEAD_REPOSITORY": "https://github.com/someone/reference-browser",
+    "MOBILE_HEAD_REV": "abc",
+    "MOBILE_PULL_REQUEST_NUMBER": "42",
+}
+GITHUB_RELEASE_ENV = {"MOBILE_HEAD_REPOSITORY": "https://github.com/mozilla-mobile/reference-browser", "MOBILE_HEAD_REV": "v1.0.0"}
+PR_BUILD = {"eventType": "pull_request.synchronize", "pullRequestNumber": 42}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "env, tasks_for, build",
+    (
+        pytest.param(GITHUB_PUSH_ENV, "github-push", {}, id="push"),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", {"eventType": "tag"}, id="tag"),
+        # Pull request builds are recorded against the base repository.
+        pytest.param(GITHUB_PR_ENV, "github-pull-request", PR_BUILD, id="pull-request"),
+        pytest.param(GITHUB_PR_ENV, "github-pull-request-untrusted", PR_BUILD, id="pull-request-untrusted"),
+        # Release builds are recorded against the tip of the target branch, not the tag.
+        pytest.param(GITHUB_RELEASE_ENV, "github-release", {"eventType": "release", "sha": "branchtip"}, id="release"),
+        # The GitHub service stores names with "." replaced by "%".
+        pytest.param(
+            dict(GITHUB_PUSH_ENV, MOBILE_HEAD_REPOSITORY="https://github.com/mozilla-mobile/reference.browser"),
+            "github-push",
+            {"repository": "reference%browser"},
+            id="dotted-repo",
+        ),
+    ),
+)
+async def test_verify_github_build(mobile_chain, mocker, env, tasks_for, build):
+    tc_github = _mock_github_builds(mocker, _github_build(**build))
+    await cotverify.verify_github_build(mobile_chain, _github_decision_link(mobile_chain, env), tasks_for)
+    tc_github.builds.assert_awaited_once_with(query={"taskGroupId": "decision_task_id"})
+
+
+@pytest.mark.asyncio
+async def test_verify_github_build_credentials(mobile_chain, mocker):
+    _mock_github_builds(mocker, _github_build())
+    mobile_chain.context.credentials = {"clientId": "worker", "accessToken": "secret"}
+    await cotverify.verify_github_build(mobile_chain, _github_decision_link(mobile_chain, GITHUB_PUSH_ENV), "github-push")
+    assert cotverify.Github.call_args.kwargs["options"]["credentials"] == {"clientId": "worker", "accessToken": "secret"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "env, tasks_for, builds, match",
+    (
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [], "no GitHub build found", id="no-build"),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [{"repository": "other"}], "doesn't match GitHub build repository", id="other-repo"),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [{"organization": "someone"}], "doesn't match GitHub build repository", id="other-owner"),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [{"sha": "def"}], "revision abc doesn't match GitHub build revision def", id="other-sha"),
+        pytest.param(GITHUB_PR_ENV, "github-pull-request", [dict(PR_BUILD, sha="def")], "revision abc doesn't match", id="pull-request-other-sha"),
+        pytest.param(
+            dict(GITHUB_PR_ENV, MOBILE_BASE_REPOSITORY="https://github.com/someone/reference-browser"),
+            "github-pull-request",
+            [PR_BUILD],
+            "doesn't match GitHub build repository",
+            id="pull-request-head-repo",
+        ),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [PR_BUILD], "doesn't match GitHub event", id="pull-request-claims-push"),
+        pytest.param(GITHUB_PUSH_ENV, "github-push", [{"eventType": "release"}], "doesn't match GitHub event", id="release-claims-push"),
+        pytest.param(GITHUB_PR_ENV, "github-pull-request", [{}], "doesn't match GitHub event", id="push-claims-pull-request"),
+        pytest.param(GITHUB_PR_ENV, "github-pull-request", [dict(PR_BUILD, pullRequestNumber=7)], "pull request 42 doesn't match", id="other-pull-request"),
+        pytest.param(
+            {k: v for k, v in GITHUB_PR_ENV.items() if k != "MOBILE_PULL_REQUEST_NUMBER"},
+            "github-pull-request",
+            [PR_BUILD],
+            "pull request None doesn't match",
+            id="missing-pull-request-number",
+        ),
+        pytest.param(GITHUB_RELEASE_ENV, "github-release", [{}], "doesn't match GitHub event", id="push-claims-release"),
+        pytest.param(GITHUB_RELEASE_ENV, "github-release", [{"eventType": "tag"}], "doesn't match GitHub event", id="tag-claims-release"),
+        pytest.param(GITHUB_RELEASE_ENV, "github-release", [PR_BUILD], "doesn't match GitHub event", id="pull-request-claims-release"),
+    ),
+)
+async def test_verify_github_build_failures(mobile_chain, mocker, env, tasks_for, builds, match):
+    _mock_github_builds(mocker, *[_github_build(**build) for build in builds])
+    with pytest.raises(CoTError, match=match):
+        await cotverify.verify_github_build(mobile_chain, _github_decision_link(mobile_chain, env), tasks_for)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("missing", ("MOBILE_HEAD_REPOSITORY", "MOBILE_HEAD_REV"))
+async def test_verify_github_build_missing_env(mobile_chain, mocker, missing):
+    tc_github = _mock_github_builds(mocker)
+    env = {k: v for k, v in GITHUB_PUSH_ENV.items() if k != missing}
+    with pytest.raises(CoTError, match="can't find the repository and revision"):
+        await cotverify.verify_github_build(mobile_chain, _github_decision_link(mobile_chain, env), "github-push")
+    tc_github.builds.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_verify_github_build_task_group_mismatch(mobile_chain, mocker):
+    tc_github = _mock_github_builds(mocker)
+    link = _github_decision_link(mobile_chain, GITHUB_PR_ENV, task_group_id="victim_task_group")
+    with pytest.raises(CoTError, match="doesn't match its taskId"):
+        await cotverify.verify_github_build(mobile_chain, link, "github-pull-request")
+    tc_github.builds.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tasks_for, called",
+    (("github-push", True), ("github-pull-request", True), ("github-release", True), ("cron", False), ("action", False)),
+)
+async def test_verify_parent_task_definition_github_build(mobile_chain, mocker, tasks_for, called):
+    link = _github_decision_link(mobile_chain, GITHUB_PUSH_ENV)
+    link.task["extra"] = {"tasks_for": tasks_for}
+    mobile_chain.links = [link]
+    verify = mocker.patch.object(cotverify, "verify_github_build", new=AsyncMock())
+    mocker.patch.object(cotverify, "get_jsone_context_and_template", new=AsyncMock(side_effect=KeyError("stop")))
+    with pytest.raises(CoTError):
+        await cotverify.verify_parent_task_definition(mobile_chain, link)
+    if called:
+        verify.assert_awaited_once_with(mobile_chain, link, tasks_for)
+    else:
+        verify.assert_not_awaited()
