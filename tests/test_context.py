@@ -68,7 +68,9 @@ async def test_set_reclaim_task(rw_context, claim_task, reclaim_task):
 async def test_set_reset_task(rw_context, claim_task, reclaim_task):
     rw_context.claim_task = claim_task
     rw_context.reclaim_task = reclaim_task
+    rw_context.claim_lost = True
     rw_context.claim_task = None
+    assert rw_context.claim_lost is False
     assert rw_context.claim_task is None
     assert rw_context.task is None
     assert rw_context.reclaim_task is None

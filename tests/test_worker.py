@@ -14,6 +14,7 @@ import aiohttp
 import arrow
 import mock
 import pytest
+import taskcluster.exceptions
 
 import scriptworker.worker as worker
 from scriptworker.constants import STATUSES
@@ -326,6 +327,38 @@ async def test_verify_chain_of_trust_failure_creates_link_artifact(context, mock
             "content_type": "text/plain",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_do_run_task_cot_cancelled_by_reclaim_409(context, mocker):
+    """When the task is cancelled during Chain of Trust verification, the verification stops and the task script never runs."""
+    context.config["verify_chain_of_trust"] = True
+    context.config["reclaim_interval"] = 0
+    cot_started = asyncio.Event()
+
+    async def hang(chain):
+        cot_started.set()
+        await asyncio.Event().wait()
+
+    async def reclaim_409(*args, **kwargs):
+        raise taskcluster.exceptions.TaskclusterRestFailure("foo", None, status_code=409)
+
+    async def run(future):
+        return await future
+
+    mocker.patch.object(worker, "ChainOfTrust", new=lambda *args, **kwargs: None)
+    mocker.patch.object(worker, "verify_chain_of_trust", new=hang)
+    mock_run_task = mocker.patch.object(worker, "run_task")
+    context.temp_queue = mock.MagicMock()
+    context.temp_queue.reclaimTask = reclaim_409
+
+    do_run_task_future = asyncio.ensure_future(do_run_task(context, run, lambda x: x))
+    await cot_started.wait()
+    assert context.cot_future is not None
+    await worker.reclaim_task(context, context.task)
+    assert await do_run_task_future == context.config["invalid_reclaim_status"]
+    assert context.cot_future is None
+    mock_run_task.assert_not_called()
 
 
 @pytest.mark.asyncio

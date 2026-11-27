@@ -42,8 +42,12 @@ class Context(object):
     passing around config and easier overriding in tests.
 
     Attributes:
+        claim_lost (bool): True once ``reclaimTask`` has returned 409 for the
+            current task, meaning this worker no longer holds its claim.
         config (dict): the running config.  In production this will be an
             immutabledict.
+        cot_future (asyncio.Future): while Chain of Trust verification is
+            running, this is the future running it.
         credentials_timestamp (int): the unix timestamp when we last updated
             our credentials.
         proc (task_process.TaskProcess): when launching the script, this is
@@ -57,7 +61,9 @@ class Context(object):
 
     """
 
+    claim_lost: bool = False
     config: Optional[Dict[str, Any]] = None
+    cot_future: Optional[asyncio.Future] = None
     credentials_timestamp: Optional[int] = None
     credentials_file = None
     proc: Optional[task_process.TaskProcess] = None
@@ -84,7 +90,8 @@ class Context(object):
         info.
 
         When setting ``claim_task``, we also set ``self.task`` and
-        ``self.temp_credentials``, zero out ``self.reclaim_task`` and ``self.proc``,
+        ``self.temp_credentials``, zero out ``self.reclaim_task``, ``self.proc``, ``self.cot_future``
+        and ``self.claim_lost``,
         then write a task.json to disk.
 
         """
@@ -96,6 +103,8 @@ class Context(object):
         self._claim_task = claim_task
         self.reclaim_task = None
         self.proc = None
+        self.cot_future = None
+        self.claim_lost = False
         if claim_task:
             self.task = claim_task["task"]
             self.verify_task()

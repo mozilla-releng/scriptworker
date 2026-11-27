@@ -706,6 +706,11 @@ async def run_task(context, to_cancellable_process):
         stderr_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stderr, filehandles=[log_filehandle]))
         stdout_future = asyncio.ensure_future(pipe_to_log(context.proc.process.stdout, filehandles=[log_filehandle]))
         try:
+            if context.claim_lost:
+                message = "Killing task: reclaimTask returned 409 before the task script started"
+                log.warning(message)
+                await context.proc.stop()
+                raise ScriptWorkerTaskException(message, exit_code=context.config["invalid_reclaim_status"])
             _, pending = await asyncio.wait([stderr_future, stdout_future], timeout=timeout)
             if pending:
                 message = "Exceeded max run time of {} seconds".format(timeout)
@@ -767,6 +772,12 @@ async def reclaim_task(context, task):
         except taskcluster.exceptions.TaskclusterRestFailure as exc:
             if exc.status_code == 409:
                 log.debug("409: not reclaiming task.")
+                if task == context.task:
+                    # Recorded so run_task and do_run_task can still act on it if neither CoT nor the task script is running now
+                    context.claim_lost = True
+                if context.cot_future and task == context.task:
+                    log.warning("Cancelling Chain of Trust verification after receiving 409 status in reclaim_task")
+                    context.cot_future.cancel()
                 if context.proc and task == context.task:
                     message = "Killing task after receiving 409 status in reclaim_task"
                     log.warning(message)

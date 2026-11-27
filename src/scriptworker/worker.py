@@ -56,7 +56,9 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
         if context.config["verify_chain_of_trust"]:
             chain = ChainOfTrust(context, context.config["cot_job_type"])
             try:
-                await run_cancellable(verify_chain_of_trust(chain))
+                # Exposed on the context so reclaim_task can cancel it if the task is cancelled
+                context.cot_future = asyncio.ensure_future(verify_chain_of_trust(chain))
+                await run_cancellable(context.cot_future)
             except Exception:
                 # Point live_backing.log at chain_of_trust.log so Treeherder parses the CoT failure
                 if os.path.exists(get_chain_of_trust_log_filename(context)):
@@ -70,11 +72,16 @@ async def do_run_task(context, run_cancellable, to_cancellable_process):
                     except Exception as link_exc:
                         log.exception("Failed to create live_backing.log link artifact: {}".format(link_exc))
                 raise
+            finally:
+                context.cot_future = None
         status = await run_task(context, to_cancellable_process)
         generate_cot(context)
     except asyncio.CancelledError:
-        log.info("CoT cancelled asynchronously")
-        raise WorkerShutdownDuringTask
+        if not context.claim_lost:
+            log.info("CoT cancelled asynchronously")
+            raise WorkerShutdownDuringTask
+        log.warning("Chain of Trust verification cancelled after receiving 409 status in reclaim_task")
+        status = context.config["invalid_reclaim_status"]
     except ScriptWorkerException as e:
         status = worst_level(status, e.exit_code)
         log.error("Hit ScriptWorkerException: {}".format(e))
