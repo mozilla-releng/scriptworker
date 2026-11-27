@@ -2592,6 +2592,92 @@ async def test_chain_is_try_or_pull_request_enterprise_thunderbird(mocker, chain
     assert calls == [("mozilla/enterprise-firefox", gecko_rev, "refs/heads/enterprise-release")]
 
 
+@pytest.mark.asyncio
+async def test_chain_is_try_or_pull_request_enterprise_thunderbird_docker_image(mocker, chain):
+    """Enterprise release signing with a docker image built by a Comm decision task (bug 2089870).
+
+    Enterprise pushes start both a gecko and a Comm decision task, which share the
+    ``enterprise.cache.level-*`` docker image index. The image of a release build can then
+    come from an older Comm graph: sourced from thunderbird-desktop, defining no ref of its
+    own, and whose decision task's GECKO ref (refs/heads/enterprise-beta) doesn't exist in
+    thunderbird-desktop. Only the parent tasks' GECKO commits need checking, against their
+    GECKO refs. Shape and values from task ewcYiXD6TNqjsQWL-ufCng.
+    """
+    enterprise_repo, thunderbird_repo = "https://github.com/mozilla/enterprise-firefox", "https://github.com/thunderbird/thunderbird-desktop"
+    release_rev, beta_rev, comm_beta_rev = (
+        "3c0bbcb6242973611da6d88ea95d5c3cd21f78a8",
+        "ca015714a391bc55a337126190bcfe929b067558",
+        "7a4b6797d8261b3a1b89921c243ead4faf5f1eea",
+    )
+    chain.context.config["official_github_repos_owner"] = ("mozilla", "thunderbird")
+
+    def make_task(group, env, source, parent=None):
+        return dict(
+            chain.task,
+            taskGroupId=group,
+            payload={"env": env},
+            metadata={"source": source, "owner": "foo@example.tld"},
+            extra={"parent": parent} if parent else {},
+        )
+
+    release_env = {"GECKO_HEAD_REF": "refs/heads/enterprise-release", "GECKO_HEAD_REPOSITORY": enterprise_repo, "GECKO_HEAD_REV": release_rev}
+    comm_env = {"COMM_HEAD_REPOSITORY": thunderbird_repo, "COMM_HEAD_REV": comm_beta_rev, "GECKO_HEAD_REPOSITORY": enterprise_repo, "GECKO_HEAD_REV": beta_rev}
+    chain.task = make_task("action_task_id", {}, f"{enterprise_repo}/blob/{release_rev}/taskcluster/kinds/build-signing", parent="action_task_id")
+    chain.decision_task_id = chain.parent_task_id = "action_task_id"
+    links = {
+        "signing:parent": ("action_task_id", make_task("decision_task_id", release_env, f"{enterprise_repo}/raw/{release_rev}/.taskcluster.yml")),
+        "signing:parent:parent": ("decision_task_id", make_task("decision_task_id", release_env, f"{enterprise_repo}/raw/{release_rev}/.taskcluster.yml")),
+        "signing:build": (
+            "build_task_id",
+            make_task("action_task_id", release_env, f"{enterprise_repo}/blob/{release_rev}/taskcluster/kinds/build", parent="action_task_id"),
+        ),
+        "signing:build:docker-image": (
+            "docker_image_task_id",
+            make_task("comm_decision_task_id", comm_env, f"{thunderbird_repo}/blob/{comm_beta_rev}/taskcluster/kinds/docker-image"),
+        ),
+        "signing:build:docker-image:parent": (
+            "comm_decision_task_id",
+            make_task(
+                "comm_decision_task_id",
+                dict(comm_env, COMM_HEAD_REF="refs/heads/beta", GECKO_HEAD_REF="refs/heads/enterprise-beta"),
+                f"{thunderbird_repo}/raw/{comm_beta_rev}/.taskcluster.yml",
+            ),
+        ),
+    }
+    chain.links = []
+    for name, (task_id, task) in links.items():
+        link = cotverify.LinkOfTrust(chain.context, name, task_id)
+        link.task = task
+        chain.links.append(link)
+
+    # What's actually on github: refs/heads/enterprise-beta doesn't exist in thunderbird-desktop
+    landed = {
+        ("mozilla/enterprise-firefox", release_rev, "refs/heads/enterprise-release"),
+        ("mozilla/enterprise-firefox", beta_rev, "refs/heads/enterprise-beta"),
+        ("thunderbird/thunderbird-desktop", comm_beta_rev, "refs/heads/beta"),
+    }
+    calls = []
+
+    def github_repository(context, owner, repo_name):
+        async def has_commit_landed_on_repository(context, revision, ref):
+            calls.append((f"{owner}/{repo_name}", revision, ref))
+            return (f"{owner}/{repo_name}", revision, ref) in landed
+
+        repository = MagicMock()
+        repository.has_commit_landed_on_repository = has_commit_landed_on_repository
+        return repository
+
+    mocker.patch.object(swtask, "GitHubRepository", side_effect=github_repository)
+    assert not await chain.is_try_or_pull_request()
+    assert sorted(calls) == sorted(
+        [
+            ("mozilla/enterprise-firefox", release_rev, "refs/heads/enterprise-release"),
+            ("mozilla/enterprise-firefox", release_rev, "refs/heads/enterprise-release"),
+            ("mozilla/enterprise-firefox", beta_rev, "refs/heads/enterprise-beta"),
+        ]
+    )
+
+
 # AuditLogFormatter {{{1
 @pytest.mark.parametrize("level,expected", ((logging.INFO, "foo"), (logging.DEBUG, " foo")))
 def test_audit_log_formatter(level, expected):
